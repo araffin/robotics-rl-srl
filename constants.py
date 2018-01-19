@@ -23,3 +23,4 @@ SPACE_KEY = 32
 EXIT_KEYS = [113, 27]  # Escape and q
 D_KEY = 100
 U_KEY = 117
+R_KEY = 114

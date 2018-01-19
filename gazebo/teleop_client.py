@@ -12,7 +12,7 @@ import zmq
 import cv2
 
 from constants import SERVER_PORT, HOSTNAME, UP_KEY, DOWN_KEY, LEFT_KEY, \
-    RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, DELTA_POS
+    RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, DELTA_POS, R_KEY
 from utils import recvMatrix
 
 # For Python 3 compatibility
@@ -37,8 +37,8 @@ action = [0, 0, 0]
 action_dict = {
     UP_KEY: [- DELTA_POS, 0, 0],
     DOWN_KEY: [DELTA_POS, 0, 0],
-    LEFT_KEY: [0, DELTA_POS, 0],
-    RIGHT_KEY: [0, -DELTA_POS, 0],
+    LEFT_KEY: [0, - DELTA_POS, 0],
+    RIGHT_KEY: [0, DELTA_POS, 0],
     D_KEY: [0, 0, - DELTA_POS],
     U_KEY: [0, 0, DELTA_POS]
 
@@ -53,7 +53,7 @@ while True:
         break
     elif key in action_dict.keys():
         action = action_dict[key]
-    elif False:
+    elif key == R_KEY:
         socket.send_json({"command": "reset"})
         # Wait for the env to be reset
         msg = socket.recv_json()
