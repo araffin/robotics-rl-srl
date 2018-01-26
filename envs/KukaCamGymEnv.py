@@ -14,10 +14,11 @@ import pybullet_data
 
 from . import kuka
 
-maxSteps = 1000
+MAX_STEPS = 1000
 
-RENDER_HEIGHT = 720
-RENDER_WIDTH = 960
+RENDER_HEIGHT = 720 // 5
+RENDER_WIDTH = 960 // 5
+Z_TABLE = -0.15
 
 
 class KukaCamGymEnv(gym.Env):
@@ -39,16 +40,33 @@ class KukaCamGymEnv(gym.Env):
         self._observation = []
         self._envStepCounter = 0
         self._renders = renders
-        self._width = 341
-        self._height = 256
+        self._width = RENDER_WIDTH
+        self._height = RENDER_HEIGHT
+        self._cam_dist = 1.1
+        self._cam_yaw = 145
+        self._cam_pitch = -36
+        self._cam_roll = 0
+        self.base_pos = (0.316, -0.2, -0.1)
         self._isDiscrete = isDiscrete
         self.terminated = 0
-        self._p = p
+        self.renderer = p.ER_TINY_RENDERER
+        self.debug = False
+
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
             if cid < 0:
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
+
+            self.renderer = p.ER_BULLET_HARDWARE_OPENGL
+            self.debug = True
+            self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.base_pos[0])
+            self.y_slider = p.addUserDebugParameter("y_slider", -10, 10, self.base_pos[1])
+            self.z_slider = p.addUserDebugParameter("z_slider", -10, 10, self.base_pos[2])
+            self.dist_slider = p.addUserDebugParameter("cam_dist", 0, 10, self._cam_dist)
+            self.yaw_slider = p.addUserDebugParameter("cam_yaw", -180, 180, self._cam_yaw)
+            self.pitch_slider = p.addUserDebugParameter("cam_pitch", -180, 180, self._cam_pitch)
+
         else:
             p.connect(p.DIRECT)
         # timinglog = p.startStateLogging(p.STATE_LOGGING_PROFILE_TIMINGS, "kukaTimings.json")
@@ -66,7 +84,7 @@ class KukaCamGymEnv(gym.Env):
             self._action_bound = 1
             action_high = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_high, action_high)
-        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 4))
+        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3))
         self.viewer = None
 
     def _reset(self):
@@ -83,9 +101,10 @@ class KukaCamGymEnv(gym.Env):
         ypos = 0 + 0.25 * random.random()
         ang = 3.1415925438 * random.random()
         orn = p.getQuaternionFromEuler([0, 0, ang])
-        self.block_uid = p.loadURDF(os.path.join(self._urdf_root, "block.urdf"), xpos, ypos, -0.1, orn[0], orn[1], orn[2],
-                                   orn[3])
-        self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [0.5, 0, -0.1])
+        self.block_uid = p.loadURDF(os.path.join(self._urdf_root, "block.urdf"), xpos, ypos, Z_TABLE,
+                                    orn[0], orn[1], orn[2], orn[3])
+        self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [0.5, 0, Z_TABLE])
+        self.glider_idx = 1
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdfRootPath=self._urdf_root, timeStep=self._timestep)
@@ -102,49 +121,20 @@ class KukaCamGymEnv(gym.Env):
         return [seed]
 
     def getExtendedObservation(self):
-
-        # camEyePos = [0.03,0.236,0.54]
-        # distance = 1.06
-        # pitch=-56
-        # yaw = 258
-        # roll=0
-        # upAxisIndex = 2
-        # camInfo = p.getDebugVisualizerCamera()
-        # print("width,height")
-        # print(camInfo[0])
-        # print(camInfo[1])
-        # print("viewMatrix")
-        # print(camInfo[2])
-        # print("projectionMatrix")
-        # print(camInfo[3])
-        # viewMat = camInfo[2]
-        # viewMat = p.computeViewMatrixFromYawPitchRoll(camEyePos,distance,yaw, pitch,roll,upAxisIndex)
-        viewMat = [-0.5120397806167603, 0.7171027660369873, -0.47284144163131714, 0.0, -0.8589617609977722,
-                   -0.42747554183006287, 0.28186774253845215, 0.0, 0.0, 0.5504802465438843, 0.8348482847213745, 0.0,
-                   0.1925382763147354, -0.24935829639434814, -0.4401884973049164, 1.0]
-        # projMatrix = camInfo[3]#[0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0, -0.02000020071864128, 0.0]
-        projMatrix = [0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0,
-                      -0.02000020071864128, 0.0]
-
-
-        # renderer = p.ER_BULLET_HARDWARE_OPENGL if self._renders else p.ER_TINY_RENDERER
-        renderer = p.ER_TINY_RENDERER
-
-        img_arr = p.getCameraImage(width=self._width, height=self._height, viewMatrix=viewMat,
-                                   projectionMatrix=projMatrix, renderer=renderer)
-        rgb = img_arr[2]
-        np_img_arr = np.reshape(rgb, (self._height, self._width, 4))
-        self._observation = np_img_arr
+        self._observation = self._render("rgb_array")
         return self._observation
 
     def _step(self, action):
         if self._isDiscrete:
-            dv = 0.01
+            # WARNING: dv not the same for the z axis
+            dv = 0.01  # velocity per physics step.
             dx = [0, -dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, 0, -dv, dv, 0, 0][action]
-            da = [0, 0, 0, 0, 0, -0.1, 0.1][action]
+            dy = [0, 0, 0, 0, 0, -dv, dv][action]
+            # da = [0, 0, 0, 0, 0, -0.1, 0.1][action] # end effector angle
             f = 0.3
-            realAction = [dx, dy, -0.002, da, f]
+            # realAction = [dx, dy, -0.002, da, f]
+            realAction = [dx, dy, dy, 0, f]
         else:
             dv = 0.01
             dx = action[0] * dv
@@ -156,20 +146,19 @@ class KukaCamGymEnv(gym.Env):
         return self.step2(realAction)
 
     def step2(self, action):
+
+        p.setJointMotorControl2(self.button_uid, self.glider_idx, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
+
         for i in range(self._action_repeat):
             self._kuka.applyAction(action)
             p.stepSimulation()
             if self._termination():
                 break
-            # self._observation = self.getExtendedObservation()
             self._envStepCounter += 1
 
         self._observation = self.getExtendedObservation()
         if self._renders:
             time.sleep(self._timestep)
-
-        # print("self._envStepCounter")
-        # print(self._envStepCounter)
 
         done = self._termination()
         reward = self._reward()
@@ -181,87 +170,60 @@ class KukaCamGymEnv(gym.Env):
         # Apparently this code is not used
         if mode != "rgb_array":
             return np.array([])
-        # base_pos,orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
-        base_pos, orn = self._p.getBasePositionAndOrientation(self._kuka.kukaUid)
-        # TODO: define cam_dist, yaw and pitch
-        view_matrix = self._p.computeViewMatrixFromYawPitchRoll(
+        # base_pos, _ = p.getBasePositionAndOrientation(self._kuka.kukaUid)
+        base_pos = self.base_pos
+
+        if self.debug:
+            self._cam_dist = p.readUserDebugParameter(self.dist_slider)
+            self._cam_yaw = p.readUserDebugParameter(self.yaw_slider)
+            self._cam_pitch = p.readUserDebugParameter(self.pitch_slider)
+            x = p.readUserDebugParameter(self.x_slider)
+            y = p.readUserDebugParameter(self.y_slider)
+            z = p.readUserDebugParameter(self.z_slider)
+            base_pos = (x, y, z)
+            # self._cam_roll = p.readUserDebugParameter(self.roll_slider)
+
+        view_matrix = p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=base_pos,
             distance=self._cam_dist,
             yaw=self._cam_yaw,
             pitch=self._cam_pitch,
-            roll=0,
+            roll=self._cam_roll,
             upAxisIndex=2)
-        proj_matrix = self._p.computeProjectionMatrixFOV(
+        proj_matrix = p.computeProjectionMatrixFOV(
             fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
             nearVal=0.1, farVal=100.0)
-        (_, _, px, _, _) = self._p.getCameraImage(
+        (_, _, px, _, _) = p.getCameraImage(
             width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
-            projectionMatrix=proj_matrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+            projectionMatrix=proj_matrix, renderer=self.renderer)
+        # return px
         rgb_array = np.array(px)
         rgb_array = rgb_array[:, :, :3]
         return rgb_array
 
     def _termination(self):
-        # print (self._kuka.endEffectorPos[2])
         state = p.getLinkState(self._kuka.kukaUid, self._kuka.kukaEndEffectorIndex)
         actualEndEffectorPos = state[0]
 
-        # print("self._envStepCounter")
-        # print(self._envStepCounter)
-        if self.terminated or self._envStepCounter > maxSteps:
+        if self.terminated or self._envStepCounter > MAX_STEPS:
             self._observation = self.getExtendedObservation()
             return True
-        maxDist = 0.005
-        closest_points = p.getClosestPoints(self._kuka.trayUid, self._kuka.kukaUid, maxDist)
-
-        if len(closest_points):  # (actualEndEffectorPos[2] <= -0.43):
-            self.terminated = 1
-
-            # print("closing gripper, attempting grasp")
-            # start grasp and terminate
-            fingerAngle = 0.3
-            for i in range(100):
-                graspAction = [0, 0, 0.0001, 0, fingerAngle]
-                self._kuka.applyAction(graspAction)
-                p.stepSimulation()
-                fingerAngle = fingerAngle - (0.3 / 100.)
-                if fingerAngle < 0:
-                    fingerAngle = 0
-
-            for i in range(1000):
-                graspAction = [0, 0, 0.001, 0, fingerAngle]
-                self._kuka.applyAction(graspAction)
-                p.stepSimulation()
-                block_pos, block_orn = p.getBasePositionAndOrientation(self.block_uid)
-                if block_pos[2] > 0.23:
-                    # print("BLOCKPOS!")
-                    # print(block_pos[2])
-                    break
-                state = p.getLinkState(self._kuka.kukaUid, self._kuka.kukaEndEffectorIndex)
-                actualEndEffectorPos = state[0]
-                if actualEndEffectorPos[2] > 0.5:
-                    break
-
-            self._observation = self.getExtendedObservation()
-            return True
+        # maxDist = 0.005
+        # closest_points = p.getClosestPoints(self._kuka.trayUid, self._kuka.kukaUid, maxDist)
         return False
 
     def _reward(self):
 
+        # block_pos, block_orn = p.getBasePositionAndOrientation(self.block_uid)
         # rewards is height of target object
-        block_pos, block_orn = p.getBasePositionAndOrientation(self.block_uid)
-        closest_points = p.getClosestPoints(self.block_uid, self._kuka.kukaUid, 1000, -1, self._kuka.kukaEndEffectorIndex)
+        max_dist = 100
+        button_link = -1 # base link
+        closest_points = p.getClosestPoints(self.button_uid, self._kuka.kukaUid, max_dist, button_link, self._kuka.kukaEndEffectorIndex)
 
-        reward = -1000
+        reward = -100
+        # print(closest_points[0])
         num_pt = len(closest_points)
-        # print(num_pt)
         if num_pt > 0:
-            # print("reward:")
-            reward = -closest_points[0][8] * 10
-        if block_pos[2] > 0.2:
-            # print("grasped a block!!!")
-            # print("self._envStepCounter")
-            # print(self._envStepCounter)
-            reward = reward + 1000
+            reward = - closest_points[0][8] * 10
 
         return reward

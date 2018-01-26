@@ -38,7 +38,7 @@ class Kuka:
         self.kukaUid = objects[0]
         # for i in range (p.getNumJoints(self.kukaUid)):
         #  print(p.getJointInfo(self.kukaUid,i))
-        p.resetBasePositionAndOrientation(self.kukaUid, [-0.100000, 0.000000, 0.070000],
+        p.resetBasePositionAndOrientation(self.kukaUid, [-0.100000, 0.000000, -0.15],
                                           [0.000000, 0.000000, 0.000000, 1.000000])
         self.jointPositions = [0.006418, 0.413184, -0.011401, -1.589317, 0.005379, 1.137684, -0.006539, 0.000048,
                                -0.299912, 0.000000, -0.000043, 0.299960, 0.000000, -0.000200]
@@ -48,8 +48,7 @@ class Kuka:
             p.setJointMotorControl2(self.kukaUid, jointIndex, p.POSITION_CONTROL,
                                     targetPosition=self.jointPositions[jointIndex], force=self.maxForce)
 
-        self.trayUid = p.loadURDF(os.path.join(self.urdfRootPath, "tray/tray.urdf"), 0.640000, 0.075000, -0.190000,
-                                  0.000000, 0.000000, 1.000000, 0.000000)
+
         self.endEffectorPos = [0.537, 0.0, 0.5]
         self.endEffectorAngle = 0
 
@@ -95,7 +94,8 @@ class Kuka:
             dy = motorCommands[1]
             dz = motorCommands[2]
             da = motorCommands[3]
-            fingerAngle = motorCommands[4]
+            fingerAngle = 0  # Close the gripper
+            # fingerAngle = motorCommands[4]
 
             state = p.getLinkState(self.kukaUid, self.kukaEndEffectorIndex)
             actualEndEffectorPos = state[0]
@@ -113,11 +113,6 @@ class Kuka:
             if self.endEffectorPos[1] > 0.22:
                 self.endEffectorPos[1] = 0.22
 
-            # print ("self.endEffectorPos[2]")
-            # print (self.endEffectorPos[2])
-            # print("actualEndEffectorPos[2]")
-            # print(actualEndEffectorPos[2])
-            # if (dz<0 or actualEndEffectorPos[2]<0.5):
             self.endEffectorPos[2] = self.endEffectorPos[2] + dz
 
             self.endEffectorAngle = self.endEffectorAngle + da
@@ -138,13 +133,8 @@ class Kuka:
                 else:
                     jointPoses = p.calculateInverseKinematics(self.kukaUid, self.kukaEndEffectorIndex, pos)
 
-            # print("jointPoses")
-            # print(jointPoses)
-            # print("self.kukaEndEffectorIndex")
-            # print(self.kukaEndEffectorIndex)
             if self.useSimulation:
                 for i in range(self.kukaEndEffectorIndex + 1):
-                    # print(i)
                     p.setJointMotorControl2(bodyUniqueId=self.kukaUid, jointIndex=i, controlMode=p.POSITION_CONTROL,
                                             targetPosition=jointPoses[i], targetVelocity=0, force=self.maxForce,
                                             maxVelocity=self.maxVelocity, positionGain=0.3, velocityGain=1)
