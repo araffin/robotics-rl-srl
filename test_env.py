@@ -12,7 +12,7 @@ from envs.KukaCamGymEnv import KukaCamGymEnv
 # exit()
 # env = gym.make('CartPole-v0')
 # env = KukaGymEnv(renders=False)
-env = KukaCamGymEnv(renders=False)
+env = KukaCamGymEnv(renders=True)
 
 i = 0
 start_time = time.time()

@@ -85,6 +85,7 @@ class KukaCamGymEnv(gym.Env):
         orn = p.getQuaternionFromEuler([0, 0, ang])
         self.block_uid = p.loadURDF(os.path.join(self._urdf_root, "block.urdf"), xpos, ypos, -0.1, orn[0], orn[1], orn[2],
                                    orn[3])
+        self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [0.5, 0, -0.1])
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdfRootPath=self._urdf_root, timeStep=self._timestep)
