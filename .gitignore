@@ -1,6 +1,7 @@
 # Custom
 .idea/
 *.txt
+*.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
