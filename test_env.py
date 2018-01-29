@@ -3,7 +3,6 @@ from __future__ import division, absolute_import, print_function
 import time
 
 import pybullet as p
-# from baselines import deepq
 from environments.KukaCamGymEnv import KukaCamGymEnv
 
 
@@ -19,8 +18,6 @@ for i_episode in range(20):
         # print(observation.shape)
         action = env.action_space.sample()
         observation, reward, done, info = env.step(action)
-        if reward != 0:
-            print(reward)
         i += 1
         if done:
             print("Episode finished after {} timesteps".format(t+1))
@@ -28,6 +25,8 @@ for i_episode in range(20):
 
 print("{:.2f} FPS".format(i / (time.time() - start_time)))
 
+#
+# from baselines import deepq
 #
 # def callback(lcl, glb):
 #     return False

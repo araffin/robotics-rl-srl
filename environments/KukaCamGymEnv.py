@@ -16,10 +16,12 @@ from . import kuka
 
 MAX_STEPS = 500
 N_CONTACTS_TO_SOLVE = 5
-RENDER_HEIGHT = 84 # 720 // 5
-RENDER_WIDTH = 84 # 960 // 5
+RENDER_HEIGHT = 84  # 720 // 5
+RENDER_WIDTH = 84  # 960 // 5
 Z_TABLE = -0.2
 MAX_DISTANCE = 0.6
+FORCE_RENDER = False  # For enjoy script
+
 
 # TODO: improve the physics of the button
 
@@ -41,7 +43,7 @@ class KukaCamGymEnv(gym.Env):
         self._isEnableSelfCollision = isEnableSelfCollision
         self._observation = []
         self._envStepCounter = 0
-        self._renders = renders
+        self._renders = renders or FORCE_RENDER
         self._width = RENDER_WIDTH
         self._height = RENDER_HEIGHT
         self._cam_dist = 1.1
@@ -73,11 +75,12 @@ class KukaCamGymEnv(gym.Env):
         else:
             p.connect(p.DIRECT)
         # timinglog = p.startStateLogging(p.STATE_LOGGING_PROFILE_TIMINGS, "kukaTimings.json")
+        # TODO: do we need to call manually the following
         self._seed()
         self.reset()
         observation_dim = len(self.getExtendedObservation())
 
-        observation_high = np.array([np.finfo(np.float32).max] * observation_dim)
+        # observation_high = np.array([np.finfo(np.float32).max] * observation_dim)
         if self._isDiscrete:
             self.action_space = spaces.Discrete(7)
         else:
@@ -128,15 +131,14 @@ class KukaCamGymEnv(gym.Env):
 
     def _step(self, action):
         if self._isDiscrete:
-            # WARNING: dv not the same for the z axis
             dv = 0.01  # velocity per physics step.
             dx = [0, -dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, 0, -dv, dv][action]
-            da = [0, 0, 0, 0, 0, -0.1, 0.1][action] # end effector angle
+            # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
             f = 0.3
-            realAction = [dx, dy, -0.002, da, f]
-            # realAction = [dx, dy, dz, 0, f]
+            # realAction = [dx, dy, -0.002, da, f]
+            realAction = [dx, dy, dz, 0, f]
         else:
             dv = 0.01
             dx = action[0] * dv

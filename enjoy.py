@@ -10,6 +10,8 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
 import environments
+import environments.KukaCamGymEnv as kuka_env
+kuka_env.FORCE_RENDER = True
 
 sys.path.insert(0, os.path.abspath("pytorch_agents/"))
 
