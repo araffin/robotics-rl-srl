@@ -73,7 +73,7 @@ def main():
 
     obs_shape = envs.observation_space.shape
     print(obs_shape)
-    
+
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if len(envs.observation_space.shape) == 3:
@@ -249,7 +249,7 @@ def main():
             save_model = [save_model,
                             hasattr(envs, 'ob_rms') and envs.ob_rms or None]
 
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+            torch.save(save_model, os.path.join(save_path, args.env_name + ".pth"))
 
         if j % args.log_interval == 0:
             end = time.time()
@@ -264,6 +264,7 @@ def main():
                        value_loss.data[0], action_loss.data[0]))
         if args.vis and j % args.vis_interval == 0:
             try:
+                # print("Data sent to visdom")
                 # Sometimes monitor doesn't properly flush the outputs
                 win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
             except IOError:
