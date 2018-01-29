@@ -14,6 +14,7 @@ p.loadURDF(os.path.join(urdf_root_path, "plane.urdf"), [0, 0, -0.3], useFixedBas
 
 button_uid = p.loadURDF("/urdf/simple_button.urdf", [0, 0, 0])
 glider_idx = 1
+button_link_idx = 1
 
 p.setGravity(0, 0, -10)
 
@@ -36,4 +37,5 @@ while True:
         p.stepSimulation()
 
     button_position = p.readUserDebugParameter(button_pos_slider)
+    # p.applyExternalForce(button_uid, button_link_idx, (0, 0, 10), (0, 0, 0), p.LINK_FRAME)
     p.setJointMotorControl2(button_uid, glider_idx, controlMode=p.POSITION_CONTROL, targetPosition=button_position)
