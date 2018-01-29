@@ -33,7 +33,7 @@ class KukaCamGymEnv(gym.Env):
                  urdfRoot=pybullet_data.getDataPath(),
                  actionRepeat=1,
                  isEnableSelfCollision=True,
-                 renders=True,
+                 renders=False,
                  isDiscrete=True):
         self._timestep = 1. / 240.
         self._urdf_root = urdfRoot
@@ -89,7 +89,7 @@ class KukaCamGymEnv(gym.Env):
         self.viewer = None
 
     def reset(self):
-        self._reset()
+        return self._reset()
 
     def _reset(self):
         self.terminated = 0
@@ -172,7 +172,6 @@ class KukaCamGymEnv(gym.Env):
         # Apparently this code is not used
         if mode != "rgb_array":
             return np.array([])
-        # base_pos, _ = p.getBasePositionAndOrientation(self._kuka.kukaUid)
         base_pos = self.base_pos
 
         if self.debug:
