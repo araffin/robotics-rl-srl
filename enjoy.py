@@ -79,14 +79,6 @@ render_func('human')
 obs = env.reset()
 update_current_obs(obs)
 
-if args.env_name.find('Bullet') > -1:
-    import pybullet as p
-
-    torsoId = -1
-    for i in range(p.getNumBodies()):
-        if (p.getBodyInfo(i)[0].decode() == "torso"):
-            torsoId = i
-
 while True:
     value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
                                                 Variable(states, volatile=True),
@@ -104,12 +96,5 @@ while True:
     else:
         current_obs *= masks
     update_current_obs(obs)
-
-    if args.env_name.find('Bullet') > -1:
-        if torsoId > -1:
-            distance = 5
-            yaw = 0
-            humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
-            p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
 
     render_func('human')

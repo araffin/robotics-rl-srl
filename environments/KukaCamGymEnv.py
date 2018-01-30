@@ -1,29 +1,29 @@
 from __future__ import division, absolute_import, print_function
 
 import os
-import math
+import pybullet as p
 import time
-import random
 
 import gym
+import numpy as np
+import pybullet_data
 from gym import spaces
 from gym.utils import seeding
-import numpy as np
-import pybullet as p
-import pybullet_data
 
 from . import kuka
 
 MAX_STEPS = 500
-N_CONTACTS_TO_SOLVE = 5
+N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 84  # 720 // 5
 RENDER_WIDTH = 84  # 960 // 5
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.6
+MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for negative reward)
 FORCE_RENDER = False  # For enjoy script
-
+N_DISCRETE_ACTIONS = 6
+BUTTON_LINK_IDX = 1
 
 # TODO: improve the physics of the button
+
 
 class KukaCamGymEnv(gym.Env):
     metadata = {
@@ -32,15 +32,15 @@ class KukaCamGymEnv(gym.Env):
     }
 
     def __init__(self,
-                 urdfRoot=pybullet_data.getDataPath(),
-                 actionRepeat=1,
-                 isEnableSelfCollision=True,
+                 urdf_root=pybullet_data.getDataPath(),
+                 action_repeat=1,
+                 is_enable_self_collision=True,
                  renders=False,
-                 isDiscrete=True):
+                 is_discrete=True):
         self._timestep = 1. / 240.
-        self._urdf_root = urdfRoot
-        self._action_repeat = actionRepeat
-        self._isEnableSelfCollision = isEnableSelfCollision
+        self._urdf_root = urdf_root
+        self._action_repeat = action_repeat
+        self._isEnableSelfCollision = is_enable_self_collision
         self._observation = []
         self._envStepCounter = 0
         self._renders = renders or FORCE_RENDER
@@ -51,7 +51,7 @@ class KukaCamGymEnv(gym.Env):
         self._cam_pitch = -36
         self._cam_roll = 0
         self.base_pos = (0.316, -0.2, -0.1)
-        self._isDiscrete = isDiscrete
+        self._is_discrete = is_discrete
         self.terminated = 0
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
@@ -74,15 +74,9 @@ class KukaCamGymEnv(gym.Env):
 
         else:
             p.connect(p.DIRECT)
-        # timinglog = p.startStateLogging(p.STATE_LOGGING_PROFILE_TIMINGS, "kukaTimings.json")
-        # TODO: do we need to call manually the following
-        self._seed()
-        self.reset()
-        observation_dim = len(self.getExtendedObservation())
 
-        # observation_high = np.array([np.finfo(np.float32).max] * observation_dim)
-        if self._isDiscrete:
-            self.action_space = spaces.Discrete(7)
+        if self._is_discrete:
+            self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
             action_dim = 3
             self._action_bound = 1
@@ -102,9 +96,10 @@ class KukaCamGymEnv(gym.Env):
         p.setTimeStep(self._timestep)
         p.loadURDF(os.path.join(self._urdf_root, "plane.urdf"), [0, 0, -1])
 
-        p.loadURDF(os.path.join(self._urdf_root, "table/table.urdf"), 0.5000000, 0.00000, -.820000, 0.000000, 0.000000,
-                   0.0, 1.0)
+        p.loadURDF(os.path.join(self._urdf_root, "table/table.urdf"), 0.5000000, 0.00000, -.820000,
+                   0.000000, 0.000000, 0.0, 1.0)
 
+        # Initialize button position
         x_pos = 0.5 + 0.0 * np.random.uniform(-1, 1)
         y_pos = 0 + 0.0 * np.random.uniform(-1, 1)
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
@@ -112,7 +107,7 @@ class KukaCamGymEnv(gym.Env):
         self.glider_idx = 1
 
         p.setGravity(0, 0, -10)
-        self._kuka = kuka.Kuka(urdfRootPath=self._urdf_root, timeStep=self._timestep)
+        self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
         self._envStepCounter = 0
         p.stepSimulation()
         self._observation = self.getExtendedObservation()
@@ -130,24 +125,24 @@ class KukaCamGymEnv(gym.Env):
         return self._observation
 
     def _step(self, action):
-        if self._isDiscrete:
+        if self._is_discrete:
             dv = 0.01  # velocity per physics step.
-            dx = [0, -dv, dv, 0, 0, 0, 0][action]
-            dy = [0, 0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, 0, -dv, dv][action]
+            dx = [-dv, dv, 0, 0, 0, 0][action]
+            dy = [0, 0, -dv, dv, 0, 0][action]
+            dz = [0, 0, 0, 0, -dv, 0][action]  # Remove up action
             # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
-            f = 0.3
-            # realAction = [dx, dy, -0.002, da, f]
-            realAction = [dx, dy, dz, 0, f]
+            finger_angle = 0.0  # Close the gripper
+            # real_action = [dx, dy, -0.002, da, finger_angle]
+            real_action = [dx, dy, dz, 0, finger_angle]
         else:
             dv = 0.01
             dx = action[0] * dv
             dy = action[1] * dv
             da = action[2] * 0.1
             f = 0.3
-            realAction = [dx, dy, -0.002, da, f]
+            real_action = [dx, dy, -0.002, da, f]
 
-        return self.step2(realAction)
+        return self.step2(real_action)
 
     def step2(self, action):
 
@@ -166,12 +161,10 @@ class KukaCamGymEnv(gym.Env):
 
         done = self._termination()
         reward = self._reward()
-        # print("len=%r" % len(self._observation))
 
         return np.array(self._observation), reward, done, {}
 
     def _render(self, mode='human', close=False):
-        # Apparently this code is not used
         if mode != "rgb_array":
             return np.array([])
         base_pos = self.base_pos
@@ -199,7 +192,6 @@ class KukaCamGymEnv(gym.Env):
         (_, _, px, _, _) = p.getCameraImage(
             width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
             projectionMatrix=proj_matrix, renderer=self.renderer)
-        # return px
         rgb_array = np.array(px)
         rgb_array = rgb_array[:, :, :3]
         return rgb_array
@@ -211,19 +203,18 @@ class KukaCamGymEnv(gym.Env):
         return False
 
     def _reward(self):
-        button_link_idx = 1
-        gripper_pos = p.getLinkState(self._kuka.kukaUid, self._kuka.kukaEndEffectorIndex)[0]
+        gripper_pos = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)[0]
         distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
         # print(distance)
 
-        contact_points = p.getContactPoints(self.button_uid, self._kuka.kukaUid, button_link_idx)
+        contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid, BUTTON_LINK_IDX)
         reward = int(len(contact_points) > 0)
         self.n_contacts += reward
 
         if distance > MAX_DISTANCE:
             reward = -1
 
-        if self.n_contacts > N_CONTACTS_TO_SOLVE:
+        if self.n_contacts > N_CONTACTS_BEFORE_TERMINATION:
             self.terminated = True
 
         return reward

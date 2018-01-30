@@ -135,7 +135,7 @@ class KukaDiverseObjectEnv(KukaGymEnv):
                    0.0, 1.0)
 
         p.setGravity(0, 0, -10)
-        self._kuka = kuka.Kuka(urdfRootPath=self._urdfRoot, timeStep=self._timeStep)
+        self._kuka = kuka.Kuka(urdf_root_path=self._urdfRoot, timestep=self._timeStep)
         self._envStepCounter = 0
         p.stepSimulation()
 
@@ -245,8 +245,8 @@ class KukaDiverseObjectEnv(KukaGymEnv):
                 break
 
         # If we are close to the bin, attempt grasp.
-        state = p.getLinkState(self._kuka.kukaUid,
-                               self._kuka.kukaEndEffectorIndex)
+        state = p.getLinkState(self._kuka.kuka_uid,
+                               self._kuka.kuka_end_effector_index)
         end_effector_pos = state[0]
         if end_effector_pos[2] <= 0.1:
             finger_angle = 0.3

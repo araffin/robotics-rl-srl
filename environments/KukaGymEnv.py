@@ -93,7 +93,7 @@ class KukaGymEnv(gym.Env):
                                    orn[2], orn[3])
 
         p.setGravity(0, 0, -10)
-        self._kuka = kuka.Kuka(urdfRootPath=self._urdfRoot, timeStep=self._timeStep)
+        self._kuka = kuka.Kuka(urdf_root_path=self._urdfRoot, timestep=self._timeStep)
         self._envStepCounter = 0
         p.stepSimulation()
         self._observation = self.getExtendedObservation()
@@ -108,7 +108,7 @@ class KukaGymEnv(gym.Env):
 
     def getExtendedObservation(self):
         self._observation = self._kuka.getObservation()
-        gripperState = p.getLinkState(self._kuka.kukaUid, self._kuka.kukaGripperIndex)
+        gripperState = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)
         gripperPos = gripperState[0]
         gripperOrn = gripperState[1]
         blockPos, blockOrn = p.getBasePositionAndOrientation(self.blockUid)
@@ -189,7 +189,7 @@ class KukaGymEnv(gym.Env):
     def _render(self, mode="rgb_array", close=False):
         if mode != "rgb_array":
             return np.array([])
-        base_pos, orn = self._p.getBasePositionAndOrientation(self._kuka.kukaUid)
+        base_pos, orn = self._p.getBasePositionAndOrientation(self._kuka.kuka_uid)
         view_matrix = self._p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=base_pos,
             distance=self._cam_dist,
@@ -209,7 +209,7 @@ class KukaGymEnv(gym.Env):
 
     def _termination(self):
         # print (self._kuka.endEffectorPos[2])
-        state = p.getLinkState(self._kuka.kukaUid, self._kuka.kukaEndEffectorIndex)
+        state = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)
         actualEndEffectorPos = state[0]
 
         # print("self._envStepCounter")
@@ -218,7 +218,7 @@ class KukaGymEnv(gym.Env):
             self._observation = self.getExtendedObservation()
             return True
         maxDist = 0.005
-        closestPoints = p.getClosestPoints(self._kuka.trayUid, self._kuka.kukaUid, maxDist)
+        closestPoints = p.getClosestPoints(self._kuka.trayUid, self._kuka.kuka_uid, maxDist)
 
         if len(closestPoints):  # (actualEndEffectorPos[2] <= -0.43):
             self.terminated = 1
@@ -243,7 +243,7 @@ class KukaGymEnv(gym.Env):
                     # print("BLOCKPOS!")
                     # print(blockPos[2])
                     break
-                state = p.getLinkState(self._kuka.kukaUid, self._kuka.kukaEndEffectorIndex)
+                state = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)
                 actualEndEffectorPos = state[0]
                 if actualEndEffectorPos[2] > 0.5:
                     break
@@ -256,7 +256,7 @@ class KukaGymEnv(gym.Env):
 
         # rewards is height of target object
         blockPos, blockOrn = p.getBasePositionAndOrientation(self.blockUid)
-        closestPoints = p.getClosestPoints(self.blockUid, self._kuka.kukaUid, 1000, -1, self._kuka.kukaEndEffectorIndex)
+        closestPoints = p.getClosestPoints(self.blockUid, self._kuka.kuka_uid, 1000, -1, self._kuka.kuka_end_effector_index)
 
         reward = -1000
 

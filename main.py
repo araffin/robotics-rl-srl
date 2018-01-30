@@ -18,6 +18,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 
 import environments
 
+# Hack to use ppa/a2c/acktr agent pytorch_agents folder
 sys.path.insert(0, os.path.abspath("pytorch_agents/"))
 
 from arguments import get_args
@@ -50,7 +51,8 @@ except OSError:
 
 def main():
     print("#######")
-    print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
+    print("""WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py)
+           or visdom plot to get true rewards""")
     print("#######")
 
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -61,7 +63,7 @@ def main():
         win = None
 
     envs = [make_env(args.env_name, args.seed, i, args.log_dir)
-                for i in range(args.num_processes)]
+            for i in range(args.num_processes)]
 
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)
@@ -125,9 +127,10 @@ def main():
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
-            value, action, action_log_prob, states = actor_critic.act(Variable(rollouts.observations[step], volatile=True),
-                                                                      Variable(rollouts.states[step], volatile=True),
-                                                                      Variable(rollouts.masks[step], volatile=True))
+            value, action, action_log_prob, states = actor_critic.act(
+                Variable(rollouts.observations[step], volatile=True),
+                Variable(rollouts.states[step], volatile=True),
+                Variable(rollouts.masks[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
@@ -150,7 +153,8 @@ def main():
                 current_obs *= masks
 
             update_current_obs(obs)
-            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, reward, masks)
+            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, reward,
+                            masks)
 
         next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True),
                                   Variable(rollouts.states[-1], volatile=True),
@@ -159,10 +163,11 @@ def main():
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         if args.algo in ['a2c', 'acktr']:
-            values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
-                                                                                           Variable(rollouts.states[0].view(-1, actor_critic.state_size)),
-                                                                                           Variable(rollouts.masks[:-1].view(-1, 1)),
-                                                                                           Variable(rollouts.actions.view(-1, action_shape)))
+            values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(
+                Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
+                Variable(rollouts.states[0].view(-1, actor_critic.state_size)),
+                Variable(rollouts.masks[:-1].view(-1, 1)),
+                Variable(rollouts.actions.view(-1, action_shape)))
 
             values = values.view(args.num_steps, args.num_processes, 1)
             action_log_probs = action_log_probs.view(args.num_steps, args.num_processes, 1)
@@ -203,27 +208,28 @@ def main():
             for e in range(args.ppo_epoch):
                 if args.recurrent_policy:
                     data_generator = rollouts.recurrent_generator(advantages,
-                                                            args.num_mini_batch)
+                                                                  args.num_mini_batch)
                 else:
                     data_generator = rollouts.feed_forward_generator(advantages,
-                                                            args.num_mini_batch)
+                                                                     args.num_mini_batch)
 
                 for sample in data_generator:
                     observations_batch, states_batch, actions_batch, \
-                       return_batch, masks_batch, old_action_log_probs_batch, \
-                            adv_targ = sample
+                    return_batch, masks_batch, old_action_log_probs_batch, \
+                    adv_targ = sample
 
                     # Reshape to do in a single forward pass for all steps
-                    values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(observations_batch),
-                                                                                                   Variable(states_batch),
-                                                                                                   Variable(masks_batch),
-                                                                                                   Variable(actions_batch))
+                    values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(
+                        Variable(observations_batch),
+                        Variable(states_batch),
+                        Variable(masks_batch),
+                        Variable(actions_batch))
 
                     adv_targ = Variable(adv_targ)
                     ratio = torch.exp(action_log_probs - Variable(old_action_log_probs_batch))
                     surr1 = ratio * adv_targ
                     surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * adv_targ
-                    action_loss = -torch.min(surr1, surr2).mean() # PPO's pessimistic surrogate (L^CLIP)
+                    action_loss = -torch.min(surr1, surr2).mean()  # PPO's pessimistic surrogate (L^CLIP)
 
                     value_loss = (Variable(return_batch) - values).pow(2).mean()
 
@@ -247,14 +253,15 @@ def main():
                 save_model = copy.deepcopy(actor_critic).cpu()
 
             save_model = [save_model,
-                            hasattr(envs, 'ob_rms') and envs.ob_rms or None]
+                          hasattr(envs, 'ob_rms') and envs.ob_rms or None]
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pth"))
 
         if j % args.log_interval == 0:
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+            print(
+                "Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
                 format(j, total_num_steps,
                        int(total_num_steps / (end - start)),
                        final_rewards.mean(),
@@ -269,6 +276,7 @@ def main():
                 win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
             except IOError:
                 pass
+
 
 if __name__ == "__main__":
     main()

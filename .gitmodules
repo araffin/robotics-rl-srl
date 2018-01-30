@@ -1,3 +1,4 @@
 [submodule "pytorch_agents"]
 	path = pytorch_agents
-	url = https://github.com/ikostrikov/pytorch-a2c-ppo-acktr
+	url = https://github.com/araffin/pytorch_agents
+	branch = master

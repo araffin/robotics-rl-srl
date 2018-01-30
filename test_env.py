@@ -6,7 +6,7 @@ import pybullet as p
 from environments.KukaCamGymEnv import KukaCamGymEnv
 
 
-env = KukaCamGymEnv(renders=True, isDiscrete=True)
+env = KukaCamGymEnv(renders=True, is_discrete=True)
 # env.num_envs = 1
 env.seed(0)
 i = 0

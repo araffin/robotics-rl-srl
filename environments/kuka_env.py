@@ -1,12 +1,11 @@
 from __future__ import division, absolute_import, print_function
 
-import os
-import time
 import math
+import os
+import pybullet as p
 from datetime import datetime
 
 import pybullet_data
-import pybullet as p
 
 urdf_root_path = pybullet_data.getDataPath()
 # urdf_root_path = "/home/antonin/Documents/RL/bullet3/data/"
