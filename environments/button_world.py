@@ -1,3 +1,6 @@
+"""
+Simple environment with a push button. Made for debug.
+"""
 from __future__ import division, absolute_import, print_function
 
 import os

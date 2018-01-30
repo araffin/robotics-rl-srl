@@ -1,5 +1,6 @@
 from __future__ import print_function, absolute_import, division
 
+# ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
 SERVER_PORT = 7777
 REF_POINT = [0.6, 0.30, 0.20]

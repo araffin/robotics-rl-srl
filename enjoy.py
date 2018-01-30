@@ -10,7 +10,7 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
 import environments
-import environments.KukaCamGymEnv as kuka_env
+import environments.kuka_button_gym_env as kuka_env
 kuka_env.FORCE_RENDER = True
 
 sys.path.insert(0, os.path.abspath("pytorch_agents/"))
@@ -30,8 +30,8 @@ parser.add_argument('--num-stack', type=int, default=1,
                     help='number of frames to stack (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
-parser.add_argument('--env-name', default='KukaCamBulletEnv-v1',
-                    help='environment to train on (default: KukaCamBulletEnv-v1)')
+parser.add_argument('--env-name', default='KukaButtonGymEnv-v0',
+                    help='environment to train on (default: KukaButtonGymEnv-v0)')
 parser.add_argument('--load-dir', default='./trained_models/',
                     help='directory to save agent logs (default: ./trained_models/)')
 args = parser.parse_args()

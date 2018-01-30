@@ -18,7 +18,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 
 import environments
 
-# Hack to use ppa/a2c/acktr agent pytorch_agents folder
+# Hack to use ppo/a2c/acktr agents located in pytorch_agents folder
 sys.path.insert(0, os.path.abspath("pytorch_agents/"))
 
 from arguments import get_args
@@ -274,7 +274,8 @@ def main():
                 # print("Data sent to visdom")
                 # Sometimes monitor doesn't properly flush the outputs
                 win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
-            except IOError:
+            except IOError as e:
+                print(e)
                 pass
 
 

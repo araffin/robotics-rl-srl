@@ -1,7 +1,13 @@
 from __future__ import print_function, absolute_import, division
 
+import sys
+
 import zmq
 import numpy as np
+
+if sys.version_info > (3,):
+    buffer = memoryview
+
 
 def recvMatrix(socket):
     """
@@ -30,7 +36,6 @@ def sendMatrix(socket, mat):
     return socket.send(mat, flags=0, copy=True, track=False)
 
 
-
 def getActions(delta_pos, n_actions):
     """
     Get list of possible actions
@@ -54,6 +59,12 @@ def getActions(delta_pos, n_actions):
 
     return np.array(actions)
 
+
 def randomAction(possible_actions):
+    """
+    Take a random action for a list of possible actions
+    :param possible_actions: [[float]
+    :return: [float]
+    """
     action_idx = np.random.randint(len(possible_actions))
     return possible_actions[action_idx]

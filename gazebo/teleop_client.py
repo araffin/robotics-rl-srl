@@ -7,19 +7,13 @@ from __future__ import division, print_function, absolute_import
 
 import time
 
+import cv2
 import numpy as np
 import zmq
-import cv2
 
-from constants import SERVER_PORT, HOSTNAME, UP_KEY, DOWN_KEY, LEFT_KEY, \
+from .constants import SERVER_PORT, HOSTNAME, UP_KEY, DOWN_KEY, LEFT_KEY, \
     RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, DELTA_POS, R_KEY
-from utils import recvMatrix
-
-# For Python 3 compatibility
-import sys
-
-if sys.version_info > (3,):
-    buffer = memoryview
+from .utils import recvMatrix
 
 np.set_printoptions(precision=4)
 

@@ -25,7 +25,7 @@ BUTTON_LINK_IDX = 1
 # TODO: improve the physics of the button
 
 
-class KukaCamGymEnv(gym.Env):
+class KukaButtonGymEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
@@ -34,15 +34,13 @@ class KukaCamGymEnv(gym.Env):
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
                  action_repeat=1,
-                 is_enable_self_collision=True,
                  renders=False,
                  is_discrete=True):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat
-        self._isEnableSelfCollision = is_enable_self_collision
         self._observation = []
-        self._envStepCounter = 0
+        self._env_step_counter = 0
         self._renders = renders or FORCE_RENDER
         self._width = RENDER_WIDTH
         self._height = RENDER_HEIGHT
@@ -50,9 +48,9 @@ class KukaCamGymEnv(gym.Env):
         self._cam_yaw = 145
         self._cam_pitch = -36
         self._cam_roll = 0
-        self.base_pos = (0.316, -0.2, -0.1)
+        self.camera_target_pos = (0.316, -0.2, -0.1)
         self._is_discrete = is_discrete
-        self.terminated = 0
+        self.terminated = False
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
         self.n_contacts = 0
@@ -65,9 +63,10 @@ class KukaCamGymEnv(gym.Env):
 
             self.renderer = p.ER_BULLET_HARDWARE_OPENGL
             self.debug = True
-            self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.base_pos[0])
-            self.y_slider = p.addUserDebugParameter("y_slider", -10, 10, self.base_pos[1])
-            self.z_slider = p.addUserDebugParameter("z_slider", -10, 10, self.base_pos[2])
+            # Debug sliders for moving the camera
+            self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
+            self.y_slider = p.addUserDebugParameter("y_slider", -10, 10, self.camera_target_pos[1])
+            self.z_slider = p.addUserDebugParameter("z_slider", -10, 10, self.camera_target_pos[2])
             self.dist_slider = p.addUserDebugParameter("cam_dist", 0, 10, self._cam_dist)
             self.yaw_slider = p.addUserDebugParameter("cam_yaw", -180, 180, self._cam_yaw)
             self.pitch_slider = p.addUserDebugParameter("cam_pitch", -180, 180, self._cam_pitch)
@@ -89,7 +88,7 @@ class KukaCamGymEnv(gym.Env):
         return self._reset()
 
     def _reset(self):
-        self.terminated = 0
+        self.terminated = False
         self.n_contacts = 0
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -108,7 +107,7 @@ class KukaCamGymEnv(gym.Env):
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
-        self._envStepCounter = 0
+        self._env_step_counter = 0
         p.stepSimulation()
         self._observation = self.getExtendedObservation()
         return np.array(self._observation)
@@ -153,7 +152,7 @@ class KukaCamGymEnv(gym.Env):
             p.stepSimulation()
             if self._termination():
                 break
-            self._envStepCounter += 1
+            self._env_step_counter += 1
 
         self._observation = self.getExtendedObservation()
         if self._renders:
@@ -167,7 +166,7 @@ class KukaCamGymEnv(gym.Env):
     def _render(self, mode='human', close=False):
         if mode != "rgb_array":
             return np.array([])
-        base_pos = self.base_pos
+        camera_target_pos = self.camera_target_pos
 
         if self.debug:
             self._cam_dist = p.readUserDebugParameter(self.dist_slider)
@@ -176,11 +175,12 @@ class KukaCamGymEnv(gym.Env):
             x = p.readUserDebugParameter(self.x_slider)
             y = p.readUserDebugParameter(self.y_slider)
             z = p.readUserDebugParameter(self.z_slider)
-            base_pos = (x, y, z)
+            camera_target_pos = (x, y, z)
             # self._cam_roll = p.readUserDebugParameter(self.roll_slider)
 
+        # TODO: recompute view_matrix and proj_matrix only in debug mode
         view_matrix = p.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=base_pos,
+            cameraTargetPosition=camera_target_pos,
             distance=self._cam_dist,
             yaw=self._cam_yaw,
             pitch=self._cam_pitch,
@@ -197,7 +197,7 @@ class KukaCamGymEnv(gym.Env):
         return rgb_array
 
     def _termination(self):
-        if self.terminated or self._envStepCounter > MAX_STEPS:
+        if self.terminated or self._env_step_counter > MAX_STEPS:
             self._observation = self.getExtendedObservation()
             return True
         return False
