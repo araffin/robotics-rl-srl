@@ -1,5 +1,8 @@
 # Gym wrappers for state representation learning with robotic arms (Baxter + Kuka)
 
+**Requirement: Python 3 (python 2 not supported because of OpenAI baselines)**
+
+[PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
 ```
 git clone git@github.com:araffin/gym-baxter-rl.git --recursive

@@ -10,6 +10,7 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
+from srl.episode_saver import EpisodeSaver
 from . import kuka
 
 MAX_STEPS = 500
@@ -17,10 +18,11 @@ N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 84  # 720 // 5
 RENDER_WIDTH = 84  # 960 // 5
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.5  # Max distance between end effector and the button (for negative reward)
 FORCE_RENDER = False  # For enjoy script
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
+BUTTON_GLIDER_IDX = 1  # Button glider joint
 
 # TODO: improve the physics of the button
 
@@ -35,7 +37,8 @@ class KukaButtonGymEnv(gym.Env):
                  urdf_root=pybullet_data.getDataPath(),
                  action_repeat=1,
                  renders=False,
-                 is_discrete=True):
+                 is_discrete=True,
+                 name="kuka_button_gym"):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat
@@ -54,6 +57,7 @@ class KukaButtonGymEnv(gym.Env):
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
         self.n_contacts = 0
+        self.saver = EpisodeSaver(name, MAX_DISTANCE, relative_pos=False)
 
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
@@ -84,6 +88,9 @@ class KukaButtonGymEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3))
         self.viewer = None
 
+    def getArmPos(self):
+        return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
+
     def reset(self):
         return self._reset()
 
@@ -103,13 +110,16 @@ class KukaButtonGymEnv(gym.Env):
         y_pos = 0 + 0.0 * np.random.uniform(-1, 1)
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
-        self.glider_idx = 1
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
         self._env_step_counter = 0
         p.stepSimulation()
         self._observation = self.getExtendedObservation()
+
+        button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
+        self.saver.reset(self._observation, button_pos, self.getArmPos())
+
         return np.array(self._observation)
 
     def __del__(self):
@@ -124,6 +134,7 @@ class KukaButtonGymEnv(gym.Env):
         return self._observation
 
     def _step(self, action):
+        self.action = action  # For saver
         if self._is_discrete:
             dv = 0.01  # velocity per physics step.
             dx = [-dv, dv, 0, 0, 0, 0][action]
@@ -145,7 +156,7 @@ class KukaButtonGymEnv(gym.Env):
 
     def step2(self, action):
 
-        p.setJointMotorControl2(self.button_uid, self.glider_idx, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
+        p.setJointMotorControl2(self.button_uid, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
 
         for i in range(self._action_repeat):
             self._kuka.applyAction(action)
@@ -160,6 +171,8 @@ class KukaButtonGymEnv(gym.Env):
 
         done = self._termination()
         reward = self._reward()
+
+        self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
         return np.array(self._observation), reward, done, {}
 
@@ -214,7 +227,7 @@ class KukaButtonGymEnv(gym.Env):
         if distance > MAX_DISTANCE:
             reward = -1
 
-        if self.n_contacts > N_CONTACTS_BEFORE_TERMINATION:
+        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
             self.terminated = True
 
         return reward

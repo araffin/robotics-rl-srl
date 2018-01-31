@@ -3,6 +3,8 @@
 *.txt
 *.pt
 *.pth
+data/
+trained_models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
