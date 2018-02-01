@@ -3,23 +3,21 @@ from __future__ import division, print_function, absolute_import
 
 import subprocess
 
-import numpy as np
-import cv2
-import zmq
-import rospy
+import arm_scenario_simulator as arm_sim
 import baxter_interface
-from geometry_msgs.msg import Point, Vector3, Vector3Stamped, Quaternion
+import numpy as np
+import rospy
+import zmq
+from arm_scenario_experiments import baxter_utils
+from arm_scenario_experiments import utils as arm_utils
 from cv_bridge import CvBridge, CvBridgeError
+from geometry_msgs.msg import Point, Vector3, Vector3Stamped
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 
-import arm_scenario_simulator as arm_sim
-from arm_scenario_experiments import Recorder, baxter_utils
-from arm_scenario_experiments import utils as arm_utils
-
-from constants import DELTA_POS, SERVER_PORT, IK_SEED_POSITIONS, REF_POINT, IMAGE_TOPIC,\
-                      ACTION_TOPIC, BUTTON_POS_TOPIC
-from utils import sendMatrix, getActions, randomAction
+from .constants import DELTA_POS, SERVER_PORT, IK_SEED_POSITIONS, REF_POINT, IMAGE_TOPIC, \
+    ACTION_TOPIC, BUTTON_POS_TOPIC
+from .utils import sendMatrix, getActions
 
 bridge = CvBridge()
 
