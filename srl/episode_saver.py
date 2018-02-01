@@ -1,5 +1,6 @@
 import os
 import json
+import time
 
 import cv2
 import numpy as np
@@ -10,6 +11,7 @@ from .client import SRLClient
 class EpisodeSaver(object):
     """
     Save the experience data from a gym env to a file
+    and notify the srl server so it learns from the gathered data
     :param name: (str)
     :param max_dist: (float)
     :param path: (str)
@@ -24,7 +26,7 @@ class EpisodeSaver(object):
             os.makedirs(self.data_folder)
         except OSError:
             print("Folder already exist")
-            
+
         self.actions = []
         self.rewards = []
         self.images = []
@@ -36,14 +38,15 @@ class EpisodeSaver(object):
         self.episode_idx = -1
         self.episode_folder = None
         self.episode_success = False
+        self.learn_every = 2 # Every 2 episodes, learn a state representation
 
         # TODO: convert max dist (to button) to lower/upper bound
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
         with open("{}/dataset_config.json".format(self.data_folder), "w") as f:
             json.dump(self.dataset_config, f)
 
-        socket_client = SRLClient()
-        socket_client.waitForServer()
+        self.socket_client = SRLClient(self.name)
+        self.socket_client.waitForServer()
 
 
     def saveImage(self, observation):
@@ -53,7 +56,7 @@ class EpisodeSaver(object):
         image_path = "{}/{}/frame{:06d}.jpg".format(self.name, self.episode_folder, self.episode_step)
         self.images_path.append(image_path)
         observation = cv2.cvtColor(observation, cv2.COLOR_BGR2RGB)
-        cv2.imwrite("data/{}".format(image_path), observation)
+        cv2.imwrite("srl_priors/data/{}".format(image_path), observation)
 
     def reset(self, observation, button_pos, arm_state):
         """
@@ -62,6 +65,13 @@ class EpisodeSaver(object):
         :param arm_state: ([float])
         """
         self.episode_idx += 1
+
+        if (self.episode_idx + 1) % self.learn_every == 0:
+            print("Learning a state representation ...")
+            start_time = time.time()
+            ok, path_to_model = self.socket_client.waitForSRLModel()
+            print("Took {:.2f}s".format(time.time() - start_time))
+
         self.episode_step = 0
         self.episode_success = False
         self.episode_folder = "record_{:03d}".format(self.episode_idx)

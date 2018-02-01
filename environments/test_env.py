@@ -2,7 +2,7 @@ from __future__ import division, absolute_import, print_function
 
 import time
 
-from environments.kuka_button_gym_env import KukaButtonGymEnv
+from .kuka_button_gym_env import KukaButtonGymEnv
 
 
 env = KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test")
@@ -10,7 +10,7 @@ env = KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test")
 env.seed(0)
 i = 0
 start_time = time.time()
-for i_episode in range(3):
+for i_episode in range(6):
     observation = env.reset()
     ok = False
     for t in range(501):
