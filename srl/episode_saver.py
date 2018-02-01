@@ -4,6 +4,8 @@ import json
 import cv2
 import numpy as np
 
+from .client import SRLClient
+
 
 class EpisodeSaver(object):
     """
@@ -14,7 +16,7 @@ class EpisodeSaver(object):
     :param relative_pos: (bool)
     """
 
-    def __init__(self, name, max_dist, path='data/', relative_pos=False):
+    def __init__(self, name, max_dist, path='srl_priors/data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name
         self.data_folder = path + name
@@ -22,6 +24,7 @@ class EpisodeSaver(object):
             os.makedirs(self.data_folder)
         except OSError:
             print("Folder already exist")
+            
         self.actions = []
         self.rewards = []
         self.images = []
@@ -33,10 +36,15 @@ class EpisodeSaver(object):
         self.episode_idx = -1
         self.episode_folder = None
         self.episode_success = False
+
         # TODO: convert max dist (to button) to lower/upper bound
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
         with open("{}/dataset_config.json".format(self.data_folder), "w") as f:
             json.dump(self.dataset_config, f)
+
+        socket_client = SRLClient()
+        socket_client.waitForServer()
+
 
     def saveImage(self, observation):
         """
