@@ -20,7 +20,7 @@ class EpisodeSaver(object):
     :param relative_pos: (bool)
     """
 
-    def __init__(self, name, max_dist, state_dim=-1, learn_every=2,
+    def __init__(self, name, max_dist, state_dim=-1, learn_every=3,
                  path='srl_priors/data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name

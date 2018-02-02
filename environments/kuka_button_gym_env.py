@@ -99,6 +99,8 @@ class KukaButtonGymEnv(gym.Env):
             action_high = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_high, action_high)
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3))
+        if self.use_srl:
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ))
         self.viewer = None
 
     def getState(self, obs):
@@ -110,7 +112,11 @@ class KukaButtonGymEnv(gym.Env):
         obs = Variable(th.from_numpy(obs), volatile=True)
         if self.cuda:
             obs = obs.cuda()
-        return self.srl_model(obs)
+        self._state = self.srl_model(obs)
+        if self.cuda:
+            self._state = self._state.cpu()
+        self._state = self._state.data.numpy()
+        return self._state
 
     def getArmPos(self):
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]

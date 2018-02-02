@@ -76,11 +76,16 @@ def main():
     obs_shape = envs.observation_space.shape
     print(obs_shape)
 
-    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+    if len(obs_shape) > 0:
+        obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+    else:
+        obs_shape = (args.num_stack, *obs_shape[0])
 
     if len(envs.observation_space.shape) == 3:
+        print("Using CNNPolicy")
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
+        print("Using MLPPolicy")
         assert not args.recurrent_policy, \
             "Recurrent policy is not implemented for the MLP controller"
         actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
