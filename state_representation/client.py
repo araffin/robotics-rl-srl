@@ -36,8 +36,8 @@ class SRLClient(object):
         self.socket.send_json({"command": Command.HELLO.value, 'data_folder': self.data_folder})
         print("Connected to server")
 
-    def sendLearnCommand(self):
-        self.socket.send_json({"command": Command.LEARN.value})
+    def sendLearnCommand(self, state_dim, seed=1):
+        self.socket.send_json({"command": Command.LEARN.value, 'state_dim': state_dim, 'seed': seed})
 
     def sendExitCommand(self):
         self.socket.send_json({"command": Command.EXIT.value})
@@ -54,11 +54,12 @@ class SRLClient(object):
             raise ValueError("Unknown command: {}".format(msg))
         return command, msg
 
-    def waitForSRLModel(self):
+    def waitForSRLModel(self, state_dim):
         """
+        :param state_dim: (int)
         :return: (bool, str) (True if no error, path to learned model)
         """
-        self.sendLearnCommand()
+        self.sendLearnCommand(state_dim)
         command, msg = self.receiveMessage()
         if command == Command.ERROR:
             print("An error occured during SRL")
@@ -82,7 +83,7 @@ if __name__ == '__main__':
     socket_client.waitForServer()
     try:
         while True:
-            ok, path_to_model = socket_client.waitForSRLModel()
+            ok, path_to_model = socket_client.waitForSRLModel(state_dim=3)
             print(path_to_model)
             break
     except KeyboardInterrupt:

@@ -6,11 +6,15 @@ import time
 
 import gym
 import numpy as np
+import torch as th
+from torch.autograd import Variable
 import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
-from srl.episode_saver import EpisodeSaver
+from srl_priors.models import SRLCustomCNN
+from srl_priors.preprocessing import preprocessImage
+from state_representation.episode_saver import EpisodeSaver
 from . import kuka
 
 MAX_STEPS = 500
@@ -23,6 +27,7 @@ FORCE_RENDER = False  # For enjoy script
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
+NOISE_STD = 1e-6  # To avoid NaN for SRL
 
 # TODO: improve the physics of the button
 
@@ -38,7 +43,8 @@ class KukaButtonGymEnv(gym.Env):
                  action_repeat=1,
                  renders=False,
                  is_discrete=True,
-                 name="kuka_button_gym"):
+                 name="kuka_button_gym",
+                 state_dim=3):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat
@@ -57,7 +63,14 @@ class KukaButtonGymEnv(gym.Env):
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
         self.n_contacts = 0
-        self.saver = EpisodeSaver(name, MAX_DISTANCE, relative_pos=False)
+        self.state_dim = state_dim
+        self.use_srl = state_dim > 0
+        self.cuda = th.cuda.is_available()
+        self.saver = EpisodeSaver(name, MAX_DISTANCE, state_dim, relative_pos=False)
+        # SRL model
+        self.srl_model = SRLCustomCNN(state_dim, self.cuda, noise_std=NOISE_STD)
+        if self.cuda:
+            self.srl_model.cuda()
 
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
@@ -87,6 +100,17 @@ class KukaButtonGymEnv(gym.Env):
             self.action_space = spaces.Box(-action_high, action_high)
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3))
         self.viewer = None
+
+    def getState(self, obs):
+        obs = preprocessImage(obs)
+        # Create 4D Tensor
+        obs = obs.reshape(1, *obs.shape)
+        # Channel first
+        obs = np.transpose(obs, (0, 3, 2, 1))
+        obs = Variable(th.from_numpy(obs), volatile=True)
+        if self.cuda:
+            obs = obs.cuda()
+        return self.srl_model(obs)
 
     def getArmPos(self):
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
@@ -119,6 +143,11 @@ class KukaButtonGymEnv(gym.Env):
 
         button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
         self.saver.reset(self._observation, button_pos, self.getArmPos())
+
+        if self.use_srl:
+            if len(self.saver.srl_model_path) > 0:
+                self.srl_model.load_state_dict(th.load(self.saver.srl_model_path))
+            return self.getState(self._observation)
 
         return np.array(self._observation)
 
@@ -173,6 +202,9 @@ class KukaButtonGymEnv(gym.Env):
         reward = self._reward()
 
         self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
+
+        if self.use_srl:
+            return self.getState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 

@@ -1,16 +1,14 @@
-# Gym wrappers for state representation learning with robotic arms (Baxter + Kuka)
+# Reinforcement Learning (RL) and State Representation Learning (SRL) with robotic arms (Baxter and Kuka)
 
-**Requirement: Python 3 (python 2 not supported because of OpenAI baselines)**
+## Requirements:
+
+- Python 3 (python 2 not supported because of OpenAI baselines)
+- Install the dependencies using `environment.yml` file (for conda users)
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
 ```
 git clone git@github.com:araffin/gym-baxter-rl.git --recursive
-```
-
-or
-```
-git submodule update --init
 ```
 
 ## Kuka Arm \w PyBullet

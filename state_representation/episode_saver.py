@@ -14,11 +14,14 @@ class EpisodeSaver(object):
     and notify the srl server so it learns from the gathered data
     :param name: (str)
     :param max_dist: (float)
+    :param state_dim: (int)
+    :param learn_every: (int)
     :param path: (str)
     :param relative_pos: (bool)
     """
 
-    def __init__(self, name, max_dist, path='srl_priors/data/', relative_pos=False):
+    def __init__(self, name, max_dist, state_dim=-1, learn_every=2,
+                 path='srl_priors/data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name
         self.data_folder = path + name
@@ -38,15 +41,19 @@ class EpisodeSaver(object):
         self.episode_idx = -1
         self.episode_folder = None
         self.episode_success = False
-        self.learn_every = 2 # Every 2 episodes, learn a state representation
+        self.state_dim = state_dim
+        self.learn_states = state_dim > 0
+        self.learn_every = learn_every # Every n episodes, learn a state representation
+        self.srl_model_path = ""
 
         # TODO: convert max dist (to button) to lower/upper bound
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
         with open("{}/dataset_config.json".format(self.data_folder), "w") as f:
             json.dump(self.dataset_config, f)
 
-        self.socket_client = SRLClient(self.name)
-        self.socket_client.waitForServer()
+        if self.learn_states:
+            self.socket_client = SRLClient(self.name)
+            self.socket_client.waitForServer()
 
 
     def saveImage(self, observation):
@@ -66,10 +73,10 @@ class EpisodeSaver(object):
         """
         self.episode_idx += 1
 
-        if (self.episode_idx + 1) % self.learn_every == 0:
+        if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0:
             print("Learning a state representation ...")
             start_time = time.time()
-            ok, path_to_model = self.socket_client.waitForSRLModel()
+            ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
             print("Took {:.2f}s".format(time.time() - start_time))
 
         self.episode_step = 0
