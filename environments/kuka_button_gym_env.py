@@ -1,5 +1,3 @@
-from __future__ import division, absolute_import, print_function
-
 import os
 import pybullet as p
 import time
@@ -7,27 +5,29 @@ import time
 import gym
 import numpy as np
 import torch as th
-from torch.autograd import Variable
 import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
-from srl_priors.models import SRLCustomCNN
-from srl_priors.preprocessing import preprocessImage
 from state_representation.episode_saver import EpisodeSaver
+from state_representation.models import loadSRLModel
 from . import kuka
 
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
-RENDER_HEIGHT = 84  # 720 // 5
-RENDER_WIDTH = 84  # 960 // 5
+RENDER_HEIGHT = 224  # 720 // 5
+RENDER_WIDTH = 224  # 960 // 5
 Z_TABLE = -0.2
 MAX_DISTANCE = 0.5  # Max distance between end effector and the button (for negative reward)
 FORCE_RENDER = False  # For enjoy script
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-NOISE_STD = 1e-6  # To avoid NaN for SRL
+STATE_DIM = -1  # When learning states
+LEARN_STATES = False
+USE_SRL = False
+SRL_MODEL_PATH = None
+
 
 # TODO: improve the physics of the button
 
@@ -43,8 +43,7 @@ class KukaButtonGymEnv(gym.Env):
                  action_repeat=1,
                  renders=False,
                  is_discrete=True,
-                 name="kuka_button_gym",
-                 state_dim=3):
+                 name="kuka_button_gym"):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat
@@ -63,14 +62,14 @@ class KukaButtonGymEnv(gym.Env):
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
         self.n_contacts = 0
-        self.state_dim = state_dim
-        self.use_srl = state_dim > 0
+        self.state_dim = STATE_DIM
+        self.use_srl = USE_SRL
         self.cuda = th.cuda.is_available()
-        self.saver = EpisodeSaver(name, MAX_DISTANCE, state_dim, relative_pos=False)
+        self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=False, learn_states=LEARN_STATES)
         # SRL model
-        self.srl_model = SRLCustomCNN(state_dim, self.cuda, noise_std=NOISE_STD)
-        if self.cuda:
-            self.srl_model.cuda()
+        if self.use_srl:
+            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM)
+            self.state_dim = self.srl_model.state_dim
 
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
@@ -100,23 +99,8 @@ class KukaButtonGymEnv(gym.Env):
             self.action_space = spaces.Box(-action_high, action_high)
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3))
         if self.use_srl:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ))
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,))
         self.viewer = None
-
-    def getState(self, obs):
-        obs = preprocessImage(obs)
-        # Create 4D Tensor
-        obs = obs.reshape(1, *obs.shape)
-        # Channel first
-        obs = np.transpose(obs, (0, 3, 2, 1))
-        obs = Variable(th.from_numpy(obs), volatile=True)
-        if self.cuda:
-            obs = obs.cuda()
-        self._state = self.srl_model(obs)
-        if self.cuda:
-            self._state = self._state.cpu()
-        self._state = self._state.data.numpy()
-        return self._state
 
     def getArmPos(self):
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
@@ -132,8 +116,8 @@ class KukaButtonGymEnv(gym.Env):
         p.setTimeStep(self._timestep)
         p.loadURDF(os.path.join(self._urdf_root, "plane.urdf"), [0, 0, -1])
 
-        p.loadURDF(os.path.join(self._urdf_root, "table/table.urdf"), 0.5000000, 0.00000, -.820000,
-                   0.000000, 0.000000, 0.0, 1.0)
+        self.table_uid = p.loadURDF(os.path.join(self._urdf_root, "table/table.urdf"), 0.5000000, 0.00000, -.820000,
+                                    0.000000, 0.000000, 0.0, 1.0)
 
         # Initialize button position
         x_pos = 0.5 + 0.0 * np.random.uniform(-1, 1)
@@ -144,16 +128,20 @@ class KukaButtonGymEnv(gym.Env):
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
         self._env_step_counter = 0
-        p.stepSimulation()
+        # Close the gripper
+        for _ in range(150):
+            self._kuka.applyAction([0, 0, 0, 0, 0])
+            p.stepSimulation()
+
         self._observation = self.getExtendedObservation()
 
         button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
         self.saver.reset(self._observation, button_pos, self.getArmPos())
 
         if self.use_srl:
-            if len(self.saver.srl_model_path) > 0:
-                self.srl_model.load_state_dict(th.load(self.saver.srl_model_path))
-            return self.getState(self._observation)
+            # if len(self.saver.srl_model_path) > 0:
+            # self.srl_model.load(self.saver.srl_model_path))
+            return self.srl_model.getState(self._observation)
 
         return np.array(self._observation)
 
@@ -169,12 +157,15 @@ class KukaButtonGymEnv(gym.Env):
         return self._observation
 
     def _step(self, action):
+        """
+        :param action: (int)
+        """
         self.action = action  # For saver
         if self._is_discrete:
             dv = 0.01  # velocity per physics step.
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, 0][action]  # Remove up action
+            dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
             # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
@@ -184,13 +175,15 @@ class KukaButtonGymEnv(gym.Env):
             dx = action[0] * dv
             dy = action[1] * dv
             da = action[2] * 0.1
-            f = 0.3
-            real_action = [dx, dy, -0.002, da, f]
+            finger_angle = 0.0  # Close the gripper
+            real_action = [dx, dy, -0.002, da, finger_angle]
 
         return self.step2(real_action)
 
     def step2(self, action):
-
+        """
+        :param action:([float])
+        """
         p.setJointMotorControl2(self.button_uid, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
 
         for i in range(self._action_repeat):
@@ -210,7 +203,7 @@ class KukaButtonGymEnv(gym.Env):
         self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
         if self.use_srl:
-            return self.getState(self._observation), reward, done, {}
+            return self.srl_model.getState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 
@@ -262,10 +255,12 @@ class KukaButtonGymEnv(gym.Env):
         reward = int(len(contact_points) > 0)
         self.n_contacts += reward
 
+        contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
+
         if distance > MAX_DISTANCE:
             reward = -1
 
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
+        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
             self.terminated = True
 
         return reward

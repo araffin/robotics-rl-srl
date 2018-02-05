@@ -16,11 +16,12 @@ class EpisodeSaver(object):
     :param max_dist: (float)
     :param state_dim: (int)
     :param learn_every: (int)
+    :param learn_states: (bool)
     :param path: (str)
     :param relative_pos: (bool)
     """
 
-    def __init__(self, name, max_dist, state_dim=-1, learn_every=3,
+    def __init__(self, name, max_dist, state_dim=-1, learn_every=3, learn_states=False,
                  path='srl_priors/data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name
@@ -42,9 +43,11 @@ class EpisodeSaver(object):
         self.episode_folder = None
         self.episode_success = False
         self.state_dim = state_dim
-        self.learn_states = state_dim > 0
-        self.learn_every = learn_every # Every n episodes, learn a state representation
+        self.learn_states = learn_states
+        self.learn_every = learn_every  # Every n episodes, learn a state representation
         self.srl_model_path = ""
+        self.n_steps = 0
+        self.max_steps = 10000
 
         # TODO: convert max dist (to button) to lower/upper bound
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
@@ -54,7 +57,6 @@ class EpisodeSaver(object):
         if self.learn_states:
             self.socket_client = SRLClient(self.name)
             self.socket_client.waitForServer()
-
 
     def saveImage(self, observation):
         """
@@ -73,7 +75,7 @@ class EpisodeSaver(object):
         """
         self.episode_idx += 1
 
-        if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0:
+        if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
             print("Learning a state representation ...")
             start_time = time.time()
             ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
@@ -98,6 +100,7 @@ class EpisodeSaver(object):
         :param arm_state: ([float])
         """
         self.episode_step += 1
+        self.n_steps += 1
         self.rewards.append(reward)
         self.actions.append(action)
         if reward > 0:
