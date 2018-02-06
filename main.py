@@ -18,6 +18,17 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 
 import environments
 
+import environments.kuka_button_gym_env as kuka_env
+
+kuka_env.RECORD_DATA = False
+kuka_env.USE_SRL = True
+log_folder = 'srl_priors/logs/kuka_gym_env/'
+# path = 'baselines/autoencoder_cnn_ST_DIM3_SEED1_NOISE0_1_EPOCHS10_BS32/srl_ae_model.pth'
+# path = 'modelY2018_M02_D05_H16M31S29_custom_cnn_ProTemCauRep_ST_DIM10_SEED1_priors/srl_model.pth'
+# path = 'baselines/supervised_custom_cnn_SEED1_EPOCHS10_BS32/srl_supervised_model.pth'
+# kuka_env.SRL_MODEL_PATH = log_folder + path
+kuka_env.USE_GROUND_TRUTH = True
+
 # Hack to use ppo/a2c/acktr agents located in pytorch_agents folder
 sys.path.insert(0, os.path.abspath("pytorch_agents/"))
 
@@ -274,6 +285,7 @@ def main():
                        final_rewards.min(),
                        final_rewards.max(), dist_entropy.data[0],
                        value_loss.data[0], action_loss.data[0]))
+
         if args.vis and j % args.vis_interval == 0:
             try:
                 # print("Data sent to visdom")

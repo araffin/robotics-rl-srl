@@ -7,11 +7,12 @@ from torch.autograd import Variable
 
 from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN
 from srl_priors.preprocessing import preprocessImage
+from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
 
 
-def loadSRLModel(path=None, cuda=False, state_dim=None):
+def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     """
     :param path: (str)
     :param cuda: (bool)
@@ -26,28 +27,36 @@ def loadSRLModel(path=None, cuda=False, state_dim=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             state_dim = json.load(f)['state_dim']
     else:
-        assert state_dim > 0, "When learning states, state_dim must be > 0"
+        assert env_object is not None or state_dim > 0, "When learning states, state_dim must be > 0"
 
+    if env_object is not None:
+        model_type = 'ground truth'
+        model = SRLGroundTruth(env_object)
 
-    if 'baselines' in path:
-        if 'pca' in path:
-            model = SRLPCA(state_dim)
-        elif 'supervised' in path and 'custom_cnn' in path:
-            model_type = 'supervised_custom_cnn'
-        elif 'autoencoder' in path:
-            model_type = 'autoencoder'
-    else:
-        if 'custom_cnn' in path:
-            model_type = 'custom_cnn'
+    if path is not None:
+        if 'baselines' in path:
+            if 'pca' in path:
+                model_type = 'pca'
+                model = SRLPCA(state_dim)
+            elif 'supervised' in path and 'custom_cnn' in path:
+                model_type = 'supervised_custom_cnn'
+            elif 'autoencoder' in path:
+                model_type = 'autoencoder'
         else:
-            model_type = 'resnet'
+            if 'custom_cnn' in path:
+                model_type = 'custom_cnn'
+            else:
+                model_type = 'resnet'
 
     assert model_type is not None or model is not None, "Model type not supported"
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
 
+    printGreen("\n Using {} \n".format(model_type))
+
     if path is not None:
+        printYellow("Loading trained model...")
         model.load(path)
     return model
 
@@ -76,7 +85,7 @@ class SRLBaseClass(object):
 
 
 class SRLGroundTruth(SRLBaseClass):
-    def __init__(self, state_dim, env_object):
+    def __init__(self, env_object, state_dim=3):
         super(SRLGroundTruth, self).__init__(state_dim)
         self.env_object = env_object
 

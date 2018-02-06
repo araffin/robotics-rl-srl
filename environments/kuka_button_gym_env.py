@@ -19,14 +19,18 @@ RENDER_HEIGHT = 224  # 720 // 5
 RENDER_WIDTH = 224  # 960 // 5
 Z_TABLE = -0.2
 MAX_DISTANCE = 0.5  # Max distance between end effector and the button (for negative reward)
-FORCE_RENDER = False  # For enjoy script
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
+
+# Parameters defined outside init because gym.make() doesn't allow arguments
+FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
 SRL_MODEL_PATH = None
+RECORD_DATA = True
+USE_GROUND_TRUTH = False
 
 
 # TODO: improve the physics of the button
@@ -65,10 +69,13 @@ class KukaButtonGymEnv(gym.Env):
         self.state_dim = STATE_DIM
         self.use_srl = USE_SRL
         self.cuda = th.cuda.is_available()
-        self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=False, learn_states=LEARN_STATES)
+        self.saver = None
+        if RECORD_DATA:
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=False, learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
-            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM)
+            env_object = self if USE_GROUND_TRUTH else None
+            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
             self.state_dim = self.srl_model.state_dim
 
         if self._renders:
@@ -136,7 +143,8 @@ class KukaButtonGymEnv(gym.Env):
         self._observation = self.getExtendedObservation()
 
         button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
-        self.saver.reset(self._observation, button_pos, self.getArmPos())
+        if self.saver is not None:
+            self.saver.reset(self._observation, button_pos, self.getArmPos())
 
         if self.use_srl:
             # if len(self.saver.srl_model_path) > 0:
@@ -199,8 +207,8 @@ class KukaButtonGymEnv(gym.Env):
 
         done = self._termination()
         reward = self._reward()
-
-        self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
+        if self.saver is not None:
+            self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
         if self.use_srl:
             return self.srl_model.getState(self._observation), reward, done, {}

@@ -5,7 +5,7 @@ import time
 from .kuka_button_gym_env import KukaButtonGymEnv
 
 
-env = KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_gym_env")
+env = KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test")
 # env.num_envs = 1
 env.seed(0)
 i = 0
