@@ -3,6 +3,7 @@ import glob
 import os
 import time
 import sys
+from datetime import datetime
 
 import gym
 import yaml
@@ -27,21 +28,19 @@ import environments
 import environments.kuka_button_gym_env as kuka_env
 
 kuka_env.RECORD_DATA = False
-kuka_env.RENDER_HEIGHT = 84
-kuka_env.RENDER_WIDTH = 84
+
 
 args = get_args()
 
 with open('config/srl_models.yaml', 'rb') as f:
     models = yaml.load(f)
 
-path = None
 PLOT_TITLE = "Raw Pixels"
 
 if args.srl_model != "":
     PLOT_TITLE = args.srl_model
     path = models.get(args.srl_model)
-    args.log_dir += args.srl_model
+    args.log_dir += args.srl_model + "/"
 
     if args.srl_model == "ground_truth":
         kuka_env.USE_GROUND_TRUTH = True
@@ -50,8 +49,13 @@ if args.srl_model != "":
         kuka_env.USE_SRL = True
         kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
     else:
-        raise ValueError("Unsupported valued for srl-model: {}".format(args.srl_model))
+        raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
 
+else:
+    args.log_dir += "raw_pixels/"
+
+# Add date + current time
+args.log_dir += datetime.now().strftime("%d-%m-%y_%Hh%M")
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
@@ -64,13 +68,7 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-try:
-    os.makedirs(args.log_dir)
-except OSError:
-    # Remove previous experiments
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
+os.makedirs(args.log_dir, exist_ok=True)
 
 
 def main():
@@ -107,7 +105,7 @@ def main():
 
     if len(envs.observation_space.shape) == 3:
         print("Using CNNPolicy")
-        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
+        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy, input_dim=obs_shape[1])
     else:
         print("Using MLPPolicy")
         assert not args.recurrent_policy, \
@@ -271,12 +269,9 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
+        if j % args.save_interval == 0 and  args.log_dir != "":
+            save_path = os.path.join(args.log_dir, args.algo)
+            os.makedirs(save_path, exist_ok=True)
 
             # A really ugly way to save a model to CPU
             save_model = actor_critic

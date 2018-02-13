@@ -18,10 +18,11 @@ N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.60  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for negative reward)
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
+DELTA_V = 0.01  # velocity per physics step.
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -140,6 +141,15 @@ class KukaButtonGymEnv(gym.Env):
             self._kuka.applyAction([0, 0, 0, 0, 0])
             p.stepSimulation()
 
+        # Randomize init arm pos: take 5 random actions
+        # for _ in range(5):
+        #     action = [0, 0, 0, 0, 0]
+        #     sign = 1 if np.random.rand() > 0.5 else -1
+        #     action_idx = np.random.randint(3)  # dx, dy or dz
+        #     action[action_idx] += sign * DELTA_V
+        #     self._kuka.applyAction(action)
+        #     p.stepSimulation()
+
         self._observation = self.getExtendedObservation()
 
         button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
@@ -170,7 +180,7 @@ class KukaButtonGymEnv(gym.Env):
         """
         self.action = action  # For saver
         if self._is_discrete:
-            dv = 0.01  # velocity per physics step.
+            dv = DELTA_V  # velocity per physics step.
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
@@ -179,7 +189,7 @@ class KukaButtonGymEnv(gym.Env):
             # real_action = [dx, dy, -0.002, da, finger_angle]
             real_action = [dx, dy, dz, 0, finger_angle]
         else:
-            dv = 0.01
+            dv = DELTA_V
             dx = action[0] * dv
             dy = action[1] * dv
             da = action[2] * 0.1
@@ -265,10 +275,10 @@ class KukaButtonGymEnv(gym.Env):
 
         contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
 
-        if distance > MAX_DISTANCE:
+        if distance > MAX_DISTANCE or contact_with_table:
             reward = -1
 
-        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
+        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.terminated = True
 
         return reward

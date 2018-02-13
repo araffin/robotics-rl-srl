@@ -13,8 +13,13 @@ git clone git@github.com:araffin/gym-baxter-rl.git --recursive
 
 ## Kuka Arm \w PyBullet
 
+Launch visdom server:
 ```
-python main.py --num-processes 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c
+python -m visdom.server
+```
+
+```
+python main.py --num-processes 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
 ```
 
 ## Reinforcement Learning

@@ -3,4 +3,6 @@ log_folder: srl_priors/logs/kuka_gym_env/
 # Path to the different trained SRL models
 autoencoder: baselines/autoencoder_cnn_ST_DIM3_SEED1_NOISE0_1_EPOCHS10_BS32/srl_ae_model.pth
 supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS10_BS32/srl_supervised_model.pth
-srl_priors: modelY2018_M02_D05_H16M31S29_custom_cnn_ProTemCauRep_ST_DIM10_SEED1_priors/srl_model.pth
+pca: no_model
+srl_priors: modelY2018_M02_D05_H16M06S07_custom_cnn_ProTemCauRep_ST_DIM3_SEED1_priors/srl_model.pth
+# srl_priors: modelY2018_M02_D05_H16M31S29_custom_cnn_ProTemCauRep_ST_DIM10_SEED1_priors/srl_model.pth

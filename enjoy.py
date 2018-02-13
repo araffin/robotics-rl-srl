@@ -3,24 +3,23 @@ import os
 import types
 import sys
 
+import yaml
 import numpy as np
 import torch
 from torch.autograd import Variable
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
+from pytorch_agents.arguments import get_args
+from pytorch_agents.envs import make_env
+from pytorch_agents.kfac import KFACOptimizer
+from pytorch_agents.model import CNNPolicy, MLPPolicy
+from pytorch_agents.storage import RolloutStorage
+from pytorch_agents.visualize import visdom_plot
 import environments
 import environments.kuka_button_gym_env as kuka_env
 kuka_env.FORCE_RENDER = True
-
-sys.path.insert(0, os.path.abspath("pytorch_agents/"))
-
-from arguments import get_args
-from envs import make_env
-from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
-from storage import RolloutStorage
-from visualize import visdom_plot
+kuka_env.RECORD_DATA = False
 
 
 parser = argparse.ArgumentParser(description='RL')
@@ -34,7 +33,23 @@ parser.add_argument('--env-name', default='KukaButtonGymEnv-v0',
                     help='environment to train on (default: KukaButtonGymEnv-v0)')
 parser.add_argument('--load-dir', default='./trained_models/',
                     help='directory to save agent logs (default: ./trained_models/)')
+parser.add_argument('--srl-model', type=str, default='', choices=["autoencoder", "ground_truth", "srl_priors", "supervised"],
+                    help='SRL model to use')
 args = parser.parse_args()
+
+with open('config/srl_models.yaml', 'rb') as f:
+    models = yaml.load(f)
+
+if args.srl_model != "":
+    path = models.get(args.srl_model)
+
+    if args.srl_model == "ground_truth":
+        kuka_env.USE_GROUND_TRUTH = True
+    elif path is not None:
+        kuka_env.USE_SRL = True
+        kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
+    else:
+        raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
 
 
 env = make_env(args.env_name, args.seed, 0, None)
