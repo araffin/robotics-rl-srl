@@ -5,6 +5,7 @@
 *.pth
 data/
 trained_models/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

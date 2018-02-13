@@ -15,10 +15,10 @@ from . import kuka
 
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
-RENDER_HEIGHT = 224  # 720 // 5
-RENDER_WIDTH = 224  # 960 // 5
+RENDER_HEIGHT = 224
+RENDER_WIDTH = 224
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.5  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.60  # Max distance between end effector and the button (for negative reward)
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
@@ -67,7 +67,7 @@ class KukaButtonGymEnv(gym.Env):
         self.debug = False
         self.n_contacts = 0
         self.state_dim = STATE_DIM
-        self.use_srl = USE_SRL
+        self.use_srl = USE_SRL or USE_GROUND_TRUTH
         self.cuda = th.cuda.is_available()
         self.saver = None
         if RECORD_DATA:

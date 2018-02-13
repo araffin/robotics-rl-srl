@@ -5,6 +5,7 @@ import time
 import sys
 
 import gym
+import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -16,30 +17,41 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
+from pytorch_agents.arguments import get_args
+from pytorch_agents.envs import make_env
+from pytorch_agents.kfac import KFACOptimizer
+from pytorch_agents.model import CNNPolicy, MLPPolicy
+from pytorch_agents.storage import RolloutStorage
+from pytorch_agents.visualize import visdom_plot
 import environments
-
 import environments.kuka_button_gym_env as kuka_env
 
 kuka_env.RECORD_DATA = False
-kuka_env.USE_SRL = True
-log_folder = 'srl_priors/logs/kuka_gym_env/'
-# path = 'baselines/autoencoder_cnn_ST_DIM3_SEED1_NOISE0_1_EPOCHS10_BS32/srl_ae_model.pth'
-# path = 'modelY2018_M02_D05_H16M31S29_custom_cnn_ProTemCauRep_ST_DIM10_SEED1_priors/srl_model.pth'
-# path = 'baselines/supervised_custom_cnn_SEED1_EPOCHS10_BS32/srl_supervised_model.pth'
-# kuka_env.SRL_MODEL_PATH = log_folder + path
-kuka_env.USE_GROUND_TRUTH = True
-
-# Hack to use ppo/a2c/acktr agents located in pytorch_agents folder
-sys.path.insert(0, os.path.abspath("pytorch_agents/"))
-
-from arguments import get_args
-from envs import make_env
-from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
-from storage import RolloutStorage
-from visualize import visdom_plot
+kuka_env.RENDER_HEIGHT = 84
+kuka_env.RENDER_WIDTH = 84
 
 args = get_args()
+
+with open('config/srl_models.yaml', 'rb') as f:
+    models = yaml.load(f)
+
+path = None
+PLOT_TITLE = "Raw Pixels"
+
+if args.srl_model != "":
+    PLOT_TITLE = args.srl_model
+    path = models.get(args.srl_model)
+    args.log_dir += args.srl_model
+
+    if args.srl_model == "ground_truth":
+        kuka_env.USE_GROUND_TRUTH = True
+        PLOT_TITLE = "Ground Truth"
+    elif path is not None:
+        kuka_env.USE_SRL = True
+        kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
+    else:
+        raise ValueError("Unsupported valued for srl-model: {}".format(args.srl_model))
+
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
@@ -55,6 +67,7 @@ if args.cuda:
 try:
     os.makedirs(args.log_dir)
 except OSError:
+    # Remove previous experiments
     files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
     for f in files:
         os.remove(f)
@@ -71,7 +84,7 @@ def main():
     if args.vis:
         from visdom import Visdom
         viz = Visdom(port=args.port)
-        win = None
+        win, win_smooth = None, None
 
     envs = [make_env(args.env_name, args.seed, i, args.log_dir)
             for i in range(args.num_processes)]
@@ -149,7 +162,9 @@ def main():
                 Variable(rollouts.masks[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
-            # Obser reward and next obs
+            # Observe reward and next obs
+            # done is a list of bool (size = num processes)
+            # reward is tensor of size = num_processes x 1
             obs, reward, done, info = envs.step(cpu_actions)
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
             episode_rewards += reward
@@ -276,23 +291,20 @@ def main():
         if j % args.log_interval == 0:
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
+
+            if args.vis:
+                win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo, bin_size=1, smooth=0, title=PLOT_TITLE)
+
             print(
-                "Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                "Updates {}, num timesteps {}, FPS {} entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
                 format(j, total_num_steps,
-                       int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
+                       int(total_num_steps / (end - start)), dist_entropy.data[0], value_loss.data[0], action_loss.data[0]))
 
         if args.vis and j % args.vis_interval == 0:
             try:
-                # print("Data sent to visdom")
                 # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
+                win_smooth = visdom_plot(viz, win_smooth, args.log_dir, args.env_name, args.algo, title=PLOT_TITLE + " smoothed")
             except IOError as e:
-                print(e)
                 pass
 
 
