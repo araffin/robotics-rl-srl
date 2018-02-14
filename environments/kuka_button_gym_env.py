@@ -23,6 +23,8 @@ N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.01  # velocity per physics step.
+RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
+ACTION_REPEAT = 1
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -30,7 +32,7 @@ STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
 SRL_MODEL_PATH = None
-RECORD_DATA = True
+RECORD_DATA = False
 USE_GROUND_TRUTH = False
 
 
@@ -43,15 +45,21 @@ class KukaButtonGymEnv(gym.Env):
         'video.frames_per_second': 50
     }
 
+    """
+    Gym wrapper for Kuka environment with a push button
+    :param urdf_root: (str) Path to pybullet urdf files
+    :param renders: (bool) Wether to display the GUI or not
+    :param is_discrete: (bool)
+    :param name: (str) name of the folder where recorded data will be stored
+    """
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
-                 action_repeat=1,
                  renders=False,
                  is_discrete=True,
                  name="kuka_button_gym"):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
-        self._action_repeat = action_repeat
+        self._action_repeat = ACTION_REPEAT
         self._observation = []
         self._env_step_counter = 0
         self._renders = renders or FORCE_RENDER
@@ -72,7 +80,7 @@ class KukaButtonGymEnv(gym.Env):
         self.cuda = th.cuda.is_available()
         self.saver = None
         if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=False, learn_states=LEARN_STATES)
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
             env_object = self if USE_GROUND_TRUTH else None
@@ -104,19 +112,33 @@ class KukaButtonGymEnv(gym.Env):
             action_dim = 3
             self._action_bound = 1
             action_high = np.array([self._action_bound] * action_dim)
-            self.action_space = spaces.Box(-action_high, action_high)
-        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3))
+            self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
+
+        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+
         if self.use_srl:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,))
-        self.viewer = None
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32)
+        # Create numpy random generator
+        # This seed can be changed later
+        self.seed(0)
 
     def getArmPos(self):
+        """
+        :param return: ([float]) Position (x, y, z) of kuka gripper
+        """
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
 
-    def reset(self):
-        return self._reset()
+    # def _reset(self):
+    #     """
+    #     backward compatibility
+    #     """
+    #     return self.reset()
 
-    def _reset(self):
+    def reset(self):
+        """
+        Reset the environment
+        :return: (numpy tensor) first observation of the env
+        """
         self.terminated = False
         self.n_contacts = 0
         p.resetSimulation()
@@ -128,8 +150,8 @@ class KukaButtonGymEnv(gym.Env):
                                     0.000000, 0.000000, 0.0, 1.0)
 
         # Initialize button position
-        x_pos = 0.5 + 0.0 * np.random.uniform(-1, 1)
-        y_pos = 0 + 0.0 * np.random.uniform(-1, 1)
+        x_pos = 0.5 + 0.0 * self.np_random.uniform(-1, 1)
+        y_pos = 0 + 0.0 * self.np_random.uniform(-1, 1)
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
 
@@ -144,8 +166,8 @@ class KukaButtonGymEnv(gym.Env):
         # Randomize init arm pos: take 5 random actions
         # for _ in range(5):
         #     action = [0, 0, 0, 0, 0]
-        #     sign = 1 if np.random.rand() > 0.5 else -1
-        #     action_idx = np.random.randint(3)  # dx, dy or dz
+        #     sign = 1 if self.np_random.rand() > 0.5 else -1
+        #     action_idx = self.np_random.randint(3)  # dx, dy or dz
         #     action[action_idx] += sign * DELTA_V
         #     self._kuka.applyAction(action)
         #     p.stepSimulation()
@@ -166,15 +188,23 @@ class KukaButtonGymEnv(gym.Env):
     def __del__(self):
         p.disconnect()
 
-    def _seed(self, seed=None):
+    def seed(self, seed=None):
+        """
+        Seed random generator
+        :param seed: (int)
+        :return: ([int])
+        """
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def getExtendedObservation(self):
-        self._observation = self._render("rgb_array")
+        self._observation = self.render("rgb_array")
         return self._observation
 
-    def _step(self, action):
+    def step(self, action):
+        return self._step(action)
+
+    def step(self, action):
         """
         :param action: (int)
         """
@@ -225,7 +255,10 @@ class KukaButtonGymEnv(gym.Env):
 
         return np.array(self._observation), reward, done, {}
 
-    def _render(self, mode='human', close=False):
+    # def render(self, mode="human", close=False):
+    #     return self._render(mode, close)
+
+    def render(self, mode='human', close=False):
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos
@@ -257,6 +290,10 @@ class KukaButtonGymEnv(gym.Env):
         rgb_array = np.array(px)
         rgb_array = rgb_array[:, :, :3]
         return rgb_array
+
+    def close(self):
+        # TODO: implement close function to close GUI
+        pass
 
     def _termination(self):
         if self.terminated or self._env_step_counter > MAX_STEPS:

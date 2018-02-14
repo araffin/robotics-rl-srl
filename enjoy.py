@@ -18,8 +18,9 @@ from pytorch_agents.storage import RolloutStorage
 from pytorch_agents.visualize import visdom_plot
 import environments
 import environments.kuka_button_gym_env as kuka_env
+
 kuka_env.FORCE_RENDER = True
-kuka_env.RECORD_DATA = False
+kuka_env.ACTION_REPEAT = 4
 
 
 parser = argparse.ArgumentParser(description='RL')
