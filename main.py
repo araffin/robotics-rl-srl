@@ -23,7 +23,7 @@ from pytorch_agents.envs import make_env
 from pytorch_agents.kfac import KFACOptimizer
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from pytorch_agents.storage import RolloutStorage
-from pytorch_agents.visualize import visdom_plot
+from pytorch_agents.visualize import visdom_plot, episode_plot
 import environments
 import environments.kuka_button_gym_env as kuka_env
 

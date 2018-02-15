@@ -9,11 +9,11 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 import environments
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-from pytorch_agents.visualize import visdom_plot
+from pytorch_agents.visualize import visdom_plot, episode_plot
 from visdom import Visdom
 
 viz = Visdom(port=8097)
-log_interval = 50
+log_interval = 1
 log_dir = "logs/"
 PLOT_TITLE = "Raw Pixels"
 log_dir += "raw_pixels/"
@@ -25,12 +25,12 @@ env_name = "KukaButtonGymEnv-v0"
 # TODO: save the learned model
 def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
-          log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0,
+          log_interval=100, buffer_size=25000, replay_ratio=4, replay_start=10000, c=10.0,
           trust_region=True, alpha=0.99, delta=1):
 
-    win, win_smooth = None, None
-    print("Running Acer Simple")
-    print(locals())
+    win, win_smooth, win_episodes = None, None, None
+    # print("Running Acer Simple")
+    # print(locals())
     tf.reset_default_graph()
     set_global_seeds(seed)
 
@@ -60,6 +60,7 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
         if (n_steps + 1) % log_interval == 0:
             win = visdom_plot(viz, win, log_dir, env_name, algo, bin_size=1, smooth=0, title=PLOT_TITLE)
             win_smooth = visdom_plot(viz, win_smooth, log_dir, env_name, algo, title=PLOT_TITLE + " smoothed")
+            win_episodes = episode_plot(viz, win_episodes, log_dir, env_name, algo, window=20, title=PLOT_TITLE + " [Episodes]")
 
         n_steps += 1
 
