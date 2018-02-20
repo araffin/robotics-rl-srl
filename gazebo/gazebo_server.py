@@ -101,9 +101,8 @@ while True:
     if command == 'reset':
         subprocess.call(["rosrun", "arm_scenario_experiments", "button_init_pose"])
         end_point_position = baxter_utils.get_ee_position(left_arm)
-        socket.send_json({'msg': 'Environment reset'})
         print('Environment reset')
-        continue
+        action = [0, 0, 0]
 
     elif command == 'action':
         action = np.array(msg['action'])

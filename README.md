@@ -1,11 +1,22 @@
 # Gym wrappers for state representation learning with robotic arms (Baxter + Kuka)
 
 
+To create the new environment for Python 3.6, in your Terminal run:
 ```
-git clone git@github.com:araffin/gym-baxter-rl.git --recursive
+conda create -n py36 python=3.6 anaconda
 ```
 
-or
+In the conda virtual environment (`source activate env_name`), install pybullet:
+```
+pip/pip3 install pybullet
+```
+
+Clone the repository, which contains subrepositories. First time:
+```
+git clone git@github.com:araffin/robotics-srl-rl.git --recursive
+```
+
+or afterwards, instead of git pull, so that subrepositories update, do:
 ```
 git submodule update --init
 ```
@@ -22,7 +33,7 @@ We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.
 
 - A2C - A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
 - ACKTR (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region ("Scalable trust-region method for deep reinforcement learning using Kronecker-factored approximation") is a more sample-efficient reinforcement learning algorithm than TRPO and A2C,
-- PPO- Proximal Policy Optimization
+- PPO - Proximal Policy Optimization
 
 
 ## Baxter Robot \w Gazebo and ROS
@@ -30,7 +41,7 @@ Gym Wrapper for baxter environment + RL algorithms
 
 ```
 roslaunch arm_scenario_simulator baxter_world.launch
-roslaunch arm_scenario_simulator spawn_objects_example
+rosrun arm_scenario_simulator spawn_objects_example
 
 python -m gazebo.gazebo_server
 python -m gazebo.teleop_client

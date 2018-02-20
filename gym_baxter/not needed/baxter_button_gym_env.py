@@ -1,16 +1,13 @@
 from __future__ import division, absolute_import, print_function
 
 import os
-import pybullet as p
 import time
 
 import gym
 import numpy as np
-import pybullet_data
+
 from gym import spaces
 from gym.utils import seeding
-
-from . import kuka
 
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
@@ -19,16 +16,12 @@ RENDER_WIDTH = 84  # 960 // 5
 Z_TABLE = -0.2
 MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for negative reward)
 FORCE_RENDER = False  # For enjoy script
-N_DISCRETE_ACTIONS = 6
+N_DISCRETE_ACTIONS = 6  # fwd, backwards, right, left, up, down
 BUTTON_LINK_IDX = 1
 
 # TODO: improve the physics of the button
 
-"""
-Gym wrapper for Kuka arm RL
-"""
-
-class KukaButtonGymEnv(gym.Env):
+class BaxterButtonGymEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
@@ -109,7 +102,7 @@ class KukaButtonGymEnv(gym.Env):
         self.glider_idx = 1
 
         p.setGravity(0, 0, -10)
-        self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
+        self._baxter = baxter.Baxter(urdf_root_path=self._urdf_root, timestep=self._timestep)
         self._env_step_counter = 0
         p.stepSimulation()
         self._observation = self.getExtendedObservation()
@@ -151,7 +144,7 @@ class KukaButtonGymEnv(gym.Env):
         p.setJointMotorControl2(self.button_uid, self.glider_idx, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
 
         for i in range(self._action_repeat):
-            self._kuka.applyAction(action)
+            self._baxter.applyAction(action)
             p.stepSimulation()
             if self._termination():
                 break
@@ -206,11 +199,11 @@ class KukaButtonGymEnv(gym.Env):
         return False
 
     def _reward(self):
-        gripper_pos = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)[0]
+        gripper_pos = p.getLinkState(self._baxter.baxter_uid, self._baxter.baxter_end_effector_index)[0]
         distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
         # print(distance)
 
-        contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid, BUTTON_LINK_IDX)
+        contact_points = p.getContactPoints(self.button_uid, self._baxter.baxter_uid, BUTTON_LINK_IDX)
         reward = int(len(contact_points) > 0)
         self.n_contacts += reward
 

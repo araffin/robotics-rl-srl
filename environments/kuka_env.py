@@ -1,5 +1,5 @@
 """
-PyBullet env with a kuka arm and cubes. It is made for debug.
+PyBullet env with a kuka arm and cubes. It is made for debugging.
 """
 
 from __future__ import division, absolute_import, print_function
