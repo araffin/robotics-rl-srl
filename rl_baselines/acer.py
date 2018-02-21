@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 import argparse
+
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -8,6 +8,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 import environments
 import environments.kuka_button_gym_env as kuka_env
+from pytorch_agents.arguments import get_args
 from pytorch_agents.envs import make_env
 from pytorch_agents.visualize import visdom_plot, episode_plot
 from visdom import Visdom
@@ -25,7 +26,7 @@ env_name = "KukaButtonGymEnv-v0"
 # TODO: save the learned model
 def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
-          log_interval=100, buffer_size=25000, replay_ratio=4, replay_start=10000, c=10.0,
+          log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000, c=10.0,
           trust_region=True, alpha=0.99, delta=1):
 
     win, win_smooth, win_episodes = None, None, None
