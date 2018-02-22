@@ -7,12 +7,14 @@ import zmq
 HOSTNAME = 'localhost'
 SERVER_PORT = 7777
 
+
 class Command(Enum):
     HELLO = 0
     LEARN = 1
     READY = 2
     ERROR = 3
     EXIT = 4
+
 
 class SRLClient(object):
     def __init__(self, data_folder, hostname='localhost', server_port=7777):
@@ -70,6 +72,7 @@ class SRLClient(object):
         else:
             path_to_model = msg.get('path') + '/srl_model.pth'
         return True, path_to_model
+
 
 if __name__ == '__main__':
     data_folder = 'test_server'

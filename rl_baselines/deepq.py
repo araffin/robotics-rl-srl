@@ -1,11 +1,9 @@
 import argparse
 
-import gym
 from baselines import deepq
 from baselines.common import set_global_seeds
 from baselines import logger
 
-import environments
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 import rl_baselines.common as common

@@ -13,6 +13,7 @@ n_steps = 0
 
 win, win_smooth, win_episodes = None, None, None
 
+
 def callback(_locals, _globals):
     """
     Callback called at each step (for DQN) or after n steps (see ACER)
@@ -26,6 +27,7 @@ def callback(_locals, _globals):
     if (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
         win_smooth = visdom_plot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
-        win_episodes = episode_plot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW, title=PLOT_TITLE + " [Episodes]")
+        win_episodes = episode_plot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
+                                    title=PLOT_TITLE + " [Episodes]")
     n_steps += 1
     return False

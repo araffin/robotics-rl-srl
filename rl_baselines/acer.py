@@ -2,21 +2,17 @@ import argparse
 
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
-
-import environments
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.arguments import get_args
 from pytorch_agents.envs import make_env
 import rl_baselines.common as common
-
 
 common.LOG_INTERVAL = 1
 common.LOG_DIR = "logs/raw_pixels/acer/"
 common.PLOT_TITLE = "Raw Pixels"
 common.ALGO = "ACER"
+
 
 # kuka_env.ACTION_REPEAT = 4
 
@@ -25,7 +21,6 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
           log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000, c=10.0,
           trust_region=True, alpha=0.99, delta=1, callback=None):
-
     win, win_smooth, win_episodes = None, None, None
     tf.reset_default_graph()
     set_global_seeds(seed)
@@ -33,7 +28,7 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
     nenvs = env.num_envs
     ob_space = env.observation_space
     ac_space = env.action_space
-    num_procs = len(env.remotes) # HACK
+    num_procs = len(env.remotes)  # HACK
     model = Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps, nstack=nstack,
                   num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
                   max_grad_norm=max_grad_norm, lr=lr, rprop_alpha=rprop_alpha, rprop_epsilon=rprop_epsilon,
@@ -49,7 +44,8 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
     acer = Acer(runner, model, _buffer, log_interval)
     acer.tstart = time.time()
 
-    for acer.steps in range(0, total_timesteps, nbatch): #nbatch samples, 1 on_policy call and multiple off-policy calls
+    # nbatch samples, 1 on_policy call and multiple off-policy calls
+    for acer.steps in range(0, total_timesteps, nbatch):
         acer.call(on_policy=True)
         if callback is not None:
             callback(locals(), globals())
@@ -58,7 +54,6 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
             n = np.random.poisson(replay_ratio)
             for _ in range(n):
                 acer.call(on_policy=False)  # no simulation steps in this
-
 
 
 def train(envs, num_timesteps, seed, policy, lrschedule, callback=None):

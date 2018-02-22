@@ -124,7 +124,7 @@ class KukaButtonGymEnv(gym.Env):
 
     def getArmPos(self):
         """
-        :param return: ([float]) Position (x, y, z) of kuka gripper
+        :return: ([float]) Position (x, y, z) of kuka gripper
         """
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
 
@@ -200,9 +200,6 @@ class KukaButtonGymEnv(gym.Env):
     def getExtendedObservation(self):
         self._observation = self.render("rgb_array")
         return self._observation
-
-    def step(self, action):
-        return self._step(action)
 
     def step(self, action):
         """

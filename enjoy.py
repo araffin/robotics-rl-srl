@@ -1,7 +1,6 @@
 import argparse
 import os
 import types
-import sys
 
 import yaml
 import numpy as np
@@ -10,13 +9,10 @@ from torch.autograd import Variable
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
-from pytorch_agents.arguments import get_args
 from pytorch_agents.envs import make_env
 from pytorch_agents.kfac import KFACOptimizer
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from pytorch_agents.storage import RolloutStorage
-from pytorch_agents.visualize import visdom_plot
-import environments
 import environments.kuka_button_gym_env as kuka_env
 
 kuka_env.FORCE_RENDER = True
@@ -102,7 +98,7 @@ while True:
                                                 deterministic=True)
     states = states.data
     cpu_actions = action.data.squeeze(1).cpu().numpy()
-    # Obser reward and next obs
+    # Observe reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
 
     masks.fill_(0.0 if done else 1.0)
