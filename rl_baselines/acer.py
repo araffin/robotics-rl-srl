@@ -10,16 +10,13 @@ import environments
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.arguments import get_args
 from pytorch_agents.envs import make_env
-from pytorch_agents.visualize import visdom_plot, episode_plot
-from visdom import Visdom
+import rl_baselines.common as common
 
-viz = Visdom(port=8097)
-log_interval = 1
-log_dir = "logs/"
-PLOT_TITLE = "Raw Pixels"
-log_dir += "raw_pixels/"
-algo = "acer"
-env_name = "KukaButtonGymEnv-v0"
+
+common.LOG_INTERVAL = 1
+common.LOG_DIR = "logs/raw_pixels/acer/"
+common.PLOT_TITLE = "Raw Pixels"
+common.ALGO = "ACER"
 
 # kuka_env.ACTION_REPEAT = 4
 
@@ -27,11 +24,9 @@ env_name = "KukaButtonGymEnv-v0"
 def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
           log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000, c=10.0,
-          trust_region=True, alpha=0.99, delta=1):
+          trust_region=True, alpha=0.99, delta=1, callback=None):
 
     win, win_smooth, win_episodes = None, None, None
-    # print("Running Acer Simple")
-    # print(locals())
     tf.reset_default_graph()
     set_global_seeds(seed)
 
@@ -54,16 +49,10 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
     acer = Acer(runner, model, _buffer, log_interval)
     acer.tstart = time.time()
 
-    n_steps = 0
-
     for acer.steps in range(0, total_timesteps, nbatch): #nbatch samples, 1 on_policy call and multiple off-policy calls
         acer.call(on_policy=True)
-        if (n_steps + 1) % log_interval == 0:
-            win = visdom_plot(viz, win, log_dir, env_name, algo, bin_size=1, smooth=0, title=PLOT_TITLE)
-            win_smooth = visdom_plot(viz, win_smooth, log_dir, env_name, algo, title=PLOT_TITLE + " smoothed")
-            win_episodes = episode_plot(viz, win_episodes, log_dir, env_name, algo, window=20, title=PLOT_TITLE + " [Episodes]")
-
-        n_steps += 1
+        if callback is not None:
+            callback(locals(), globals())
 
         if replay_ratio > 0 and _buffer.has_atleast(replay_start):
             n = np.random.poisson(replay_ratio)
@@ -72,33 +61,35 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
 
 
 
-def train(envs, num_timesteps, seed, policy, lrschedule):
+def train(envs, num_timesteps, seed, policy, lrschedule, callback=None):
     if policy == 'cnn':
         policy_fn = AcerCnnPolicy
     elif policy == 'lstm':
         policy_fn = AcerLstmPolicy
     else:
         raise ValueError("Policy {} not implemented".format(policy))
-    learn(policy_fn, envs, seed, total_timesteps=int(num_timesteps * 1.1), lrschedule=lrschedule)
+    learn(policy_fn, envs, seed, total_timesteps=int(num_timesteps * 1.1), lrschedule=lrschedule, callback=callback)
 
 
 def main():
     parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
+    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
+    parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm'], default='cnn')
+    parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--lrschedule', help='Learning rate schedule', choices=['constant', 'linear'],
                         default='constant')
     args = parser.parse_args()
-    seed = 0
-    num_cpu = 4
-    num_timesteps = 1e6
 
-    envs = [make_env("KukaButtonGymEnv-v0", 0, i, "logs/raw_pixels/", pytorch=False)
-            for i in range(num_cpu)]
+    common.ENV_NAME = args.env
+    envs = [make_env(args.env, 0, i, common.LOG_DIR, pytorch=False)
+            for i in range(args.num_cpu)]
 
     envs = SubprocVecEnv(envs)
 
-    train(envs, num_timesteps=num_timesteps, seed=seed,
-          policy=args.policy, lrschedule=args.lrschedule)
+    train(envs, num_timesteps=args.num_timesteps, seed=args.seed,
+          policy=args.policy, lrschedule=args.lrschedule, callback=common.callback)
 
 
 if __name__ == '__main__':
