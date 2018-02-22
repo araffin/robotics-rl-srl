@@ -17,6 +17,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     :param path: (str)
     :param cuda: (bool)
     :param state_dim: (int)
+    :param env_object: (gym env object)
     :return: (srl model)
     """
     model_type = None
@@ -106,8 +107,8 @@ class SRLNeuralNetwork(SRLBaseClass):
     def __init__(self, state_dim, cuda, model_type="custom_cnn"):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
-        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder'],\
-                             "Model type not supported: {}".format(model_type)
+        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder'], \
+            "Model type not supported: {}".format(model_type)
         self.model_type = model_type
 
         if model_type == "custom_cnn":

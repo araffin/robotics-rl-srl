@@ -1,16 +1,12 @@
 import copy
-import glob
 import os
 import time
-import sys
 from datetime import datetime
 
-import gym
 import yaml
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
@@ -23,9 +19,8 @@ from pytorch_agents.envs import make_env
 from pytorch_agents.kfac import KFACOptimizer
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from pytorch_agents.storage import RolloutStorage
-from pytorch_agents.visualize import visdom_plot, episode_plot
-import environments
 import environments.kuka_button_gym_env as kuka_env
+import rl_baselines.common as common
 
 kuka_env.ACTION_REPEAT = 4
 
@@ -55,6 +50,11 @@ else:
 
 # Add date + current time
 args.log_dir += datetime.now().strftime("%d-%m-%y_%Hh%M")
+
+common.LOG_INTERVAL = args.vis_interval
+common.LOG_DIR = args.log_dir
+common.PLOT_TITLE = PLOT_TITLE
+common.ALGO = args.algo
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
@@ -268,7 +268,7 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and  args.log_dir != "":
+        if j % args.save_interval == 0 and args.log_dir != "":
             save_path = os.path.join(args.log_dir, args.algo)
             os.makedirs(save_path, exist_ok=True)
 
@@ -282,24 +282,19 @@ def main():
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pth"))
 
+        # Plot callback
+        if args.vis:
+            common.callback(locals(), globals())
+
         if j % args.log_interval == 0:
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
 
-            if args.vis:
-                win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo, bin_size=1, smooth=0, title=PLOT_TITLE)
-
             print(
                 "Updates {}, num timesteps {}, FPS {} entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, total_num_steps,
-                       int(total_num_steps / (end - start)), dist_entropy.data[0], value_loss.data[0], action_loss.data[0]))
-
-        if args.vis and j % args.vis_interval == 0:
-            try:
-                # Sometimes monitor doesn't properly flush the outputs
-                win_smooth = visdom_plot(viz, win_smooth, args.log_dir, args.env_name, args.algo, title=PLOT_TITLE + " smoothed")
-            except IOError as e:
-                pass
+                    format(j, total_num_steps,
+                           int(total_num_steps / (end - start)), dist_entropy.data[0], value_loss.data[0],
+                           action_loss.data[0]))
 
 
 if __name__ == "__main__":

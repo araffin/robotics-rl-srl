@@ -1,5 +1,4 @@
 import time
-import json
 
 import environments.kuka_button_gym_env as kuka_env
 

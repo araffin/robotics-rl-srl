@@ -1,35 +1,17 @@
 import argparse
 
-import gym
 from baselines import deepq
 from baselines.common import set_global_seeds
 from baselines import logger
-from pytorch_agents.visualize import visdom_plot, episode_plot
-from visdom import Visdom
 
-import environments
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
+import rl_baselines.common as common
 
-viz = Visdom(port=8097)
-log_interval = 100
-log_dir = "logs/"
-PLOT_TITLE = "Raw Pixels"
-log_dir += "raw_pixels/deepq/"
-algo = "deepq"
-env_name = "KukaButtonGymEnv-v0"
-n_steps = 0
-
-win, win_smooth, win_episodes = None, None, None
-
-def callback(_locals, _globals):
-    global win, win_smooth, win_episodes, n_steps
-    if (n_steps + 1) % log_interval == 0:
-        win = visdom_plot(viz, win, log_dir, env_name, algo, bin_size=1, smooth=0, title=PLOT_TITLE)
-        win_smooth = visdom_plot(viz, win_smooth, log_dir, env_name, algo, title=PLOT_TITLE + " smoothed")
-        win_episodes = episode_plot(viz, win_episodes, log_dir, env_name, algo, window=20, title=PLOT_TITLE + " [Episodes]")
-    n_steps += 1
-    return False
+common.LOG_INTERVAL = 100
+common.LOG_DIR = "logs/raw_pixels/deepq/"
+common.PLOT_TITLE = "Raw Pixels"
+common.ALGO = "deepq"
 
 
 def main():
@@ -43,8 +25,11 @@ def main():
 
     logger.configure()
     set_global_seeds(args.seed)
-    env = make_env(args.env, 0, 0, log_dir, pytorch=False)()
+    common.ENV_NAME = args.env
+    env = make_env(args.env, 0, 0, common.LOG_DIR, pytorch=False)()
     # model = deepq.models.mlp([64])
+
+    # Atari CNN
     model = deepq.models.cnn_to_mlp(
         convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
         hiddens=[256],
@@ -64,9 +49,9 @@ def main():
         gamma=0.99,
         prioritized_replay=bool(args.prioritized),
         print_freq=500,
-        callback=callback
+        callback=common.callback
     )
-    # act.save("deepq_model.pkl")
+    act.save(common.LOG_DIR + "deepq_model.pkl")
     env.close()
 
 
