@@ -25,6 +25,8 @@ BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.01  # velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
+# NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
+NOISE_STD = 0
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -211,6 +213,8 @@ class KukaButtonGymEnv(gym.Env):
         self.action = action  # For saver
         if self._is_discrete:
             dv = DELTA_V  # velocity per physics step.
+            # Add noise to action
+            dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
