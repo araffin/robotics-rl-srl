@@ -1,17 +1,62 @@
-from pytorch_agents.visualize import visdom_plot, episode_plot
+import os
+import argparse
+from datetime import datetime
+
+import yaml
 from visdom import Visdom
+
+from pytorch_agents.visualize import visdom_plot, episode_plot
+import rl_baselines.deepq as deepq
+import rl_baselines.acer as acer
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 10
 LOG_DIR = "logs/"
 ALGO = ""
 ENV_NAME = ""
-PLOT_TITLE = ""
+PLOT_TITLE = "Raw Pixels"
 EPISODE_WINDOW = 20
 viz = None
 n_steps = 0
 
 win, win_smooth, win_episodes = None, None, None
+
+# LOAD SRL models list
+with open('config/srl_models.yaml', 'rb') as f:
+    models = yaml.load(f)
+
+
+def configureEnvAndLogFolder(args, kuka_env):
+    """
+    :param args: (ArgumentParser object)
+    :return: (ArgumentParser object)
+    """
+    global PLOT_TITLE, LOG_DIR
+
+    if args.srl_model != "":
+        PLOT_TITLE = args.srl_model
+        path = models.get(args.srl_model)
+        args.log_dir += args.srl_model + "/"
+
+        if args.srl_model == "ground_truth":
+            kuka_env.USE_GROUND_TRUTH = True
+            PLOT_TITLE = "Ground Truth"
+        elif path is not None:
+            kuka_env.USE_SRL = True
+            kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
+        else:
+            raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
+
+    else:
+        args.log_dir += "raw_pixels/"
+
+    # Add date + current time
+    args.log_dir += datetime.now().strftime("%d-%m-%y_%Hh%M")
+    LOG_DIR = args.log_dir
+
+    os.makedirs(args.log_dir, exist_ok=True)
+
+    return args
 
 
 def callback(_locals, _globals):
@@ -31,3 +76,43 @@ def callback(_locals, _globals):
                                     title=PLOT_TITLE + " [Episodes]")
     n_steps += 1
     return False
+
+
+def main():
+    global ENV_NAME, ALGO, LOG_INTERVAL
+    parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
+    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq'],
+                        help='OpenAI baseline to use')
+    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
+    parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
+    parser.add_argument('--log-dir', default='/tmp/gym/',
+                        help='directory to save agent logs and model (default: /tmp/gym)')
+    parser.add_argument('--num-timesteps', type=int, default=int(1e6))
+    parser.add_argument('--srl-model', type=str, default='',
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised"],
+                        help='SRL model to use')
+    parser.add_argument('--num-stack', type=int, default=4,
+                        help='number of frames to stack (default: 1)')
+    parser.add_argument('--action-repeat', type=int, default=1,
+                        help='number of times an action will be repeated (default: 1)')
+    args = parser.parse_args()
+
+    ENV_NAME = args.env
+    ALGO = args.algo
+
+    if args.algo == "deepq":
+        algo = deepq
+        LOG_INTERVAL = 100
+    elif args.algo == "acer":
+        algo = acer
+        LOG_INTERVAL = 1
+
+    algo.kuka_env.ACTION_REPEAT = args.action_repeat
+
+    parser = algo.customArguments(parser)
+    args = parser.parse_args()
+    args = configureEnvAndLogFolder(args, algo.kuka_env)
+    algo.main(args, callback)
+
+if __name__ == '__main__':
+    main()

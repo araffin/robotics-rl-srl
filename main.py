@@ -22,38 +22,13 @@ from pytorch_agents.storage import RolloutStorage
 import environments.kuka_button_gym_env as kuka_env
 import rl_baselines.common as common
 
-kuka_env.ACTION_REPEAT = 4
+# kuka_env.ACTION_REPEAT = 4
 
 args = get_args()
 
-with open('config/srl_models.yaml', 'rb') as f:
-    models = yaml.load(f)
-
-PLOT_TITLE = "Raw Pixels"
-
-if args.srl_model != "":
-    PLOT_TITLE = args.srl_model
-    path = models.get(args.srl_model)
-    args.log_dir += args.srl_model + "/"
-
-    if args.srl_model == "ground_truth":
-        kuka_env.USE_GROUND_TRUTH = True
-        PLOT_TITLE = "Ground Truth"
-    elif path is not None:
-        kuka_env.USE_SRL = True
-        kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
-    else:
-        raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
-
-else:
-    args.log_dir += "raw_pixels/"
-
-# Add date + current time
-args.log_dir += datetime.now().strftime("%d-%m-%y_%Hh%M")
+common.configureEnvAndLogFolder(args, kuka_env)
 
 common.LOG_INTERVAL = args.vis_interval
-common.LOG_DIR = args.log_dir
-common.PLOT_TITLE = PLOT_TITLE
 common.ALGO = args.algo
 
 assert args.algo in ['a2c', 'ppo', 'acktr']

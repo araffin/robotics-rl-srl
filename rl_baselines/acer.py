@@ -1,20 +1,10 @@
-import argparse
-
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-import rl_baselines.common as common
 
-common.LOG_INTERVAL = 1
-common.LOG_DIR = "logs/raw_pixels/acer/"
-common.PLOT_TITLE = "Raw Pixels"
-common.ALGO = "ACER"
-
-
-# kuka_env.ACTION_REPEAT = 4
 
 # TODO: save the learned model
 def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
@@ -56,36 +46,29 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
                 acer.call(on_policy=False)  # no simulation steps in this
 
 
-def train(envs, num_timesteps, seed, policy, lrschedule, callback=None):
+def train(envs, num_timesteps, seed, policy, lrschedule, callback=None, num_stack=1):
     if policy == 'cnn':
         policy_fn = AcerCnnPolicy
     elif policy == 'lstm':
         policy_fn = AcerLstmPolicy
     else:
         raise ValueError("Policy {} not implemented".format(policy))
-    learn(policy_fn, envs, seed, total_timesteps=int(num_timesteps * 1.1), lrschedule=lrschedule, callback=callback)
+    learn(policy_fn, envs, seed, total_timesteps=int(num_timesteps * 1.1), lrschedule=lrschedule,
+          callback=callback, nstack=num_stack)
 
 
-def main():
-    parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
-    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
+def customArguments(parser):
     parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm'], default='cnn')
-    parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--lrschedule', help='Learning rate schedule', choices=['constant', 'linear'],
                         default='constant')
-    args = parser.parse_args()
+    return parser
 
-    common.ENV_NAME = args.env
-    envs = [make_env(args.env, 0, i, common.LOG_DIR, pytorch=False)
+
+def main(args, callback):
+    envs = [make_env(args.env, 0, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
     envs = SubprocVecEnv(envs)
-
-    train(envs, num_timesteps=args.num_timesteps, seed=args.seed,
-          policy=args.policy, lrschedule=args.lrschedule, callback=common.callback)
-
-
-if __name__ == '__main__':
-    main()
+    train(envs, num_timesteps=args.num_timesteps, seed=args.seed, num_stack=args.num_stack,
+          policy=args.policy, lrschedule=args.lrschedule, callback=callback)
