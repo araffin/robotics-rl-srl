@@ -26,10 +26,11 @@ import rl_baselines.common as common
 
 args = get_args()
 
-common.configureEnvAndLogFolder(args, kuka_env)
-
 common.LOG_INTERVAL = args.vis_interval
 common.ALGO = args.algo
+
+common.configureEnvAndLogFolder(args, kuka_env)
+
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:

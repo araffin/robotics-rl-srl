@@ -130,12 +130,6 @@ class KukaButtonGymEnv(gym.Env):
         """
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
 
-    # def _reset(self):
-    #     """
-    #     backward compatibility
-    #     """
-    #     return self.reset()
-
     def reset(self):
         """
         Reset the environment
@@ -255,9 +249,6 @@ class KukaButtonGymEnv(gym.Env):
             return self.srl_model.getState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
-
-    # def render(self, mode="human", close=False):
-    #     return self._render(mode, close)
 
     def render(self, mode='human', close=False):
         if mode != "rgb_array":
