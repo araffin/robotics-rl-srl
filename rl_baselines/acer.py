@@ -214,7 +214,7 @@ def train(envs, num_timesteps, seed, policy, lrschedule, callback=None, num_stac
         policy_fn = AcerLstmPolicy
     else:
         raise ValueError("Policy {} not implemented".format(policy))
-    learn(policy_fn, envs, seed, total_timesteps=int(num_timesteps * 1.1), lrschedule=lrschedule,
+    learn(policy_fn, envs, seed, total_timesteps=num_timesteps, lrschedule=lrschedule,
           callback=callback, nstack=num_stack)
 
 

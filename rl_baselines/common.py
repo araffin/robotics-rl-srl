@@ -1,4 +1,9 @@
+"""
+Common functions for RL baselines
+TODO: set_global_seeds for gym
+"""
 import os
+import json
 import argparse
 from datetime import datetime
 
@@ -8,6 +13,7 @@ from visdom import Visdom
 from pytorch_agents.visualize import visdom_plot, episode_plot
 import rl_baselines.deepq as deepq
 import rl_baselines.acer as acer
+import rl_baselines.a2c as a2c
 import rl_baselines.random_agent as random_agent
 
 VISDOM_PORT = 8097
@@ -20,6 +26,7 @@ EPISODE_WINDOW = 20  # For plotting moving average
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 500  # Save RL model every 500 steps
+params_saved = False
 
 win, win_smooth, win_episodes = None, None, None
 
@@ -67,9 +74,15 @@ def callback(_locals, _globals):
     :param _locals: (dict)
     :param _globals: (dict)
     """
-    global win, win_smooth, win_episodes, n_steps, viz
+    global win, win_smooth, win_episodes, n_steps, viz, params_saved
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
+
+    if not params_saved:
+        # TODO:Filter unserializable params
+        # with open(LOG_DIR + "locals.json", "w") as f:
+        #     json.dump(_locals, f)
+        params_saved = True
 
     # HACK to save RL model
     # TODO: check that the model has improved
@@ -78,6 +91,10 @@ def callback(_locals, _globals):
             _locals['act'].save(LOG_DIR + "deepq_model.pkl")
         elif ALGO == "acer":
             _locals['model'].save(LOG_DIR + "acer_model.pkl")
+        elif ALGO == "a2c":
+            # save implementation is buggy for now
+            pass
+            # _locals['model'].save(LOG_DIR + "acer_model.pkl")
 
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
@@ -91,7 +108,7 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'random'],
+    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'random'],
                         help='OpenAI baseline to use')
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -102,7 +119,7 @@ def main():
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
-                        help='number of frames to stack (default: 1)')
+                        help='number of frames to stack (default: 4)')
     parser.add_argument('--action-repeat', type=int, default=1,
                         help='number of times an action will be repeated (default: 1)')
     parser.add_argument('--port', type=int, default=8097,
@@ -126,6 +143,9 @@ def main():
         algo = acer
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 1
+    elif args.algo == "a2c":
+        algo = a2c
+        LOG_INTERVAL = 100
     elif args.algo == "random":
         algo = random_agent
         LOG_INTERVAL = 100
