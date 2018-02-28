@@ -10,6 +10,7 @@ from collections import OrderedDict
 
 import yaml
 from visdom import Visdom
+from baselines.common import set_global_seeds
 
 from pytorch_agents.visualize import visdom_plot, episode_plot
 import rl_baselines.deepq as deepq
@@ -17,6 +18,7 @@ import rl_baselines.acer as acer
 import rl_baselines.a2c as a2c
 import rl_baselines.random_agent as random_agent
 import rl_baselines.random_search as random_search
+import rl_baselines.ppo2 as ppo2
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -135,6 +137,8 @@ def callback(_locals, _globals):
             _locals['model'].save(LOG_DIR + "acer_model.pkl")
         elif ALGO == "a2c":
             _locals['model'].save(LOG_DIR + "a2c_model.pkl")
+        elif ALGO == "ppo2":
+            _locals['model'].save(LOG_DIR + "ppo2_model.pkl")
 
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
@@ -148,7 +152,7 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'random_search', 'random_agent'],
+    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent'],
                         help='OpenAI baseline to use')
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -184,6 +188,8 @@ def main():
         SAVE_INTERVAL = 1
     elif args.algo == "a2c":
         algo = a2c
+    elif args.algo == "ppo2":
+        algo = ppo2
     elif args.algo == "random_agent":
         algo = random_agent
     elif args.algo == "random_search":
@@ -197,6 +203,7 @@ def main():
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
     saveEnvParams(algo.kuka_env)
+    set_global_seeds(args.seed)
     algo.main(args, callback)
 
 

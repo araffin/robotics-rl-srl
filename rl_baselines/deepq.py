@@ -1,5 +1,4 @@
 from baselines import deepq
-from baselines.common import set_global_seeds
 from baselines import logger
 
 import environments.kuka_button_gym_env as kuka_env
@@ -22,7 +21,6 @@ def main(args, callback):
     :param callback: (function)
     """
     logger.configure()
-    set_global_seeds(args.seed)
     env = make_env(args.env, 0, 0, args.log_dir, pytorch=False)()
     if args.srl_model != "":
         model = deepq.models.mlp([64])

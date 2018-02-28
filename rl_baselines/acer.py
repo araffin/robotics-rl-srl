@@ -179,7 +179,6 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
           trust_region=True, alpha=0.99, delta=1, callback=None):
     win, win_smooth, win_episodes = None, None, None
     tf.reset_default_graph()
-    set_global_seeds(seed)
 
     nenvs = env.num_envs
     ob_space = env.observation_space

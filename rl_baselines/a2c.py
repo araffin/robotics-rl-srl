@@ -1,4 +1,5 @@
 from baselines import logger
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.a2c.a2c import *
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy, MlpPolicy
@@ -8,8 +9,7 @@ from pytorch_agents.envs import make_env
 
 
 def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01, max_grad_norm=0.5,
-          lr=7e-4,
-          lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100, callback=None):
+          lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100, callback=None):
     if policy == 'cnn':
         policy_fn = CnnPolicy
     elif policy == 'lstm':
