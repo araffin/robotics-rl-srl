@@ -14,6 +14,10 @@ from pytorch_agents.envs import make_env
 
 
 def customArguments(parser):
+    """
+    :param parser: (ArgumentParser Object)
+    :return: (ArgumentParser Object)
+    """
     parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--num_eval', help='Number of episode to evaluate policy', type=int, default=20)
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -22,12 +26,18 @@ def customArguments(parser):
                         help='Enable Stochastic Policy')
     return parser
 
-# TODO: check uber paper to init network like them
-def initNetwork(args, envs, obs_shape):
-    if len(envs.observation_space.shape) == 3:
-        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, False, input_dim=obs_shape[1])
+# TODO: check Uber paper to init network like them
+def initNetwork(args, env, obs_shape):
+    """
+    :param args: (argparse.Namespace Object)
+    :param env: (gym env)
+    :param ob_space: (numpy tensor)
+    :return: (Pytorch Model)
+    """
+    if len(env.observation_space.shape) == 3:
+        actor_critic = CNNPolicy(obs_shape[0], env.action_space, False, input_dim=obs_shape[1])
     else:
-        actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
+        actor_critic = MLPPolicy(obs_shape[0], env.action_space)
 
     if args.cuda:
         actor_critic.cuda()
@@ -53,12 +63,20 @@ def update_current_obs(current_obs, obs, num_stack, env):
 
 
 def computeMeanReward(log_dir, n_done):
+    """
+    :param log_dir: (str)
+    :param n_done: (int)
+    """
     result, _ = load_csv(log_dir)
     y = np.array(result)[:, 1]
     return y[-n_done:].mean()
 
 
 def main(args, callback=None):
+    """
+    :param args: (argparse.Namespace Object)
+    :param callback: (function)
+    """
     args.cuda = not args.no_cuda and th.cuda.is_available()
     args.deterministic = not args.no_deterministic
 

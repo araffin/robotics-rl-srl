@@ -9,11 +9,19 @@ from pytorch_agents.envs import make_env
 
 
 def customArguments(parser):
+    """
+    :param parser: (ArgumentParser Object)
+    :return: (ArgumentParser Object)
+    """
     parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
     return parser
 
 
 def main(args, callback=None):
+    """
+    :param args: (argparse.Namespace Object)
+    :param callback: (function)
+    """
     envs = [make_env(args.env, 0, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 

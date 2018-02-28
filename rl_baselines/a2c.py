@@ -56,6 +56,10 @@ def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, 
 
 
 def customArguments(parser):
+    """
+    :param parser: (ArgumentParser Object)
+    :return: (ArgumentParser Object)
+    """
     parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'], default='cnn')
     parser.add_argument('--lrschedule', help='Learning rate schedule', choices=['constant', 'linear'],
@@ -64,6 +68,11 @@ def customArguments(parser):
 
 
 def main(args, callback):
+    """
+    :param args: (argparse.Namespace Object)
+    :param callback: (function)
+    """
+
     if args.srl_model != "":
         raise NotImplementedError("RL on SRL not supported for a2c")
         # print("Using MLP policy because working on state representation")

@@ -7,12 +7,20 @@ from pytorch_agents.envs import make_env
 
 
 def customArguments(parser):
+    """
+    :param parser: (ArgumentParser Object)
+    :return: (ArgumentParser Object)
+    """
     parser.add_argument('--prioritized', type=int, default=1)
     parser.add_argument('--dueling', type=int, default=1)
     return parser
 
 
 def main(args, callback):
+    """
+    :param args: (argparse.Namespace Object)
+    :param callback: (function)
+    """
     logger.configure()
     set_global_seeds(args.seed)
     env = make_env(args.env, 0, 0, args.log_dir, pytorch=False)()
