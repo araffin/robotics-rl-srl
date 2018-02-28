@@ -30,6 +30,7 @@ common.LOG_INTERVAL = args.vis_interval
 common.ALGO = args.algo
 
 common.configureEnvAndLogFolder(args, kuka_env)
+common.saveEnvParams(kuka_env)
 
 
 assert args.algo in ['a2c', 'ppo', 'acktr']

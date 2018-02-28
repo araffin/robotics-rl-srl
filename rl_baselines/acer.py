@@ -227,6 +227,14 @@ def customArguments(parser):
 
 
 def main(args, callback):
+    """
+    :param args: (ArgumentParser Object)
+    :param callback: (function)
+    """
+
+    if args.srl_model != "":
+        raise NotImplementedError("RL on SRL not supported for acer")
+
     envs = [make_env(args.env, 0, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 

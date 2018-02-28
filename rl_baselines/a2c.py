@@ -64,6 +64,11 @@ def customArguments(parser):
 
 
 def main(args, callback):
+    if args.srl_model != "":
+        raise NotImplementedError("RL on SRL not supported for a2c")
+        # print("Using MLP policy because working on state representation")
+        # args.policy = "mlp"
+
     envs = [make_env(args.env, 0, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 

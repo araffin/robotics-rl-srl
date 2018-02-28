@@ -6,6 +6,7 @@ import os
 import json
 import argparse
 from datetime import datetime
+from collections import OrderedDict
 
 import yaml
 from visdom import Visdom
@@ -46,10 +47,31 @@ def safeJson(data):
     elif isinstance(data, (bool, int, float)):
         return True
     elif isinstance(data, (tuple, list)):
-        return all(safe_json(x) for x in data)
+        return all(safeJson(x) for x in data)
     elif isinstance(data, dict):
-        return all(isinstance(k, str) and safe_json(v) for k, v in data.items())
+        return all(isinstance(k, str) and safeJson(v) for k, v in data.items())
     return False
+
+
+def filterJSONSerializableObjects(input_dict):
+    """
+    :param input_dict: (dict)
+    :return: (OrderedDict)
+    """
+    output_dict = OrderedDict()
+    for key in input_dict.keys():
+        if safeJson(input_dict[key]):
+            output_dict[key] = input_dict[key]
+    return output_dict
+
+
+def saveEnvParams(kuka_env):
+    """
+    :param kuka_env: (kuka_env module)
+    """
+    params = filterJSONSerializableObjects(kuka_env.getGlobals())
+    with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
+        json.dump(params, f)
 
 
 def configureEnvAndLogFolder(args, kuka_env):
@@ -97,12 +119,8 @@ def callback(_locals, _globals):
 
     if not params_saved:
         # Filter locals
-        params = {}
-        for key in _locals.keys():
-            if safeJson(_locals[key]):
-                params[key] = _locals[key]
-
-        with open(LOG_DIR + "locals.json", "w") as f:
+        params = filterJSONSerializableObjects(_locals)
+        with open(LOG_DIR + "rl_locals.json", "w") as f:
             json.dump(params, f)
         params_saved = True
 
@@ -174,9 +192,11 @@ def main():
 
     algo.kuka_env.ACTION_REPEAT = args.action_repeat
 
+
     parser = algo.customArguments(parser)
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
+    saveEnvParams(algo.kuka_env)
     algo.main(args, callback)
 
 if __name__ == '__main__':
