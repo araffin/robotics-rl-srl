@@ -6,8 +6,8 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 
 
-# Original code form https://github.com/openai/baselines/blob/master/baselines/acer/acer_simple.py
-# with a bug fix in save() method
+# Original code from https://github.com/openai/baselines/blob/master/baselines/acer/acer_simple.py
+# Fixes https://github.com/openai/baselines/issues/301
 class Model(object):
     def __init__(self, policy, ob_space, ac_space, nenvs, nsteps, nstack, num_procs,
                  ent_coef, q_coef, gamma, max_grad_norm, lr,

@@ -22,7 +22,7 @@ LOG_DIR = ""
 ALGO = ""
 ENV_NAME = ""
 PLOT_TITLE = "Raw Pixels"
-EPISODE_WINDOW = 20  # For plotting moving average
+EPISODE_WINDOW = 40  # For plotting moving average
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 500  # Save RL model every 500 steps
@@ -33,6 +33,23 @@ win, win_smooth, win_episodes = None, None, None
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
     models = yaml.load(f)
+
+
+def safeJson(data):
+    """
+    Check if an object is json serializable
+    :param data: (python object)
+    :return: (bool)
+    """
+    if data is None:
+        return True
+    elif isinstance(data, (bool, int, float)):
+        return True
+    elif isinstance(data, (tuple, list)):
+        return all(safe_json(x) for x in data)
+    elif isinstance(data, dict):
+        return all(isinstance(k, str) and safe_json(v) for k, v in data.items())
+    return False
 
 
 def configureEnvAndLogFolder(args, kuka_env):
@@ -79,9 +96,14 @@ def callback(_locals, _globals):
         viz = Visdom(port=VISDOM_PORT)
 
     if not params_saved:
-        # TODO:Filter unserializable params
-        # with open(LOG_DIR + "locals.json", "w") as f:
-        #     json.dump(_locals, f)
+        # Filter locals
+        params = {}
+        for key in _locals.keys():
+            if safeJson(_locals[key]):
+                params[key] = _locals[key]
+
+        with open(LOG_DIR + "locals.json", "w") as f:
+            json.dump(params, f)
         params_saved = True
 
     # HACK to save RL model
@@ -92,9 +114,7 @@ def callback(_locals, _globals):
         elif ALGO == "acer":
             _locals['model'].save(LOG_DIR + "acer_model.pkl")
         elif ALGO == "a2c":
-            # save implementation is buggy for now
-            pass
-            # _locals['model'].save(LOG_DIR + "acer_model.pkl")
+            _locals['model'].save(LOG_DIR + "a2c_model.pkl")
 
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
