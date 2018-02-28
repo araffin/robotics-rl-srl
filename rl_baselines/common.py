@@ -16,9 +16,10 @@ import rl_baselines.deepq as deepq
 import rl_baselines.acer as acer
 import rl_baselines.a2c as a2c
 import rl_baselines.random_agent as random_agent
+import rl_baselines.random_search as random_search
 
 VISDOM_PORT = 8097
-LOG_INTERVAL = 10
+LOG_INTERVAL = 100
 LOG_DIR = ""
 ALGO = ""
 ENV_NAME = ""
@@ -77,6 +78,7 @@ def saveEnvParams(kuka_env):
 def configureEnvAndLogFolder(args, kuka_env):
     """
     :param args: (ArgumentParser object)
+    :param kuka_env: (kuka_env module)
     :return: (ArgumentParser object)
     """
     global PLOT_TITLE, LOG_DIR
@@ -146,7 +148,7 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'random'],
+    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'random_search', 'random_agent'],
                         help='OpenAI baseline to use')
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -172,32 +174,31 @@ def main():
     ALGO = args.algo
     VISDOM_PORT = args.port
     if args.no_vis:
-        vis = False
+        viz = False
 
     if args.algo == "deepq":
         algo = deepq
-        LOG_INTERVAL = 100
     elif args.algo == "acer":
         algo = acer
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 1
     elif args.algo == "a2c":
         algo = a2c
-        LOG_INTERVAL = 100
-    elif args.algo == "random":
+    elif args.algo == "random_agent":
         algo = random_agent
-        LOG_INTERVAL = 100
+    elif args.algo == "random_search":
+        algo = random_search
 
     print("\nAgent = {} \n".format(args.algo))
 
     algo.kuka_env.ACTION_REPEAT = args.action_repeat
-
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
     saveEnvParams(algo.kuka_env)
     algo.main(args, callback)
+
 
 if __name__ == '__main__':
     main()

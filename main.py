@@ -107,6 +107,10 @@ def main():
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     def update_current_obs(obs):
+        """
+        Update the current observation:
+        Convert numpy array to torch tensor and stack observations if needed
+        """
         shape_dim0 = envs.observation_space.shape[0]
         obs = torch.from_numpy(obs).float()
         if args.num_stack > 1:

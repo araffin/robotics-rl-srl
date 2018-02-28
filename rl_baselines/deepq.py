@@ -5,6 +5,7 @@ from baselines import logger
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 
+
 def customArguments(parser):
     parser.add_argument('--prioritized', type=int, default=1)
     parser.add_argument('--dueling', type=int, default=1)

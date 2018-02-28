@@ -7,6 +7,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 
+
 def customArguments(parser):
     parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
     return parser
