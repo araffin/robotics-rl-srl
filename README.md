@@ -3,6 +3,8 @@
 ## Requirements:
 
 - Python 3 (python 2 not supported because of OpenAI baselines)
+- [OpenAI Baselines](https://github.com/openai/baselines) (latest version)
+- [OpenAI Gym](https://github.com/openai/gym/) (latest version)
 - Install the dependencies using `environment.yml` file (for conda users)
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
@@ -18,11 +20,35 @@ Launch visdom server:
 python -m visdom.server
 ```
 
+Pytorch Agent:
 ```
 python main.py --num-processes 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
 ```
 
+OpenAI Baselines Agent:
+```
+python -m rl_baselines.common --algo acer --log-dir logs/
+```
+
+
 ## Reinforcement Learning
+
+### OpenAI Baselines
+
+Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent:
+
+- DQN and variants (Double, Dueling, prioritized experience replay)
+- ACER (Sample Efficient Actor-Critic with Experience Replay)
+- A2C
+
+To train an agent:
+```
+python -m rl_baselines.common --algo acer --log-dir logs/
+```
+
+### Pytorch Agents
+
+This concerns the `main.py` script.
 
 We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.com/baselines-acktr-a2c/) from [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr) (see `pytorch_agents` folder):
 
