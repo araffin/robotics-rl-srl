@@ -13,7 +13,7 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--num_cpu', help='Number of processes', type=int, default=1)
+    parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
     return parser
 
 

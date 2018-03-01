@@ -33,6 +33,8 @@ python -m rl_baselines.common --algo acer --log-dir logs/
 
 ## Reinforcement Learning
 
+Note: All CNN policies normalize input dividing by 255. 
+
 ### OpenAI Baselines
 
 Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent:

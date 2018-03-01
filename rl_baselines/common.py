@@ -205,6 +205,10 @@ def main():
     parser = algo.customArguments(parser)
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
+    # Save args
+    with open(LOG_DIR + "args.json", "w") as f:
+        json.dump(vars(args), f)
+
     # Print Variables
     pprint(args)
     pprint(filterJSONSerializableObjects(algo.kuka_env.getGlobals()))

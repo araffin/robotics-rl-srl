@@ -1,5 +1,6 @@
 from baselines import deepq
 from baselines import logger
+from baselines.common.atari_wrappers import ScaledFloatFrame
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
@@ -35,6 +36,7 @@ def main(args, callback):
             hiddens=[256],
             dueling=bool(args.dueling),
         )
+        env = ScaledFloatFrame(env)
 
     act = deepq.learn(
         env,
@@ -46,7 +48,7 @@ def main(args, callback):
         exploration_final_eps=0.01,
         train_freq=4,
         learning_starts=500,
-        target_network_update_freq=500,
+        target_network_update_freq=1000,
         gamma=0.99,
         prioritized_replay=bool(args.prioritized),
         print_freq=10,  # Print every 10 episodes
