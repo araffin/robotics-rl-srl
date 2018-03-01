@@ -37,6 +37,7 @@ SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
 
+
 def getGlobals():
     """
     :return: (dict)

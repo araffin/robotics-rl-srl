@@ -3,6 +3,7 @@ from baselines import logger
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
+from .a2c import createTensorflowSession
 
 
 def customArguments(parser):
@@ -22,6 +23,9 @@ def main(args, callback):
     """
     logger.configure()
     env = make_env(args.env, 0, 0, args.log_dir, pytorch=False)()
+
+    createTensorflowSession()
+
     if args.srl_model != "":
         model = deepq.models.mlp([64])
     else:

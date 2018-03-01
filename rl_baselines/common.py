@@ -5,6 +5,7 @@ TODO: set_global_seeds for gym
 import os
 import json
 import argparse
+from pprint import pprint
 from datetime import datetime
 from collections import OrderedDict
 
@@ -13,6 +14,7 @@ from visdom import Visdom
 from baselines.common import set_global_seeds
 
 from pytorch_agents.visualize import visdom_plot, episode_plot
+from srl_priors.utils import printGreen, printYellow
 import rl_baselines.deepq as deepq
 import rl_baselines.acer as acer
 import rl_baselines.a2c as a2c
@@ -62,7 +64,7 @@ def filterJSONSerializableObjects(input_dict):
     :return: (OrderedDict)
     """
     output_dict = OrderedDict()
-    for key in input_dict.keys():
+    for key in sorted(input_dict.keys()):
         if safeJson(input_dict[key]):
             output_dict[key] = input_dict[key]
     return output_dict
@@ -190,18 +192,23 @@ def main():
         algo = a2c
     elif args.algo == "ppo2":
         algo = ppo2
+        LOG_INTERVAL = 10
     elif args.algo == "random_agent":
         algo = random_agent
     elif args.algo == "random_search":
         algo = random_search
 
-    print("\nAgent = {} \n".format(args.algo))
+    printGreen("\nAgent = {} \n".format(args.algo))
 
     algo.kuka_env.ACTION_REPEAT = args.action_repeat
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
+    # Print Variables
+    pprint(args)
+    pprint(filterJSONSerializableObjects(algo.kuka_env.getGlobals()))
+    # Save kuka env params
     saveEnvParams(algo.kuka_env)
     set_global_seeds(args.seed)
     algo.main(args, callback)
