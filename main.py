@@ -12,7 +12,6 @@ from torch.autograd import Variable
 
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
 
 from pytorch_agents.arguments import get_args
 from pytorch_agents.envs import make_env
@@ -27,7 +26,7 @@ import rl_baselines.common as common
 args = get_args()
 
 common.LOG_INTERVAL = args.vis_interval
-common.ALGO = args.algo
+common.ALGO = args.algo + "_pytorch"
 
 common.configureEnvAndLogFolder(args, kuka_env)
 common.saveEnvParams(kuka_env)
@@ -38,7 +37,7 @@ if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
         'Recurrent policy is not implemented for ACKTR'
 
-num_updates = int(args.num_frames) // args.num_steps // args.num_processes
+num_updates = int(args.num_frames) // args.num_steps // args.num_cpu
 
 torch.manual_seed(args.seed)
 if args.cuda:
@@ -48,28 +47,10 @@ os.makedirs(args.log_dir, exist_ok=True)
 
 
 def main():
-    print("#######")
-    print("""WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py)
-           or visdom plot to get true rewards""")
-    print("#######")
-
-    os.environ['OMP_NUM_THREADS'] = '1'
-
-    if args.vis:
-        from visdom import Visdom
-        viz = Visdom(port=args.port)
-        win, win_smooth = None, None
-
     envs = [make_env(args.env_name, args.seed, i, args.log_dir)
-            for i in range(args.num_processes)]
+            for i in range(args.num_cpu)]
 
-    if args.num_processes > 1:
-        envs = SubprocVecEnv(envs)
-    else:
-        envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        envs = VecNormalize(envs)
+    envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
     print(obs_shape)
@@ -103,8 +84,8 @@ def main():
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
-    current_obs = torch.zeros(args.num_processes, *obs_shape)
+    rollouts = RolloutStorage(args.num_steps, args.num_cpu, obs_shape, envs.action_space, actor_critic.state_size)
+    current_obs = torch.zeros(args.num_cpu, *obs_shape)
 
     def update_current_obs(obs):
         """
@@ -123,8 +104,8 @@ def main():
     rollouts.observations[0].copy_(current_obs)
 
     # These variables are used to compute average rewards for all processes.
-    episode_rewards = torch.zeros([args.num_processes, 1])
-    final_rewards = torch.zeros([args.num_processes, 1])
+    episode_rewards = torch.zeros([args.num_cpu, 1])
+    final_rewards = torch.zeros([args.num_cpu, 1])
 
     if args.cuda:
         current_obs = current_obs.cuda()
@@ -134,6 +115,7 @@ def main():
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
+            # Masks and states are only used for recurrent policies
             value, action, action_log_prob, states = actor_critic.act(
                 Variable(rollouts.observations[step], volatile=True),
                 Variable(rollouts.states[step], volatile=True),
@@ -178,8 +160,8 @@ def main():
                 Variable(rollouts.masks[:-1].view(-1, 1)),
                 Variable(rollouts.actions.view(-1, action_shape)))
 
-            values = values.view(args.num_steps, args.num_processes, 1)
-            action_log_probs = action_log_probs.view(args.num_steps, args.num_processes, 1)
+            values = values.view(args.num_steps, args.num_cpu, 1)
+            action_log_probs = action_log_probs.view(args.num_steps, args.num_cpu, 1)
 
             advantages = Variable(rollouts.returns[:-1]) - values
             value_loss = advantages.pow(2).mean()
@@ -250,9 +232,6 @@ def main():
         rollouts.after_update()
 
         if j % args.save_interval == 0 and args.log_dir != "":
-            save_path = os.path.join(args.log_dir, args.algo)
-            os.makedirs(save_path, exist_ok=True)
-
             # A really ugly way to save a model to CPU
             save_model = actor_critic
             if args.cuda:
@@ -261,7 +240,7 @@ def main():
             save_model = [save_model,
                           hasattr(envs, 'ob_rms') and envs.ob_rms or None]
 
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pth"))
+            torch.save(save_model, os.path.join(args.log_dir, args.algo + "_model.pth"))
 
         # Plot callback
         if args.vis:
@@ -269,13 +248,15 @@ def main():
 
         if j % args.log_interval == 0:
             end = time.time()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-
-            print(
-                "Updates {}, num timesteps {}, FPS {} entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                    format(j, total_num_steps,
-                           int(total_num_steps / (end - start)), dist_entropy.data[0], value_loss.data[0],
-                           action_loss.data[0]))
+            total_num_steps = (j + 1) * args.num_cpu * args.num_steps
+            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                format(j, total_num_steps,
+                       int(total_num_steps / (end - start)),
+                       final_rewards.mean(),
+                       final_rewards.median(),
+                       final_rewards.min(),
+                       final_rewards.max(), dist_entropy.data[0],
+                       value_loss.data[0], action_loss.data[0]))
 
 
 if __name__ == "__main__":
