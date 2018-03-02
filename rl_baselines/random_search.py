@@ -72,7 +72,7 @@ def main(args, callback=None):
     args.deterministic = not args.no_deterministic
 
     # Create Environments and wraps them for monitoring/multiprocessing
-    envs = [make_env(args.env, 0, i, args.log_dir, pytorch=True)
+    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=True)
             for i in range(args.num_cpu)]
     envs = SubprocVecEnv(envs)
 
@@ -127,4 +127,3 @@ def main(args, callback=None):
         if (step + 1) % 500 == 0:
             total_steps = step * args.num_cpu
             print("{} steps - {:.2f} FPS".format(total_steps, total_steps / (time.time() - start_time)))
-            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))

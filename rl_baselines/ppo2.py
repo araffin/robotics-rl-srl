@@ -129,7 +129,7 @@ def main(args, callback):
     if args.srl_model != "":
         raise NotImplementedError("RL on SRL not supported for ppo")
 
-    envs = [make_env(args.env, 0, i, args.log_dir, pytorch=False)
+    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
     envs = SubprocVecEnv(envs)

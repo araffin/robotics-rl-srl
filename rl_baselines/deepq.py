@@ -23,7 +23,7 @@ def main(args, callback):
     :param callback: (function)
     """
     logger.configure()
-    env = make_env(args.env, 0, 0, args.log_dir, pytorch=False)()
+    env = make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)()
 
     createTensorflowSession()
 
