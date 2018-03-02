@@ -27,13 +27,13 @@ python main.py --num-processes 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --
 
 OpenAI Baselines Agent:
 ```
-python -m rl_baselines.common --algo acer --log-dir logs/
+python -m rl_baselines.train --algo acer --log-dir logs/
 ```
 
 
 ## Reinforcement Learning
 
-Note: All CNN policies normalize input dividing by 255. 
+Note: All CNN policies normalize input dividing by 255.
 
 ### OpenAI Baselines
 
@@ -45,7 +45,7 @@ Several algorithms from [Open AI baselines](https://github.com/openai/baselines)
 
 To train an agent:
 ```
-python -m rl_baselines.common --algo acer --log-dir logs/
+python -m rl_baselines.train --algo acer --log-dir logs/
 ```
 
 ### Pytorch Agents

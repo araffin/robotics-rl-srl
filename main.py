@@ -19,7 +19,7 @@ from pytorch_agents.kfac import KFACOptimizer
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from pytorch_agents.storage import RolloutStorage
 import environments.kuka_button_gym_env as kuka_env
-import rl_baselines.common as common
+import rl_baselines.train as common
 
 # kuka_env.ACTION_REPEAT = 4
 

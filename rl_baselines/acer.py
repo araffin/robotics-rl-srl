@@ -4,7 +4,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-from .a2c import createTensorflowSession
+from rl_baselines.utils import createTensorflowSession
 
 
 def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
@@ -21,7 +21,6 @@ def learn(policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_c
         policy_fn = AcerLstmPolicy
     else:
         raise ValueError("Policy {} not implemented".format(policy))
-
 
     nenvs = env.num_envs
     ob_space = env.observation_space

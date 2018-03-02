@@ -2,25 +2,26 @@
 Common functions for RL baselines
 TODO: set_global_seeds for gym
 """
-import os
-import json
 import argparse
-from pprint import pprint
+import json
+import os
 from datetime import datetime
-from collections import OrderedDict
+from pprint import pprint
 
 import yaml
-from visdom import Visdom
 from baselines.common import set_global_seeds
+from visdom import Visdom
 
-from pytorch_agents.visualize import visdom_plot, episode_plot
-from srl_priors.utils import printGreen, printYellow
-import rl_baselines.deepq as deepq
-import rl_baselines.acer as acer
 import rl_baselines.a2c as a2c
+import rl_baselines.acer as acer
+import rl_baselines.deepq as deepq
+import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
 import rl_baselines.random_search as random_search
-import rl_baselines.ppo2 as ppo2
+from pytorch_agents.visualize import visdom_plot, episode_plot
+from rl_baselines.utils import filterJSONSerializableObjects
+from rl_baselines.utils import computeMeanReward
+from srl_priors.utils import printGreen
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -32,42 +33,15 @@ EPISODE_WINDOW = 40  # For plotting moving average
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 500  # Save RL model every 500 steps
+N_EPISODES_EVAL = 50  # Evaluate the performance on the last 50 episodes
 params_saved = False
+best_mean_reward = -10000
 
 win, win_smooth, win_episodes = None, None, None
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
     models = yaml.load(f)
-
-
-def safeJson(data):
-    """
-    Check if an object is json serializable
-    :param data: (python object)
-    :return: (bool)
-    """
-    if data is None:
-        return True
-    elif isinstance(data, (bool, int, float)):
-        return True
-    elif isinstance(data, (tuple, list)):
-        return all(safeJson(x) for x in data)
-    elif isinstance(data, dict):
-        return all(isinstance(k, str) and safeJson(v) for k, v in data.items())
-    return False
-
-
-def filterJSONSerializableObjects(input_dict):
-    """
-    :param input_dict: (dict)
-    :return: (OrderedDict)
-    """
-    output_dict = OrderedDict()
-    for key in sorted(input_dict.keys()):
-        if safeJson(input_dict[key]):
-            output_dict[key] = input_dict[key]
-    return output_dict
 
 
 def saveEnvParams(kuka_env):
@@ -119,7 +93,7 @@ def callback(_locals, _globals):
     :param _locals: (dict)
     :param _globals: (dict)
     """
-    global win, win_smooth, win_episodes, n_steps, viz, params_saved
+    global win, win_smooth, win_episodes, n_steps, viz, params_saved, best_mean_reward
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
@@ -130,17 +104,27 @@ def callback(_locals, _globals):
             json.dump(params, f)
         params_saved = True
 
-    # HACK to save RL model
-    # TODO: check that the model has improved
+    # Save the RL model if it has improved
     if (n_steps + 1) % SAVE_INTERVAL == 0:
-        if ALGO == "deepq":
-            _locals['act'].save(LOG_DIR + "deepq_model.pkl")
-        elif ALGO == "acer":
-            _locals['model'].save(LOG_DIR + "acer_model.pkl")
-        elif ALGO == "a2c":
-            _locals['model'].save(LOG_DIR + "a2c_model.pkl")
-        elif ALGO == "ppo2":
-            _locals['model'].save(LOG_DIR + "ppo2_model.pkl")
+        # Evaluate network performance
+        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL)
+        if ok:
+            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
+        else:
+            # Not enough episode
+            mean_reward = -10000
+
+        # Save Best model
+        if mean_reward > best_mean_reward:
+            best_mean_reward = mean_reward
+            if ALGO == "deepq":
+                _locals['act'].save(LOG_DIR + "deepq_model.pkl")
+            elif ALGO == "acer":
+                _locals['model'].save(LOG_DIR + "acer_model.pkl")
+            elif ALGO == "a2c":
+                _locals['model'].save(LOG_DIR + "a2c_model.pkl")
+            elif ALGO == "ppo2":
+                _locals['model'].save(LOG_DIR + "ppo2_model.pkl")
 
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
@@ -187,7 +171,7 @@ def main():
     elif args.algo == "acer":
         algo = acer
         LOG_INTERVAL = 1
-        SAVE_INTERVAL = 1
+        SAVE_INTERVAL = 20
     elif args.algo == "a2c":
         algo = a2c
     elif args.algo == "ppo2":

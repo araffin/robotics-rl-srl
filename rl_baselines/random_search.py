@@ -2,15 +2,16 @@
 Random Search: randomly sample actions from the action space
 """
 import time
-import torch as th
+
 import numpy as np
-from torch.autograd import Variable
+import torch as th
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from torch.autograd import Variable
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.model import CNNPolicy, MLPPolicy
-from pytorch_agents.visualize import load_csv
 from pytorch_agents.envs import make_env
+from pytorch_agents.model import CNNPolicy, MLPPolicy
+from rl_baselines.utils import computeMeanReward
 
 
 def customArguments(parser):
@@ -62,16 +63,6 @@ def update_current_obs(current_obs, obs, num_stack, env):
     return current_obs
 
 
-def computeMeanReward(log_dir, n_done):
-    """
-    :param log_dir: (str)
-    :param n_done: (int)
-    """
-    result, _ = load_csv(log_dir)
-    y = np.array(result)[:, 1]
-    return y[-n_done:].mean()
-
-
 def main(args, callback=None):
     """
     :param args: (argparse.Namespace Object)
@@ -100,7 +91,7 @@ def main(args, callback=None):
     obs = envs.reset()
     current_obs = update_current_obs(current_obs, obs, args.num_stack, envs)
     start_time = time.time()
-    best_return = - np.inf
+    best_mean_reward = - 10000 # - np.inf
     n_done, mean_reward = 0, 0
 
     # TODO: reset env for multi-cpu
@@ -115,11 +106,11 @@ def main(args, callback=None):
         n_done += sum(done)
         if n_done > args.num_eval:
             # Evaluate network performance
-            mean_reward = computeMeanReward(args.log_dir, n_done)
+            _, mean_reward = computeMeanReward(args.log_dir, n_done)
             # Save Best model
-            if mean_reward > best_return:
+            if mean_reward > best_mean_reward:
                 print("Saving best model")
-                best_return = mean_reward
+                best_mean_reward = mean_reward
                 if args.cuda:
                     actor_critic.cpu()
                 th.save(actor_critic.state_dict(), "{}/random_search.pth".format(args.log_dir))
@@ -136,4 +127,4 @@ def main(args, callback=None):
         if (step + 1) % 500 == 0:
             total_steps = step * args.num_cpu
             print("{} steps - {:.2f} FPS".format(total_steps, total_steps / (time.time() - start_time)))
-            print("Best mean reward: {} - Last mean reward per episode: {}".format(best_return, mean_reward))
+            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))

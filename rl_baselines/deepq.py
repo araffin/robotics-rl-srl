@@ -4,7 +4,7 @@ from baselines.common.atari_wrappers import ScaledFloatFrame
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-from .a2c import createTensorflowSession
+from rl_baselines.utils import createTensorflowSession
 
 
 def customArguments(parser):

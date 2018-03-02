@@ -1,24 +1,11 @@
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.a2c.a2c import *
-from baselines import logger
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy, MlpPolicy
-import tensorflow as tf
+from baselines import logger
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-
-
-def createTensorflowSession():
-    """
-    Create tensorflow session with specific argument
-    to prevent it from taking all gpu memory
-    """
-    # Let Tensorflow choose the device
-    config = tf.ConfigProto(allow_soft_placement=True)
-    # Prevent tensorflow from taking all the gpu memory
-    config.gpu_options.allow_growth = True
-    tf.Session(config=config).__enter__()
+from rl_baselines.utils import createTensorflowSession
 
 
 def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01, max_grad_norm=0.5,
