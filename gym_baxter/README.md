@@ -104,7 +104,7 @@ conda install -c conda-forge visdom
 pip3 install pybullet
 ```
 
-5) Install openai Baselines algorithms from https://github.com/openai/baselines
+5) Install OpenAI Baselines algorithms from https://github.com/openai/baselines
 
 # TO-DO
 when working: add to OpenAI GYM as at the end of:
