@@ -40,6 +40,10 @@ or install baselines from source.
 
 3) Install requirements by using environment.yml in the repo. This will take care of mujoco, PyTorch, OpenAI Gym, etc.
 a) If you are using Anaconda (recommended):
+```
+conda create --name py35
+```
+If does not work:
 Create the environment from the environment.yml file:   
 ```
 conda env create -f environment.yml   # -> how to specify name this way?
@@ -48,14 +52,14 @@ conda create --name myenv --file spec-file.txt
 ```
 Activate the new environment (macOS and Linux):
 ```
-source activate myenv
+conda activate myenv
 ```
 and to deactivate:
 ```
-source deactivate
+conda deactivate
 ```
 
-Or update the one you just created:
+b) Then, update the one you just created:
 but before, in order to avoid:
 torchvision-0. 100% |################################| Time: 0:00:00 388.75 kB/s
 Invalid requirement: 'baselines (/home/antonin/Documents/baselines)==0.1.4'
@@ -115,9 +119,8 @@ https://github.com/openai/gym/tree/master/gym/envs
 
 # POTENTIAL ISSUES
 
-Q: Installing openai baselines:
+Q: Installing OpenAI baselines:
 Command "/home/seurin/anaconda2/envs/py35/bin/python -u -c "import setuptools, tokenize;__file__='/tmp/pip-build-cobxuqz0/mujoco-py/setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\r\n', '\n');f.close();exec(compile(code, __file__, 'exec'))" install --record /tmp/pip-6crcjes7-record/install-record.txt --single-version-externally-managed --compile" failed with error code 1 in /tmp/pip-build-cobxuqz0/mujoco-py/
-(py35) seurin@timothee-ThinkStation-P700:~/ro
 
 A: Until this issue is fix, remove mujoco from this list:
 https://github.com/openai/baselines/blob/master/setup.py#L13

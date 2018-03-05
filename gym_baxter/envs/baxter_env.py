@@ -12,6 +12,22 @@ from torch.autograd import Variable
 import cv2
 import matplotlib.pyplot as plt
 
+
+"""
+To run this program, that calls to gazebo server:
+1) Start ROS + Gazebo modules
+(outside conda env):
+natalia@natalia:~$ roslaunch arm_scenario_simulator baxter_world.launch
+rosrun arm_scenario_simulator spawn_objects_example
+
+2) Then start the server:
+~/robotics-rl-srl$ python -m gazebo.gazebo_server
+
+3) Test this program in the main repo directory level:
+python -m gym_baxter.test_baxter_env
+
+"""
+
 logger = logging.getLogger(__name__)
 
 if sys.version_info > (3,):
@@ -23,14 +39,6 @@ if sys.version_info > (3,):
 # from srl_priors.preprocessing import preprocessImage
 #from state_representation.episode_saver import EpisodeSaver
 
-"""
-Before using this program, that calls to gazebo server, start ROS + Gazebo modules
-then start the server with
-~/robotics-rl-srl$ python -m gazebo.gazebo_server
-To test this program, in the main repo directory level:
-python -m gym_baxter.test_baxter_env
-
-"""
 MAX_STEPS = 5 # TODO 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 84  # 720 // 5   # camera image size
