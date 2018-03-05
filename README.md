@@ -2,7 +2,7 @@
 
 
 ```
-git clone git@github.com:araffin/gym-baxter-rl.git --recursive
+git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
 
 or
@@ -41,4 +41,10 @@ Anaconda py35 env.
 
 ```
 sudo netstat -lpn | grep :7777
+```
+
+## Troubleshooting
+If a submodule is not downloaded:
+```
+git submodule update --init
 ```
