@@ -18,11 +18,11 @@ N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.75  # Max distance between end effector and the button (for negative reward)
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-DELTA_V = 0.01  # velocity per physics step.
+DELTA_V = 0.03  # velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
@@ -160,8 +160,8 @@ class KukaButtonGymEnv(gym.Env):
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
         self._env_step_counter = 0
-        # Close the gripper
-        for _ in range(150):
+        # Close the gripper and wait for the arm to be in rest position
+        for _ in range(500):
             self._kuka.applyAction([0, 0, 0, 0, 0])
             p.stepSimulation()
 

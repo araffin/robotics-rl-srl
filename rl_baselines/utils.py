@@ -51,6 +51,8 @@ def safeJson(data):
 
 def filterJSONSerializableObjects(input_dict):
     """
+    Filter and sort entries of a dictionnary
+    to save it as a json
     :param input_dict: (dict)
     :return: (OrderedDict)
     """

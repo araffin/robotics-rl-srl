@@ -1,6 +1,5 @@
 """
 Common functions for RL baselines
-TODO: set_global_seeds for gym
 """
 import argparse
 import json
@@ -21,7 +20,7 @@ import rl_baselines.random_search as random_search
 from pytorch_agents.visualize import visdom_plot, episode_plot
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.utils import computeMeanReward
-from srl_priors.utils import printGreen
+from srl_priors.utils import printGreen, printYellow
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -189,12 +188,15 @@ def main():
     parser = algo.customArguments(parser)
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
+    args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
     with open(LOG_DIR + "args.json", "w") as f:
-        json.dump(vars(args), f)
+        json.dump(args_dict, f)
 
     # Print Variables
-    pprint(args)
+    printYellow("Arguments:")
+    pprint(args_dict)
+    printYellow("Kuka Env Globals:")
     pprint(filterJSONSerializableObjects(algo.kuka_env.getGlobals()))
     # Save kuka env params
     saveEnvParams(algo.kuka_env)
