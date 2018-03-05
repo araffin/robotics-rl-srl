@@ -1,5 +1,6 @@
 name: py35
 channels:
+  - menpo
   - anaconda
   - pytorch
   - defaults
@@ -75,6 +76,7 @@ dependencies:
   - wheel=0.30.0=py35hd3883cf_1
   - xz=5.2.3=h55aa19d_2
   - zlib=1.2.11=ha838bed_2
+  - opencv3=3.1.0=py35_0
   - cuda90=1.0=h6433d27_0
   - pytorch=0.3.1=py35_cuda9.0.176_cudnn7.0.5_2
   - torchvision=0.2.0=py35heaa392f_1

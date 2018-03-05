@@ -22,12 +22,12 @@ python -m visdom.server
 
 Pytorch Agent:
 ```
-python main.py --num-processes 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
+python main.py --num-cpu 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
 ```
 
 OpenAI Baselines Agent:
 ```
-python -m rl_baselines.train --algo acer --log-dir logs/
+python -m rl_baselines.train --algo ppo2 --log-dir logs/
 ```
 
 
@@ -37,11 +37,12 @@ Note: All CNN policies normalize input dividing by 255.
 
 ### OpenAI Baselines
 
-Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent:
+Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent and random search:
 
 - DQN and variants (Double, Dueling, prioritized experience replay)
 - ACER (Sample Efficient Actor-Critic with Experience Replay)
 - A2C
+- PPO2
 
 To train an agent:
 ```
