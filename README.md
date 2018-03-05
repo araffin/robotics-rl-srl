@@ -30,11 +30,14 @@ Gym Wrapper for baxter environment + RL algorithms
 
 ```
 roslaunch arm_scenario_simulator baxter_world.launch
-roslaunch arm_scenario_simulator spawn_objects_example
+rosrun arm_scenario_simulator spawn_objects_example
 
 python -m gazebo.gazebo_server
 python -m gazebo.teleop_client
 ```
+Note, the first 3 commands need to be run in Python 2, while the teleop_client runs on
+Anaconda py35 env.
+
 
 ```
 sudo netstat -lpn | grep :7777
