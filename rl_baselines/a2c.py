@@ -1,17 +1,19 @@
+from baselines import logger
 from baselines.a2c.a2c import *
+from baselines.a2c.utils import fc
+from baselines.common.distributions import make_pdtype
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-from baselines.a2c.utils import fc
-from baselines.common.distributions import make_pdtype
-
-from baselines import logger
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
+from rl_baselines.policies import MlpPolicyDicrete
 from rl_baselines.utils import createTensorflowSession
+from srl_priors.utils import printYellow
 
 
+# Redefine runner to add support for srl models
 class Runner(object):
     def __init__(self, env, model, nsteps=5, gamma=0.99):
         self.env = env
@@ -78,42 +80,6 @@ class Runner(object):
         return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values
 
 
-# Redefine MLP policy to support srl models
-class MlpPolicy(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
-        ob_shape = (nbatch,) + ob_space.shape
-        actdim = ac_space.n
-        X = tf.placeholder(tf.float32, ob_shape, name='Ob')  # obs
-        with tf.variable_scope("model", reuse=reuse):
-            activ = tf.tanh
-            h1 = activ(fc(X, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
-            h2 = activ(fc(h1, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
-            pi = fc(h2, 'pi', actdim, init_scale=0.01)
-            h1 = activ(fc(X, 'vf_fc1', nh=64, init_scale=np.sqrt(2)))
-            h2 = activ(fc(h1, 'vf_fc2', nh=64, init_scale=np.sqrt(2)))
-            vf = fc(h2, 'vf', 1)[:, 0]
-
-        self.pdtype = make_pdtype(ac_space)
-        self.pd = self.pdtype.pdfromflat(pi)
-
-        a0 = self.pd.sample()
-        neglogp0 = self.pd.neglogp(a0)
-        self.initial_state = None
-
-        def step(ob, *_args, **_kwargs):
-            a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
-            return a, v, self.initial_state, neglogp
-
-        def value(ob, *_args, **_kwargs):
-            return sess.run(vf, {X: ob})
-
-        self.X = X
-        self.pi = pi
-        self.vf = vf
-        self.step = step
-        self.value = value
-
-
 def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01, max_grad_norm=0.5,
           lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100, callback=None):
     tf.reset_default_graph()
@@ -126,7 +92,7 @@ def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, 
     elif policy == 'lnlstm':
         policy_fn = LnLstmPolicy
     elif policy == 'mlp':
-        policy_fn = MlpPolicy
+        policy_fn = MlpPolicyDicrete
     else:
         raise ValueError("Policy {} not implemented".format(policy))
 
@@ -180,16 +146,16 @@ def main(args, callback):
     """
 
     if args.srl_model != "":
-        print("Using MLP policy because working on state representation")
+        printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
 
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
     envs = SubprocVecEnv(envs)
-    if args.srl_model == "ground_truth":
-        # TODO: save running average
-        envs = VecNormalize(envs)
+    # if args.srl_model == "ground_truth":
+    #     # TODO: save running average
+    #     envs = VecNormalize(envs)
 
     envs = VecFrameStack(envs, args.num_stack)
     logger.configure()

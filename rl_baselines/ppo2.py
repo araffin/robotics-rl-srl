@@ -2,11 +2,13 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.ppo2 import *
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
+from rl_baselines.policies import MlpPolicyDicrete
 import tensorflow as tf
 from baselines import logger
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
+from srl_priors.utils import printYellow
 
 
 def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
@@ -19,7 +21,7 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
     config.gpu_options.allow_growth = True
     tf.Session(config=config).__enter__()
 
-    policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy}[args.policy]
+    policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDicrete}[args.policy]
 
     if isinstance(lr, float):
         lr = constfn(lr)
@@ -116,7 +118,7 @@ def customArguments(parser):
     :return: (ArgumentParser Object)
     """
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-    parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm'], default='cnn')
+    parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'], default='cnn')
 
     return parser
 
@@ -127,7 +129,8 @@ def main(args, callback):
     :param callback: (function)
     """
     if args.srl_model != "":
-        raise NotImplementedError("RL on SRL not supported for ppo")
+        printYellow("Using MLP policy because working on state representation")
+        args.policy = "mlp"
 
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
