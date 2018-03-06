@@ -22,14 +22,14 @@ class Runner(object):
         if len(env.observation_space.shape) > 1:
             nh, nw, nc = env.observation_space.shape
             self.batch_ob_shape = (nenv * nsteps, nh, nw, nc)
-            self.dtype = np.uint8
-            self.obs = np.zeros((nenv, nh, nw, nc), dtype=self.dtype)
+            self.obs_dtype = np.uint8
+            self.obs = np.zeros((nenv, nh, nw, nc), dtype=self.obs_dtype)
             self.nc = nc
         else:
             obs_dim = env.observation_space.shape[0]
             self.batch_ob_shape = (nenv * nsteps, obs_dim)
-            self.dtype = np.float32
-            self.obs = np.zeros((nenv, obs_dim), dtype=self.dtype)
+            self.obs_dtype = np.float32
+            self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
 
         obs = env.reset()
         self.gamma = gamma
@@ -56,7 +56,7 @@ class Runner(object):
             mb_rewards.append(rewards)
         mb_dones.append(self.dones)
         # batch of steps to batch of rollouts
-        mb_obs = np.asarray(mb_obs, dtype=self.dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
+        mb_obs = np.asarray(mb_obs, dtype=self.obs_dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
         mb_actions = np.asarray(mb_actions, dtype=np.int32).swapaxes(1, 0)
         mb_values = np.asarray(mb_values, dtype=np.float32).swapaxes(1, 0)

@@ -176,6 +176,7 @@ def main():
     elif args.algo == "ppo2":
         algo = ppo2
         LOG_INTERVAL = 10
+        SAVE_INTERVAL = 10
     elif args.algo == "random_agent":
         algo = random_agent
     elif args.algo == "random_search":

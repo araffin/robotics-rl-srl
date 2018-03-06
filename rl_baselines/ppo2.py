@@ -2,10 +2,10 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.ppo2 import *
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-from rl_baselines.policies import MlpPolicyDicrete
 import tensorflow as tf
 from baselines import logger
 
+from rl_baselines.policies import MlpPolicyDicrete
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from srl_priors.utils import printYellow
