@@ -5,6 +5,8 @@ import time
 import cv2
 import numpy as np
 
+from srl_priors.utils import printYellow
+from rl_baselines.utils import filterJSONSerializableObjects
 from .client import SRLClient
 
 
@@ -21,7 +23,7 @@ class EpisodeSaver(object):
     :param relative_pos: (bool)
     """
 
-    def __init__(self, name, max_dist, state_dim=-1, learn_every=3, learn_states=False,
+    def __init__(self, name, max_dist, state_dim=-1, globals_=None, learn_every=3, learn_states=False,
                  path='srl_priors/data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name
@@ -29,7 +31,7 @@ class EpisodeSaver(object):
         try:
             os.makedirs(self.data_folder)
         except OSError:
-            print("Folder already exist")
+            printYellow("Folder already exist")
 
         self.actions = []
         self.rewards = []
@@ -53,6 +55,10 @@ class EpisodeSaver(object):
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
         with open("{}/dataset_config.json".format(self.data_folder), "w") as f:
             json.dump(self.dataset_config, f)
+
+        if globals_ is not None:
+            with open("{}/env_globals.json".format(self.data_folder), "w") as f:
+                json.dump(filterJSONSerializableObjects(globals_), f)
 
         if self.learn_states:
             self.socket_client = SRLClient(self.name)

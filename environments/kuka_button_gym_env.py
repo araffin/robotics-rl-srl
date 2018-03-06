@@ -88,7 +88,7 @@ class KukaButtonGymEnv(gym.Env):
         self.cuda = th.cuda.is_available()
         self.saver = None
         if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
             env_object = self if USE_GROUND_TRUTH else None

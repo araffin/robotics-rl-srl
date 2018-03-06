@@ -2,12 +2,11 @@ from __future__ import division, absolute_import, print_function
 
 import time
 
-from .kuka_button_gym_env import KukaButtonGymEnv
+import environments.kuka_button_gym_env as kuka_env
 
+kuka_env.RECORD_DATA = False
+env = kuka_env.KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test")
 
-env = KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test")
-# env.num_envs = 1
-env.seed(0)
 i = 0
 start_time = time.time()
 for i_episode in range(50):
