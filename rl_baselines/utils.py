@@ -40,7 +40,7 @@ def safeJson(data):
     """
     if data is None:
         return True
-    elif isinstance(data, (bool, int, float)):
+    elif isinstance(data, (bool, int, float, str)):
         return True
     elif isinstance(data, (tuple, list)):
         return all(safeJson(x) for x in data)
