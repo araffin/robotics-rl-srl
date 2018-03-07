@@ -23,6 +23,8 @@ import rl_baselines.train as common
 
 # kuka_env.ACTION_REPEAT = 4
 
+# To deal with using a second camera
+DIM_CHANNELS = 6
 args = get_args()
 
 common.LOG_INTERVAL = args.vis_interval
@@ -53,13 +55,15 @@ def main():
     envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
+    print(obs_shape)    
+    obs_shape = (DIM_CHANNELS,obs_shape[1],obs_shape[2])
     print(obs_shape)
+
 
     if len(obs_shape) > 0:
         obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
     else:
         obs_shape = (args.num_stack, *obs_shape[0])
-
     if len(envs.observation_space.shape) == 3:
         print("Using CNNPolicy")
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy, input_dim=obs_shape[1])
@@ -92,7 +96,7 @@ def main():
         Update the current observation:
         Convert numpy array to torch tensor and stack observations if needed
         """
-        shape_dim0 = envs.observation_space.shape[0]
+        shape_dim0 = DIM_CHANNELS #envs.observation_space.shape[0]
         obs = torch.from_numpy(obs).float()
         if args.num_stack > 1:
             current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]

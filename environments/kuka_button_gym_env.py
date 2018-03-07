@@ -34,7 +34,7 @@ STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
 SRL_MODEL_PATH = None
-RECORD_DATA = False
+RECORD_DATA = True #False
 USE_GROUND_TRUTH = False
 
 
@@ -272,22 +272,38 @@ class KukaButtonGymEnv(gym.Env):
             # self._cam_roll = p.readUserDebugParameter(self.roll_slider)
 
         # TODO: recompute view_matrix and proj_matrix only in debug mode
-        view_matrix = p.computeViewMatrixFromYawPitchRoll(
+        view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=camera_target_pos,
             distance=self._cam_dist,
             yaw=self._cam_yaw,
             pitch=self._cam_pitch,
             roll=self._cam_roll,
             upAxisIndex=2)
-        proj_matrix = p.computeProjectionMatrixFOV(
+        proj_matrix1 = p.computeProjectionMatrixFOV(
             fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
             nearVal=0.1, farVal=100.0)
-        (_, _, px, _, _) = p.getCameraImage(
-            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
-            projectionMatrix=proj_matrix, renderer=self.renderer)
-        rgb_array = np.array(px)
-        rgb_array = rgb_array[:, :, :3]
-        return rgb_array
+        (_, _, px1, _, _) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
+            projectionMatrix=proj_matrix1, renderer=self.renderer)
+        rgb_array1 = np.array(px1)
+        
+        # adding a second camera on the other side of the robot
+        view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
+            cameraTargetPosition=(0.316, 0.316, -0.105),            
+            distance=1.05,
+            yaw=32,
+            pitch=-13,
+            roll=0,
+            upAxisIndex=2)
+        proj_matrix2 = p.computeProjectionMatrixFOV(
+            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+            nearVal=0.1, farVal=100.0)
+        (_, _, px2, _, _) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
+            projectionMatrix=proj_matrix2, renderer=self.renderer)
+        rgb_array2 = np.array(px2)
+        rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
+        return rgb_array_res
 
     def close(self):
         # TODO: implement close function to close GUI
@@ -300,7 +316,8 @@ class KukaButtonGymEnv(gym.Env):
         return False
 
     def _reward(self):
-        gripper_pos = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)[0]
+        gripper_pos = self.getArmPos()
+        #p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)[0]
         distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
         # print(distance)
 
