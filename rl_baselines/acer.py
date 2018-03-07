@@ -10,6 +10,7 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.policies import AcerMlpPolicy
+from rl_baselines.buffer_acer import Buffer
 from srl_priors.utils import printYellow
 
 
@@ -145,13 +146,9 @@ def main(args, callback):
     :param callback: (function)
     """
 
-    replay_ratio = 4
     if args.srl_model != "":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
-        printYellow("Setting replay_ratio=0 (Temporary fix)")
-        # HACK while acer buffer does not support srl model
-        replay_ratio = 0
 
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
@@ -159,4 +156,4 @@ def main(args, callback):
     envs = SubprocVecEnv(envs)
     envs = VecFrameStack(envs, args.num_stack)
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
-          lrschedule=args.lrschedule, callback=callback, replay_ratio=replay_ratio)
+          lrschedule=args.lrschedule, callback=callback)

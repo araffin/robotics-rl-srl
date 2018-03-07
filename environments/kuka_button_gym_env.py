@@ -18,7 +18,7 @@ N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.75  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.70  # Max distance between end effector and the button (for negative reward)
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
@@ -233,6 +233,7 @@ class KukaButtonGymEnv(gym.Env):
         """
         :param action:([float])
         """
+        # Apply force to the button
         p.setJointMotorControl2(self.button_uid, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
 
         for i in range(self._action_repeat):
@@ -300,7 +301,7 @@ class KukaButtonGymEnv(gym.Env):
         return False
 
     def _reward(self):
-        gripper_pos = p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)[0]
+        gripper_pos = self.getArmPos()
         distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
         # print(distance)
 
