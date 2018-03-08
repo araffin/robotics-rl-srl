@@ -27,6 +27,7 @@ RELATIVE_POS = False  # number of timesteps an action is repeated (here it is eq
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
 NOISE_STD = 0
+SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -316,5 +317,6 @@ class KukaButtonGymEnv(gym.Env):
 
         if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.terminated = True
-
+        if SHAPE_REWARD:
+            return -distance
         return reward

@@ -51,7 +51,6 @@ dependencies:
   - ncurses=6.0=h9df7e31_2
   - numpy=1.14.0=py35h3dfced4_1
   - olefile=0.44=py35h2c86149_0
-  - opencv=3.3.1=py35h6cbbc71_1
   - openssl=1.0.2n=hb7f436b_0
   - parso=0.1.1=py35h1b200a3_0
   - pcre=8.41=hc27e229_1

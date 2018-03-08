@@ -1,10 +1,6 @@
-"""
-TODO: adapt ACER buffer to work with SRL
-"""
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
@@ -36,12 +32,25 @@ class Runner(object):
             self.batch_ob_shape = (nenv * (nsteps + 1), obs_dim * nstack)
             self.obs_dtype = np.float32
             self.obs = np.zeros((nenv, obs_dim * nstack), dtype=self.obs_dtype)
-            self.nc = 1
+            self.obs_dim = obs_dim
 
         obs = env.reset()
+        self.update_obs(obs)
         self.nsteps = nsteps
         self.states = model.initial_state
         self.dones = [False for _ in range(nenv)]
+
+    def update_obs(self, obs, dones=None):
+        if self.raw_pixels:
+            if dones is not None:
+                self.obs *= (1 - dones.astype(np.uint8))[:, None, None, None]
+            self.obs = np.roll(self.obs, shift=-self.nc, axis=3)
+            self.obs[:, :, :, -self.nc:] = obs[:, :, :, :]
+        else:
+            if dones is not None:
+                self.obs *= (1 - dones.astype(np.float32))[:, None]
+            self.obs = np.roll(self.obs, shift=-self.obs_dim, axis=1)
+            self.obs[:, -self.obs_dim:] = obs[:, :]
 
     def run(self):
         if self.raw_pixels:
@@ -59,6 +68,7 @@ class Runner(object):
             # states information for statefull models like LSTM
             self.states = states
             self.dones = dones
+            self.update_obs(obs, dones)
             mb_rewards.append(rewards)
             enc_obs.append(obs)
         mb_obs.append(np.copy(self.obs))
@@ -154,6 +164,5 @@ def main(args, callback):
             for i in range(args.num_cpu)]
 
     envs = SubprocVecEnv(envs)
-    envs = VecFrameStack(envs, args.num_stack)
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
           lrschedule=args.lrschedule, callback=callback)

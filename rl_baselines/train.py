@@ -59,6 +59,8 @@ def configureEnvAndLogFolder(args, kuka_env):
     :return: (ArgumentParser object)
     """
     global PLOT_TITLE, LOG_DIR
+    # Reward sparse or shaped
+    kuka_env.SHAPE_REWARD = args.shape_reward
 
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -78,7 +80,7 @@ def configureEnvAndLogFolder(args, kuka_env):
         args.log_dir += "raw_pixels/"
 
     # Add date + current time
-    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%d-%m-%y_%Hh%M_%S"))
+    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))
     LOG_DIR = args.log_dir
 
     os.makedirs(args.log_dir, exist_ok=True)
@@ -155,7 +157,8 @@ def main():
                         help='visdom server port (default: 8097)')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
-
+    parser.add_argument('--shape-reward', action='store_true', default=False,
+                        help='Shape the reward (reward = - distance) instead of a sparse reward')
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
 
