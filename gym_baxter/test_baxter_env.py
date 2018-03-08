@@ -14,16 +14,20 @@ Note that there are 2 equivalent ways to text Baxter environment below:
 """
 
 env = BaxterEnv(renders=True, is_discrete=True)
-timesteps =  500
-episodes = 20
+timesteps =  5 #200
+episodes = 1 #30
 env.seed(0)
 i = 0
+# start logging statistics and recording videos
+# how to do in new release? env.monitor.start("/tmp/gym-results", algorithm_id="random")
+
+print('starting episodes...')
 start_time = time.time()
 try:
-    for i_episode in range(episodes):
-        observation = env.reset()
+    for _ in range(episodes):
+        #observation = env.reset() # not needed, will hang the program, done in initialization of the env
         for t in range(timesteps):
-            env.render()
+            #env.render() should not be called before sampling an action, or will never return
             action = env.action_space.sample()
             observation, reward, done, info = env.step(action)
             if done:
@@ -31,10 +35,13 @@ try:
                 break
             i += 1
 except KeyboardInterrupt as e:
+    env.closeServerConnection()
     pass  #     sys.exit(e) ?
-
-print("{:.2f} FPS".format(i / (time.time() - start_time)))
 env.closeServerConnection()
+print("{:.2f} FPS".format(i / (time.time() - start_time)))
+
+# TODO: upload stats to the website
+#gym.upload("/tmp/gym-results", api_key="JMXoHnlRtm86Fif6FUw4Qop1DwDkYHy0") # TODO how to obtain this key?
 
 
 # Second test (will work only after env is registered in OpenAI Gym)

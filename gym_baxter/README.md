@@ -61,13 +61,14 @@ conda deactivate
 
 b) Then, update the one you just created:
 but before, in order to avoid:
-torchvision-0. 100% |################################| Time: 0:00:00 388.75 kB/s
-Invalid requirement: 'baselines (/home/antonin/Documents/baselines)==0.1.4'
+```
+torchvision-0. 100% ... Invalid requirement: 'baselines (/home/antonin/Documents/baselines)==0.1.4'
 It looks like a path. Does it exist ?
+```
 -> Edit:
 
 ```
-conda-env update -f environment.yml
+conda env update -f environment.yml
 ```
 
 b) If you are not using Anaconda:
@@ -111,13 +112,13 @@ pip3 install pybullet
 5) Install OpenAI Baselines algorithms from https://github.com/openai/baselines
 
 # TO-DO
-when working: add to OpenAI GYM as at the end of:
+Add to OpenAI GYM as at the end of:
 https://github.com/openai/gym/tree/master/gym/envs
 
 
 
 
-# POTENTIAL ISSUES
+# Troubleshooting
 
 Q: Installing OpenAI baselines:
 Command "/home/seurin/anaconda2/envs/py35/bin/python -u -c "import setuptools, tokenize;__file__='/tmp/pip-build-cobxuqz0/mujoco-py/setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\r\n', '\n');f.close();exec(compile(code, __file__, 'exec'))" install --record /tmp/pip-6crcjes7-record/install-record.txt --single-version-externally-managed --compile" failed with error code 1 in /tmp/pip-build-cobxuqz0/mujoco-py/
@@ -126,18 +127,21 @@ A: Until this issue is fix, remove mujoco from this list:
 https://github.com/openai/baselines/blob/master/setup.py#L13
 
 Q: Running tests:  Error while finding module specification for 'environments.test_env' (ImportError: No module named 'environments')
+
 A: you have to call it as a python module always at the root of the repo:
 python -m environments.test_env
 
 
 Q: Using opencv:cv2.imshow("Image", np.zeros((10, 10, 3), dtype=np.uint8))
 cv2.error: /feedstock_root/build_artefacts/opencv_1489509237254/work/opencv-3.1.0/modules/highgui/src/window.cpp:545: error: (-2) The function is not implemented. Rebuild the library with Windows, GTK+ 2.x or Carbon support. If you are on Ubuntu or Debian, install libgtk2.0-dev and pkg-config, then re-run cmake or configure script in function cvShowImage
+
 A:https://stackoverflow.com/questions/40207011/opencv-not-working-properly-with-python-on-linux-with-anaconda-getting-error-th/43526627
 conda remove opencv
-conda update conda  -> instead, from outside the conda env: conda update -n your_env_name --all
-conda install --channel menpo opencv
-or (for OpenCV 3.1) :
+conda update conda  ->did not work. Instead, from outside the conda env:
+conda update -n your_env_name --all
+And then, inside your conda Py3 env (for OpenCV 3.1) do:
 conda install -c menpo opencv3
+(mempo repo will fix the graphical interface dependencies of openCV)
 
 A.1: As alternative to cv2.imshow, use matplotlib:
 import cv2, matplotlib.pyplot as plt
@@ -149,6 +153,7 @@ plt.show()
 Q: Gym's tensorflow:
 self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
 TypeError: __init__() got an unexpected keyword argument 'dtype'
+
 A: Make sure you have protobuf version > 3 (e.g. via  pip freeze)
 You can also call it without dtype argument, but best is to update Gym:
 ```
@@ -162,6 +167,7 @@ Traceback (most recent call last):
   File "/opt/ros/indigo/bin/roslaunch", line 34, in <module>
     import roslaunch
 ImportError: No module named roslaunch
+
 A: Test first roslaunch command, and also run Python, and import rospy to check all is installed. If not: When not working with ROS, just with the environments, the following lines should be commented in the ~/.bashrc:
 ```
 # Comment when not using ROS
@@ -177,5 +183,8 @@ export GAZEBO_MODEL_PATH=$(rospack find arm_scenario_simulator)/models:$GAZEBO_M
 Q: ~/robotics-rl-srl$ python -m gazebo.gazebo_server
 (...) "checkrc.pxd", line 21, in zmq.backend.cython.checkrc._check_rc (zmq/backend/cython/socket.c:6058)
 zmq.error.ZMQError: Address already in use. See http://zguide.zeromq.org/page:all#toc17
-A: sudo netstat -ltnp, See the process owning the port (because we us 7777, do sudo netstat -lpn | grep :7777 ). Kill it with kill -9 <pid>
+
+A: sudo netstat -ltnp, See the process owning the port (because we us 7777, do
+   sudo netstat -lpn | grep :7777
+ Kill it with kill -9 <pid>
 B: Close sockets when exiting the program but also call zmq_ctx_destroy(). This destroys the context. Also close the socket, calling context.term()

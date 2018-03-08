@@ -47,6 +47,11 @@ python -m gazebo.gazebo_server
 python -m gazebo.teleop_client
 ```
 
+When your server dies or the program does not end properly, you may need to run:
 ```
 sudo netstat -lpn | grep :7777
+```
+before
+```
+kill -9 processNr
 ```

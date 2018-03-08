@@ -23,7 +23,7 @@ rosrun arm_scenario_simulator spawn_objects_example
 2) Then start the server:
 ~/robotics-rl-srl$ python -m gazebo.gazebo_server
 
-3) Test this program in the main repo directory level:
+3) Test this module program in the main repo directory:
 python -m gym_baxter.test_baxter_env
 
 """
@@ -34,12 +34,10 @@ if sys.version_info > (3,):
     # representing objects in Py3-compatibility
     buffer = memoryview
 
+from state_representation.models import loadSRLModel
+from state_representation.episode_saver import EpisodeSaver
 
-#from srl_priors.models import SRLCustomCNN
-# from srl_priors.preprocessing import preprocessImage
-#from state_representation.episode_saver import EpisodeSaver
-
-MAX_STEPS = 5 # TODO 500
+MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 84  # 720 // 5   # camera image size
 RENDER_WIDTH = 84  # 960 // 5
@@ -67,7 +65,7 @@ IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
 HOSTNAME = 'localhost'
 DELTA_POS = 0.05
 
-UP, DOWN, LEFT, RIGHT, BACKWARD, FORWARD = 1,2,3,4,5,6
+UP, DOWN, LEFT, RIGHT, BACKWARD, FORWARD = 0,1,2,3,4,5
 action_dict = {
     LEFT: [- DELTA_POS, 0, 0],
     RIGHT: [DELTA_POS, 0, 0],
@@ -77,6 +75,7 @@ action_dict = {
     FORWARD: [0, 0, DELTA_POS]
 }
 N_DISCRETE_ACTIONS = len(action_dict)
+unknown_actions = 0 # logging anomalies
 
 # ROS Topics
 IMAGE_TOPIC = "/cameras/head_camera_2/image"
@@ -92,11 +91,18 @@ SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
 
+def getGlobals():
+    """
+    :return: (dict)
+    """
+    return globals()
+
 def recvMatrix(socket):
     """
     Receive a numpy array over zmq
     :param socket: (zmq socket)
     :return: (Numpy matrix)
+    # TODO move to common utils file accessible from both baxter and kuka envs
     """
     metadata = socket.recv_json()
     msg = socket.recv(copy=True, track=False)
@@ -150,12 +156,13 @@ class BaxterEnv(gym.Env):
 
         # TODO indicate in readme how to use
         self.saver = None
-        #self.saver = EpisodeSaver(name, MAX_DISTANCE, state_dim, relative_pos=False)
+        if RECORD_DATA:
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
-            self.srl_model = SRLCustomCNN(state_dim, self.cuda, noise_std=NOISE_STD)
-            if self.cuda:
-                self.srl_model.cuda()
+            env_object = self if USE_GROUND_TRUTH else None
+            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
+            self.state_dim = self.srl_model.state_dim
 
         # Initialize button position
         x_pos = 0.5 + 0.0 * np.random.uniform(-1, 1)
@@ -174,13 +181,13 @@ class BaxterEnv(gym.Env):
         # Initialize the state
         self.reset()
         self.action = [0, 0, 0]
-        self.reward = -100
+        self.reward = -1
         self.arm_pos = [0, 0, 0]
         if self.use_srl:
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32)
         else:  # raw images
             self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        # Create numpy random generator,  This seed can be changed later
+        # print(self.observation_space.shape)# Create numpy random generator,  This seed can be changed later
         self.seed(0)
 
     def seed(self, seed=None):
@@ -196,6 +203,7 @@ class BaxterEnv(gym.Env):
         else:
             print("Unknown action: {}".format(action))
             action = [0, 0, 0]
+            unknown_actions +=1
 
         # TODO Load SRL model
         # if self.use_srl:
@@ -204,25 +212,22 @@ class BaxterEnv(gym.Env):
         #     self.state_dim = self.srl_model.state_dim
 
         # Send the action to the server
-        print("sending action to server {}...".format(action))
         self.socket.send_json({"command": "action", "action": action})
 
         # Receive state data (position, etc)
         env_state = self.getEnvState()
-
+        print("env_state: {}\n after executing sampled action: {}".format(env_state, action))
         # Receive a camera image from the server
         self.observation = self.getObservation()
-
         done = self._hasEpisodeTerminated()
-        print("env_state: {}".format(env_state))
         return self.observation, self.reward, done, {}  #np.array(self.observation)
 
-        # if self.saver is not None:
-        #     self.saver.step(self.observation, self.action, reward, done, self.arm_pos)
-        # if self.use_srl:
-        #     return self.getState(self.observation), reward, done, {}
-        # else:
-        #     return self.observation, reward, done, {}  #np.array(self.observation)
+        if self.saver is not None:
+            self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
+        if self.use_srl:
+            return self.getState(self.observation), reward, done, {}
+        else:
+            return self.observation, reward, done, {}  #np.array(self.observation)
 
     def getEnvState(self):
         """
@@ -256,27 +261,32 @@ class BaxterEnv(gym.Env):
         self.socket.send_json({
             "command":"reset"
         })
-        # if self.use_srl: # TODO: WHY: AttributeError: 'BaxterEnv' object has no attribute 'use_srl'
-        #     return self.srl_model.getState(self.getObservation())
-        # else:
-        self.getEnvState()
-        return self.getObservation() # np.array(self.observation)# return super(BaxterEnv, self)._reset()
+        if self.saver is not None:
+            self.saver.reset(self.observation, self.button_pos, self.arm_pos)
+        if self.use_srl: # TODO: WHY: AttributeError: 'BaxterEnv' object has no attribute 'use_srl'
+            return self.srl_model.getState(self.observation)
+        else:
+            self.getEnvState()
+        #print ('[The environment was reset]')
+        return self.getObservation() # TODO: needs conversion? np.array(self.observation)# return super(BaxterEnv, self)._reset()
 
     def getObservation(self):
-        self.observation = self.render("rgb_array")
+        self.observation = self.render("rgb_array") #        print(type(self.observation))
         return self.observation
 
     def render(self, mode='rgb_array', close=False):
         """
         Method required by OpenAI Gym.
         Gets from x,y,z sliders, proj_matrix
-        Returns an rgb np.array
+        Returns an rgb np.array.
+        Note: should not be called before sampling an action, or will never return
         """
         if mode != "rgb_array":
             print ('render in human mode not yet supported')
             return np.array([])
         # Receive a camera image from the server
         self.img = recvMatrix(self.socket) # required by gazebo
+        #print ('[The environment was rendered]')
         return self.img
 
     def _hasEpisodeTerminated(self):
@@ -284,7 +294,7 @@ class BaxterEnv(gym.Env):
         Returns if the episode_saver terminated, not of the whole environment run
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
-            print('Episode Terminated: step counter reached MAX_STEPS: {}'.format(self._env_step_counter))
+            print('Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {}'.format(self._env_step_counter, unknown_actions))
             return True
         return False
 
@@ -298,6 +308,6 @@ class BaxterEnv(gym.Env):
         self.socket.close()
         # Terminate the context to close the socket
         self.context.term() # TODO THESE NEEDED?
-        #zmq_ctx_destroy() # destroys context so program exits gracefully
+        zmq_ctx_destroy() # destroys context so program exits gracefully
         # if self.socket is not None: # socket.close should do this
         #     os.kill(self.socket.pid, signal.SIGKILL)
