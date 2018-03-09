@@ -99,7 +99,6 @@ for _ in range(load_args.num_timesteps):
                                         deterministic=True)
 
     cpu_actions = actions.data.squeeze(1).cpu().numpy()
-    print(cpu_actions)
 
     # Observe reward and next obs
     obs, _, dones, _ = envs.step(cpu_actions)

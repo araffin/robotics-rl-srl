@@ -12,6 +12,7 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from rl_baselines.utils import computeMeanReward
+from srl_priors.utils import printGreen, printYellow
 
 
 def customArguments(parser):
@@ -109,7 +110,7 @@ def main(args, callback=None):
             _, mean_reward = computeMeanReward(args.log_dir, n_done)
             # Save Best model
             if mean_reward > best_mean_reward:
-                print("Saving best model")
+                printGreen("Saving best model")
                 best_mean_reward = mean_reward
                 if args.cuda:
                     actor_critic.cpu()
