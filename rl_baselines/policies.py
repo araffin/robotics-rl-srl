@@ -54,8 +54,8 @@ class AcerMlpPolicy(object):
             h2 = activ(fc(h1, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
             pi_logits = fc(h2, 'pi', nact, init_scale=0.01)
             pi = tf.nn.softmax(pi_logits)
-            # h1 = activ(fc(X, 'q_fc1', nh=64, init_scale=np.sqrt(2)))
-            # h2 = activ(fc(h1, 'q_fc2', nh=64, init_scale=np.sqrt(2)))
+            h1 = activ(fc(X, 'q_fc1', nh=64, init_scale=np.sqrt(2)))
+            h2 = activ(fc(h1, 'q_fc2', nh=64, init_scale=np.sqrt(2)))
             q = fc(h2, 'q', nact)
 
         a = sample(pi_logits)  # could change this to use self.pi instead

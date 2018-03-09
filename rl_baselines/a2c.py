@@ -3,6 +3,7 @@ from baselines.a2c.a2c import *
 from baselines.a2c.utils import fc
 from baselines.common.distributions import make_pdtype
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 

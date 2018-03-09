@@ -21,8 +21,6 @@ from pytorch_agents.storage import RolloutStorage
 import environments.kuka_button_gym_env as kuka_env
 import rl_baselines.train as common
 
-# kuka_env.ACTION_REPEAT = 4
-
 args = get_args()
 
 common.LOG_INTERVAL = args.vis_interval

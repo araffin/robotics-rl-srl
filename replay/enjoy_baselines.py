@@ -1,5 +1,5 @@
 """
-Enjoy script for ACER
+Enjoy script for OpenAI Baselines
 """
 import argparse
 import os
@@ -13,12 +13,14 @@ from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common import tf_util
 from baselines.common import set_global_seeds
+from baselines import deepq
 
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
+from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from srl_priors.utils import printGreen, printYellow
 
 parser = argparse.ArgumentParser(description="Load trained RL model")
@@ -31,7 +33,7 @@ parser.add_argument('--render', action='store_true', default=False,
                     help='Render the environment (show the GUI)')
 load_args = parser.parse_args()
 
-for algo in ['acer', 'ppo2', 'a2c', 'not_supported']:
+for algo in ['acer', 'ppo2', 'a2c', 'deepq', 'not_supported']:
     if algo in load_args.log_dir:
         break
 
@@ -53,10 +55,18 @@ log_dir = "/tmp/gym/"
 log_dir += "{}/{}/".format(algo, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))
 os.makedirs(log_dir, exist_ok=True)
 
-envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=False)
-                      for i in range(load_args.num_cpu)])
+if algo != "deepq":
+    envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=False)
+                          for i in range(load_args.num_cpu)])
+    envs = VecFrameStack(envs, train_args['num_stack'])
+else:
+    if load_args.num_cpu > 1:
+        printYellow("Deepq does not support multiprocessing, setting num-cpu=1")
+    envs = CustomDummyVecEnv([make_env(train_args['env'], load_args.seed, 0, log_dir, pytorch=False)])
+    # Normalize only raw pixels
+    normalize = train_args['srl_model'] == ""
+    envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
 
-envs = VecFrameStack(envs, train_args['num_stack'])
 nstack = train_args['num_stack']
 ob_space = envs.observation_space
 ac_space = envs.action_space
@@ -72,20 +82,24 @@ if algo == "acer":
     policy = AcerCnnPolicy
     # nstack is already handled in the VecFrameStack
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, nstack=1, reuse=False)
-elif algo == "ppo2":
+elif algo in ["a2c", "ppo2"]:
     policy = CnnPolicy
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
+
 
 params = find_trainable_variables("model")
 
 tf.global_variables_initializer().run(session=sess)
 
 # Load weights
-loaded_params = joblib.load(load_path)
-restores = []
-for p, loaded_p in zip(params, loaded_params):
-    restores.append(p.assign(loaded_p))
-ps = sess.run(restores)
+if algo in ["acer", "a2c", "ppo2"]:
+    loaded_params = joblib.load(load_path)
+    restores = []
+    for p, loaded_p in zip(params, loaded_params):
+        restores.append(p.assign(loaded_p))
+    ps = sess.run(restores)
+elif algo == "deepq":
+    model = deepq.load(load_path)
 
 dones = [False for _ in range(load_args.num_cpu)]
 obs = envs.reset()
@@ -96,9 +110,16 @@ last_n_done = 0
 for _ in range(load_args.num_timesteps):
     if algo == "acer":
         actions, state, _ = model.step(obs, state=None, mask=dones)
-    elif algo == "ppo2":
+    elif algo in ["a2c", "ppo2"]:
         actions, _, states, _ = model.step(obs, None, dones)
+    elif algo == "deepq":
+        actions = model(obs[None])[0]
     obs, rewards, dones, _ = envs.step(actions)
+
+    if algo == "deepq":
+        if dones:
+            obs = envs.reset()
+        dones = [dones]
     n_done += sum(dones)
     if (n_done - last_n_done) > 1:
         last_n_done = n_done

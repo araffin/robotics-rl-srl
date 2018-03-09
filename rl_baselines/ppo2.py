@@ -1,6 +1,6 @@
+from baselines.ppo2.ppo2 import *
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
-from baselines.ppo2.ppo2 import *
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 import tensorflow as tf
 from baselines import logger
