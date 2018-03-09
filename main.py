@@ -27,6 +27,7 @@ from rl_baselines.utils import filterJSONSerializableObjects
 args = get_args()
 
 common.LOG_INTERVAL = args.vis_interval
+common.SAVE_INTERVAL = 100
 common.ALGO = args.algo + "_pytorch"
 
 args = common.configureEnvAndLogFolder(args, kuka_env)
