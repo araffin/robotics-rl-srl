@@ -55,11 +55,11 @@ def update_current_obs(current_obs, obs, num_stack, env):
     :param env: (gym env object)
     :return: (Torch Tensor)
     """
-    shape_dim0 = env.observation_space.shape[0]
+    n_channels = env.observation_space.shape[0]
     obs = th.from_numpy(obs).float()
     if num_stack > 1:
-        current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-    current_obs[:, -shape_dim0:] = obs
+        current_obs[:, :-n_channels] = current_obs[:, n_channels:]
+    current_obs[:, -n_channels:] = obs
     return current_obs
 
 
@@ -113,7 +113,7 @@ def main(args, callback=None):
                 best_mean_reward = mean_reward
                 if args.cuda:
                     actor_critic.cpu()
-                th.save(actor_critic.state_dict(), "{}/random_search.pth".format(args.log_dir))
+                th.save(actor_critic.state_dict(), "{}/random_search_model.pth".format(args.log_dir))
                 if args.cuda:
                     actor_critic.cuda()
             # Initialize a new network

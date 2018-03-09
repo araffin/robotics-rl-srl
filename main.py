@@ -1,6 +1,7 @@
 import copy
 import os
 import time
+import json
 from datetime import datetime
 
 import yaml
@@ -20,14 +21,21 @@ from pytorch_agents.model import CNNPolicy, MLPPolicy
 from pytorch_agents.storage import RolloutStorage
 import environments.kuka_button_gym_env as kuka_env
 import rl_baselines.train as common
+from rl_baselines.utils import filterJSONSerializableObjects
+
 
 args = get_args()
 
 common.LOG_INTERVAL = args.vis_interval
 common.ALGO = args.algo + "_pytorch"
 
-common.configureEnvAndLogFolder(args, kuka_env)
+args = common.configureEnvAndLogFolder(args, kuka_env)
 common.saveEnvParams(kuka_env)
+
+args_dict = filterJSONSerializableObjects(vars(args))
+# Save args
+with open(args.log_dir + "args.json", "w") as f:
+    json.dump(args_dict, f)
 
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
@@ -45,7 +53,7 @@ os.makedirs(args.log_dir, exist_ok=True)
 
 
 def main():
-    envs = [make_env(args.env_name, args.seed, i, args.log_dir)
+    envs = [make_env(args.env, args.seed, i, args.log_dir)
             for i in range(args.num_cpu)]
 
     envs = SubprocVecEnv(envs)
@@ -53,6 +61,7 @@ def main():
     obs_shape = envs.observation_space.shape
     print(obs_shape)
 
+    # In pytorch, images are channel first
     if len(obs_shape) > 0:
         obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
     else:
@@ -90,11 +99,11 @@ def main():
         Update the current observation:
         Convert numpy array to torch tensor and stack observations if needed
         """
-        shape_dim0 = envs.observation_space.shape[0]
+        n_channels = envs.observation_space.shape[0]
         obs = torch.from_numpy(obs).float()
         if args.num_stack > 1:
-            current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-        current_obs[:, -shape_dim0:] = obs
+            current_obs[:, :-n_channels] = current_obs[:, n_channels:]
+        current_obs[:, -n_channels:] = obs
 
     obs = envs.reset()
     update_current_obs(obs)
@@ -229,32 +238,7 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and args.log_dir != "":
-            # A really ugly way to save a model to CPU
-            save_model = actor_critic
-            if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
-
-            save_model = [save_model,
-                          hasattr(envs, 'ob_rms') and envs.ob_rms or None]
-
-            torch.save(save_model, os.path.join(args.log_dir, args.algo + "_model.pth"))
-
-        # Plot callback
-        if args.vis:
-            common.callback(locals(), globals())
-
-        if j % args.log_interval == 0:
-            end = time.time()
-            total_num_steps = (j + 1) * args.num_cpu * args.num_steps
-            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, total_num_steps,
-                       int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
+        common.callback(locals(), globals())
 
 
 if __name__ == "__main__":

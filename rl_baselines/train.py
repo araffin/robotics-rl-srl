@@ -126,6 +126,12 @@ def callback(_locals, _globals):
                 _locals['model'].save(LOG_DIR + "a2c_model.pkl")
             elif ALGO == "ppo2":
                 _locals['model'].save(LOG_DIR + "ppo2_model.pkl")
+            elif "pytorch" in ALGO:
+                if _locals['args'].cuda:
+                    _locals['actor_critic'].cpu()
+                torch.save(_locals['actor_critic'].state_dict(), "{}/{}_model.pth".format(LOG_DIR, ALGO))
+                if _locals['args'].cuda:
+                    _locals['actor_critic'].cuda()
 
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
