@@ -33,7 +33,7 @@ load_args.cuda = not load_args.no_cuda and th.cuda.is_available()
 with open('config/srl_models.yaml', 'rb') as f:
     models = yaml.load(f)
 
-for algo in ['ppo', 'a2c', 'random_search', 'not_supported']:
+for algo in ['ppo_pytorch', 'a2c_pytorch', 'random_search', 'not_supported']:
     if algo in load_args.log_dir:
         break
 
