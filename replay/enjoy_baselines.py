@@ -3,7 +3,7 @@ Enjoy script for OpenAI Baselines
 """
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy, MlpPolicy
+from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 from baselines.common import tf_util
 from baselines.common import set_global_seeds
 from baselines import deepq
@@ -11,8 +11,10 @@ from baselines import deepq
 
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
+from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy
 from srl_priors.utils import printYellow
 from replay.enjoy import parseArguments
+
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq']
 load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=False)
@@ -29,11 +31,11 @@ createTensorflowSession()
 sess = tf_util.make_session()
 printYellow("Compiling Policy function....")
 if algo == "acer":
-    policy = AcerCnnPolicy
+    policy = {'cnn': AcerCnnPolicy, 'mlp': AcerMlpPolicy}[train_args["policy"]]
     # nstack is already handled in the VecFrameStack
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, nstack=1, reuse=False)
 elif algo in ["a2c", "ppo2"]:
-    policy = CnnPolicy
+    policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
 
 

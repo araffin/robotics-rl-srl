@@ -14,7 +14,7 @@ from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from srl_priors.utils import printGreen, printYellow
 
 
-def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/"):
+def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     """
     :param supported_models: ([str])
     :param pytorch: (bool)
@@ -54,6 +54,19 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/"):
 
     kuka_env.FORCE_RENDER = load_args.render
     kuka_env.ACTION_REPEAT = env_globals['ACTION_REPEAT']
+
+
+    if train_args["srl_model"] != "":
+        train_args["policy"] = "mlp"
+        path = srl_models.get(train_args["srl_model"])
+
+        if train_args["srl_model"] == "ground_truth":
+            kuka_env.USE_GROUND_TRUTH = True
+        elif path is not None:
+            kuka_env.USE_SRL = True
+            kuka_env.SRL_MODEL_PATH = srl_models['log_folder'] + path
+        else:
+            raise ValueError("Unsupported value for srl-model: {}".format(train_args["srl_model"]))
 
     # Log dir for testing the agent
     log_dir += "{}/{}/".format(algo, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))

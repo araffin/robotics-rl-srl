@@ -177,9 +177,9 @@ class KukaButtonGymEnv(gym.Env):
 
         self._observation = self.getExtendedObservation()
 
-        button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
+        self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
         if self.saver is not None:
-            self.saver.reset(self._observation, button_pos, self.getArmPos())
+            self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
             # if len(self.saver.srl_model_path) > 0:

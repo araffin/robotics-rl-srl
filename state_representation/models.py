@@ -86,9 +86,10 @@ class SRLBaseClass(object):
 
 
 class SRLGroundTruth(SRLBaseClass):
-    def __init__(self, env_object, state_dim=3):
+    def __init__(self, env_object, state_dim=3, relative_pos=True):
         super(SRLGroundTruth, self).__init__(state_dim)
         self.env_object = env_object
+        self.relative_pos = relative_pos
 
     def load(self, path=None):
         pass
@@ -98,6 +99,8 @@ class SRLGroundTruth(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
+        if self.relative_pos:
+            return self.env_object.getArmPos() - self.env_object.button_pos
         return self.env_object.getArmPos()
 
 
