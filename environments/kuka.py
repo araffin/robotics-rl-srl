@@ -52,7 +52,6 @@ class Kuka:
             p.setJointMotorControl2(self.kuka_uid, jointIndex, p.POSITION_CONTROL,
                                     targetPosition=self.joint_positions[jointIndex], force=self.max_force)
 
-
         self.end_effector_pos = [0.537, 0.0, 0.5]
         self.end_effector_angle = 0
 
@@ -99,7 +98,7 @@ class Kuka:
             # Constrain effector position
             self.end_effector_pos[0] += dx
             self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], 0.50, 0.65)
-            self.end_effector_pos[1] +=  dy
+            self.end_effector_pos[1] += dy
             self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], -0.17, 0.22)
             self.end_effector_pos[2] += dz
             self.end_effector_angle += da
@@ -110,15 +109,15 @@ class Kuka:
             if self.use_null_space:
                 if self.use_orientation:
                     joint_poses = p.calculateInverseKinematics(self.kuka_uid, self.kuka_end_effector_index, pos, orn,
-                                                              self.ll, self.ul, self.jr, self.rp)
+                                                               self.ll, self.ul, self.jr, self.rp)
                 else:
                     joint_poses = p.calculateInverseKinematics(self.kuka_uid, self.kuka_end_effector_index, pos,
-                                                              lowerLimits=self.ll, upperLimits=self.ul,
-                                                              jointRanges=self.jr, restPoses=self.rp)
+                                                               lowerLimits=self.ll, upperLimits=self.ul,
+                                                               jointRanges=self.jr, restPoses=self.rp)
             else:
                 if self.use_orientation:
                     joint_poses = p.calculateInverseKinematics(self.kuka_uid, self.kuka_end_effector_index, pos, orn,
-                                                              jointDamping=self.jd)
+                                                               jointDamping=self.jd)
                 else:
                     joint_poses = p.calculateInverseKinematics(self.kuka_uid, self.kuka_end_effector_index, pos)
 
@@ -139,8 +138,10 @@ class Kuka:
             p.setJointMotorControl2(self.kuka_uid, 11, p.POSITION_CONTROL, targetPosition=finger_angle,
                                     force=self.fingerB_force)
 
-            p.setJointMotorControl2(self.kuka_uid, 10, p.POSITION_CONTROL, targetPosition=0, force=self.finger_tip_force)
-            p.setJointMotorControl2(self.kuka_uid, 13, p.POSITION_CONTROL, targetPosition=0, force=self.finger_tip_force)
+            p.setJointMotorControl2(self.kuka_uid, 10, p.POSITION_CONTROL, targetPosition=0,
+                                    force=self.finger_tip_force)
+            p.setJointMotorControl2(self.kuka_uid, 13, p.POSITION_CONTROL, targetPosition=0,
+                                    force=self.finger_tip_force)
 
         else:
             for action in range(len(motor_commands)):

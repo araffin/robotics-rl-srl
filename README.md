@@ -1,5 +1,13 @@
-# Gym wrappers for state representation learning with robotic arms (Baxter + Kuka)
+# Reinforcement Learning (RL) and State Representation Learning (SRL) with robotic arms (Baxter and Kuka)
 
+## Requirements:
+
+- Python 3 (python 2 not supported because of OpenAI baselines)
+- [OpenAI Baselines](https://github.com/openai/baselines) (latest version)
+- [OpenAI Gym](https://github.com/openai/gym/) (latest version)
+- Install the dependencies using `environment.yml` file (for conda users)
+
+[PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
 
 In the conda virtual environment (`source activate env_name`), install pybullet:
@@ -12,18 +20,51 @@ Clone the repository (made for Python 3.6), which contains subrepositories. Firs
 git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
 
-or afterwards, instead of git pull, so that subrepositories update, or when a submodule is not downloaded, do:
+or afterwards, instead of git pull, so that subrepositories update (or when a submodule is not downloaded), do:
 ```
 git submodule update --init
+
 ```
 
 ## Kuka Arm \w PyBullet
 
+Launch visdom server:
 ```
-python main.py --num-processes 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c
+python -m visdom.server
 ```
 
+Pytorch Agent:
+```
+python main.py --num-cpu 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
+```
+
+OpenAI Baselines Agent:
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/
+```
+
+
 ## Reinforcement Learning
+
+Note: All CNN policies normalize input dividing by 255.
+
+### OpenAI Baselines
+
+Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent and random search:
+
+- DQN and variants (Double, Dueling, prioritized experience replay)
+- ACER (Sample Efficient Actor-Critic with Experience Replay)
+- A2C
+- PPO2
+
+To train an agent:
+```
+python -m rl_baselines.train --algo acer --log-dir logs/
+```
+
+### Pytorch Agents
+
+This concerns the `main.py` script.
 
 We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.com/baselines-acktr-a2c/) from [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr) (see `pytorch_agents` folder):
 

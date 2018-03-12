@@ -1,108 +1,135 @@
 name: py35
 channels:
-- pytorch
-- defaults
+  - menpo
+  - anaconda
+  - pytorch
+  - defaults
 dependencies:
-- bzip2=1.0.6=h6d464ef_2
-- ca-certificates=2017.08.26=h1d4fec5_0
-- cairo=1.14.12=h77bcde2_0
-- certifi=2018.1.18=py35_0
-- cffi=1.11.4=py35h9745a5d_0
-- cudatoolkit=8.0=3
-- ffmpeg=3.4=h7264315_0
-- fontconfig=2.12.4=h88586e7_1
-- freetype=2.8=hab7d2ae_1
-- glib=2.53.6=h5d9569c_2
-- graphite2=1.3.10=hf63cedd_1
-- harfbuzz=1.7.4=hc5b324e_0
-- hdf5=1.10.1=h9caa474_1
-- icu=58.2=h9c2bf20_1
-- intel-openmp=2018.0.0=hc7b2577_8
-- jasper=1.900.1=hd497a04_4
-- jpeg=9b=h024ee3a_2
-- libedit=3.1=heed3624_0
-- libffi=3.2.1=hd88cf55_4
-- libgcc-ng=7.2.0=h7cc24e2_2
-- libgfortran-ng=7.2.0=h9f7466a_2
-- libopus=1.2.1=hb9ed12e_0
-- libpng=1.6.34=hb9fc6fc_0
-- libprotobuf=3.4.1=h5b8497f_0
-- libstdcxx-ng=7.2.0=h7a57d05_2
-- libtiff=4.0.9=h28f6b97_0
-- libvpx=1.6.1=h888fd40_0
-- libxcb=1.12=hcd93eb1_4
-- libxml2=2.9.7=h26e45fe_0
-- mkl=2018.0.1=h19d6760_4
-- ncurses=6.0=h9df7e31_2
-- numpy=1.14.0=py35h3dfced4_1
-- olefile=0.44=py35h2c86149_0
-- opencv=3.3.1=py35h6cbbc71_1
-- openssl=1.0.2n=hb7f436b_0
-- pcre=8.41=hc27e229_1
-- pillow=5.0.0=py35h3deb7b8_0
-- pip=9.0.1=py35h7e7da9d_4
-- pixman=0.34.0=hceecf20_3
-- pycparser=2.18=py35h61b3040_1
-- python=3.5.4=h417fded_24
-- readline=7.0=ha6073c6_4
-- setuptools=38.4.0=py35_0
-- six=1.11.0=py35h423b573_1
-- sqlite=3.21.0=h1bed415_2
-- tk=8.6.7=hc745277_3
-- wheel=0.30.0=py35hd3883cf_1
-- xz=5.2.3=h55aa19d_2
-- zlib=1.2.11=ha838bed_2
-- pytorch=0.3.0=py35_cuda8.0.61_cudnn7.0.3hb362f6e_4
-- torchvision=0.2.0=py35heaa392f_1
-- pip:
-  - absl-py==0.1.9
-  - atari-py==0.1.1
-  - azure==1.0.3
-  - azure-common==1.1.8
-  - azure-mgmt==0.20.2
-  - azure-mgmt-common==0.20.0
-  - azure-mgmt-compute==0.20.1
-  - azure-mgmt-network==0.20.1
-  - azure-mgmt-nspkg==2.0.0
-  - azure-mgmt-resource==0.20.1
-  - azure-mgmt-storage==0.20.0
-  - azure-nspkg==2.0.0
-  - azure-servicebus==0.20.1
-  - azure-servicemanagement-legacy==0.20.2
-  - azure-storage==0.20.3
-  - baselines==0.1.4
-  - bleach==1.5.0
-  - chardet==3.0.4
-  - cycler==0.10.0
-  - dill==0.2.7.1
-  - future==0.16.0
-  - futures==3.1.1
-  - gym==0.9.5
-  - html5lib==0.9999999
-  - idna==2.6
-  - joblib==0.11
-  - markdown==2.6.11
-  - matplotlib==2.1.2
-  - mpi4py==3.0.0
-  - progressbar2==3.34.3
-  - protobuf==3.5.1
-  - pybullet==1.8.6
-  - pyglet==1.3.0
-  - pyopengl==3.1.0
-  - pyparsing==2.2.0
-  - python-dateutil==2.6.1
-  - python-utils==2.2.0
-  - pytz==2017.3
-  - pyzmq==16.0.4
-  - requests==2.18.4
-  - scipy==1.0.0
-  - tensorflow-gpu==1.5.0
-  - tensorflow-tensorboard==1.5.0
-  - torch==0.3.0.post4
-  - torchfile==0.1.0
-  - tornado==4.5.3
-  - tqdm==4.19.5
-  - urllib3==1.22
-  - visdom==0.1.7
-  - werkzeug==0.14.1
-  - zmq==0.0.0
+  - bleach=1.5.0=py35_0
+  - cudnn=7.0.5=cuda8.0_0
+  - html5lib=0.9999999=py35_0
+  - markdown=2.6.9=py35_0
+  - protobuf=3.4.1=py35he6b9134_0
+  - tensorflow-gpu=1.4.1=0
+  - tensorflow-gpu-base=1.4.1=py35h01caf0a_0
+  - tensorflow-tensorboard=0.4.0=py35hf484d3e_0
+  - werkzeug=0.14.1=py35_0
+  - bzip2=1.0.6=h6d464ef_2
+  - ca-certificates=2017.08.26=h1d4fec5_0
+  - cairo=1.14.12=h77bcde2_0
+  - certifi=2018.1.18=py35_0
+  - cffi=1.11.4=py35h9745a5d_0
+  - cudatoolkit=8.0=3
+  - decorator=4.2.1=py35_0
+  - ffmpeg=3.4=h7264315_0
+  - fontconfig=2.12.4=h88586e7_1
+  - freetype=2.8=hab7d2ae_1
+  - glib=2.53.6=h5d9569c_2
+  - graphite2=1.3.10=hf63cedd_1
+  - harfbuzz=1.7.4=hc5b324e_0
+  - hdf5=1.10.1=h9caa474_1
+  - icu=58.2=h9c2bf20_1
+  - intel-openmp=2018.0.0=hc7b2577_8
+  - ipython=6.2.1=py35hd850d2a_1
+  - ipython_genutils=0.2.0=py35hc9e07d0_0
+  - jasper=1.900.1=hd497a04_4
+  - jedi=0.11.1=py35_0
+  - jpeg=9b=h024ee3a_2
+  - libedit=3.1=heed3624_0
+  - libffi=3.2.1=hd88cf55_4
+  - libgcc-ng=7.2.0=h7cc24e2_2
+  - libgfortran-ng=7.2.0=h9f7466a_2
+  - libopus=1.2.1=hb9ed12e_0
+  - libpng=1.6.34=hb9fc6fc_0
+  - libprotobuf=3.4.1=h5b8497f_0
+  - libstdcxx-ng=7.2.0=h7a57d05_2
+  - libtiff=4.0.9=h28f6b97_0
+  - libvpx=1.6.1=h888fd40_0
+  - libxcb=1.12=hcd93eb1_4
+  - libxml2=2.9.7=h26e45fe_0
+  - mkl=2018.0.1=h19d6760_4
+  - ncurses=6.0=h9df7e31_2
+  - numpy=1.14.0=py35h3dfced4_1
+  - olefile=0.44=py35h2c86149_0
+  - openssl=1.0.2n=hb7f436b_0
+  - parso=0.1.1=py35h1b200a3_0
+  - pcre=8.41=hc27e229_1
+  - pexpect=4.3.1=py35_0
+  - pickleshare=0.7.4=py35hd57304d_0
+  - pillow=5.0.0=py35h3deb7b8_0
+  - pip=9.0.1=py35h7e7da9d_4
+  - pixman=0.34.0=hceecf20_3
+  - prompt_toolkit=1.0.15=py35hc09de7a_0
+  - ptyprocess=0.5.2=py35h38ce0a3_0
+  - pycparser=2.18=py35h61b3040_1
+  - pygments=2.2.0=py35h0f41973_0
+  - python=3.5.4=h417fded_24
+  - readline=7.0=ha6073c6_4
+  - setuptools=38.4.0=py35_0
+  - simplegeneric=0.8.1=py35h2ec4104_0
+  - six=1.11.0=py35h423b573_1
+  - sqlite=3.21.0=h1bed415_2
+  - tk=8.6.7=hc745277_3
+  - traitlets=4.3.2=py35ha522a97_0
+  - wcwidth=0.1.7=py35hcd08066_0
+  - wheel=0.30.0=py35hd3883cf_1
+  - xz=5.2.3=h55aa19d_2
+  - zlib=1.2.11=ha838bed_2
+  - opencv3=3.1.0=py35_0
+  - cuda90=1.0=h6433d27_0
+  - pytorch=0.3.1=py35_cuda9.0.176_cudnn7.0.5_2
+  - torchvision=0.2.0=py35heaa392f_1
+  - pip:
+    - absl-py==0.1.9
+    - atari-py==0.1.1
+    - azure==1.0.3
+    - azure-common==1.1.8
+    - azure-mgmt==0.20.2
+    - azure-mgmt-common==0.20.0
+    - azure-mgmt-compute==0.20.1
+    - azure-mgmt-network==0.20.1
+    - azure-mgmt-nspkg==2.0.0
+    - azure-mgmt-resource==0.20.1
+    - azure-mgmt-storage==0.20.0
+    - azure-nspkg==2.0.0
+    - azure-servicebus==0.20.1
+    - azure-servicemanagement-legacy==0.20.2
+    - azure-storage==0.20.3
+    - baselines==0.1.5
+    - better-exceptions==0.2.1
+    - chardet==3.0.4
+    - click==6.7
+    - cloudpickle==0.5.2
+    - cycler==0.10.0
+    - dill==0.2.7.1
+    - enum34==1.1.6
+    - future==0.16.0
+    - futures==3.1.1
+    - gym==0.10.3
+    - idna==2.6
+    - joblib==0.11
+    - matplotlib==2.1.2
+    - mpi4py==3.0.0
+    - pandas==0.22.0
+    - progressbar2==3.34.3
+    - pybullet==1.8.6
+    - pyglet==1.3.0
+    - pyopengl==3.1.0
+    - pyparsing==2.2.0
+    - python-dateutil==2.6.1
+    - python-utils==2.2.0
+    - pytz==2017.3
+    - pyyaml==3.12
+    - pyzmq==17.0.0
+    - requests==2.18.4
+    - scikit-learn==0.19.1
+    - scipy==1.0.0
+    - tensorflow==1.4.1
+    - termcolor==1.1.0
+    - torch==0.3.1.post2
+    - torchfile==0.1.0
+    - tornado==4.5.3
+    - tqdm==4.19.5
+    - urllib3==1.22
+    - visdom==0.1.7
+    - zmq==0.0.0
