@@ -4,6 +4,7 @@ from baselines.a2c.utils import fc
 from baselines.common.distributions import make_pdtype
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
@@ -153,7 +154,10 @@ def main(args, callback):
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
-    envs = SubprocVecEnv(envs)
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
     # if args.srl_model == "ground_truth":
     #     # TODO: save running average
     #     envs = VecNormalize(envs)

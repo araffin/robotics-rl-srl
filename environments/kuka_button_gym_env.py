@@ -26,8 +26,9 @@ DELTA_V = 0.03  # velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0
+NOISE_STD = 0.01
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
+N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -167,13 +168,13 @@ class KukaButtonGymEnv(gym.Env):
             p.stepSimulation()
 
         # Randomize init arm pos: take 5 random actions
-        # for _ in range(5):
-        #     action = [0, 0, 0, 0, 0]
-        #     sign = 1 if self.np_random.rand() > 0.5 else -1
-        #     action_idx = self.np_random.randint(3)  # dx, dy or dz
-        #     action[action_idx] += sign * DELTA_V
-        #     self._kuka.applyAction(action)
-        #     p.stepSimulation()
+        for _ in range(N_RANDOM_ACTIONS_AT_INIT):
+            action = [0, 0, 0, 0, 0]
+            sign = 1 if self.np_random.rand() > 0.5 else -1
+            action_idx = self.np_random.randint(3)  # dx, dy or dz
+            action[action_idx] += sign * DELTA_V
+            self._kuka.applyAction(action)
+            p.stepSimulation()
 
         self._observation = self.getExtendedObservation()
 

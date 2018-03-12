@@ -54,10 +54,17 @@ os.makedirs(args.log_dir, exist_ok=True)
 
 
 def main():
+
+    if kuka_env.USE_SRL and not args.no_cuda:
+        assert args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
+
     envs = [make_env(args.env, args.seed, i, args.log_dir)
             for i in range(args.num_cpu)]
 
-    envs = SubprocVecEnv(envs)
+    if args.num_cpu == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
     print(obs_shape)
@@ -138,7 +145,7 @@ def main():
             episode_rewards += reward
 
             # If done then clean the history of observations.
-            masks = th.from_numpy(np.array(dones).astype(np.float32).reshape(-1, 1))
+            masks = torch.from_numpy(np.array(done).astype(np.float32).reshape(-1, 1))
             final_rewards *= masks
             final_rewards += (1 - masks) * episode_rewards
             episode_rewards *= masks

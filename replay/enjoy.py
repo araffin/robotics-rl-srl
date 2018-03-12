@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 
 import yaml
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
@@ -73,8 +74,15 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     os.makedirs(log_dir, exist_ok=True)
 
     if pytorch:
-        envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=True)
-                              for i in range(load_args.num_cpu)])
+        if kuka_env.USE_SRL and not load_args.no_cuda:
+            assert load_args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
+
+        envs = [make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=True)
+                              for i in range(load_args.num_cpu)]
+        if args.num_cpu == 1:
+            envs = DummyVecEnv(envs)
+        else:
+            envs = SubprocVecEnv(envs)
     else:
         if algo != "deepq":
             envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=False)

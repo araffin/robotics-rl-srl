@@ -2,8 +2,9 @@ from baselines.ppo2.ppo2 import *
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-import tensorflow as tf
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines import logger
+import tensorflow as tf
 
 from rl_baselines.policies import MlpPolicyDicrete
 import environments.kuka_button_gym_env as kuka_env
@@ -135,7 +136,11 @@ def main(args, callback):
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
-    envs = SubprocVecEnv(envs)
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
+        
     envs = VecFrameStack(envs, args.num_stack)
 
     logger.configure()

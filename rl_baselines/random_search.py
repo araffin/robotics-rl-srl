@@ -6,6 +6,7 @@ import time
 import numpy as np
 import torch as th
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from torch.autograd import Variable
 
 import environments.kuka_button_gym_env as kuka_env
@@ -72,10 +73,17 @@ def main(args, callback=None):
     args.cuda = not args.no_cuda and th.cuda.is_available()
     args.deterministic = not args.no_deterministic
 
+    if kuka_env.USE_SRL and args.cuda:
+        assert args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
+
     # Create Environments and wraps them for monitoring/multiprocessing
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=True)
             for i in range(args.num_cpu)]
-    envs = SubprocVecEnv(envs)
+
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
     if len(obs_shape) > 0:

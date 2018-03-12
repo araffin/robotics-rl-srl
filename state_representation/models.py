@@ -155,7 +155,7 @@ class SRLNeuralNetwork(SRLBaseClass):
 
         if self.cuda:
             state = state.cpu()
-        return state.data.numpy()
+        return state.data.numpy()[0]
 
 
 class SRLPCA(SRLBaseClass):
