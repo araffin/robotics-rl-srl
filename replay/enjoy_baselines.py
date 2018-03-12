@@ -1,71 +1,21 @@
 """
 Enjoy script for OpenAI Baselines
 """
-import argparse
-import os
-import json
-from datetime import datetime
-
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy, MlpPolicy
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common import tf_util
 from baselines.common import set_global_seeds
 from baselines import deepq
 
 
-import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
-from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
-from srl_priors.utils import printGreen, printYellow
+from srl_priors.utils import printYellow
+from replay.enjoy import parseArguments
 
-parser = argparse.ArgumentParser(description="Load trained RL model")
-parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
-parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-parser.add_argument('--log-dir', help='folder with the saved agent model', required=True)
-parser.add_argument('--num-timesteps', type=int, default=int(10e3))
-parser.add_argument('--render', action='store_true', default=False,
-                    help='Render the environment (show the GUI)')
-load_args = parser.parse_args()
-
-for algo in ['acer', 'ppo2', 'a2c', 'deepq', 'not_supported']:
-    if algo in load_args.log_dir:
-        break
-
-if algo == "not_supported":
-    raise ValueError("RL algo not supported for replay")
-printGreen("\n" + algo + "\n")
-
-load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo)
-
-
-env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
-train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
-
-kuka_env.FORCE_RENDER = load_args.render
-kuka_env.ACTION_REPEAT = env_globals['ACTION_REPEAT']
-
-# Log dir for testing the agent
-log_dir = "/tmp/gym/"
-log_dir += "{}/{}/".format(algo, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))
-os.makedirs(log_dir, exist_ok=True)
-
-if algo != "deepq":
-    envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=False)
-                          for i in range(load_args.num_cpu)])
-    envs = VecFrameStack(envs, train_args['num_stack'])
-else:
-    if load_args.num_cpu > 1:
-        printYellow("Deepq does not support multiprocessing, setting num-cpu=1")
-    envs = CustomDummyVecEnv([make_env(train_args['env'], load_args.seed, 0, log_dir, pytorch=False)])
-    # Normalize only raw pixels
-    normalize = train_args['srl_model'] == ""
-    envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
+supported_models = ['acer', 'ppo2', 'a2c', 'deepq']
+load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=False)
 
 nstack = train_args['num_stack']
 ob_space = envs.observation_space

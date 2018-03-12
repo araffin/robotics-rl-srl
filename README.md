@@ -22,7 +22,7 @@ python -m visdom.server
 
 Pytorch Agent:
 ```
-python main.py --num-cpu 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
+python train_pytorch.py --num-cpu 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
 ```
 
 OpenAI Baselines Agent:
@@ -51,7 +51,7 @@ python -m rl_baselines.train --algo acer --log-dir logs/
 
 ### Pytorch Agents
 
-This concerns the `main.py` script.
+This concerns the `train_pytorch.py` script.
 
 We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.com/baselines-acktr-a2c/) from [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr) (see `pytorch_agents` folder):
 

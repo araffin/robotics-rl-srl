@@ -138,7 +138,7 @@ def main():
             episode_rewards += reward
 
             # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            masks = th.from_numpy(np.array(dones).astype(np.float32).reshape(-1, 1))
             final_rewards *= masks
             final_rewards += (1 - masks) * episode_rewards
             episode_rewards *= masks
