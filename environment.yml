@@ -70,7 +70,7 @@ dependencies:
   - azure-servicebus==0.20.1
   - azure-servicemanagement-legacy==0.20.2
   - azure-storage==0.20.3
-  - baselines (/home/antonin/Documents/baselines)==0.1.4
+  - baselines==0.1.4
   - bleach==1.5.0
   - chardet==3.0.4
   - cycler==0.10.0

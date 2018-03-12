@@ -1,11 +1,18 @@
 # Gym wrappers for state representation learning with robotic arms (Baxter + Kuka)
 
 
+
+In the conda virtual environment (`source activate env_name`), install pybullet:
+```
+pip/pip3 install pybullet
+```
+
+Clone the repository (made for Python 3.6), which contains subrepositories. First time:
 ```
 git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
 
-or
+or afterwards, instead of git pull, so that subrepositories update, or when a submodule is not downloaded, do:
 ```
 git submodule update --init
 ```
@@ -22,7 +29,7 @@ We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.
 
 - A2C - A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
 - ACKTR (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region ("Scalable trust-region method for deep reinforcement learning using Kronecker-factored approximation") is a more sample-efficient reinforcement learning algorithm than TRPO and A2C,
-- PPO- Proximal Policy Optimization
+- PPO - Proximal Policy Optimization
 
 
 ## Baxter Robot \w Gazebo and ROS
@@ -39,12 +46,14 @@ Note, the first 3 commands need to be run in Python 2, while the teleop_client r
 Anaconda py35 env.
 
 
+## Troubleshooting
+
+
+When your server dies or the program does not end properly, you may need to run:
 ```
 sudo netstat -lpn | grep :7777
 ```
-
-## Troubleshooting
-If a submodule is not downloaded:
+before
 ```
-git submodule update --init
+kill -9 processNr
 ```
