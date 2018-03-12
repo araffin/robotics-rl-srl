@@ -1,22 +1,18 @@
 # Gym wrappers for state representation learning with robotic arms (Baxter + Kuka)
 
 
-To create the new environment for Python 3.6, in your Terminal run:
-```
-conda create -n py36 python=3.6 anaconda
-```
 
 In the conda virtual environment (`source activate env_name`), install pybullet:
 ```
 pip/pip3 install pybullet
 ```
 
-Clone the repository, which contains subrepositories. First time:
+Clone the repository (made for Python 3.6), which contains subrepositories. First time:
 ```
-git clone git@github.com:araffin/robotics-srl-rl.git --recursive
+git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
 
-or afterwards, instead of git pull, so that subrepositories update, do:
+or afterwards, instead of git pull, so that subrepositories update, or when a submodule is not downloaded, do:
 ```
 git submodule update --init
 ```
@@ -46,6 +42,12 @@ rosrun arm_scenario_simulator spawn_objects_example
 python -m gazebo.gazebo_server
 python -m gazebo.teleop_client
 ```
+Note, the first 3 commands need to be run in Python 2, while the teleop_client runs on
+Anaconda py35 env.
+
+
+## Troubleshooting
+
 
 When your server dies or the program does not end properly, you may need to run:
 ```

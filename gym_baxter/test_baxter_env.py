@@ -13,8 +13,8 @@ Note that there are 2 equivalent ways to text Baxter environment below:
 """
 
 env = BaxterEnv(renders=True, is_discrete=True)
-timesteps =  200
-episodes = 30
+timesteps = 2# 200
+episodes = 1# 30
 env.seed(0)
 i = 0
 
@@ -26,10 +26,10 @@ for _ in range(episodes):
             action = env.action_space.sample()
             observation, reward, done, info = env.step(action)
             if done:
-                print("Episode finished after {} timesteps".format(t+1))
+                print("Episode finished after {} timesteps".format(t + 1))
                 break
             i += 1
         except KeyboardInterrupt:
-            env.closeServerConnection() # TODO Solve: when client fails, and therefore, for it to run again,
+            env.closeServerConnection()
 env.closeServerConnection()
 print("Avg. frame rate: {:.2f} FPS".format(i / (time.time() - start_time)))

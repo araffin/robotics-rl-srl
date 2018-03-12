@@ -113,7 +113,7 @@ pip3 install pybullet
 5) Install OpenAI Baselines algorithms from https://github.com/openai/baselines
 
 # TO-DO
-Add to OpenAI GYM as at the end of:
+when working: add to OpenAI GYM as at the end of:
 https://github.com/openai/gym/tree/master/gym/envs
 
 

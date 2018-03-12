@@ -1,20 +1,13 @@
-import time
 import logging
 import sys
-import os, signal #, psutil
 import zmq
-#TODO how to import? from zmq import  zmq_ctx_new, zmq_ctx_destroy
 import gym
-from gym import error, spaces, utils
+from gym import spaces
 from gym.utils import seeding
 import numpy as np
 import torch as th
-from torch.autograd import Variable
 import cv2
-import matplotlib.pyplot as plt
-from signal import SIGTERM, SIGKILL # sigkill captures ctrl c?
 
-import json
 """
 To run this program, that calls to gazebo server:
 1) Start ROS + Gazebo modules
@@ -56,7 +49,6 @@ from gazebo.utils import recvMatrix
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 REF_POINT = [0.6, 0.30, 0.20]
-# ['left_e0', 'left_e1', 'left_s0', 'left_s1', 'left_w0', 'left_w1', 'left_w2']
 IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
 DELTA_POS = 0.05
 
@@ -70,8 +62,6 @@ action_dict = {
     FORWARD: [0, 0, DELTA_POS]
 }
 N_DISCRETE_ACTIONS = len(action_dict)
-unknown_actions = 0 # logging anomalies
-reward_counts = {}
 
 # ROS Topics
 IMAGE_TOPIC = "/cameras/head_camera_2/image"
@@ -92,21 +82,22 @@ class BaxterEnv(gym.Env):
     The goal of the robotic arm is to push the button on the table
     """
 
-    metadata = {'render.modes': ['human', 'rgb_array'],  # human is for human teleoperation (see teleop_cliente example)
+    metadata = {'render.modes': ['human', 'rgb_array'],  # human is for human teleoperation (see teleop_client example)
         'video.frames_per_second': 50}
 
     def __init__(self,
                  action_repeat=1,
                  renders=True,
                  is_discrete=True,
-                 name="gym_baxter",  #TODO this name should coincide with the module folder name
+                 name="gym_baxter",  # TODO this name should coincide with the module folder name -> Needed?
                  state_dim=3):
+        self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
         self.range = 1000  # +/- value the randomly select number can be between
         self._is_discrete = is_discrete
         self.reward_range = (-1, 1)
         self.max_actions = 5  # 50
-        self.observation = []  # shall it be an integer or a list of action's values per dimension?
+        self.observation = []
 
         self._timestep = 1. / 240.
         self._action_repeat = action_repeat
@@ -125,7 +116,6 @@ class BaxterEnv(gym.Env):
             self._action_bound = 1
             action_bounds = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
-            #self.bounds = 2000  # Action space bounds #self.action_space = spaces.Box(low=np.array([-self.bounds]), high=np.array([self.bounds]), dtype=np.float32)
         if self.use_srl:
             print('Using learned states')
             self.dtype = np.float32
@@ -141,21 +131,26 @@ class BaxterEnv(gym.Env):
         #TODO: Get position of the button -> randomly relocate in each episode
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
-        self.context = zmq.Context()   # TODO: needed in order to apply later destroy?  zmq_ctx_new()
+        self.context = zmq.Context()   # TODO: would  zmq_ctx_new() be needed in order to apply later destroy?
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
 
-        print("Waiting for server connection...") # note: if takes too long, run first client, then server
+        print("Waiting for server connection...")
         msg = self.socket.recv_json()
-        print("Connected to server: {}".format(msg))
+        print("Connected to server (received mssage: {})".format(msg))
 
         # Initialize the state
         self.reset()
         self.action = [0, 0, 0]
         self.reward = -1
         self.arm_pos = [0, 0, 0]
+        self.img = None
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        # print(self.observation_space.shape)# Create numpy random generator,  This seed can be changed later
+        # logging
+        self.unknown_actions = 0
+        self.reward_counts = {}
+        #  Create numpy random generator,  This seed can be changed later
+        self.np_random = None
         self.seed(0)
 
     def seed(self, seed=None):
@@ -171,14 +166,14 @@ class BaxterEnv(gym.Env):
         else:
             print("Unknown action: {}".format(action))
             action = [0, 0, 0]
-            unknown_actions +=1
+            self.unknown_actions +=1
 
         # Send the action to the server
         self.socket.send_json({"command": "action", "action": action})
 
         # Receive state data (position, etc)
-        env_state = self.getEnvState()
-        # print("env_state: {}\n after executing sampled action: {}".format(env_state, action))
+        self.reward = self.getEnvState()['reward']
+        self.reward_counts[self.reward] = self.reward_counts.get(self.reward, 0) +1
         #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
@@ -189,16 +184,19 @@ class BaxterEnv(gym.Env):
         Agent is rewarded for pushing the button and reward is discounted if the
         arm goes outside the bounding sphere surrounding the button.
         """
-# gripper_pos
+        state_data = self.socket.recv_json()
+        self.reward = state_data["reward"]
+        self.button_pos = np.array(state_data["button_pos"])
+        self.arm_pos =  np.array(state_data["position"]) # gripper_pos
         # Compute distance from Baxter left arm to the button_pos
         distance = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-        print('Distance and MAX_DISTANCE {}, {} (TODO: tune?)'.format(distance, MAX_DISTANCE))
+        #print('Distance and MAX_DISTANCE {}, {} (TODO: tune max 0.8?)'.format(distance, MAX_DISTANCE))
         self.n_contacts += self.reward
         if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION -1:
             self.episode_terminated = True
         if distance > MAX_DISTANCE:
             self.reward = -1
-        reward_counts[self.reward] = reward_counts.get(self.reward, 0) +1
+        # TODO: support reward shaping
         return state_data
 
     def reset(self):
@@ -208,17 +206,17 @@ class BaxterEnv(gym.Env):
         """
         self.episode_terminated = False
         self.n_contacts = 0
-        # TODO? Randomize init arm pos: take 5 random actions?
         # Step count since episode start
         self._env_step_counter = 0
         self.socket.send_json({
             "command":"reset"
         })
-        state = self.getEnvState()
-        return self.getObservation() # TODO: needs conversion? np.array(self.observation)# return super(BaxterEnv, self)._reset()
+        reward = self.getEnvState()
+        return self.getObservation()
 
     def getObservation(self):
-        self.observation = self.render("rgb_array") #        print(type(self.observation))
+        self.observation = self.render("rgb_array")
+        #print('observationa; {}'.format(self.observation))
         return self.observation
 
     def render(self, mode='rgb_array', close=False):
@@ -242,7 +240,7 @@ class BaxterEnv(gym.Env):
         Returns if the episode_saver terminated, not of the whole environment run
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
-            print('Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, unknown_actions, reward_counts))
+            print('Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, self.unknown_actions, self.reward_counts))
             return True
         return False
 
@@ -250,7 +248,7 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
-        print('\nStep counter reached MAX_STEPS: {}. # Unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, unknown_actions, reward_counts))
+        print('\nStep counter reached MAX_STEPS: {}. # Unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, self.unknown_actions, self.reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()
