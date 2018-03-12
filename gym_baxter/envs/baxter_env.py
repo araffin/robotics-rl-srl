@@ -8,6 +8,9 @@ import numpy as np
 import torch as th
 import cv2
 
+from state_representation.episode_saver import EpisodeSaver
+from state_representation.models import loadSRLModel
+
 """
 To run this program, that calls to gazebo server:
 1) Start ROS + Gazebo modules
@@ -137,7 +140,7 @@ class BaxterEnv(gym.Env):
 
         print("Waiting for server connection...")
         msg = self.socket.recv_json()
-        print("Connected to server (received mssage: {})".format(msg))
+        print("Connected to server (received message: {})".format(msg))
 
         # Initialize the state
         self.reset()
@@ -211,6 +214,7 @@ class BaxterEnv(gym.Env):
         self.socket.send_json({
             "command":"reset"
         })
+        # important step to get both data and metadata in the image that allow reading an observation
         reward = self.getEnvState()
         return self.getObservation()
 
