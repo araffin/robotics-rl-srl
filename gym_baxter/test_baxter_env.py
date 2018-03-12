@@ -1,7 +1,6 @@
 from __future__ import division, absolute_import, print_function
 import time
 from gym_baxter.envs.baxter_env import BaxterEnv
-#from environments.kuka_button_gym_env import KukaButtonGymEnv
 
 """
 This is a Python module and therefore, to run it as such:
@@ -14,46 +13,23 @@ Note that there are 2 equivalent ways to text Baxter environment below:
 """
 
 env = BaxterEnv(renders=True, is_discrete=True)
-timesteps =  5 #200
-episodes = 1 #30
+timesteps =  200
+episodes = 30
 env.seed(0)
 i = 0
-# start logging statistics and recording videos
-# how to do in new release? env.monitor.start("/tmp/gym-results", algorithm_id="random")
 
-print('starting episodes...')
+print('Starting episodes...')
 start_time = time.time()
-try:
-    for _ in range(episodes):
-        #observation = env.reset() # not needed, will hang the program, done in initialization of the env
-        for t in range(timesteps):
-            #env.render() should not be called before sampling an action, or will never return
+for _ in range(episodes):
+    for t in range(timesteps):
+        try:
             action = env.action_space.sample()
             observation, reward, done, info = env.step(action)
             if done:
                 print("Episode finished after {} timesteps".format(t+1))
                 break
             i += 1
-except KeyboardInterrupt as e:
-    env.closeServerConnection()
-    pass  #     sys.exit(e) ?
+        except KeyboardInterrupt:
+            env.closeServerConnection() # TODO Solve: when client fails, and therefore, for it to run again,
 env.closeServerConnection()
-print("{:.2f} FPS".format(i / (time.time() - start_time)))
-
-# TODO: upload stats to the website
-#gym.upload("/tmp/gym-results", api_key="JMXoHnlRtm86Fif6FUw4Qop1DwDkYHy0") # TODO how to obtain this key?
-
-
-# Second test (will work only after env is registered in OpenAI Gym)
-# The following way requires your env to be registered, so will happen when robust enough: gym.error.UnregisteredEnv: No registered env with id: BaxterButtonGymEnv-v0
-
-#env = gym.make("BaxterButtonGymEnv-v0")
-#env.reset()
-#
-# for i in range(100):
-#     env.render("human")
-#     action = env.action_space.sample()
-#     obs, reward, done, misc = env.step(action)
-#     print(action, obs.shape, reward, done)
-#
-#     time.sleep(.1)
+print("Avg. frame rate: {:.2f} FPS".format(i / (time.time() - start_time)))

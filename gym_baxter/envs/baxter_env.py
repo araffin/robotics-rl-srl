@@ -1,8 +1,9 @@
 import time
 import logging
 import sys
-
+import os, signal #, psutil
 import zmq
+#TODO how to import? from zmq import  zmq_ctx_new, zmq_ctx_destroy
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
@@ -11,8 +12,9 @@ import torch as th
 from torch.autograd import Variable
 import cv2
 import matplotlib.pyplot as plt
+from signal import SIGTERM, SIGKILL # sigkill captures ctrl c?
 
-
+import json
 """
 To run this program, that calls to gazebo server:
 1) Start ROS + Gazebo modules
@@ -34,8 +36,6 @@ if sys.version_info > (3,):
     # representing objects in Py3-compatibility
     buffer = memoryview
 
-from state_representation.models import loadSRLModel
-from state_representation.episode_saver import EpisodeSaver
 
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
@@ -51,18 +51,13 @@ BUTTON_GLIDER_IDX = 1  # Button glider joint
 NOISE_STD = 1e-6  # To avoid NaN for SRL
 
 # Baxter-Gazebo bridge specific
-# TODO: FIX relative import in other subfolder? or move following import files
-#to upper level so this module can also use them?
-#from ..gazebo.constants import SERVER_PORT, HOSTNAME or move these to main level is the only choice?
-#from .utils import recvMatrix
+from gazebo.constants import SERVER_PORT, HOSTNAME
+from gazebo.utils import recvMatrix
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
-# Socket port
-SERVER_PORT = 7777
 REF_POINT = [0.6, 0.30, 0.20]
 # ['left_e0', 'left_e1', 'left_s0', 'left_s1', 'left_w0', 'left_w1', 'left_w2']
 IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
-HOSTNAME = 'localhost'
 DELTA_POS = 0.05
 
 UP, DOWN, LEFT, RIGHT, BACKWARD, FORWARD = 0,1,2,3,4,5
@@ -76,6 +71,7 @@ action_dict = {
 }
 N_DISCRETE_ACTIONS = len(action_dict)
 unknown_actions = 0 # logging anomalies
+reward_counts = {}
 
 # ROS Topics
 IMAGE_TOPIC = "/cameras/head_camera_2/image"
@@ -91,24 +87,6 @@ SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
 
-def getGlobals():
-    """
-    :return: (dict)
-    """
-    return globals()
-
-def recvMatrix(socket):
-    """
-    Receive a numpy array over zmq
-    :param socket: (zmq socket)
-    :return: (Numpy matrix)
-    # TODO move to common utils file accessible from both baxter and kuka envs
-    """
-    metadata = socket.recv_json()
-    msg = socket.recv(copy=True, track=False)
-    A = np.frombuffer(buffer(msg), dtype=metadata['dtype'])
-    return A.reshape(metadata['shape'])
-
 class BaxterEnv(gym.Env):
     """ Baxter robot arm Environment"
     The goal of the robotic arm is to push the button on the table
@@ -119,7 +97,7 @@ class BaxterEnv(gym.Env):
 
     def __init__(self,
                  action_repeat=1,
-                 renders=False,
+                 renders=True,
                  is_discrete=True,
                  name="gym_baxter",  #TODO this name should coincide with the module folder name
                  state_dim=3):
@@ -149,20 +127,13 @@ class BaxterEnv(gym.Env):
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
             #self.bounds = 2000  # Action space bounds #self.action_space = spaces.Box(low=np.array([-self.bounds]), high=np.array([self.bounds]), dtype=np.float32)
         if self.use_srl:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32)
+            print('Using learned states')
+            self.dtype = np.float32
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=self.dtype)
         else:
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+            self.dtype = np.uint8
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=self.dtype)
         self.cuda = th.cuda.is_available()
-
-        # TODO indicate in readme how to use
-        self.saver = None
-        if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
-        # SRL model
-        if self.use_srl:
-            env_object = self if USE_GROUND_TRUTH else None
-            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
-            self.state_dim = self.srl_model.state_dim
 
         # Initialize button position
         x_pos = 0.5 + 0.0 * np.random.uniform(-1, 1)
@@ -170,23 +141,20 @@ class BaxterEnv(gym.Env):
         #TODO: Get position of the button -> randomly relocate in each episode
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
-        self.context = zmq.Context()
+        self.context = zmq.Context()   # TODO: needed in order to apply later destroy?  zmq_ctx_new()
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
 
         print("Waiting for server connection...") # note: if takes too long, run first client, then server
         msg = self.socket.recv_json()
-        print("Connected to server")
+        print("Connected to server: {}".format(msg))
 
         # Initialize the state
         self.reset()
         self.action = [0, 0, 0]
         self.reward = -1
         self.arm_pos = [0, 0, 0]
-        if self.use_srl:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32)
-        else:  # raw images
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
         # print(self.observation_space.shape)# Create numpy random generator,  This seed can be changed later
         self.seed(0)
 
@@ -205,47 +173,32 @@ class BaxterEnv(gym.Env):
             action = [0, 0, 0]
             unknown_actions +=1
 
-        # TODO Load SRL model
-        # if self.use_srl:
-        #     env_object = self if USE_GROUND_TRUTH else None
-        #     self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
-        #     self.state_dim = self.srl_model.state_dim
-
         # Send the action to the server
         self.socket.send_json({"command": "action", "action": action})
 
         # Receive state data (position, etc)
         env_state = self.getEnvState()
-        print("env_state: {}\n after executing sampled action: {}".format(env_state, action))
-        # Receive a camera image from the server
+        # print("env_state: {}\n after executing sampled action: {}".format(env_state, action))
+        #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
         return self.observation, self.reward, done, {}  #np.array(self.observation)
-
-        if self.saver is not None:
-            self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
-        if self.use_srl:
-            return self.getState(self.observation), reward, done, {}
-        else:
-            return self.observation, reward, done, {}  #np.array(self.observation)
 
     def getEnvState(self):
         """
         Agent is rewarded for pushing the button and reward is discounted if the
         arm goes outside the bounding sphere surrounding the button.
         """
-        state_data = self.socket.recv_json()
-        self.reward = state_data["reward"]
-        self.button_pos = np.array(state_data["button_pos"])
-        self.arm_pos =  np.array(state_data["position"]) # gripper_pos
+# gripper_pos
         # Compute distance from Baxter left arm to the button_pos
         distance = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-        print('Distance and MAX_DISTANCE {}, {}'.format(distance, MAX_DISTANCE))
+        print('Distance and MAX_DISTANCE {}, {} (TODO: tune?)'.format(distance, MAX_DISTANCE))
         self.n_contacts += self.reward
         if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION -1:
             self.episode_terminated = True
         if distance > MAX_DISTANCE:
             self.reward = -1
+        reward_counts[self.reward] = reward_counts.get(self.reward, 0) +1
         return state_data
 
     def reset(self):
@@ -261,13 +214,7 @@ class BaxterEnv(gym.Env):
         self.socket.send_json({
             "command":"reset"
         })
-        if self.saver is not None:
-            self.saver.reset(self.observation, self.button_pos, self.arm_pos)
-        if self.use_srl: # TODO: WHY: AttributeError: 'BaxterEnv' object has no attribute 'use_srl'
-            return self.srl_model.getState(self.observation)
-        else:
-            self.getEnvState()
-        #print ('[The environment was reset]')
+        state = self.getEnvState()
         return self.getObservation() # TODO: needs conversion? np.array(self.observation)# return super(BaxterEnv, self)._reset()
 
     def getObservation(self):
@@ -286,7 +233,8 @@ class BaxterEnv(gym.Env):
             return np.array([])
         # Receive a camera image from the server
         self.img = recvMatrix(self.socket) # required by gazebo
-        #print ('[The environment was rendered]')
+        # if self._renders: # TODO
+        #     cv2.imshow("Image", self.img)
         return self.img
 
     def _hasEpisodeTerminated(self):
@@ -294,7 +242,7 @@ class BaxterEnv(gym.Env):
         Returns if the episode_saver terminated, not of the whole environment run
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
-            print('Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {}'.format(self._env_step_counter, unknown_actions))
+            print('Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, unknown_actions, reward_counts))
             return True
         return False
 
@@ -302,12 +250,10 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
+        print('\nStep counter reached MAX_STEPS: {}. # Unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, unknown_actions, reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()
         self.socket.close()
         # Terminate the context to close the socket
-        self.context.term() # TODO THESE NEEDED?
-        zmq_ctx_destroy() # destroys context so program exits gracefully
-        # if self.socket is not None: # socket.close should do this
-        #     os.kill(self.socket.pid, signal.SIGKILL)
+        self.context.term()
