@@ -169,11 +169,11 @@ class SRLPCA(SRLBaseClass):
         :param path: (str)
         """
         try:
-            with open(path, "wb") as f:
+            with open(path, "rb") as f:
                 self.model = pkl.load(f)
         except UnicodeDecodeError:
             # Load pickle files saved with python 2
-            with open(path, "wb") as f:
+            with open(path, "rb") as f:
                 self.model = pkl.load(f, encoding='latin1')
 
     def getState(self, observation):
@@ -181,6 +181,7 @@ class SRLPCA(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
+        observation = observation[None]  # Add a dimension
         n_features = np.prod(observation.shape[1:])
-        observation.reshape(-1, n_features)
-        return self.model.transform(observation)
+        observation = observation.reshape(-1, n_features)
+        return self.model.transform(observation)[0]
