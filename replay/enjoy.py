@@ -70,7 +70,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
             raise ValueError("Unsupported value for srl-model: {}".format(train_args["srl_model"]))
 
     # Log dir for testing the agent
-    log_dir += "{}/{}/".format(algo, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))
+    log_dir += "{}/{}/".format(algo, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     os.makedirs(log_dir, exist_ok=True)
 
     if pytorch:

@@ -80,7 +80,7 @@ def configureEnvAndLogFolder(args, kuka_env):
         args.log_dir += "raw_pixels/"
 
     # Add date + current time
-    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))
+    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
 
     os.makedirs(args.log_dir, exist_ok=True)
