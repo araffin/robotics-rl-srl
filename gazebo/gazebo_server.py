@@ -95,8 +95,8 @@ print("Connected to client")
 action = [0, 0, 0]
 joints = None
 
-while True:
-    try:
+try:
+    while True:
         msg = socket.recv_json()
         command = msg.get('command', '')
         if command == 'reset':
@@ -152,10 +152,10 @@ while True:
         # to contiguous, otherwise ZMQ will complain
         img = np.ascontiguousarray(img, dtype=np.uint8)
         sendMatrix(socket, img)
+except KeyboardInterrupt:
+    print("Server Exiting...")
+    socket.close()
 
-    except KeyboardInterrupt:  # TODO:  avoid socket pid running and 'Address already in use' error relaunching
-        print("Server Exiting...")
-        socket.close()
-
+# TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
 print("Server Exiting...")
 socket.close()
