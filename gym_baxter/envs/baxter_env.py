@@ -11,6 +11,10 @@ import cv2
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
+# Baxter-Gazebo bridge specific
+from gazebo.constants import SERVER_PORT, HOSTNAME
+from gazebo.utils import recvMatrix
+
 """
 To run this program, that calls to gazebo server:
 1) Start ROS + Gazebo modules
@@ -32,7 +36,6 @@ if sys.version_info > (3,):
     # representing objects in Py3-compatibility
     buffer = memoryview
 
-
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 RENDER_HEIGHT = 84  # 720 // 5   # camera image size
@@ -40,22 +43,18 @@ RENDER_WIDTH = 84  # 960 // 5
 IMG_SHAPE = (3, RENDER_WIDTH, RENDER_HEIGHT)
 Z_TABLE = -0.2
 MAX_DISTANCE = 0.8  # Max distance between end effector and the button (for negative reward)
-THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01 # Min distance between effector and button
+THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
 FORCE_RENDER = False  # For enjoy script
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
 NOISE_STD = 1e-6  # To avoid NaN for SRL
-
-# Baxter-Gazebo bridge specific
-from gazebo.constants import SERVER_PORT, HOSTNAME
-from gazebo.utils import recvMatrix
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 REF_POINT = [0.6, 0.30, 0.20]
 IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
 DELTA_POS = 0.05
 
-UP, DOWN, LEFT, RIGHT, BACKWARD, FORWARD = 0,1,2,3,4,5
+UP, DOWN, LEFT, RIGHT, BACKWARD, FORWARD = 0, 1, 2, 3, 4, 5
 action_dict = {
     LEFT: [- DELTA_POS, 0, 0],
     RIGHT: [DELTA_POS, 0, 0],
@@ -80,13 +79,14 @@ SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
 
+
 class BaxterEnv(gym.Env):
     """ Baxter robot arm Environment"
     The goal of the robotic arm is to push the button on the table
     """
 
     metadata = {'render.modes': ['human', 'rgb_array'],  # human is for human teleoperation (see teleop_client example)
-        'video.frames_per_second': 50}
+                'video.frames_per_second': 50}
 
     def __init__(self,
                  action_repeat=1,
@@ -122,19 +122,28 @@ class BaxterEnv(gym.Env):
         if self.use_srl:
             print('Using learned states')
             self.dtype = np.float32
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=self.dtype)
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
             self.dtype = np.uint8
             self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=self.dtype)
         self.cuda = th.cuda.is_available()
+        self.saver = None
+        if RECORD_DATA:
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS,
+                                      learn_states=LEARN_STATES)
+        # SRL model
+        if self.use_srl:
+            env_object = self if USE_GROUND_TRUTH else None
+            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
+            self.state_dim = self.srl_model.state_dim
 
         # Initialize button position
         x_pos = 0.5 + 0.0 * np.random.uniform(-1, 1)
         y_pos = 0 + 0.0 * np.random.uniform(-1, 1)
-        #TODO: Get position of the button -> randomly relocate in each episode
+        # TODO: Get position of the button -> randomly relocate in each episode
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
-        self.context = zmq.Context()   # TODO: would  zmq_ctx_new() be needed in order to apply later destroy?
+        self.context = zmq.Context()  # TODO: would  zmq_ctx_new() be needed in order to apply later destroy?
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
 
@@ -169,18 +178,25 @@ class BaxterEnv(gym.Env):
         else:
             print("Unknown action: {}".format(action))
             action = [0, 0, 0]
-            self.unknown_actions +=1
+            self.unknown_actions += 1
 
         # Send the action to the server
         self.socket.send_json({"command": "action", "action": action})
 
         # Receive state data (position, etc)
         self.reward = self.getEnvState()['reward']
-        self.reward_counts[self.reward] = self.reward_counts.get(self.reward, 0) +1
+        self.reward_counts[self.reward] = self.reward_counts.get(self.reward, 0) + 1
         #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
-        return self.observation, self.reward, done, {}  #np.array(self.observation)
+
+        if self.saver is not None:
+            self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
+
+        if self.use_srl:
+            return self.srl_model.getState(self.observation), reward, done, {}
+        else:
+            return self.observation, self.reward, done, {}  # np.array(self.observation)
 
     def getEnvState(self):
         """
@@ -190,12 +206,12 @@ class BaxterEnv(gym.Env):
         state_data = self.socket.recv_json()
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
-        self.arm_pos =  np.array(state_data["position"]) # gripper_pos
+        self.arm_pos = np.array(state_data["position"])  # gripper_pos
         # Compute distance from Baxter left arm to the button_pos
         distance = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-        #print('Distance and MAX_DISTANCE {}, {} (TODO: tune max 0.8?)'.format(distance, MAX_DISTANCE))
+        # print('Distance and MAX_DISTANCE {}, {} (TODO: tune max 0.8?)'.format(distance, MAX_DISTANCE))
         self.n_contacts += self.reward
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION -1:
+        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.episode_terminated = True
         if distance > MAX_DISTANCE:
             self.reward = -1
@@ -212,15 +228,20 @@ class BaxterEnv(gym.Env):
         # Step count since episode start
         self._env_step_counter = 0
         self.socket.send_json({
-            "command":"reset"
+            "command": "reset"
         })
         # important step to get both data and metadata in the image that allow reading an observation
         reward = self.getEnvState()
-        return self.getObservation()
+        if self.saver is not None:
+            self.saver.reset(self.observation, self.button_pos, self.arm_pos)
+        if self.use_srl:
+            return self.srl_model.getState(self.observation)
+        else:
+            return self.getObservation()
 
     def getObservation(self):
         self.observation = self.render("rgb_array")
-        #print('observationa; {}'.format(self.observation))
+        # print('observationa; {}'.format(self.observation))
         return self.observation
 
     def render(self, mode='rgb_array', close=False):
@@ -231,10 +252,10 @@ class BaxterEnv(gym.Env):
         Note: should not be called before sampling an action, or will never return
         """
         if mode != "rgb_array":
-            print ('render in human mode not yet supported')
+            print('render in human mode not yet supported')
             return np.array([])
         # Receive a camera image from the server
-        self.img = recvMatrix(self.socket) # required by gazebo
+        self.img = recvMatrix(self.socket)  # required by gazebo
         # if self._renders: # TODO
         #     cv2.imshow("Image", self.img)
         return self.img
@@ -244,7 +265,9 @@ class BaxterEnv(gym.Env):
         Returns if the episode_saver terminated, not of the whole environment run
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
-            print('Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, self.unknown_actions, self.reward_counts))
+            print(
+                'Episode Terminated: step counter reached MAX_STEPS: {}. Nr of unknown_actions sampled: {} Reward counts:{}'.format(
+                    self._env_step_counter, self.unknown_actions, self.reward_counts))
             return True
         return False
 
@@ -252,7 +275,8 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
-        print('\nStep counter reached MAX_STEPS: {}. # Unknown_actions sampled: {} Reward counts:{}'.format(self._env_step_counter, self.unknown_actions, self.reward_counts))
+        print('\nStep counter reached MAX_STEPS: {}. # Unknown_actions sampled: {} Reward counts:{}'.format(
+            self._env_step_counter, self.unknown_actions, self.reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()
