@@ -2,12 +2,13 @@ from __future__ import division, absolute_import, print_function
 
 import time
 
-from .kuka_button_gym_env import KukaButtonGymEnv
+import environments.kuka_button_gym_env as kuka_env
 
+kuka_env.MAX_DISTANCE = 0.65
+kuka_env.RECORD_DATA = True
 
-env = KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test_dual_cam")
+env = kuka_env.KukaButtonGymEnv(renders=False, is_discrete=True, multi_view=False, name="kuka_test_dual_cam")
 # env.num_envs = 1
-env.seed(0)
 i = 0
 start_time = time.time()
 for i_episode in range(50):

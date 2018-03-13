@@ -22,7 +22,7 @@ MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for neg
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-DELTA_V = 0.01  # velocity per physics step.
+DELTA_V = 0.03  # velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
@@ -34,7 +34,7 @@ STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
 SRL_MODEL_PATH = None
-RECORD_DATA = True #False
+RECORD_DATA = False
 USE_GROUND_TRUTH = False
 
 
@@ -58,12 +58,14 @@ class KukaButtonGymEnv(gym.Env):
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Wether to display the GUI or not
     :param is_discrete: (bool)
+    :param multi_view (bool) enabling dual-camera view of the scene (return stacked images of the scene on 6 channels)
     :param name: (str) name of the folder where recorded data will be stored
     """
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
                  is_discrete=True,
+                 multi_view=False,
                  name="kuka_button_gym"):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
@@ -87,6 +89,7 @@ class KukaButtonGymEnv(gym.Env):
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
         self.cuda = th.cuda.is_available()
         self.saver = None
+        self.multi_view=multi_view
         if RECORD_DATA:
             self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
         # SRL model
@@ -285,24 +288,27 @@ class KukaButtonGymEnv(gym.Env):
         (_, _, px1, _, _) = p.getCameraImage(
             width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
             projectionMatrix=proj_matrix1, renderer=self.renderer)
-        rgb_array1 = np.array(px1)
+        rgb_array1 = np.array(px1)        
         
-        # adding a second camera on the other side of the robot
-        view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=(0.316, 0.316, -0.105),            
-            distance=1.05,
-            yaw=32,
-            pitch=-13,
-            roll=0,
-            upAxisIndex=2)
-        proj_matrix2 = p.computeProjectionMatrixFOV(
-            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-            nearVal=0.1, farVal=100.0)
-        (_, _, px2, _, _) = p.getCameraImage(
-            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
-            projectionMatrix=proj_matrix2, renderer=self.renderer)
-        rgb_array2 = np.array(px2)
-        rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
+        if self.multi_view:
+            # adding a second camera on the other side of the robot
+            view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
+                cameraTargetPosition=(0.316, 0.316, -0.105),            
+                distance=1.05,
+                yaw=32,
+                pitch=-13,
+                roll=0,
+                upAxisIndex=2)
+            proj_matrix2 = p.computeProjectionMatrixFOV(
+                fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                nearVal=0.1, farVal=100.0)
+            (_, _, px2, _, _) = p.getCameraImage(
+                width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
+                projectionMatrix=proj_matrix2, renderer=self.renderer)
+            rgb_array2 = np.array(px2)
+            rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
+        else :
+            rgb_array_res = rgb_array1[:, :, :3]
         return rgb_array_res
 
     def close(self):

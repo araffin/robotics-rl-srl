@@ -96,11 +96,11 @@ def main():
         Update the current observation:
         Convert numpy array to torch tensor and stack observations if needed
         """
-        shape_dim0 = DIM_CHANNELS #envs.observation_space.shape[0]
+        shape_dim_0 = DIM_CHANNELS #envs.observation_space.shape[0]
         obs = torch.from_numpy(obs).float()
         if args.num_stack > 1:
-            current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-        current_obs[:, -shape_dim0:] = obs
+            current_obs[:, :-shape_dim_0] = current_obs[:, shape_dim_0:]
+        current_obs[:, -shape_dim_0:] = obs
 
     obs = envs.reset()
     update_current_obs(obs)
