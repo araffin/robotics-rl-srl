@@ -95,70 +95,46 @@ print("Connected to client")
 action = [0, 0, 0]
 joints = None
 
-while True:
-    try:
+try:
+    while True:
         msg = socket.recv_json()
         try:
-            command = msg.get('command', '')
-            if command == 'reset':
-                subprocess.call(["rosrun", "arm_scenario_experiments", "button_init_pose"])
-                end_point_position = baxter_utils.get_ee_position(left_arm)
-                print('Environment reset')
-                action = [0, 0, 0]
+            joints = baxter_utils.IK(left_arm, end_point_position_candidate, ee_orientation)
+        except Exception as e:
+            print("[ERROR] no joints position returned by the Inverse Kinematic fn")
+            print("end_point_position_candidate:{}".format(end_point_position_candidate))
+            print(e)
 
-            elif command == 'action':
-                action = np.array(msg['action'])
-                print("action:", action)
+        if joints:
+            action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
+            end_point_position = end_point_position_candidate
+            left_arm.move_to_joint_positions(joints, timeout=3)
+        else:
+            print("No joints position, returning previous one")
 
-            elif command == "exit":
-                break
-            else:
-                raise ValueError("Unknown command: {}".format(msg))
+        # Get current position of the button
+        button_pos = button.get_state().pose.position
+        button_pos_absolute = arm_utils.point2array(button_pos)
 
-            # action = randomAction(possible_actions)
-            end_point_position_candidate = end_point_position + action
+        # Send arm position, button position, ...
+        socket.send_json(
+            {
+                # XYZ position
+                "position": list(end_point_position),
+                "reward": int(button.is_pressed()),
+                "button_pos": list(button_pos_absolute)
+            },
+            flags=zmq.SNDMORE
+        )
 
-            print("End-effector Position:", end_point_position_candidate)
-            joints = None
-            try:
-                joints = baxter_utils.IK(left_arm, end_point_position_candidate, ee_orientation)
-            except Exception as e:
-                print("[ERROR] no joints position returned by the Inverse Kinematic fn")
-                print("end_point_position_candidate:{}".format(end_point_position_candidate))
-                print(e)
+        img = image_cb_wrapper.valid_img
+        # to contiguous, otherwise ZMQ will complain
+        img = np.ascontiguousarray(img, dtype=np.uint8)
+        sendMatrix(socket, img)
+except KeyboardInterrupt:
+    print("Server Exiting...")
+    socket.close()
 
-            if joints:
-                action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
-                end_point_position = end_point_position_candidate
-                left_arm.move_to_joint_positions(joints, timeout=3)
-            else:
-                print("No joints position, returning previous one")
-
-            # Get current position of the button
-            button_pos = button.get_state().pose.position
-            button_pos_absolute = arm_utils.point2array(button_pos)
-
-            # Send arm position, button position, ...
-            socket.send_json(
-                {
-                    # XYZ position
-                    "position": list(end_point_position),
-                    "reward": int(button.is_pressed()),
-                    "button_pos": list(button_pos_absolute)
-                },
-                flags=zmq.SNDMORE
-            )
-
-            img = image_cb_wrapper.valid_img
-            # to contiguous, otherwise ZMQ will complain
-            img = np.ascontiguousarray(img, dtype=np.uint8)
-            sendMatrix(socket, img)
-        except KeyboardInterrupt: 
-            print("Server Exiting...")
-            socket.close()
-    except KeyboardInterrupt:  # TODO:  avoid socket pid running and 'Address already in use' error relaunching
-        print("Server Exiting...")
-        socket.close()
-
+# TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
 print("Server Exiting...")
 socket.close()

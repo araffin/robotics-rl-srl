@@ -2,16 +2,6 @@ from __future__ import division, absolute_import, print_function
 import time
 from gym_baxter.envs.baxter_env import BaxterEnv
 
-"""
-This is a Python module and therefore, to run it as such:
-python -m gym_baxter.test_baxter_env
-
-Note that there are 2 equivalent ways to text Baxter environment below:
-1) Instantiating the environment
-2) Using gym.make()
-
-"""
-
 env = BaxterEnv(renders=True, is_discrete=True)
 timesteps = 2# 200
 episodes = 1# 30
@@ -30,6 +20,6 @@ for _ in range(episodes):
                 break
             i += 1
         except KeyboardInterrupt:
-            env.closeServerConnection()
+            pass
 env.closeServerConnection()
 print("Avg. frame rate: {:.2f} FPS".format(i / (time.time() - start_time)))
