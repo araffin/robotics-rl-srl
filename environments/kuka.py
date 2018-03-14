@@ -49,17 +49,17 @@ class Kuka:
             p.setJointMotorControl2(self.kuka_uid, jointIndex, p.POSITION_CONTROL,
                                     targetPosition=self.joint_positions[jointIndex], force=self.max_force)
 
-        self.end_effector_pos = [0.537, 0.0, 0.5]
+        self.end_effector_pos = np.array([0.537, 0.0, 0.5])
         self.end_effector_angle = 0
 
         self.motor_names = []
         self.motor_indices = []
 
         for i in range(self.num_joints):
-            jointInfo = p.getJointInfo(self.kuka_uid, i)
-            qIndex = jointInfo[3]
-            if qIndex > -1:
-                self.motor_names.append(str(jointInfo[1]))
+            joint_info = p.getJointInfo(self.kuka_uid, i)
+            q_index = joint_info[3]
+            if q_index > -1:
+                self.motor_names.append(str(joint_info[1]))
                 self.motor_indices.append(i)
 
     def getActionDimension(self):

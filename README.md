@@ -3,9 +3,11 @@
 ## Requirements:
 
 - Python 3 (python 2 not supported because of OpenAI baselines)
-- [OpenAI Baselines](https://github.com/openai/baselines) (latest version)
-- [OpenAI Gym](https://github.com/openai/gym/) (latest version)
+- [OpenAI Baselines](https://github.com/openai/baselines) (latest version, install from source (at least commit 3cc7df0))
+- [OpenAI Gym](https://github.com/openai/gym/) (version >= 0.10.3)
 - Install the dependencies using `environment.yml` file (for conda users)
+
+Note: The save method of ACER of baselines is currently buggy, you need to manually add an import (see [pull request #312](https://github.com/openai/baselines/pull/312))
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
@@ -15,6 +17,8 @@ git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 
 ## Kuka Arm \w PyBullet
 
+Before you start a RL experiment, you have to make sure that a visdom server is running, unless you deactivate visualization.
+
 Launch visdom server:
 ```
 python -m visdom.server
@@ -22,7 +26,7 @@ python -m visdom.server
 
 Pytorch Agent:
 ```
-python train_pytorch.py --num-cpu 4 --num-stack 1 --env-name KukaButtonGymEnv-v0 --algo a2c --log-dir logs/
+python train_pytorch.py --algo a2c --log-dir logs/
 ```
 
 OpenAI Baselines Agent:
@@ -33,7 +37,8 @@ python -m rl_baselines.train --algo ppo2 --log-dir logs/
 
 ## Reinforcement Learning
 
-Note: All CNN policies normalize input dividing by 255.
+Note: All CNN policies normalize input, dividing it by 255.
+By default, 4 observations are stacked.
 
 ### OpenAI Baselines
 
@@ -49,6 +54,11 @@ To train an agent:
 python -m rl_baselines.train --algo acer --log-dir logs/
 ```
 
+To load a trained agent and see the result:
+```
+python -m replay.enjoy_baselines --log-dir path/to/trained/agent/
+```
+
 ### Pytorch Agents
 
 This concerns the `train_pytorch.py` script.
@@ -58,6 +68,11 @@ We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.
 - A2C - A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
 - ACKTR (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region ("Scalable trust-region method for deep reinforcement learning using Kronecker-factored approximation") is a more sample-efficient reinforcement learning algorithm than TRPO and A2C,
 - PPO- Proximal Policy Optimization
+
+To load a trained agent and see the result:
+```
+python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
+```
 
 
 ## Baxter Robot \w Gazebo and ROS

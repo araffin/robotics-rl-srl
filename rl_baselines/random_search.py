@@ -3,7 +3,6 @@ Random Search: randomly sample actions from the action space
 """
 import time
 
-import numpy as np
 import torch as th
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -13,7 +12,7 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from rl_baselines.utils import computeMeanReward
-from srl_priors.utils import printGreen, printYellow
+from srl_priors.utils import printGreen
 
 
 def customArguments(parser):
@@ -32,9 +31,10 @@ def customArguments(parser):
 # TODO: check Uber paper to init network like them
 def initNetwork(args, env, obs_shape):
     """
+    Create a neural network
     :param args: (argparse.Namespace Object)
     :param env: (gym env)
-    :param ob_space: (numpy tensor)
+    :param obs_shape: (numpy tensor)
     :return: (Pytorch Model)
     """
     if len(env.observation_space.shape) == 3:

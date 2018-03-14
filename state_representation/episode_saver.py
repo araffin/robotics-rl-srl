@@ -7,7 +7,7 @@ import numpy as np
 
 from srl_priors.utils import printYellow
 from rl_baselines.utils import filterJSONSerializableObjects
-from .client import SRLClient
+from state_representation.client import SRLClient
 
 
 class EpisodeSaver(object):
@@ -57,6 +57,7 @@ class EpisodeSaver(object):
             json.dump(self.dataset_config, f)
 
         if globals_ is not None:
+            # Save environments parameters
             with open("{}/env_globals.json".format(self.data_folder), "w") as f:
                 json.dump(filterJSONSerializableObjects(globals_), f)
 
@@ -66,6 +67,7 @@ class EpisodeSaver(object):
 
     def saveImage(self, observation):
         """
+        Write an image to disk
         :param observation: (numpy matrix) BGR image
         """
         image_path = "{}/{}/frame{:06d}.jpg".format(self.name, self.episode_folder, self.episode_step)
@@ -75,6 +77,7 @@ class EpisodeSaver(object):
 
     def reset(self, observation, button_pos, arm_state):
         """
+        Called when starting a new episode
         :param observation: (numpy matrix) BGR Image
         :param button_pos: ([float])
         :param arm_state: ([float])
@@ -124,6 +127,7 @@ class EpisodeSaver(object):
         """
         Write data and ground truth to disk
         """
+        # Sanity checks
         assert len(self.actions) == len(self.rewards)
         assert len(self.actions) == len(self.episode_starts)
         assert len(self.actions) == len(self.images_path)
@@ -139,7 +143,6 @@ class EpisodeSaver(object):
         ground_truth = {
             'button_positions': np.array(self.button_positions),
             'arm_states': np.array(self.arm_states),
-            # 'actions_deltas': action_to_idx.keys(),
             'images_path': np.array(self.images_path)
         }
         print("Saving preprocessed data...")

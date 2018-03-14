@@ -4,9 +4,17 @@ from baselines.a2c.utils import fc, sample
 from baselines.common.distributions import make_pdtype
 
 
-# Add support for discrete actions
 class MlpPolicyDicrete(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
+        """
+        Modified version of OpenAI MLP so it can support discrete actions
+        :param sess: (tf Session)
+        :param ob_space: (tuple)
+        :param ac_space: (gym action space)
+        :param nbatch: (int)
+        :param nsteps: (int)
+        :param reuse: (bool) for tensorflow
+        """
         ob_shape = (nbatch,) + ob_space.shape
         actdim = ac_space.n
         X = tf.placeholder(tf.float32, ob_shape, name='Ob')  # obs
@@ -43,6 +51,15 @@ class MlpPolicyDicrete(object):
 class AcerMlpPolicy(object):
 
     def __init__(self, sess, ob_space, ac_space, nenv, nsteps, nstack, reuse=False):
+        """
+        :param sess: (tf Session)
+        :param ob_space: (tuple)
+        :param ac_space: (gym action space)
+        :param nbatch: (int)
+        :param nsteps: (int)
+        :param nstack: (int)
+        :param reuse: (bool) for tensorflow
+        """
         nbatch = nenv * nsteps
         obs_dim = ob_space.shape[0]
         ob_shape = (nbatch, obs_dim * nstack)

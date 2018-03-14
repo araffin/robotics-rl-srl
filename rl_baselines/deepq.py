@@ -8,9 +8,12 @@ from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 
 
-# Dummy class in order to use FrameStack with DQN
 class CustomDummyVecEnv(VecEnv):
+    """Dummy class in order to use FrameStack with DQN"""
     def __init__(self, env_fns):
+        """
+        :param env_fns: ([function])
+        """
         assert len(env_fns) == 1, "This dummy class does not support multiprocessing"
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
@@ -18,14 +21,16 @@ class CustomDummyVecEnv(VecEnv):
         self.env = self.envs[0]
         self.actions = None
         self.obs = None
+        self.reward, self.done, self.infos = None, None, None
 
     def step_wait(self):
-        # Free memory
-        # del self.obs
         self.obs, self.reward, self.done, self.infos = self.env.step(self.actions[0])
         return self.obs[None], self.reward, [self.done], [self.infos]
 
     def step_async(self, actions):
+        """
+        :param actions: ([int])
+        """
         self.actions = actions
 
     def reset(self):
@@ -85,7 +90,7 @@ def main(args, callback):
     createTensorflowSession()
 
     if args.srl_model != "":
-        model = deepq.models.mlp([64])
+        model = deepq.models.mlp([64, 64])
     else:
         # Atari CNN
         model = deepq.models.cnn_to_mlp(
@@ -94,6 +99,7 @@ def main(args, callback):
             dueling=bool(args.dueling),
         )
 
+    # TODO: tune params
     act = deepq.learn(
         env,
         q_func=model,
@@ -104,11 +110,11 @@ def main(args, callback):
         exploration_final_eps=0.01,
         train_freq=4,
         learning_starts=500,
-        target_network_update_freq=1000,
+        target_network_update_freq=500,
         gamma=0.99,
         prioritized_replay=bool(args.prioritized),
         print_freq=10,  # Print every 10 episodes
         callback=callback
     )
-    act.save(args.log_dir + "deepq_model.pkl")
+    act.save(args.log_dir + "deepq_model_end.pkl")
     env.close()

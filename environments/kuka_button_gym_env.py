@@ -15,6 +15,8 @@ from . import kuka
 
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
+# Terminate the episode if the arm is outside the safety sphere during too much time
+N_STEPS_OUTSIDE_SAFETY_SPHERE = 50
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
@@ -38,6 +40,7 @@ USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
+VERBOSE = False  # Whether to print some debug info
 
 
 def getGlobals():
@@ -45,6 +48,7 @@ def getGlobals():
     :return: (dict)
     """
     return globals()
+
 
 # TODO: improve the physics of the button
 
@@ -62,6 +66,7 @@ class KukaButtonGymEnv(gym.Env):
     :param is_discrete: (bool)
     :param name: (str) name of the folder where recorded data will be stored
     """
+
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
@@ -90,7 +95,8 @@ class KukaButtonGymEnv(gym.Env):
         self.cuda = th.cuda.is_available()
         self.saver = None
         if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS,
+                                      learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
             env_object = self if USE_GROUND_TRUTH else None
@@ -127,7 +133,7 @@ class KukaButtonGymEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
 
         if self.use_srl:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32)
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         # Create numpy random generator
         # This seed can be changed later
         self.seed(0)
@@ -145,6 +151,7 @@ class KukaButtonGymEnv(gym.Env):
         """
         self.terminated = False
         self.n_contacts = 0
+        self.n_steps_outside = 0
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
         p.setTimeStep(self._timestep)
@@ -228,6 +235,9 @@ class KukaButtonGymEnv(gym.Env):
             da = action[2] * 0.1
             finger_angle = 0.0  # Close the gripper
             real_action = [dx, dy, -0.002, da, finger_angle]
+
+        if VERBOSE:
+            print(np.array2string(np.array(real_action), precision=2))
 
         return self.step2(real_action)
 
@@ -315,8 +325,12 @@ class KukaButtonGymEnv(gym.Env):
 
         if distance > MAX_DISTANCE or contact_with_table:
             reward = -1
+            self.n_steps_outside += 1
+        else:
+            self.n_steps_outside = 0
 
-        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
+        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 \
+                or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
         if SHAPE_REWARD:
             return -distance

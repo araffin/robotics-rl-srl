@@ -158,8 +158,9 @@ def main(args, callback):
         envs = DummyVecEnv(envs)
     else:
         envs = SubprocVecEnv(envs)
+
+    # Warning: if we use VecNormalize, we need to save the moving average
     # if args.srl_model == "ground_truth":
-    #     # TODO: save running average
     #     envs = VecNormalize(envs)
 
     envs = VecFrameStack(envs, args.num_stack)

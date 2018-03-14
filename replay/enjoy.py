@@ -8,7 +8,6 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
-
 from pytorch_agents.envs import make_env
 import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
@@ -56,7 +55,6 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     kuka_env.FORCE_RENDER = load_args.render
     kuka_env.ACTION_REPEAT = env_globals['ACTION_REPEAT']
 
-
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
         path = srl_models.get(train_args["srl_model"])
@@ -78,8 +76,8 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
             assert load_args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
 
         envs = [make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=True)
-                              for i in range(load_args.num_cpu)]
-        if args.num_cpu == 1:
+                for i in range(load_args.num_cpu)]
+        if load_args.num_cpu == 1:
             envs = DummyVecEnv(envs)
         else:
             envs = SubprocVecEnv(envs)
