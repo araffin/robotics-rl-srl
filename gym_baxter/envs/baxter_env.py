@@ -158,7 +158,6 @@ class BaxterEnv(gym.Env):
         arm_pos and reward.
         """
         state_data = self.socket.recv_json()
-        print(state_data)
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
