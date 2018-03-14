@@ -98,6 +98,27 @@ joints = None
 try:
     while True:
         msg = socket.recv_json()
+        command = msg.get('command', '')
+        if command == 'reset':
+            subprocess.call(["rosrun", "arm_scenario_experiments", "button_init_pose"])
+            end_point_position = baxter_utils.get_ee_position(left_arm)
+            print('Environment reset')
+            action = [0, 0, 0]
+
+        elif command == 'action':
+            action = np.array(msg['action'])
+            print("action:", action)
+
+        elif command == "exit":
+            break
+        else:
+            raise ValueError("Unknown command: {}".format(msg))
+
+        # action = randomAction(possible_actions)
+        end_point_position_candidate = end_point_position + action
+
+        print("End-effector Position:", end_point_position_candidate)
+        joints = None
         try:
             joints = baxter_utils.IK(left_arm, end_point_position_candidate, ee_orientation)
         except Exception as e:
@@ -132,8 +153,8 @@ try:
         img = np.ascontiguousarray(img, dtype=np.uint8)
         sendMatrix(socket, img)
 except KeyboardInterrupt:
-    print("Server Exiting...")
-    socket.close()
+    pass
+
 
 # TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
 print("Server Exiting...")

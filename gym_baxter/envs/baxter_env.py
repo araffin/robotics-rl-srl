@@ -139,16 +139,14 @@ class BaxterEnv(gym.Env):
         env_state = self.getEnvState()
         #  Receive a camera image from the server
         self.observation = self.getObservation()
+        done = self._hasEpisodeTerminated()
         if self.saver is not None:
             self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
 
         if self.use_srl:
             return self.srl_model.getState(self.observation), reward, done, {}
         else:
-            return self.observation, self.reward, done, {}  # np.array(self.observation)
-
-        done = self._hasEpisodeTerminated()
-        return self.observation, self.reward, done, {}  # np.array(self.observation)
+            return self.observation, self.reward, done, {}
 
     def getEnvState(self):
         """
@@ -160,6 +158,7 @@ class BaxterEnv(gym.Env):
         arm_pos and reward.
         """
         state_data = self.socket.recv_json()
+        print(state_data)
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
@@ -223,7 +222,7 @@ class BaxterEnv(gym.Env):
         Returns if the episode_saver terminated, not of the whole environment run
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
-            print('Episode Terminated: step counter reached MAX_STEPS: {}. Reward counts:{}'.format(
+            print('Episode Terminated: step counter reached MAX_STEPS: {}. Summary of Reward counts:{}'.format(
                 self._env_step_counter, reward_counts))
             return True
         return False
@@ -232,7 +231,7 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
-        print('\nStep counter reached MAX_STEPS: {}. Reward counts:{}'.format(self._env_step_counter, reward_counts))
+        print('\nStep counter reached MAX_STEPS: {}. Summary of reward counts:{}'.format(self._env_step_counter, reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()
