@@ -24,17 +24,6 @@ Launch visdom server:
 python -m visdom.server
 ```
 
-Pytorch Agent:
-```
-python train_pytorch.py --algo a2c --log-dir logs/
-```
-
-OpenAI Baselines Agent:
-```
-python -m rl_baselines.train --algo ppo2 --log-dir logs/
-```
-
-
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input, dividing it by 255.
@@ -45,9 +34,9 @@ By default, 4 observations are stacked.
 Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent and random search:
 
 - DQN and variants (Double, Dueling, prioritized experience replay)
-- ACER (Sample Efficient Actor-Critic with Experience Replay)
-- A2C
-- PPO2
+- ACER: Sample Efficient Actor-Critic with Experience Replay
+- A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
+- PPO2: Proximal Policy Optimization (GPU Implementation)
 
 To train an agent:
 ```
@@ -65,15 +54,19 @@ This concerns the `train_pytorch.py` script.
 
 We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.com/baselines-acktr-a2c/) from [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr) (see `pytorch_agents` folder):
 
-- A2C - A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
-- ACKTR (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region ("Scalable trust-region method for deep reinforcement learning using Kronecker-factored approximation") is a more sample-efficient reinforcement learning algorithm than TRPO and A2C,
-- PPO- Proximal Policy Optimization
+- A2C: See above
+- ACKTR: (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region
+- PPO:Proximal Policy Optimization
 
 To load a trained agent and see the result:
 ```
 python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
 ```
 
+## State Representation Learning Models
+
+Please look the [SRL Repo](https://github.com/araffin/srl-robotic-priors-pytorch) to learn how to train a state representation model.
+Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
 
 ## Baxter Robot \w Gazebo and ROS
 Gym Wrapper for baxter environment + RL algorithms

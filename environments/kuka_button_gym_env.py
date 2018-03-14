@@ -62,7 +62,7 @@ class KukaButtonGymEnv(gym.Env):
     """
     Gym wrapper for Kuka environment with a push button
     :param urdf_root: (str) Path to pybullet urdf files
-    :param renders: (bool) Wether to display the GUI or not
+    :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
     :param name: (str) name of the folder where recorded data will be stored
     """
