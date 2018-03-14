@@ -232,9 +232,9 @@ class KukaButtonGymEnv(gym.Env):
             dv = DELTA_V
             dx = action[0] * dv
             dy = action[1] * dv
-            da = action[2] * 0.1
+            dz = action[2] * dv  # TODO: remove up action
             finger_angle = 0.0  # Close the gripper
-            real_action = [dx, dy, -0.002, da, finger_angle]
+            real_action = [dx, dy, dz, 0, finger_angle]
 
         if VERBOSE:
             print(np.array2string(np.array(real_action), precision=2))
