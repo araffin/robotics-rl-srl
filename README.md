@@ -29,6 +29,8 @@ python -m visdom.server
 Note: All CNN policies normalize input, dividing it by 255.
 By default, 4 observations are stacked.
 
+About frame-stacking, action repeat (frameskipping) please read this blog post: [Frame Skipping and Pre-Processing for DQN on Atari](https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/)
+
 ### OpenAI Baselines
 
 Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent and random search:
