@@ -1,86 +1,80 @@
-import copy
-import glob
 import os
 import time
-import sys
+import json
 
-import gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
 
-import environments
-
-# Hack to use ppo/a2c/acktr agents located in pytorch_agents folder
-sys.path.insert(0, os.path.abspath("pytorch_agents/"))
-
-from arguments import get_args
-from envs import make_env
-from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
-from storage import RolloutStorage
-from visualize import visdom_plot
+from pytorch_agents.arguments import get_args
+from pytorch_agents.envs import make_env
+from pytorch_agents.kfac import KFACOptimizer
+from pytorch_agents.model import CNNPolicy, MLPPolicy
+from pytorch_agents.storage import RolloutStorage
+import environments.kuka_button_gym_env as kuka_env
+import rl_baselines.train as train
+from rl_baselines.utils import filterJSONSerializableObjects
 
 args = get_args()
+
+train.LOG_INTERVAL = args.vis_interval
+train.SAVE_INTERVAL = 100
+train.ALGO = args.algo + "_pytorch"
+
+args = train.configureEnvAndLogFolder(args, kuka_env)
+train.saveEnvParams(kuka_env)
+
+args_dict = filterJSONSerializableObjects(vars(args))
+# Save args
+with open(args.log_dir + "args.json", "w") as f:
+    json.dump(args_dict, f)
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
         'Recurrent policy is not implemented for ACKTR'
 
-num_updates = int(args.num_frames) // args.num_steps // args.num_processes
+num_updates = int(args.num_frames) // args.num_steps // args.num_cpu
 
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-try:
-    os.makedirs(args.log_dir)
-except OSError:
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
-
 
 def main():
-    print("#######")
-    print("""WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py)
-           or visdom plot to get true rewards""")
-    print("#######")
+    if kuka_env.USE_SRL and not args.no_cuda:
+        assert args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
 
-    os.environ['OMP_NUM_THREADS'] = '1'
+    envs = [make_env(args.env, args.seed, i, args.log_dir)
+            for i in range(args.num_cpu)]
 
-    if args.vis:
-        from visdom import Visdom
-        viz = Visdom(port=args.port)
-        win = None
-
-    envs = [make_env(args.env_name, args.seed, i, args.log_dir)
-            for i in range(args.num_processes)]
-
-    if args.num_processes > 1:
-        envs = SubprocVecEnv(envs)
-    else:
+    # Use multiprocessing only when needed
+    # it prevents from a cuda error
+    if args.num_cpu == 1:
         envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        envs = VecNormalize(envs)
+    else:
+        envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
     print(obs_shape)
 
-    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+    # Check if we are using raw pixels or srl models
+    if len(obs_shape) > 0:
+        # In pytorch, images are channel first
+        obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+    else:
+        obs_shape = (args.num_stack, *obs_shape[0])
 
     if len(envs.observation_space.shape) == 3:
-        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
+        print("Using CNNPolicy")
+        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy, input_dim=obs_shape[1])
     else:
+        print("Using MLPPolicy")
         assert not args.recurrent_policy, \
             "Recurrent policy is not implemented for the MLP controller"
         actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
@@ -100,24 +94,26 @@ def main():
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
-    current_obs = torch.zeros(args.num_processes, *obs_shape)
+    rollouts = RolloutStorage(args.num_steps, args.num_cpu, obs_shape, envs.action_space, actor_critic.state_size)
+    current_obs = torch.zeros(args.num_cpu, *obs_shape)
 
-    def update_current_obs(obs):
-        shape_dim0 = envs.observation_space.shape[0]
-        obs = torch.from_numpy(obs).float()
+    def update_current_obs(observation):
+        """
+        Update the current observation:
+        Convert numpy array to torch tensor and stack observations if needed
+        :param observation: (numpy tensor)
+        :return: (torch tensor)
+        """
+        n_channels = envs.observation_space.shape[0]
+        obs_tensor = torch.from_numpy(observation).float()
         if args.num_stack > 1:
-            current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-        current_obs[:, -shape_dim0:] = obs
+            current_obs[:, :-n_channels] = current_obs[:, n_channels:]
+        current_obs[:, -n_channels:] = obs_tensor
 
     obs = envs.reset()
     update_current_obs(obs)
 
     rollouts.observations[0].copy_(current_obs)
-
-    # These variables are used to compute average rewards for all processes.
-    episode_rewards = torch.zeros([args.num_processes, 1])
-    final_rewards = torch.zeros([args.num_processes, 1])
 
     if args.cuda:
         current_obs = current_obs.cuda()
@@ -127,22 +123,21 @@ def main():
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
+            # Masks and states are only used for recurrent policies
             value, action, action_log_prob, states = actor_critic.act(
                 Variable(rollouts.observations[step], volatile=True),
                 Variable(rollouts.states[step], volatile=True),
                 Variable(rollouts.masks[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
-            # Obser reward and next obs
-            obs, reward, done, info = envs.step(cpu_actions)
-            reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-            episode_rewards += reward
+            # Observe reward and next obs
+            # dones is a list of bool (size = num processes)
+            # rewards is tensor of size = num_processes x 1
+            obs, rewards, dones, info = envs.step(cpu_actions)
+            rewards = torch.from_numpy(np.expand_dims(np.stack(rewards), 1)).float()
 
             # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
-            final_rewards *= masks
-            final_rewards += (1 - masks) * episode_rewards
-            episode_rewards *= masks
+            masks = torch.from_numpy(np.array(dones).astype(np.float32).reshape(-1, 1))
 
             if args.cuda:
                 masks = masks.cuda()
@@ -152,8 +147,9 @@ def main():
             else:
                 current_obs *= masks
 
+            # Update the stacked observations
             update_current_obs(obs)
-            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, reward,
+            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, rewards,
                             masks)
 
         next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True),
@@ -162,6 +158,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
+        # Updates for the different algorithms
         if args.algo in ['a2c', 'acktr']:
             values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(
                 Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
@@ -169,8 +166,8 @@ def main():
                 Variable(rollouts.masks[:-1].view(-1, 1)),
                 Variable(rollouts.actions.view(-1, action_shape)))
 
-            values = values.view(args.num_steps, args.num_processes, 1)
-            action_log_probs = action_log_probs.view(args.num_steps, args.num_processes, 1)
+            values = values.view(args.num_steps, args.num_cpu, 1)
+            action_log_probs = action_log_probs.view(args.num_steps, args.num_cpu, 1)
 
             advantages = Variable(rollouts.returns[:-1]) - values
             value_loss = advantages.pow(2).mean()
@@ -240,43 +237,7 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
-
-            # A really ugly way to save a model to CPU
-            save_model = actor_critic
-            if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
-
-            save_model = [save_model,
-                          hasattr(envs, 'ob_rms') and envs.ob_rms or None]
-
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pth"))
-
-        if j % args.log_interval == 0:
-            end = time.time()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            print(
-                "Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, total_num_steps,
-                       int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
-        if args.vis and j % args.vis_interval == 0:
-            try:
-                # print("Data sent to visdom")
-                # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
-            except IOError as e:
-                print(e)
-                pass
+        train.callback(locals(), globals())
 
 
 if __name__ == "__main__":

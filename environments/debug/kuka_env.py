@@ -76,7 +76,7 @@ while 1:
     if useSimulation and useRealTimeSimulation == 0:
         p.stepSimulation()
 
-    for i in range(1):
+    for _ in range(1):
         pos = [-0.4, 0.2 * math.cos(t), 0. + 0.2 * math.sin(t)]
         # end effector points down, not up (in case useOrientation==1)
         orn = p.getQuaternionFromEuler([0, -math.pi, 0])
