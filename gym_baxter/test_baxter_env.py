@@ -11,10 +11,12 @@ i = 0
 print('Starting episodes...')
 start_time = time.time()
 for _ in range(episodes):
+    observation = env.reset()
     for t in range(timesteps):
         try:
             action = env.action_space.sample()
             observation, reward, done, info = env.step(action)
+            env.render() # render() requires first the observation to be obtained
             if done:
                 print("Episode finished after {} timesteps".format(t + 1))
                 break

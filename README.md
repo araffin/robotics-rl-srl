@@ -40,7 +40,6 @@ OpenAI Baselines Agent:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/
 ```
 
-
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input dividing by 255.
@@ -99,4 +98,8 @@ sudo netstat -lpn | grep :7777
 and then use the process nr to do:
 ```
 kill -9 processNr
+```
+or what is faster, 2 in 1:
+```
+sudo kill -9 `sudo lsof -t -i:7777`
 ```

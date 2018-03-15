@@ -157,5 +157,5 @@ except KeyboardInterrupt:
 
 
 # TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
-print("Server Exiting...")
+print(" Exiting server - closing socket...")
 socket.close()

@@ -10,6 +10,8 @@ import torch as th
 # Baxter-Gazebo bridge specific
 from gazebo.constants import SERVER_PORT, HOSTNAME
 from gazebo.utils import recvMatrix
+from state_representation.episode_saver import EpisodeSaver
+from state_representation.models import loadSRLModel
 
 """
 This program allows to run Baxter Gym Environment as a module
@@ -23,7 +25,6 @@ IMG_SHAPE = (3, RENDER_WIDTH, RENDER_HEIGHT)
 Z_TABLE = -0.2
 MAX_DISTANCE = 0.8  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
-FORCE_RENDER = False  # For enjoy script
 BUTTON_LINK_IDX = 1
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
@@ -49,12 +50,12 @@ BUTTON_POS_TOPIC = "/button1/position"
 EXIT_KEYS = [113, 27]  # Escape and q
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-STATE_DIM = -1  # When learning states
+STATE_DIM = 3 # When learning states
 LEARN_STATES = False
 USE_SRL = False
-SRL_MODEL_PATH = None
+SRL_MODEL_PATH = "/home/natalia/srl-robotic-priors-pytorch/logs/18-03-15_15h11_04_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/states_rewards.npz"
 RECORD_DATA = False
-USE_GROUND_TRUTH = False
+USE_GROUND_TRUTH = True #False
 
 
 class BaxterEnv(gym.Env):
@@ -66,14 +67,14 @@ class BaxterEnv(gym.Env):
                  renders=True,
                  is_discrete=True,
                  name="gym_baxter",  # This name should coincide with the module folder name
-                 state_dim=3):
+                 state_dim= STATE_DIM):
         self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
         self._env_step_counter = 0
-        self._renders = renders or FORCE_RENDER
+        self._renders = renders
         self.episode_terminated = False
         self.state_dim = state_dim
         self._width = RENDER_WIDTH
@@ -86,7 +87,6 @@ class BaxterEnv(gym.Env):
             action_bounds = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         if self.use_srl:
-            print('Using learned states')
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
@@ -96,13 +96,8 @@ class BaxterEnv(gym.Env):
         self.button_pos = None
         self.saver = None
         if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS,
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, self.state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)
-        # SRL model
-        if self.use_srl:
-            env_object = self if USE_GROUND_TRUTH else None
-            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
-            self.state_dim = self.srl_model.state_dim
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
         self.context = zmq.Context()  # TODO: needed in order to apply later destroy?  zmq_ctx_new()
@@ -113,12 +108,20 @@ class BaxterEnv(gym.Env):
         msg = self.socket.recv_json()
         print("Connected to server (received message: {})".format(msg))
 
-        # Initialize the state
-        self.reset()
         self.action = [0, 0, 0]
         self.reward = -1
-        self.arm_pos = [0, 0, 0]
+        self.arm_pos = [0, 0, 0] # np.ndarray
         self.seed(0)
+
+        # SRL model
+        if self.use_srl:
+            env_object = self if USE_GROUND_TRUTH else None
+            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, self.state_dim, env_object)
+            self.state_dim = self.srl_model.state_dim
+            print('Using learned states with dim {}, rendering {} and model {}'.format(self.state_dim, self._renders, self.srl_model))
+
+        # Initialize the state
+        #self.reset()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -136,7 +139,9 @@ class BaxterEnv(gym.Env):
         self.socket.send_json({"command": "action", "action": action})
 
         # Receive state data (position, etc), important to update state related values
-        env_state = self.getEnvState()
+        self.reward = self.getEnvState()['reward']
+        reward_counts[self.reward] = reward_counts.get(self.reward, 0) + 1
+
         #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
@@ -144,7 +149,7 @@ class BaxterEnv(gym.Env):
             self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
 
         if self.use_srl:
-            return self.srl_model.getState(self.observation), reward, done, {}
+            return self.srl_model.getState(self.observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -158,6 +163,7 @@ class BaxterEnv(gym.Env):
         arm_pos and reward.
         """
         state_data = self.socket.recv_json()
+        print('state_data {}'.format(state_data))
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
@@ -170,8 +176,45 @@ class BaxterEnv(gym.Env):
         if distance > MAX_DISTANCE:
             self.reward = -1
         # TODO: support reward shaping
-        reward_counts[self.reward] = reward_counts.get(self.reward, 0) + 1
         return state_data
+
+    def getObservation(self):
+        # Receive a camera image from the server
+        self.img = recvMatrix(self.socket)  # required by gazebo
+        self.observation = self.img  # TODO do we need both?
+        # print('render image: {}'.format(self.img))
+        # print('observation; {}'.format(self.observation))
+        # print(self.img.shape)
+        # print(type(self.observation))#.shape)
+        return self.img
+
+
+    def render(self, mode='rgb_array'):
+        """
+        Method required by OpenAI Gym.
+        Gets from x,y,z sliders, proj_matrix
+        Returns an rgb np.array.
+        Note: should be called only from within the environment, not to hang
+        the program, since it requires previous to render, to call recv_json()
+        """
+        if mode != "rgb_array":
+            print('render in human mode not yet supported')
+            return np.array([])
+        print('rendering image: {}'.format(self.img))
+        cv2.imshow("Image", self.img)
+        return self.img
+
+    def getArmPos(self):
+        """
+        :return: ([float])->  np.ndarray Position (x, y, z) of Baxter left gripper
+        """
+        # Send the (same previous) action to the server
+        #self.socket.send_json({"command": "action", "action": self.action})
+        # Receive state data (position, etc), important to update state related values
+        #state_data = self.getEnvState()
+        #self.arm_pos = np.array(state_data["position"])  # gripper_pos
+        print('getArmPos: {}'.format(self.arm_pos))
+        return self.arm_pos
 
     def reset(self):
         """
@@ -186,43 +229,22 @@ class BaxterEnv(gym.Env):
             "command": "reset"
         })
         # update state related variables, important step to get both data and
-        # metadata in the image that allow reading an observation
+        # metadata that allow reading the observation image
         state = self.getEnvState()
+        self.observation = self.getObservation()
         if self.saver is not None:
             self.saver.reset(self.observation, self.button_pos, self.arm_pos)
         if self.use_srl:
             return self.srl_model.getState(self.observation)
         else:
-            return self.getObservation()
+            return self.observation
 
-    def getObservation(self):
-        self.observation = self.render("rgb_array")
-        # print('observationa; {}'.format(self.observation))
-        return self.observation
-
-    def render(self, mode='rgb_array'):
-        """
-        Method required by OpenAI Gym.
-        Gets from x,y,z sliders, proj_matrix
-        Returns an rgb np.array.
-        Note: should not be called before sampling an action, or will never return
-        """
-        if mode != "rgb_array":
-            print('render in human mode not yet supported')
-            return np.array([])
-        # Receive a camera image from the server
-        self.img = recvMatrix(self.socket)  # required by gazebo
-        if self._renders:
-            cv2.imshow("Image", self.img)
-        return self.img
 
     def _hasEpisodeTerminated(self):
         """
         Returns if the episode_saver terminated, not of the whole environment run
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
-            print('Episode Terminated: step counter reached MAX_STEPS: {}. Summary of Reward counts:{}'.format(
-                self._env_step_counter, reward_counts))
             return True
         return False
 

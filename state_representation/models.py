@@ -96,7 +96,7 @@ class SRLGroundTruth(SRLBaseClass):
     def getState(self, observation=None):
         """
         :param observation: (numpy tensor)
-        :return: (numpy matrix)
+        :return: (numpy matrix) TODO: Why not np.array? or why 2d?
         """
         return self.env_object.getArmPos()
 
