@@ -31,6 +31,8 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
                         help='Render the environment (show the GUI)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA (works only with pytorch models)')
+    parser.add_argument('--shape-reward', action='store_true', default=False,
+                        help='Shape the reward (reward = - distance) instead of a sparse reward')
     load_args = parser.parse_args()
 
     # load_args.cuda = not load_args.no_cuda and th.cuda.is_available()
@@ -54,6 +56,8 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
 
     kuka_env.FORCE_RENDER = load_args.render
     kuka_env.ACTION_REPEAT = env_globals['ACTION_REPEAT']
+    # Reward sparse or shaped
+    kuka_env.SHAPE_REWARD = load_args.shape_reward
 
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
