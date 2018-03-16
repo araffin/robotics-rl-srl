@@ -49,7 +49,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             else:
                 model_type = 'resnet'
 
-    assert model_type is not None or model is not None, "Model type not supported"
+    assert model_type is not None or model is not None, "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given, or ground truth must be used."
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
@@ -57,7 +57,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     printGreen("\n Using {} \n".format(model_type))
 
     if path is not None:
-        printYellow("Loading trained model...")
+        printYellow("Loading trained model...{}".format(path))
         model.load(path)
     return model
 

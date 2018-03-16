@@ -1,4 +1,5 @@
 import time
+from textwrap import fill
 
 import numpy as np
 import cv2
@@ -7,6 +8,9 @@ import gym
 from gym import spaces
 from gym.utils import seeding
 import torch as th
+import  matplotlib.pyplot as plt
+import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
 
 # Baxter-Gazebo bridge specific
 from gazebo.constants import SERVER_PORT, HOSTNAME
@@ -54,11 +58,23 @@ EXIT_KEYS = [113, 27]  # Escape and q
 # Parameters defined outside init because gym.make() doesn't allow arguments
 STATE_DIM = 3 # When learning states
 LEARN_STATES = False
-USE_SRL = False
-SRL_MODEL_PATH = None #"/home/natalia/srl-robotic-priors-pytorch/logs/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
+USE_SRL = True #False
+SRL_MODEL_PATH = "/home/natalia/srl-robotic-priors-pytorch/logs/staticButtonSimplest/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
 RECORD_DATA = True
-USE_GROUND_TRUTH = True #False
+USE_GROUND_TRUTH = False # True #False
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
+
+
+# Python 2/3 compatibility
+try:
+    input = raw_input
+except NameError:
+    pass
+
+# Init seaborn
+sns.set()
+TITLE_MAX_LENGTH = 60
+
 
 def getGlobals():
     """
@@ -89,12 +105,16 @@ class BaxterEnv(gym.Env):
         self.observation = []
         # Start simulation with first observation
         self._env_step_counter = 0
-        self._renders = renders
         self.episode_terminated = False
         self.state_dim = state_dim
-        self._width = RENDER_WIDTH
-        self._height = RENDER_HEIGHT
-        self._timestep = 1. / 240.
+        self._renders = renders
+        if self._renders:
+            self._width = RENDER_WIDTH
+            self._height = RENDER_HEIGHT
+            self._timestep = 1. / 240.
+            #plt.ion() # necessary for real-time plotting and the figure to show when updating with fig.canvas.draw().
+            # probably not need this if you're embedding things in a tkinter plot.
+
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -152,7 +172,7 @@ class BaxterEnv(gym.Env):
         self._env_step_counter += 1
 
         # Send the action to the server
-        self.socket.send_json({"command": "action", "action": action})
+        self.socket.send_json({"command": "action", "action": self.action})
 
         # Receive state data (position, etc), important to update state related values
         self.reward = self.getEnvState()['reward']
@@ -203,27 +223,10 @@ class BaxterEnv(gym.Env):
         self.observation = recvMatrix(self.socket)
         return self.observation
 
-    def render(self, mode='rgb_array'):
-        """
-        Method required by OpenAI Gym.
-        Gets from x,y,z sliders, proj_matrix
-        Returns an rgb np.array.
-        Note: should be called only from within the environment, not to hang
-        the program, since it requires previous to render, to call recv_json()
-        """
-        if mode != "rgb_array":
-            print('render in human mode not yet supported')
-            return np.array([])
-        print('rendering image of length: {}'.format(self.observation.shape))
-        time.sleep(self._timestep)
-        cv2.imshow("Image", self.observation)
-        return self.observation
-
     def getArmPos(self):
         """
         :return: ([float])->  np.ndarray Position (x, y, z) of Baxter left gripper
         """
-        #print('getArmPos: {}'.format(self.arm_pos))
         return self.arm_pos
 
     def reset(self):
@@ -242,6 +245,9 @@ class BaxterEnv(gym.Env):
         # metadata that allow reading the observation image
         state = self.getEnvState()
         self.observation = self.getObservation()
+        # close plots GUI
+        #plt.close()
+        #fig.canvas.flush_events()
         if self.saver is not None:
             self.saver.reset(self.observation, self.button_pos, self.arm_pos)
         if self.use_srl:
@@ -267,3 +273,88 @@ class BaxterEnv(gym.Env):
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()
         self.socket.close()
+
+    def render(self, mode='rgb_array'):
+        """
+        Method required by OpenAI Gym.
+        Gets from x,y,z sliders, proj_matrix
+        Returns an rgb np.array.
+        Note: should be called only from within the environment, not to hang
+        the program, since it requires previous to render, to call recv_json()
+        """
+        if mode != "rgb_array":
+            print('render in human mode not yet supported')
+            return np.array([])
+        #print('rendering image of length: {}'.format(self.observation.shape))
+
+        # SIMPLE WAY 1 NOT interactivele
+        # plt.ion()
+        # cv2.imshow("Image", self.observation) # this option does not render image
+        # plt.imshow(self.observation, cmap='gray')  # this one does
+        # plt.show()
+
+        # SECOND WAY UPDATING NOT CLOSING WINDOWS AND REUSING ONE
+        # fig = plt.figure()
+        # timer = fig.canvas.new_timer(interval = 3000) #creating a timer object and setting an interval of 3000 milliseconds
+        # timer.add_callback(self.close_event)
+        # plt.imshow(self.observation, cmap='gray')
+        # plt.ylabel('Baxter camera')
+        #
+        # fig.canvas.draw()
+        # plt.pause(0.05)
+        # timer.start()
+        # #plt.show()
+        # time.sleep(1e-6) #unnecessary, but useful   #time.sleep(1) #time.sleep(self._timestep)
+        # # produces seg fault? : fig.canvas.flush_events()
+
+
+        # ANTONIN WAY NOT SHOWING Image
+        plt.ion()
+        fig = plt.figure('Baxter reinforcement learning')
+        plt.clf()
+        #ax = fig.add_subplot(111)
+        # im = ax.scatter(states[:, 0], states[:, 1], s=7, c=np.clip(rewards, -1, 1), cmap='coolwarm', linewidths=0.1)
+        plt.imshow(self.observation, cmap='gray')
+        fig.canvas.draw()
+        # ax.set_xlabel('State dimension 1')
+        # ax.set_ylabel('State dimension 2')
+        #ax.set_title(fill("Baxter", TITLE_MAX_LENGTH))
+        #fig.tight_layout()
+        createInteractivePlot(fig, self.observation)
+        plt.show()
+
+        return self.observation
+
+    def close_event(self):
+        """ A timer calls this function after 3 secs and closes the rendering Window"""
+        plt.close()
+
+def createInteractivePlot(fig, img_array):
+    fig2 = plt.figure("Image")
+    image_plot = plt.imshow(img_array)
+    # Disable seaborn grid
+    image_plot.axes.grid(False)
+    callback = ImageSetter(fig, img_array)
+    fig.canvas.mpl_connect('button_release_event', callback)
+
+class ImageSetter(object):
+    """
+    Callback for matplotlib to display an annotation when points are
+    clicked on.  The point which is closest to the click and within
+    xtol and ytol is identified.
+    """
+
+    def __init__(self, image_plot, img):
+
+        self.image_plot = image_plot
+        self.img = img
+
+    def __call__(self, event):
+        if event.inaxes:
+            click_x = event.xdata
+            click_y = event.ydata
+        print('Updating Image Setter info... THIS IS NEVER CALLED{}'.format(self.img))
+        title = "Baxter RL"
+            #self.image_plot.axes.set_title(title)
+            # Load the image that corresponds to the clicked point in the space
+        self.image_plot.set_data(self.img)

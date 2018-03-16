@@ -8,8 +8,8 @@ BaxterEnv.RECORD_DATA = True
 BaxterEnv.MAX_DISTANCE = 0.65
 
 env = BaxterEnv(renders=True, is_discrete=True, data_log="baxter_recorder_data_log")
-timesteps = 2# 200
-episodes = 1# 30
+timesteps = 2# 500
+episodes = 2# 50
 env.seed(0)
 i = 0
 
