@@ -154,7 +154,7 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
                         help='number of frames to stack (default: 4)')

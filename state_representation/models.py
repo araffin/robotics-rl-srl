@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN
+from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE
 from srl_priors.preprocessing import preprocessImage
 from srl_priors.utils import printGreen, printYellow
 
@@ -45,6 +45,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'supervised_custom_cnn'
             elif 'autoencoder' in path:
                 model_type = 'autoencoder'
+            elif 'vae' in path:
+                model_type = 'vae'
         else:
             if 'custom_cnn' in path:
                 model_type = 'custom_cnn'
@@ -116,7 +118,7 @@ class SRLNeuralNetwork(SRLBaseClass):
     def __init__(self, state_dim, cuda, model_type="custom_cnn"):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
-        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder'], \
+        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'vae'], \
             "Model type not supported: {}".format(model_type)
         self.model_type = model_type
 
@@ -126,8 +128,11 @@ class SRLNeuralNetwork(SRLBaseClass):
             self.model = CustomCNN(state_dim)
         elif model_type == "resnet":
             self.model = SRLConvolutionalNetwork(state_dim, self.cuda, noise_std=NOISE_STD)
+        # TODO: support mlp models
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
+        elif model_type == "vae":
+            self.model = CNNVAE(self.state_dim)
 
         self.model.eval()
 
@@ -154,10 +159,12 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.cuda:
             observation = observation.cuda()
 
-        if self.model_type != "autoencoder":
-            state = self.model(observation)
-        else:
+        if self.model_type == "autoencoder":
             state, _ = self.model(observation)
+        elif self.model_type == "vae":
+            state, _ = self.model.encode(observation)
+        else:
+            state = self.model(observation)
 
         if self.cuda:
             state = state.cpu()
