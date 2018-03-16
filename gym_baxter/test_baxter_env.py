@@ -2,7 +2,12 @@ from __future__ import division, absolute_import, print_function
 import time
 from gym_baxter.envs.baxter_env import BaxterEnv
 
-env = BaxterEnv(renders=True, is_discrete=True)
+
+BaxterEnv.RECORD_DATA = True
+# Reduce max distance to have more negative rewards for srl
+BaxterEnv.MAX_DISTANCE = 0.65
+
+env = BaxterEnv(renders=True, is_discrete=True, data_log="baxter_recorder_data_log")
 timesteps = 2# 200
 episodes = 1# 30
 env.seed(0)

@@ -1,6 +1,7 @@
+import time
+
 import numpy as np
 import cv2
-
 import zmq
 import gym
 from gym import spaces
@@ -26,6 +27,7 @@ Z_TABLE = -0.2
 MAX_DISTANCE = 0.8  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
 BUTTON_LINK_IDX = 1
+RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 DELTA_POS = 0.05
@@ -53,20 +55,33 @@ EXIT_KEYS = [113, 27]  # Escape and q
 STATE_DIM = 3 # When learning states
 LEARN_STATES = False
 USE_SRL = False
-SRL_MODEL_PATH = "/home/natalia/srl-robotic-priors-pytorch/logs/18-03-15_15h11_04_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/states_rewards.npz"
-RECORD_DATA = False
+SRL_MODEL_PATH = None #"/home/natalia/srl-robotic-priors-pytorch/logs/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
+RECORD_DATA = True
 USE_GROUND_TRUTH = True #False
+SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
+
+def getGlobals():
+    """
+    :return: (dict)
+    """
+    return globals()
 
 
 class BaxterEnv(gym.Env):
-    """ Baxter robot arm Environment"
-    The goal of the robotic arm is to push the button on the table
+    """ Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
+        The goal of the robotic arm is to push the button on the table
+        :param renders: (bool) Whether to display the GUI or not
+        :param is_discrete: (bool) true if action space is discrete vs continuous
+        :param name: (str) name of the folder where recorded data will be stored
+        :param data_log: (str) name of the folder where recorded data will be stored
+        :state_dim: dimensionality of the states learned/to learn
     """
 
     def __init__(self,
                  renders=True,
                  is_discrete=True,
                  name="gym_baxter",  # This name should coincide with the module folder name
+                 data_log="baxter_data_log",
                  state_dim= STATE_DIM):
         self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
@@ -79,6 +94,7 @@ class BaxterEnv(gym.Env):
         self.state_dim = state_dim
         self._width = RENDER_WIDTH
         self._height = RENDER_HEIGHT
+        self._timestep = 1. / 240.
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -96,7 +112,7 @@ class BaxterEnv(gym.Env):
         self.button_pos = None
         self.saver = None
         if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, self.state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
+            self.saver = EpisodeSaver(data_log, MAX_DISTANCE, self.state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
@@ -121,7 +137,7 @@ class BaxterEnv(gym.Env):
             print('Using learned states with dim {}, rendering {} and model {}'.format(self.state_dim, self._renders, self.srl_model))
 
         # Initialize the state
-        #self.reset()
+        self.reset()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -167,27 +183,25 @@ class BaxterEnv(gym.Env):
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
-        # Compute distance from Baxter left arm to the button_pos
-        distance = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-        # print('Distance and MAX_DISTANCE {}, {} (TODO: tune max 0.8?)'.format(distance, MAX_DISTANCE))
+        # Compute distance from Baxter left arm to goal (the button_pos)
+        distance_to_goal = np.linalg.norm(self.button_pos - self.arm_pos, 2)
+        # print('Distance and MAX_DISTANCE {}, {} (TODO: tune max 0.8?)'.format(distance_to_goal, MAX_DISTANCE))
         self.n_contacts += self.reward
         if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.episode_terminated = True
-        if distance > MAX_DISTANCE:
+        if distance_to_goal > MAX_DISTANCE: # outside sphere of proximity
             self.reward = -1
-        # TODO: support reward shaping
+        if SHAPE_REWARD:
+            self.reward = -distance_to_goal
         return state_data
 
     def getObservation(self):
+        """
+        Required method by gazebo
+        """
         # Receive a camera image from the server
-        self.img = recvMatrix(self.socket)  # required by gazebo
-        self.observation = self.img  # TODO do we need both?
-        # print('render image: {}'.format(self.img))
-        # print('observation; {}'.format(self.observation))
-        # print(self.img.shape)
-        # print(type(self.observation))#.shape)
-        return self.img
-
+        self.observation = recvMatrix(self.socket)
+        return self.observation
 
     def render(self, mode='rgb_array'):
         """
@@ -200,20 +214,16 @@ class BaxterEnv(gym.Env):
         if mode != "rgb_array":
             print('render in human mode not yet supported')
             return np.array([])
-        print('rendering image: {}'.format(self.img))
-        cv2.imshow("Image", self.img)
-        return self.img
+        print('rendering image of length: {}'.format(self.observation.shape))
+        time.sleep(self._timestep)
+        cv2.imshow("Image", self.observation)
+        return self.observation
 
     def getArmPos(self):
         """
         :return: ([float])->  np.ndarray Position (x, y, z) of Baxter left gripper
         """
-        # Send the (same previous) action to the server
-        #self.socket.send_json({"command": "action", "action": self.action})
-        # Receive state data (position, etc), important to update state related values
-        #state_data = self.getEnvState()
-        #self.arm_pos = np.array(state_data["position"])  # gripper_pos
-        print('getArmPos: {}'.format(self.arm_pos))
+        #print('getArmPos: {}'.format(self.arm_pos))
         return self.arm_pos
 
     def reset(self):

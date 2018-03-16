@@ -87,7 +87,10 @@ A: See issue: https://github.com/openai/baselines/issues/286  Update Gym (see Gy
 cd gym; pip install -e .
 ```
 
+Q: GLib-GIO-Message: Using the 'memory' GSettings backend.  Your settings will not be saved or shared with other applications.
 
+A: Caused when calling cv2.imshow. https://github.com/conda-forge/glib-feedstock/issues/19  -> Add to your ~/.bashrc:
+GIO_EXTRA_MODULES=/usr/lib/x86_64-linux-gnu/gio/modules/
 
 
 ### ROS dependencies troubleshooting (only for Baxter simulator)
@@ -106,8 +109,7 @@ source ~/catkin_ws/devel/setup.bash
 export GAZEBO_MODEL_PATH=$(rospack find arm_scenario_simulator)/models:$GAZEBO_MODEL_PATH
 
 # added by Anaconda2 installer. Comment when using ROS
-# export PATH="/home/your_login/anaconda2/bin:$PATH"
-# export PATH=~/anaconda2/bin:$PATH
+# export PATH="/home/your_login/anaconda3/bin:$PATH"
 ```
 
 Q:  python -m gazebo.gazebo_server
