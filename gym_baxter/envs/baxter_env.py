@@ -1,6 +1,3 @@
-import time
-from textwrap import fill
-
 import numpy as np
 import cv2
 import zmq
@@ -8,9 +5,8 @@ import gym
 from gym import spaces
 from gym.utils import seeding
 import torch as th
-import  matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
 
 # Baxter-Gazebo bridge specific
 from gazebo.constants import SERVER_PORT, HOSTNAME
@@ -56,14 +52,13 @@ BUTTON_POS_TOPIC = "/button1/position"
 EXIT_KEYS = [113, 27]  # Escape and q
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-STATE_DIM = 3 # When learning states
+STATE_DIM = 3  # When learning states
 LEARN_STATES = False
-USE_SRL = True #False
+USE_SRL = True  # False
 SRL_MODEL_PATH = "/home/natalia/srl-robotic-priors-pytorch/logs/staticButtonSimplest/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
 RECORD_DATA = True
-USE_GROUND_TRUTH = False # True #False
-SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
-
+USE_GROUND_TRUTH = False  # True #False
+SHAPE_REWARD = True  # Set to true, reward = -distance_to_goal
 
 # Python 2/3 compatibility
 try:
@@ -83,22 +78,28 @@ def getGlobals():
     return globals()
 
 
+def bgr2rgb(bgr_img):
+    """
+    Convert an image from BGR to RGB
+    :param bgr_img:
+    """
+    return cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+
+
 class BaxterEnv(gym.Env):
     """ Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
         The goal of the robotic arm is to push the button on the table
         :param renders: (bool) Whether to display the GUI or not
         :param is_discrete: (bool) true if action space is discrete vs continuous
-        :param name: (str) name of the folder where recorded data will be stored
-        :param data_log: (str) name of the folder where recorded data will be stored
+        :param log_folder: (str) name of the folder where recorded data will be stored
         :state_dim: dimensionality of the states learned/to learn
     """
 
     def __init__(self,
                  renders=True,
                  is_discrete=True,
-                 name="gym_baxter",  # This name should coincide with the module folder name
-                 data_log="baxter_data_log",
-                 state_dim= STATE_DIM):
+                 log_folder="baxter_log_folder",
+                 state_dim=STATE_DIM):
         self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
         self._is_discrete = is_discrete
@@ -108,13 +109,7 @@ class BaxterEnv(gym.Env):
         self.episode_terminated = False
         self.state_dim = state_dim
         self._renders = renders
-        if self._renders:
-            self._width = RENDER_WIDTH
-            self._height = RENDER_HEIGHT
-            self._timestep = 1. / 240.
-            #plt.ion() # necessary for real-time plotting and the figure to show when updating with fig.canvas.draw().
-            # probably not need this if you're embedding things in a tkinter plot.
-
+        self.np_random = None
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -132,7 +127,8 @@ class BaxterEnv(gym.Env):
         self.button_pos = None
         self.saver = None
         if RECORD_DATA:
-            self.saver = EpisodeSaver(data_log, MAX_DISTANCE, self.state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
+            self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
+                                      relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
@@ -146,7 +142,7 @@ class BaxterEnv(gym.Env):
 
         self.action = [0, 0, 0]
         self.reward = -1
-        self.arm_pos = [0, 0, 0] # np.ndarray
+        self.arm_pos = [0, 0, 0]  # np.ndarray
         self.seed(0)
 
         # SRL model
@@ -154,10 +150,15 @@ class BaxterEnv(gym.Env):
             env_object = self if USE_GROUND_TRUTH else None
             self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, self.state_dim, env_object)
             self.state_dim = self.srl_model.state_dim
-            print('Using learned states with dim {}, rendering {} and model {}'.format(self.state_dim, self._renders, self.srl_model))
+            print('Using learned states with dim {}, rendering {} and model {}, SHAPE_REWARD: {}'.format(self.state_dim, self._renders,
+                                                                                       self.srl_model, SHAPE_REWARD ))
 
         # Initialize the state
         self.reset()
+        if self._renders:
+            self._width = RENDER_WIDTH
+            self._height = RENDER_HEIGHT
+            self.image_plot = None
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -199,7 +200,6 @@ class BaxterEnv(gym.Env):
         arm_pos and reward.
         """
         state_data = self.socket.recv_json()
-        print('state_data {}'.format(state_data))
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
@@ -209,10 +209,11 @@ class BaxterEnv(gym.Env):
         self.n_contacts += self.reward
         if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.episode_terminated = True
-        if distance_to_goal > MAX_DISTANCE: # outside sphere of proximity
+        if distance_to_goal > MAX_DISTANCE:  # outside sphere of proximity
             self.reward = -1
         if SHAPE_REWARD:
             self.reward = -distance_to_goal
+        print('state_data: {}-> adjusted reward: {}'.format(state_data, self.reward))
         return state_data
 
     def getObservation(self):
@@ -245,16 +246,12 @@ class BaxterEnv(gym.Env):
         # metadata that allow reading the observation image
         state = self.getEnvState()
         self.observation = self.getObservation()
-        # close plots GUI
-        #plt.close()
-        #fig.canvas.flush_events()
         if self.saver is not None:
             self.saver.reset(self.observation, self.button_pos, self.arm_pos)
         if self.use_srl:
             return self.srl_model.getState(self.observation)
         else:
             return self.observation
-
 
     def _hasEpisodeTerminated(self):
         """
@@ -268,13 +265,14 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
-        print('\nStep counter reached MAX_STEPS: {}. Summary of reward counts:{}'.format(self._env_step_counter, reward_counts))
+        print('\nStep counter reached MAX_STEPS: {}. Summary of reward counts:{}'.format(self._env_step_counter,
+                                                                                         reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()
         self.socket.close()
 
-    def render(self, mode='rgb_array'):
+    def render(self, mode='rgb_array', title='Baxter reinforcement learning'):
         """
         Method required by OpenAI Gym.
         Gets from x,y,z sliders, proj_matrix
@@ -285,76 +283,15 @@ class BaxterEnv(gym.Env):
         if mode != "rgb_array":
             print('render in human mode not yet supported')
             return np.array([])
-        #print('rendering image of length: {}'.format(self.observation.shape))
 
-        # SIMPLE WAY 1 NOT interactivele
-        # plt.ion()
-        # cv2.imshow("Image", self.observation) # this option does not render image
-        # plt.imshow(self.observation, cmap='gray')  # this one does
-        # plt.show()
-
-        # SECOND WAY UPDATING NOT CLOSING WINDOWS AND REUSING ONE
-        # fig = plt.figure()
-        # timer = fig.canvas.new_timer(interval = 3000) #creating a timer object and setting an interval of 3000 milliseconds
-        # timer.add_callback(self.close_event)
-        # plt.imshow(self.observation, cmap='gray')
-        # plt.ylabel('Baxter camera')
-        #
-        # fig.canvas.draw()
-        # plt.pause(0.05)
-        # timer.start()
-        # #plt.show()
-        # time.sleep(1e-6) #unnecessary, but useful   #time.sleep(1) #time.sleep(self._timestep)
-        # # produces seg fault? : fig.canvas.flush_events()
-
-
-        # ANTONIN WAY NOT SHOWING Image
-        plt.ion()
-        fig = plt.figure('Baxter reinforcement learning')
-        plt.clf()
-        #ax = fig.add_subplot(111)
-        # im = ax.scatter(states[:, 0], states[:, 1], s=7, c=np.clip(rewards, -1, 1), cmap='coolwarm', linewidths=0.1)
-        plt.imshow(self.observation, cmap='gray')
-        fig.canvas.draw()
-        # ax.set_xlabel('State dimension 1')
-        # ax.set_ylabel('State dimension 2')
-        #ax.set_title(fill("Baxter", TITLE_MAX_LENGTH))
-        #fig.tight_layout()
-        createInteractivePlot(fig, self.observation)
-        plt.show()
-
+        plt.ion()  # needed for interactive update
+        if self.image_plot is None:
+            fig = plt.figure('Baxter RL')
+            self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
+            self.image_plot.axes.set_title(title)
+            self.image_plot.axes.grid(False)
+        else:
+            self.image_plot.set_data(bgr2rgb(self.observation))
+        plt.draw()
+        plt.pause(0.0001)  # so that plot is visible
         return self.observation
-
-    def close_event(self):
-        """ A timer calls this function after 3 secs and closes the rendering Window"""
-        plt.close()
-
-def createInteractivePlot(fig, img_array):
-    fig2 = plt.figure("Image")
-    image_plot = plt.imshow(img_array)
-    # Disable seaborn grid
-    image_plot.axes.grid(False)
-    callback = ImageSetter(fig, img_array)
-    fig.canvas.mpl_connect('button_release_event', callback)
-
-class ImageSetter(object):
-    """
-    Callback for matplotlib to display an annotation when points are
-    clicked on.  The point which is closest to the click and within
-    xtol and ytol is identified.
-    """
-
-    def __init__(self, image_plot, img):
-
-        self.image_plot = image_plot
-        self.img = img
-
-    def __call__(self, event):
-        if event.inaxes:
-            click_x = event.xdata
-            click_y = event.ydata
-        print('Updating Image Setter info... THIS IS NEVER CALLED{}'.format(self.img))
-        title = "Baxter RL"
-            #self.image_plot.axes.set_title(title)
-            # Load the image that corresponds to the clicked point in the space
-        self.image_plot.set_data(self.img)

@@ -75,7 +75,7 @@ We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.
 
 - A2C: See above
 - ACKTR: (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region
-- PPO:Proximal Policy Optimization
+- PPO: Proximal Policy Optimization
 
 To load a trained agent and see the result:
 ```
@@ -99,7 +99,6 @@ python -m gazebo.teleop_client
 ```
 Note, the first 3 commands need to be run in Python 2, while the teleop_client runs on
 Anaconda py35 env.
-
 
 ```
 sudo netstat -lpn | grep :7777

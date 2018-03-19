@@ -113,13 +113,19 @@ export GAZEBO_MODEL_PATH=$(rospack find arm_scenario_simulator)/models:$GAZEBO_M
 ```
 
 Q:  python -m gazebo.gazebo_server
+```
 (...) "checkrc.pxd", line 21, in zmq.backend.cython.checkrc._check_rc (zmq/backend/cython/socket.c:6058)
 zmq.error.ZMQError: Address already in use. See http://zguide.zeromq.org/page:all#toc17
-
-A: sudo netstat -ltnp, See the process owning the port (because we us 7777, do
+```
+A1: sudo netstat -ltnp, See the process owning the port (because we us 7777, do
+```
    sudo netstat -lpn | grep :7777
- Kill it with kill -9 <pid>
-B: Close sockets when exiting the program but also call zmq_ctx_destroy(). This destroys the context. Also close the socket, calling context.term()
+```
+ and Kill it with kill -9 <pid> or do all at once within
+ ```
+ sudo kill -9 `sudo lsof -t -i:7777`
+ ```
+A2: Close sockets when exiting the program. It can alsohelp calling zmq_ctx_destroy() to destroy the context by calling context.term()
 
 
 # TO-DO
