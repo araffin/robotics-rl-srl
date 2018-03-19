@@ -144,13 +144,14 @@ def callback(_locals, _globals):
 
 
 def main():
-    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
+    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
     parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent'],
                         help='OpenAI baseline to use')
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-    parser.add_argument('--log-dir', default='/tmp/gym/',
+    parser.add_argument('--episode_window', type=int, default=40, help='Episode window for moving average plot (default: 40)')
+    parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
@@ -172,6 +173,7 @@ def main():
     ENV_NAME = args.env
     ALGO = args.algo
     VISDOM_PORT = args.port
+    EPISODE_WINDOW = args.episode_window
     if args.no_vis:
         viz = False
 

@@ -25,7 +25,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-    parser.add_argument('--log-dir', help='folder with the saved agent model', required=True)
+    parser.add_argument('--log-dir', help='folder with the saved agent model', type=str, required=True)
     parser.add_argument('--num-timesteps', type=int, default=int(10e3))
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render the environment (show the GUI)')

@@ -42,7 +42,7 @@ Several algorithms from [Open AI baselines](https://github.com/openai/baselines)
 
 To train an agent:
 ```
-python -m rl_baselines.train --algo acer --log-dir logs/
+python -m rl_baselines.train --algo ppo2 --log-dir logs/
 ```
 
 To load a trained agent and see the result:
@@ -64,6 +64,20 @@ To load a trained agent and see the result:
 ```
 python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
 ```
+
+### Plot Learning Curve
+
+To plot a learning curve from logs, you have to pass path to the experiment log folder:
+```
+python -m replay.plot --log-dir /logs/raw_pixels/ppo2/18-03-14_11h04_16/
+```
+
+To aggregate data from different experiments (different seeds) and plot them (mean + standard error).
+You have to pass path to rl algorithm log folder (parent of the experiments log folders):
+```
+python -m replay.aggregate_plots --log-dir /logs/raw_pixels/ppo2/ --shape-reward --min-x 1000
+```
+Here it plots experiments with reward shaping and that have a minimum of 1000 episodes.
 
 ## State Representation Learning Models
 
