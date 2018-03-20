@@ -77,7 +77,7 @@ Please look the [SRL Repo](https://github.com/araffin/srl-robotic-priors-pytorch
 Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
 
 ## Baxter Robot with Gazebo and ROS
-Gym Wrapper for baxter environment, more details in the dedicated README (gym_baxter/README.md).
+Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
 
 1. Start ros nodes (Python 2):
 ```
