@@ -94,7 +94,7 @@ python -m gazebo.teleop_client
 or test the environment with random actions (using the gym wrapper):
 
 ```
-python -m gym_baxter.test_baxter_env
+python -m environments.gym_baxter.test_baxter_env
 ```
 
 If the port is already used, you can see the program pid using the following command:

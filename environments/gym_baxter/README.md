@@ -46,7 +46,7 @@ python -m gazebo.gazebo_server
 
 3) Test this module program in the main repo directory (within your conda env py35):
 ```
-python -m gym_baxter.test_baxter_env
+python -m environments.gym_baxter.test_baxter_env
 ```
 
 
