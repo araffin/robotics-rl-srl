@@ -13,7 +13,7 @@ from srl_priors.utils import printGreen, printYellow
 # Init seaborn
 sns.set()
 
-fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 24}
+fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
 # Colorbrewer Paired_12, you can use palettable to retrieve it
 colors = [[166, 206, 227], [31, 120, 180], [178, 223, 138], [51, 160, 44], [251, 154, 153], [227, 26, 28],
@@ -119,7 +119,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     else:
         plt.ylim(Y_LIM_SPARSE_REWARD)
 
-    plt.legend(framealpha=0.5, labelspacing=0.01, loc='lower right', fontsize=25)
+    plt.legend(framealpha=0.5, labelspacing=0.01, loc='lower right', fontsize=16)
 
     if output_file != "":
         printGreen("Saving aggregated data to {}.npy".format(output_file))

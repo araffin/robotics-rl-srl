@@ -31,6 +31,7 @@ ACTION_REPEAT = 1
 NOISE_STD = 0.01
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
+CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -122,6 +123,9 @@ class KukaButtonGymEnv(gym.Env):
         else:
             p.connect(p.DIRECT)
 
+        global CONNECTED_TO_SIMULATOR
+        CONNECTED_TO_SIMULATOR = True
+
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -197,7 +201,8 @@ class KukaButtonGymEnv(gym.Env):
         return np.array(self._observation)
 
     def __del__(self):
-        p.disconnect()
+        if CONNECTED_TO_SIMULATOR:
+            p.disconnect()
 
     def seed(self, seed=None):
         """
