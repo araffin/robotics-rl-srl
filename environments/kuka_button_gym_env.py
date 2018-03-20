@@ -31,6 +31,7 @@ ACTION_REPEAT = 1
 NOISE_STD = 0.01
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
+IS_DISCRETE = True
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -70,7 +71,6 @@ class KukaButtonGymEnv(gym.Env):
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
-                 is_discrete=True,
                  name="kuka_button_gym"):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
@@ -85,7 +85,7 @@ class KukaButtonGymEnv(gym.Env):
         self._cam_pitch = -36
         self._cam_roll = 0
         self.camera_target_pos = (0.316, -0.2, -0.1)
-        self._is_discrete = is_discrete
+        self._is_discrete = IS_DISCRETE
         self.terminated = False
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
