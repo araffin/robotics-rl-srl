@@ -25,7 +25,6 @@ RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 5
 MAX_DISTANCE = 0.8  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
-BUTTON_LINK_IDX = 1
 RELATIVE_POS = False
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
@@ -44,6 +43,7 @@ N_DISCRETE_ACTIONS = len(action_dict)
 
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
+FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = True  # False
@@ -54,8 +54,6 @@ SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 
 # Init seaborn
 sns.set()
-TITLE_MAX_LENGTH = 60
-
 
 def getGlobals():
     """
@@ -81,7 +79,7 @@ class BaxterEnv(gym.Env):
     """
 
     def __init__(self,
-                 renders=True,
+                 renders=False,
                  is_discrete=True,
                  log_folder="baxter_log_folder"):
         self.n_contacts = 0
@@ -92,7 +90,7 @@ class BaxterEnv(gym.Env):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = STATE_DIM
-        self._renders = renders
+        self._renders = renders or FORCE_RENDER
         self.np_random = None
 
         if self._is_discrete:
