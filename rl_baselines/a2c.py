@@ -4,6 +4,7 @@ from baselines.a2c.utils import fc
 from baselines.common.distributions import make_pdtype
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
@@ -135,7 +136,7 @@ def customArguments(parser):
     """
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'], default='cnn')
-    parser.add_argument('--lrschedule', help='Learning rate schedule', choices=['constant', 'linear'],
+    parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
                         default='constant')
     return parser
 
@@ -153,13 +154,17 @@ def main(args, callback):
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
-    envs = SubprocVecEnv(envs)
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
+
+    # Warning: if we use VecNormalize, we need to save the moving average
     # if args.srl_model == "ground_truth":
-    #     # TODO: save running average
     #     envs = VecNormalize(envs)
 
     envs = VecFrameStack(envs, args.num_stack)
     logger.configure()
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
-          lrschedule=args.lrschedule, callback=callback)
+          lrschedule=args.lr_schedule, callback=callback)
     envs.close()

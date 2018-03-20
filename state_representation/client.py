@@ -1,3 +1,6 @@
+"""
+Client to communicate with SRL server
+"""
 import os
 import json
 from enum import Enum
@@ -39,6 +42,10 @@ class SRLClient(object):
         print("Connected to server")
 
     def sendLearnCommand(self, state_dim, seed=1):
+        """
+        :param state_dim: (int)
+        :param seed: (int)
+        """
         self.socket.send_json({"command": Command.LEARN.value, 'state_dim': state_dim, 'seed': seed})
 
     def sendExitCommand(self):
@@ -58,6 +65,7 @@ class SRLClient(object):
 
     def waitForSRLModel(self, state_dim):
         """
+        Wait until SRL is trained
         :param state_dim: (int)
         :return: (bool, str) (True if no error, path to learned model)
         """
