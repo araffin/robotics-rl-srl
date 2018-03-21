@@ -231,6 +231,8 @@ class KukaButtonGymEnv(gym.Env):
             real_action = [dx, dy, dz, 0, finger_angle]
         else:
             dv = DELTA_V
+            # Add noise to action
+            dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = action[0] * dv
             dy = action[1] * dv
             dz = -abs(action[2] * dv)  # Remove up action
