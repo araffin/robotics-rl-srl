@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import seaborn as sns
 from visdom import Visdom
 
@@ -23,7 +24,7 @@ lightcolors = colors[0::2]
 darkcolors = colors[1::2]
 
 Y_LIM_SPARSE_REWARD = [-3, 6]
-Y_LIM_SHAPED_REWARD = [-250, -130]
+Y_LIM_SHAPED_REWARD = [-220, -130]
 
 
 def loadEpisodesData(folder):
@@ -39,6 +40,18 @@ def loadEpisodesData(folder):
     y = np.array(result)[:, 1]
     x = np.arange(len(y))
     return x, y
+
+
+
+def millions(x, pos):
+    """
+    formatter for matplotlib
+    The two args are the value and tick position
+    :param x: (float)
+    :param pos: (int)
+    :return: (str)
+    """
+    return '{:.1f}M'.format(x * 1e-6)
 
 
 def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
@@ -95,7 +108,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     printGreen("{} Experiments".format(y.shape[0]))
     print("Min, Max rewards:", np.min(y), np.max(y))
 
-    plt.figure(title)
+    fig = plt.figure(title)
     # Compute mean for different seeds
     m = np.mean(y, axis=0)
     # Compute standard error
@@ -105,10 +118,9 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     plt.plot(x, m, color=darkcolors[0], label=algo, linewidth=1)
 
     if timesteps:
+        formatter = FuncFormatter(millions)
         plt.xlabel('Number of Timesteps')
-        # plt.xticks([1e5, 2e5, 4e5, 6e5, 8e5, 1e5],
-        #            ["0.1M", "0.2M", "0.4M", "0.6M", "0.8M", "1M"])
-        # plt.xlim(0, 1e6)
+        fig.axes[0].xaxis.set_major_formatter(formatter)
     else:
         plt.xlabel('Number of Episodes')
     plt.ylabel('Rewards')
@@ -153,6 +165,11 @@ if __name__ == '__main__':
             folders.append(path)
 
     srl_model = train_args['srl_model'] if train_args['srl_model'] != "" else "raw pixels"
+    if args.timesteps:
+        title = srl_model + " [Timesteps]"
+    else:
+        title = srl_model + " [Episodes]"
+
     plotGatheredExperiments(folders, train_args['algo'], window=args.episode_window,
-                            title=srl_model + " [Episodes]", min_num_x=args.min_x,
+                            title=title, min_num_x=args.min_x,
                             timesteps=args.timesteps, shaped_reward=args.shape_reward, output_file=args.output_file)

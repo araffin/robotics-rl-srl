@@ -122,6 +122,7 @@ dependencies:
     - pyyaml==3.12
     - pyzmq==17.0.0
     - requests==2.18.4
+    - seaborn==0.8.1
     - scikit-learn==0.19.1
     - scipy==1.0.0
     - tensorflow==1.4.1
