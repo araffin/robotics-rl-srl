@@ -160,7 +160,7 @@ class SRLNeuralNetwork(SRLBaseClass):
             observation = observation.cuda()
 
         if self.model_type == "autoencoder":
-            state, _ = self.model(observation)
+            state = self.model.encode(observation)
         elif self.model_type == "vae":
             state, _ = self.model.encode(observation)
         else:
