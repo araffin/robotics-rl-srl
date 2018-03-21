@@ -233,7 +233,7 @@ class KukaButtonGymEnv(gym.Env):
             dv = DELTA_V
             dx = action[0] * dv
             dy = action[1] * dv
-            dz = action[2] * dv  # TODO: remove up action
+            dz = -abs(action[2] * dv)  # Remove up action
             finger_angle = 0.0  # Close the gripper
             real_action = [dx, dy, dz, 0, finger_angle]
 
