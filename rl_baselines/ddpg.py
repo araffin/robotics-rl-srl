@@ -223,19 +223,16 @@ class ActorCNN(Model):
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            x = tf.layers.max_pooling2d(x, 2, 2)  
 
             x = tf.layers.conv2d(x, 64, (4,4), (2,2))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            x = tf.layers.max_pooling2d(x, 2, 2)  
 
             x = tf.layers.conv2d(x, 64, (3,3))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            x = tf.layers.max_pooling2d(x, 2, 2)  
 
             x = tf.contrib.layers.flatten(x)
 
@@ -271,19 +268,16 @@ class CriticCNN(Model):
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            x = tf.layers.max_pooling2d(x, 2, 2)  
 
             x = tf.layers.conv2d(x, 64, (4,4), (2,2))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            x = tf.layers.max_pooling2d(x, 2, 2)  
 
             x = tf.layers.conv2d(x, 64, (3,3))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            x = tf.layers.max_pooling2d(x, 2, 2)  
 
             x = tf.contrib.layers.flatten(x)
 
