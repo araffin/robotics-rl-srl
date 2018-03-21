@@ -126,7 +126,6 @@ def callback(_locals, _globals):
                 _locals['act'].save(LOG_DIR + "deepq_model.pkl")
             elif ALGO == "ddpg":
                 _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
-                pass
             elif ALGO in ["acer", "a2c", "ppo2"]:
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
             elif "pytorch" in ALGO:
