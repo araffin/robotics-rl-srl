@@ -1,16 +1,13 @@
 import argparse
-import json
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+import numpy as np
 import seaborn as sns
-from visdom import Visdom
+from matplotlib.ticker import FuncFormatter
 
-from pytorch_agents.visualize import load_csv, moving_average, load_data
-from srl_priors.utils import printGreen, printYellow
-from replay.aggregate_plots import colors, lightcolors, darkcolors, Y_LIM_SHAPED_REWARD, Y_LIM_SPARSE_REWARD, millions
+from replay.aggregate_plots import lightcolors, darkcolors, Y_LIM_SHAPED_REWARD, Y_LIM_SPARSE_REWARD, millions
+from srl_priors.utils import printGreen
 
 # Init seaborn
 sns.set()
