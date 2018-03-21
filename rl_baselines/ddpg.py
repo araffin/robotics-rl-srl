@@ -18,13 +18,14 @@ import pickle
 from baselines.ddpg.ddpg import DDPG
 import baselines.common.tf_util as U
 
-from baselines import logger
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib as tc
 from mpi4py import MPI
 
+from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 
+# Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
@@ -54,6 +55,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
     episode_rewards_history = deque(maxlen=100)
     with U.single_threaded_session() as sess:
         # Prepare everything.
+        agent.saver = tf.train.Saver()
         agent.initialize(sess)
         sess.graph.finalize()
 
@@ -234,7 +236,7 @@ class ActorCNN(Model):
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.contrib.layers.flatten(x)
+            x = tc.layers.flatten(x)
 
             x = tf.layers.dense(x, 256)
             if self.layer_norm:
@@ -279,7 +281,7 @@ class CriticCNN(Model):
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.contrib.layers.flatten(x)
+            x = tc.layers.flatten(x)
 
             x = tf.layers.dense(x, 256)
             if self.layer_norm:
@@ -302,7 +304,7 @@ class CriticCNN(Model):
 
 
 class ActorMLP(Model):
-    def __init__(self, nb_actions, name='ActorCNN', layer_norm=True):
+    def __init__(self, nb_actions, name='ActorMLP', layer_norm=True):
         super(ActorMLP, self).__init__(name=name)
         self.nb_actions = nb_actions
         self.layer_norm = layer_norm
@@ -314,12 +316,12 @@ class ActorMLP(Model):
 
             x = obs
 
-            x = tf.layers.dense(x, 64)
+            x = tf.layers.dense(x, 400)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
             
-            x = tf.layers.dense(x, 64)
+            x = tf.layers.dense(x, 300)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
@@ -332,7 +334,7 @@ class ActorMLP(Model):
 
 class CriticMLP(Model):
     def __init__(self, name='CriticMLP', layer_norm=True):
-        super(CriticCNN, self).__init__(name=name)
+        super(CriticMLP, self).__init__(name=name)
         self.layer_norm = layer_norm
 
     def __call__(self, obs, action, reuse=False):
@@ -342,13 +344,13 @@ class CriticMLP(Model):
 
             x = obs
 
-            x = tf.layers.dense(x, 64)
+            x = tf.layers.dense(x, 400)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
             x = tf.concat([x, action], axis=-1)
-            x = tf.layers.dense(x, 64)
+            x = tf.layers.dense(x, 300)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
@@ -362,23 +364,83 @@ class CriticMLP(Model):
         return output_vars
 
 
-def save(self, save_path):
+def save_ddpg(self, save_path):
+    save_path = save_path.replace("//", "/")
+    data = {
+        "observation_shape":tuple(self.obs0.shape[1:]),
+        "action_shape":tuple(self.actions.shape[1:]),
+        "param_noise":self.param_noise,
+        "action_noise":self.action_noise,
+        "gamma":self.gamma,
+        "tau":self.tau,
+        "normalize_returns":self.normalize_returns,
+        "enable_popart":self.enable_popart,
+        "normalize_observations":self.normalize_observations,
+        "batch_size":self.batch_size,
+        "observation_range":self.observation_range,
+        "action_range":self.action_range,
+        "return_range":self.return_range,
+        "critic_l2_reg":self.critic_l2_reg,
+        "actor_lr":self.actor_lr,
+        "critic_lr":self.critic_lr,
+        "clip_norm":self.clip_norm,
+        "reward_scale":self.reward_scale
+    }
+    net = {
+        "actor_name":self.actor.__class__.__name__,
+        "critic_name":self.critic.__class__.__name__,
+        "nb_actions":self.actor.nb_actions,
+        "layer_norm":self.actor.layer_norm
+    }
     with open(save_path,"wb") as f:
-        pickle.dump((self.actor,self.critic), f)
+        pickle.dump((data,net), f)
 
-def load(self, save_path):
+    self.saver.save(self.sess, save_path.split('.')[0]+".ckpl")
+
+
+def load_ddpg(self, save_path):
+    save_path = save_path.replace("//", "/")
     with open(save_path,"rb") as f:
-        actor,critic = pickle.load(f)
-        self.actor = actor
-        self.critic = critic
+        data, _ = pickle.load(f)
+        self.__dict__.update(data)
 
+    self.saver.restore(self.sess, save_path.split('.')[0]+".ckpl")
+
+def load(save_path, sess):
+    with open(save_path,"rb") as f:
+        data, net = pickle.load(f)
+
+    memory = Memory(limit=100, action_shape=data["action_shape"], observation_shape=data["observation_shape"])
+    if net["actor_name"] == "ActorMLP":
+        actor = ActorMLP(net["nb_actions"], layer_norm=net["layer_norm"])
+    elif net["actor_name"] == "ActorCNN":
+        actor = ActorCNN(net["nb_actions"], layer_norm=net["layer_norm"])
+    else:
+        raise NotImplemented
+
+    if net["critic_name"] == "CriticMLP":
+        critic = CriticMLP(layer_norm=net["layer_norm"])
+    elif net["critic_name"] == "CriticCNN":
+        critic = CriticCNN(layer_norm=net["layer_norm"])
+    else:
+        raise NotImplemented
+
+    DDPG.save = save_ddpg
+    DDPG.load = load_ddpg
+
+    agent = DDPG(actor=actor, critic=critic, memory=memory, **data)
+    agent.saver = tf.train.Saver()
+    agent.sess = sess
+
+    return agent
+    
 
 def customArguments(parser):
     """
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--memory-limit', type=int, default=100)
+    parser.add_argument('--memory-limit', type=int, default=100000)
     parser.add_argument('--noise-action', type=str, default="ou", choices=["none","normal","ou"])
     parser.add_argument('--noise-action-sigma', type=float, default=0.2)
     parser.add_argument('--noise-param', action='store_true', default=False)
@@ -393,7 +455,11 @@ def main(args, callback):
     :param callback: (function)
     """
     logger.configure()
-    env = make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)()
+    env = CustomDummyVecEnv([make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)])
+    # Normalize only raw pixels
+    normalize = args.srl_model == ""
+    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
+    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
 
     createTensorflowSession()
     layer_norm = not args.no_layer_norm
@@ -416,12 +482,14 @@ def main(args, callback):
     if args.srl_model != "":
         critic = CriticMLP(layer_norm=layer_norm)
         actor = ActorMLP(nb_actions, layer_norm=layer_norm)
+        batch_size = 64
     else:
         critic = CriticCNN(layer_norm=layer_norm)
         actor = ActorCNN(nb_actions, layer_norm=layer_norm)
+        batch_size = 16
 
-    DDPG.save = save
-    DDPG.load = load
+    DDPG.save = save_ddpg
+    DDPG.load = load_ddpg
 
     train(
         env=env,
@@ -445,7 +513,7 @@ def main(args, callback):
         nb_train_steps=50,
         nb_rollout_steps=100,
         nb_eval_steps=100,
-        batch_size=16,
+        batch_size=batch_size,
         memory=memory,
         callback=callback
     )
