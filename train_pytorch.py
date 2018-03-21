@@ -63,8 +63,8 @@ def main():
         envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
-    print(obs_shape)    
-    obs_shape = (DIM_CHANNELS,obs_shape[1],obs_shape[2])
+    print(obs_shape,envs)    
+    #obs_shape = (DIM_CHANNELS,obs_shape[1],obs_shape[2])
     print(obs_shape)
 
 
@@ -109,7 +109,7 @@ def main():
         :param observation: (numpy tensor)
         :return: (torch tensor)
         """
-
+        print("obs shape :", observation)
         n_channels = envs.observation_space.shape[0]
         obs_tensor = torch.from_numpy(observation).float()
         if args.num_stack > 1:

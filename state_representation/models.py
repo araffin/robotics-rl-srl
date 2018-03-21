@@ -132,7 +132,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
         elif model_type == "triplet_cnn":
-            self.model = TripletNet (state_dim, self.cuda, noise_std=NOISE_STD)
+            self.model = TripletNet(state_dim, self.cuda, noise_std=NOISE_STD)
             self.model = th.nn.DataParallel(self.model)
         self.model.eval()
 
@@ -150,7 +150,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
-        print('obs :', observation.shape, ", prepocess :", preprocessImage)
+        #print('obs :', observation.shape, ", prepocess :", preprocessImage)
         observation = preprocessImage(observation)
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
@@ -161,7 +161,10 @@ class SRLNeuralNetwork(SRLBaseClass):
             observation = observation.cuda()
 
         if self.model_type != "autoencoder":
-            state = self.model(observation)
+            if self.model_type == "triplet_cnn":
+                state = self.model.module.embedding(observation)
+            else:
+                state = self.model(observation)
         else:
             state, _ = self.model(observation)
 
