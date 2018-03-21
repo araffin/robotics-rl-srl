@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import seaborn as sns
-from visdom import Visdom
 
 from pytorch_agents.visualize import load_csv, moving_average, load_data
 from srl_priors.utils import printGreen, printYellow
@@ -134,14 +133,14 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     plt.legend(framealpha=0.5, labelspacing=0.01, loc='lower right', fontsize=16)
 
     if output_file != "":
-        printGreen("Saving aggregated data to {}.npy".format(output_file))
-        np.save(output_file, y)
+        printGreen("Saving aggregated data to {}.npz".format(output_file))
+        np.savez(output_file, x=x, y=y)
 
     plt.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plot trained agent")
-    parser.add_argument('--log-dir', help='folder with the saved agent model', type=str, required=True)
+    parser.add_argument('-i', '--log-dir', help='folder with the saved agent model', type=str, required=True)
     parser.add_argument('-o', '--output-file', help='Where to save the aggregated data', type=str, default="")
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
@@ -152,8 +151,6 @@ if __name__ == '__main__':
     parser.add_argument('--timesteps', action='store_true', default=False,
                         help='Plot timesteps instead of episodes')
     args = parser.parse_args()
-
-    viz = Visdom()
 
     # TODO: check that the parameters are the same between Experiments
     folders = []

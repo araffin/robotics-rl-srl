@@ -107,3 +107,7 @@ If a submodule is not downloaded:
 ```
 git submodule update --init
 ```
+If you have troubles installing mpi4py, make sure you the following installed:
+```
+sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
+```

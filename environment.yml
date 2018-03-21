@@ -118,7 +118,7 @@ dependencies:
     - pyparsing==2.2.0
     - python-dateutil==2.6.1
     - python-utils==2.2.0
-    - pytz==2017.3
+    - pytz==2018.3
     - pyyaml==3.12
     - pyzmq==17.0.0
     - requests==2.18.4
