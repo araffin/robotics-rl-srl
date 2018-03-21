@@ -3,7 +3,7 @@ from baselines.ddpg.models import Model
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.ddpg import DDPG
 from baselines import logger
-import baselines.common.tf_util as U
+import baselines.common.tf_util as tf_util
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
@@ -19,21 +19,23 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 from mpi4py import MPI
 
+
 # Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
-    normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
-    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None):
+          normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
+          popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
+          tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
     max_action = env.action_space.high
     logger.info('scaling actions by {} before executing in env'.format(max_action))
     agent = DDPG(actor, critic, memory, env.observation_space.shape, env.action_space.shape,
-        gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
-        batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-        actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
-        reward_scale=reward_scale)
+                 gamma=gamma, tau=tau, normalize_returns=normalize_returns,
+                 normalize_observations=normalize_observations,
+                 batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
+                 actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
+                 reward_scale=reward_scale)
     logger.info('Using agent with the following configuration:')
     logger.info(str(agent.__dict__.items()))
 
@@ -47,7 +49,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
     episode = 0
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
-    with U.single_threaded_session() as sess:
+    with tf_util.single_threaded_session() as sess:
         # Prepare everything.
         agent.saver = tf.train.Saver()
         agent.initialize(sess)
@@ -86,7 +88,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     if rank == 0 and render:
                         env.render()
                     assert max_action.shape == action.shape
-                    new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                    # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                    new_obs, r, done, info = env.step(
+                        max_action * action)
                     t += 1
                     if rank == 0 and render:
                         env.render()
@@ -112,9 +116,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         episodes += 1
 
                         agent.reset()
-                        obs = env.reset()                
+                        obs = env.reset()
 
-                # Train.
+                        # Train.
                 epoch_actor_losses = []
                 epoch_critic_losses = []
                 epoch_adaptive_distances = []
@@ -136,14 +140,16 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     eval_episode_reward = 0.
                     for t_rollout in range(nb_eval_steps):
                         eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
-                        eval_obs, eval_r, eval_done, eval_info = eval_env.step(max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])                        
+                        # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                        eval_obs, eval_r, eval_done, eval_info = eval_env.step(
+                            max_action * eval_action)
                         if render_eval:
                             eval_env.render()
                         eval_episode_reward += eval_r
 
                         eval_qs.append(eval_q)
                         if eval_done:
-                            eval_obs = eval_env.reset()                            
+                            eval_obs = eval_env.reset()
                             eval_episode_rewards.append(eval_episode_reward)
                             eval_episode_rewards_history.append(eval_episode_reward)
                             eval_episode_reward = 0.
@@ -173,6 +179,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 combined_stats['eval/return_history'] = np.mean(eval_episode_rewards_history)
                 combined_stats['eval/Q'] = eval_qs
                 combined_stats['eval/episodes'] = len(eval_episode_rewards)
+
             def as_scalar(x):
                 if isinstance(x, np.ndarray):
                     assert x.size == 1
@@ -180,9 +187,10 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 elif np.isscalar(x):
                     return x
                 else:
-                    raise ValueError('expected scalar, got %s'%x)
+                    raise ValueError('expected scalar, got %s' % x)
+
             combined_stats_sums = MPI.COMM_WORLD.allreduce(np.array([as_scalar(x) for x in combined_stats.values()]))
-            combined_stats = {k : v / mpi_size for (k,v) in zip(combined_stats.keys(), combined_stats_sums)}
+            combined_stats = {k: v / mpi_size for (k, v) in zip(combined_stats.keys(), combined_stats_sums)}
 
             # Total statistics.
             combined_stats['total/epochs'] = epoch + 1
@@ -215,17 +223,17 @@ class ActorCNN(Model):
 
             x = obs
 
-            x = tf.layers.conv2d(x, 32, (8,8), (4,4))
+            x = tf.layers.conv2d(x, 32, (8, 8), (4, 4))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.layers.conv2d(x, 64, (4,4), (2,2))
+            x = tf.layers.conv2d(x, 64, (4, 4), (2, 2))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.layers.conv2d(x, 64, (3,3))
+            x = tf.layers.conv2d(x, 64, (3, 3))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
@@ -236,15 +244,16 @@ class ActorCNN(Model):
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            
+
             x = tf.layers.dense(x, 256)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            
-            x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+
+            x = tf.layers.dense(x, self.nb_actions,
+                                kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             x = tf.nn.tanh(x)
-        
+
         return x
 
 
@@ -260,17 +269,17 @@ class CriticCNN(Model):
 
             x = obs
 
-            x = tf.layers.conv2d(x, 32, (8,8), (4,4))
+            x = tf.layers.conv2d(x, 32, (8, 8), (4, 4))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.layers.conv2d(x, 64, (4,4), (2,2))
+            x = tf.layers.conv2d(x, 64, (4, 4), (2, 2))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.layers.conv2d(x, 64, (3,3))
+            x = tf.layers.conv2d(x, 64, (3, 3))
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
@@ -314,15 +323,16 @@ class ActorMLP(Model):
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            
+
             x = tf.layers.dense(x, 300)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
-            
-            x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+
+            x = tf.layers.dense(x, self.nb_actions,
+                                kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             x = tf.nn.tanh(x)
-        
+
         return x
 
 
@@ -368,36 +378,36 @@ def saveDDPG(self, save_path):
 
     # params
     data = {
-        "observation_shape":tuple(self.obs0.shape[1:]),
-        "action_shape":tuple(self.actions.shape[1:]),
-        "param_noise":self.param_noise,
-        "action_noise":self.action_noise,
-        "gamma":self.gamma,
-        "tau":self.tau,
-        "normalize_returns":self.normalize_returns,
-        "enable_popart":self.enable_popart,
-        "normalize_observations":self.normalize_observations,
-        "batch_size":self.batch_size,
-        "observation_range":self.observation_range,
-        "action_range":self.action_range,
-        "return_range":self.return_range,
-        "critic_l2_reg":self.critic_l2_reg,
-        "actor_lr":self.actor_lr,
-        "critic_lr":self.critic_lr,
-        "clip_norm":self.clip_norm,
-        "reward_scale":self.reward_scale
+        "observation_shape": tuple(self.obs0.shape[1:]),
+        "action_shape": tuple(self.actions.shape[1:]),
+        "param_noise": self.param_noise,
+        "action_noise": self.action_noise,
+        "gamma": self.gamma,
+        "tau": self.tau,
+        "normalize_returns": self.normalize_returns,
+        "enable_popart": self.enable_popart,
+        "normalize_observations": self.normalize_observations,
+        "batch_size": self.batch_size,
+        "observation_range": self.observation_range,
+        "action_range": self.action_range,
+        "return_range": self.return_range,
+        "critic_l2_reg": self.critic_l2_reg,
+        "actor_lr": self.actor_lr,
+        "critic_lr": self.critic_lr,
+        "clip_norm": self.clip_norm,
+        "reward_scale": self.reward_scale
     }
     # used to reconstruct the actor and critic models
     net = {
-        "actor_name":self.actor.__class__.__name__,
-        "critic_name":self.critic.__class__.__name__,
-        "nb_actions":self.actor.nb_actions,
-        "layer_norm":self.actor.layer_norm
+        "actor_name": self.actor.__class__.__name__,
+        "critic_name": self.critic.__class__.__name__,
+        "nb_actions": self.actor.nb_actions,
+        "layer_norm": self.actor.layer_norm
     }
-    with open(save_path,"wb") as f:
-        pickle.dump((data,net), f)
+    with open(save_path, "wb") as f:
+        pickle.dump((data, net), f)
 
-    self.saver.save(self.sess, save_path.split('.')[0]+".ckpl")
+    self.saver.save(self.sess, save_path.split('.')[0] + ".ckpl")
 
 
 def loadDDPG(self, save_path):
@@ -408,11 +418,12 @@ def loadDDPG(self, save_path):
     # needed, otherwise tensorflow saver wont find the ckpl files
     save_path = save_path.replace("//", "/")
 
-    with open(save_path,"rb") as f:
+    with open(save_path, "rb") as f:
         data, _ = pickle.load(f)
         self.__dict__.update(data)
 
-    self.saver.restore(self.sess, save_path.split('.')[0]+".ckpl")
+    self.saver.restore(self.sess, save_path.split('.')[0] + ".ckpl")
+
 
 def load(save_path, sess):
     """
@@ -421,7 +432,7 @@ def load(save_path, sess):
     :param sess: (Tensorflow Session)
     :return: (DDPG Object)
     """
-    with open(save_path,"rb") as f:
+    with open(save_path, "rb") as f:
         data, net = pickle.load(f)
 
     memory = Memory(limit=100, action_shape=data["action_shape"], observation_shape=data["observation_shape"])
@@ -448,7 +459,7 @@ def load(save_path, sess):
     agent.sess = sess
 
     return agent
-    
+
 
 def customArguments(parser):
     """
@@ -456,7 +467,7 @@ def customArguments(parser):
     :return: (ArgumentParser Object)
     """
     parser.add_argument('--memory-limit', type=int, default=100)
-    parser.add_argument('--noise-action', type=str, default="ou", choices=["none","normal","ou"])
+    parser.add_argument('--noise-action', type=str, default="ou", choices=["none", "normal", "ou"])
     parser.add_argument('--noise-action-sigma', type=float, default=0.2)
     parser.add_argument('--noise-param', action='store_true', default=False)
     parser.add_argument('--noise-param-sigma', type=float, default=0.2)
@@ -485,16 +496,18 @@ def main(args, callback):
     param_noise = None
     nb_actions = env.action_space.shape[-1]
     if args.noise_param:
-        param_noise = AdaptiveParamNoiseSpec(initial_stddev=args.noise_param_sigma, desired_action_stddev=args.noise_param_sigma)
+        param_noise = AdaptiveParamNoiseSpec(initial_stddev=args.noise_param_sigma,
+                                             desired_action_stddev=args.noise_param_sigma)
 
     if args.noise_action == 'normal':
         action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=args.noise_action_sigma * np.ones(nb_actions))
     elif args.noise_action == 'ou':
-        action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=args.noise_action_sigma * np.ones(nb_actions))
-
+        action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions),
+                                                    sigma=args.noise_action_sigma * np.ones(nb_actions))
 
     # Configure components.
-    memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
+    memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape,
+                    observation_shape=env.observation_space.shape)
     if args.srl_model != "":
         critic = CriticMLP(layer_norm=layer_norm)
         actor = ActorMLP(nb_actions, layer_norm=layer_norm)
@@ -516,14 +529,14 @@ def main(args, callback):
         render=False,
         reward_scale=1.,
         param_noise=param_noise,
-        actor=actor, 
-        critic=critic, 
+        actor=actor,
+        critic=critic,
         normalize_returns=False,
         normalize_observations=(args.srl_model == ""),
-        critic_l2_reg=1e-2, 
-        actor_lr=1e-4, 
+        critic_l2_reg=1e-2,
+        actor_lr=1e-4,
         critic_lr=1e-3,
-        action_noise=action_noise, 
+        action_noise=action_noise,
         popart=False,
         gamma=0.99,
         clip_norm=None,
