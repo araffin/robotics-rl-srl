@@ -1,10 +1,9 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib as tc
 from baselines.a2c.utils import fc, sample
 from baselines.common.distributions import make_pdtype
 
-import tensorflow as tf
-import tensorflow.contrib as tc
 from baselines.ddpg.models import Model
 
 
@@ -102,12 +101,11 @@ class AcerMlpPolicy(object):
         self.act = act
 
 
-
-
 class ActorCNN(Model):
     """
     reused from openAI baseline
     """
+
     def __init__(self, nb_actions, name='ActorCNN', layer_norm=True):
         """
         :param nb_actions: (int)
@@ -167,6 +165,7 @@ class CriticCNN(Model):
     """
     reused from openAI baseline
     """
+
     def __init__(self, name='CriticCNN', layer_norm=True):
         """
         :param name: (String)
@@ -228,6 +227,7 @@ class ActorMLP(Model):
     """
     reused from openAI baseline
     """
+
     def __init__(self, nb_actions, name='ActorMLP', layer_norm=True):
         """
         :param nb_actions: (int)
@@ -270,6 +270,7 @@ class CriticMLP(Model):
     """
     reused from openAI baseline
     """
+
     def __init__(self, name='CriticMLP', layer_norm=True):
         """
         :param name: (String)

@@ -209,7 +209,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         pickle.dump(eval_env.get_state(), f)
 
 
-
 def saveDDPG(self, save_path):
     """
     implemented custom save function, as the openAI implementation lacks one
