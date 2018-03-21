@@ -1,5 +1,4 @@
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
-from baselines.ddpg.models import Model
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.ddpg import DDPG
 from baselines import logger
@@ -9,6 +8,7 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
+from rl_baselines.policies import ActorCNN, ActorMLP, CriticCNN, CriticMLP
 
 import os
 import time
@@ -16,7 +16,6 @@ from collections import deque
 import pickle
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib as tc
 from mpi4py import MPI
 
 
@@ -209,163 +208,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
                         pickle.dump(eval_env.get_state(), f)
 
-
-class ActorCNN(Model):
-    def __init__(self, nb_actions, name='ActorCNN', layer_norm=True):
-        super(ActorCNN, self).__init__(name=name)
-        self.nb_actions = nb_actions
-        self.layer_norm = layer_norm
-
-    def __call__(self, obs, reuse=False):
-        with tf.variable_scope(self.name) as scope:
-            if reuse:
-                scope.reuse_variables()
-
-            x = obs
-
-            x = tf.layers.conv2d(x, 32, (8, 8), (4, 4))
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.conv2d(x, 64, (4, 4), (2, 2))
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.conv2d(x, 64, (3, 3))
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tc.layers.flatten(x)
-
-            x = tf.layers.dense(x, 256)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.dense(x, 256)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.dense(x, self.nb_actions,
-                                kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            x = tf.nn.tanh(x)
-
-        return x
-
-
-class CriticCNN(Model):
-    def __init__(self, name='CriticCNN', layer_norm=True):
-        super(CriticCNN, self).__init__(name=name)
-        self.layer_norm = layer_norm
-
-    def __call__(self, obs, action, reuse=False):
-        with tf.variable_scope(self.name) as scope:
-            if reuse:
-                scope.reuse_variables()
-
-            x = obs
-
-            x = tf.layers.conv2d(x, 32, (8, 8), (4, 4))
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.conv2d(x, 64, (4, 4), (2, 2))
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.conv2d(x, 64, (3, 3))
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tc.layers.flatten(x)
-
-            x = tf.layers.dense(x, 256)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.concat([x, action], axis=-1)
-            x = tf.layers.dense(x, 256)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.dense(x, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-        return x
-
-    @property
-    def output_vars(self):
-        output_vars = [var for var in self.trainable_vars if 'output' in var.name]
-        return output_vars
-
-
-class ActorMLP(Model):
-    def __init__(self, nb_actions, name='ActorMLP', layer_norm=True):
-        super(ActorMLP, self).__init__(name=name)
-        self.nb_actions = nb_actions
-        self.layer_norm = layer_norm
-
-    def __call__(self, obs, reuse=False):
-        with tf.variable_scope(self.name) as scope:
-            if reuse:
-                scope.reuse_variables()
-
-            x = obs
-
-            x = tf.layers.dense(x, 400)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.dense(x, 300)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.dense(x, self.nb_actions,
-                                kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            x = tf.nn.tanh(x)
-
-        return x
-
-
-class CriticMLP(Model):
-    def __init__(self, name='CriticMLP', layer_norm=True):
-        super(CriticMLP, self).__init__(name=name)
-        self.layer_norm = layer_norm
-
-    def __call__(self, obs, action, reuse=False):
-        with tf.variable_scope(self.name) as scope:
-            if reuse:
-                scope.reuse_variables()
-
-            x = obs
-
-            x = tf.layers.dense(x, 400)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.concat([x, action], axis=-1)
-            x = tf.layers.dense(x, 300)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
-
-            x = tf.layers.dense(x, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-        return x
-
-    @property
-    def output_vars(self):
-        output_vars = [var for var in self.trainable_vars if 'output' in var.name]
-        return output_vars
 
 
 def saveDDPG(self, save_path):

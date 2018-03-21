@@ -3,6 +3,10 @@ import tensorflow as tf
 from baselines.a2c.utils import fc, sample
 from baselines.common.distributions import make_pdtype
 
+import tensorflow as tf
+import tensorflow.contrib as tc
+from baselines.ddpg.models import Model
+
 
 class MlpPolicyDicrete(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
@@ -96,3 +100,211 @@ class AcerMlpPolicy(object):
         self.step = step
         self.out = out
         self.act = act
+
+
+
+
+class ActorCNN(Model):
+    """
+    reused from openAI baseline
+    """
+    def __init__(self, nb_actions, name='ActorCNN', layer_norm=True):
+        """
+        :param nb_actions: (int)
+        :param name: (String)
+        :param layer_norm: (bool)
+        """
+        super(ActorCNN, self).__init__(name=name)
+        self.nb_actions = nb_actions
+        self.layer_norm = layer_norm
+
+    def __call__(self, obs, reuse=False):
+        """
+        :param obs: (Tensor)
+        :param reuse: (bool)
+        """
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+
+            x = obs
+
+            x = tf.layers.conv2d(x, 32, (8, 8), (4, 4))
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.conv2d(x, 64, (4, 4), (2, 2))
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.conv2d(x, 64, (3, 3))
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tc.layers.flatten(x)
+
+            x = tf.layers.dense(x, 256)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, 256)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, self.nb_actions,
+                                kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            x = tf.nn.tanh(x)
+
+        return x
+
+
+class CriticCNN(Model):
+    """
+    reused from openAI baseline
+    """
+    def __init__(self, name='CriticCNN', layer_norm=True):
+        """
+        :param name: (String)
+        :param layer_norm: (bool)
+        """
+        super(CriticCNN, self).__init__(name=name)
+        self.layer_norm = layer_norm
+
+    def __call__(self, obs, action, reuse=False):
+        """
+        :param obs: (Tensor)
+        :param action: (Tensor)
+        :param reuse: (bool)
+        """
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+
+            x = obs
+
+            x = tf.layers.conv2d(x, 32, (8, 8), (4, 4))
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.conv2d(x, 64, (4, 4), (2, 2))
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.conv2d(x, 64, (3, 3))
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tc.layers.flatten(x)
+
+            x = tf.layers.dense(x, 256)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.concat([x, action], axis=-1)
+            x = tf.layers.dense(x, 256)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+        return x
+
+    @property
+    def output_vars(self):
+        output_vars = [var for var in self.trainable_vars if 'output' in var.name]
+        return output_vars
+
+
+class ActorMLP(Model):
+    """
+    reused from openAI baseline
+    """
+    def __init__(self, nb_actions, name='ActorMLP', layer_norm=True):
+        """
+        :param nb_actions: (int)
+        :param name: (String)
+        :param layer_norm: (bool)
+        """
+        super(ActorMLP, self).__init__(name=name)
+        self.nb_actions = nb_actions
+        self.layer_norm = layer_norm
+
+    def __call__(self, obs, reuse=False):
+        """
+        :param obs: (Tensor)
+        :param reuse: (bool)
+        """
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+
+            x = obs
+
+            x = tf.layers.dense(x, 400)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, 300)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, self.nb_actions,
+                                kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            x = tf.nn.tanh(x)
+
+        return x
+
+
+class CriticMLP(Model):
+    """
+    reused from openAI baseline
+    """
+    def __init__(self, name='CriticMLP', layer_norm=True):
+        """
+        :param name: (String)
+        :param layer_norm: (bool)
+        """
+        super(CriticMLP, self).__init__(name=name)
+        self.layer_norm = layer_norm
+
+    def __call__(self, obs, action, reuse=False):
+        """
+        :param obs: (Tensor)
+        :param action: (Tensor)
+        :param reuse: (bool)
+        """
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+
+            x = obs
+
+            x = tf.layers.dense(x, 400)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.concat([x, action], axis=-1)
+            x = tf.layers.dense(x, 300)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+        return x
+
+    @property
+    def output_vars(self):
+        output_vars = [var for var in self.trainable_vars if 'output' in var.name]
+        return output_vars
