@@ -71,7 +71,7 @@ for _ in range(load_args.num_timesteps):
     elif algo == "deepq":
         actions = model(obs[None])[0]
     elif algo == "ddpg":
-        actions = model.pi(obs, apply_noise=True, compute_Q=True)[0]
+        actions = model.pi(obs, apply_noise=False, compute_Q=False)[0]
     obs, rewards, dones, _ = envs.step(actions)
 
     if algo in ["deepq", "ddpg"]:

@@ -1,29 +1,23 @@
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from baselines.ddpg.models import Model
 from baselines.ddpg.memory import Memory
-
+from baselines.ddpg.ddpg import DDPG
 from baselines import logger
-from baselines.common.atari_wrappers import ScaledFloatFrame
+import baselines.common.tf_util as U
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
-
+from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 
 import os
 import time
 from collections import deque
 import pickle
-
-from baselines.ddpg.ddpg import DDPG
-import baselines.common.tf_util as U
-
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib as tc
 from mpi4py import MPI
-
-from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 
 # Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
@@ -364,8 +358,15 @@ class CriticMLP(Model):
         return output_vars
 
 
-def save_ddpg(self, save_path):
+def saveDDPG(self, save_path):
+    """
+    implemented custom save function, as the openAI implementation lacks one
+    :param save_path: (String)
+    """
+    # needed, otherwise tensorflow saver wont find the ckpl files
     save_path = save_path.replace("//", "/")
+
+    # params
     data = {
         "observation_shape":tuple(self.obs0.shape[1:]),
         "action_shape":tuple(self.actions.shape[1:]),
@@ -386,6 +387,7 @@ def save_ddpg(self, save_path):
         "clip_norm":self.clip_norm,
         "reward_scale":self.reward_scale
     }
+    # used to reconstruct the actor and critic models
     net = {
         "actor_name":self.actor.__class__.__name__,
         "critic_name":self.critic.__class__.__name__,
@@ -398,8 +400,14 @@ def save_ddpg(self, save_path):
     self.saver.save(self.sess, save_path.split('.')[0]+".ckpl")
 
 
-def load_ddpg(self, save_path):
+def loadDDPG(self, save_path):
+    """
+    implemented custom load function, as the openAI implementation lacks one
+    :param save_path: (String)
+    """
+    # needed, otherwise tensorflow saver wont find the ckpl files
     save_path = save_path.replace("//", "/")
+
     with open(save_path,"rb") as f:
         data, _ = pickle.load(f)
         self.__dict__.update(data)
@@ -407,6 +415,12 @@ def load_ddpg(self, save_path):
     self.saver.restore(self.sess, save_path.split('.')[0]+".ckpl")
 
 def load(save_path, sess):
+    """
+    Create a DDPG model and load weights from a saved one.
+    :param save_path: (String)
+    :param sess: (Tensorflow Session)
+    :return: (DDPG Object)
+    """
     with open(save_path,"rb") as f:
         data, net = pickle.load(f)
 
@@ -425,8 +439,9 @@ def load(save_path, sess):
     else:
         raise NotImplemented
 
-    DDPG.save = save_ddpg
-    DDPG.load = load_ddpg
+    # add save and load functions to DDPG
+    DDPG.save = saveDDPG
+    DDPG.load = loadDDPG
 
     agent = DDPG(actor=actor, critic=critic, memory=memory, **data)
     agent.saver = tf.train.Saver()
@@ -440,7 +455,7 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--memory-limit', type=int, default=100000)
+    parser.add_argument('--memory-limit', type=int, default=100)
     parser.add_argument('--noise-action', type=str, default="ou", choices=["none","normal","ou"])
     parser.add_argument('--noise-action-sigma', type=float, default=0.2)
     parser.add_argument('--noise-param', action='store_true', default=False)
@@ -454,6 +469,7 @@ def main(args, callback):
     :param args: (argparse.Namespace Object)
     :param callback: (function)
     """
+
     logger.configure()
     env = CustomDummyVecEnv([make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)])
     # Normalize only raw pixels
@@ -488,8 +504,9 @@ def main(args, callback):
         actor = ActorCNN(nb_actions, layer_norm=layer_norm)
         batch_size = 16
 
-    DDPG.save = save_ddpg
-    DDPG.load = load_ddpg
+    # add save and load functions to DDPG
+    DDPG.save = saveDDPG
+    DDPG.load = loadDDPG
 
     train(
         env=env,
