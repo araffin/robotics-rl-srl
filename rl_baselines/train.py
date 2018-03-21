@@ -1,6 +1,5 @@
 """
-Common functions for RL baselines
-TODO: set_global_seeds for gym
+Train script for openAI RL Baselines
 """
 import argparse
 import json
@@ -21,7 +20,7 @@ import rl_baselines.random_search as random_search
 from pytorch_agents.visualize import visdom_plot, episode_plot
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.utils import computeMeanReward
-from srl_priors.utils import printGreen
+from srl_priors.utils import printGreen, printYellow
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -33,7 +32,7 @@ EPISODE_WINDOW = 40  # For plotting moving average
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 500  # Save RL model every 500 steps
-N_EPISODES_EVAL = 50  # Evaluate the performance on the last 50 episodes
+N_EPISODES_EVAL = 100  # Evaluate the performance on the last 100 episodes
 params_saved = False
 best_mean_reward = -10000
 
@@ -60,6 +59,9 @@ def configureEnvAndLogFolder(args, kuka_env):
     :return: (ArgumentParser object)
     """
     global PLOT_TITLE, LOG_DIR
+    # Reward sparse or shaped
+    print("namespace: ",args)
+    kuka_env.SHAPE_REWARD = args.shape_reward
 
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -79,7 +81,7 @@ def configureEnvAndLogFolder(args, kuka_env):
         args.log_dir += "raw_pixels/"
 
     # Add date + current time
-    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%d-%m-%y_%Hh%M_%S"))
+    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
 
     os.makedirs(args.log_dir, exist_ok=True)
@@ -89,14 +91,16 @@ def configureEnvAndLogFolder(args, kuka_env):
 
 def callback(_locals, _globals):
     """
-    Callback called at each step (for DQN) or after n steps (see ACER)
+    Callback called at each step (for DQN an others) or after n steps (see ACER or PPO2)
     :param _locals: (dict)
     :param _globals: (dict)
     """
     global win, win_smooth, win_episodes, n_steps, viz, params_saved, best_mean_reward
+    # Create vizdom object only if needed
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
+    # Save RL agent parameters
     if not params_saved:
         # Filter locals
         params = filterJSONSerializableObjects(_locals)
@@ -117,15 +121,20 @@ def callback(_locals, _globals):
         # Save Best model
         if mean_reward > best_mean_reward:
             best_mean_reward = mean_reward
+            printGreen("Saving new best model")
             if ALGO == "deepq":
                 _locals['act'].save(LOG_DIR + "deepq_model.pkl")
-            elif ALGO == "acer":
-                _locals['model'].save(LOG_DIR + "acer_model.pkl")
-            elif ALGO == "a2c":
-                _locals['model'].save(LOG_DIR + "a2c_model.pkl")
-            elif ALGO == "ppo2":
-                _locals['model'].save(LOG_DIR + "ppo2_model.pkl")
+            elif ALGO in ["acer", "a2c", "ppo2"]:
+                _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
+            elif "pytorch" in ALGO:
+                # Bring back the weights to the cpu
+                if _globals['args'].cuda:
+                    _locals['actor_critic'].cpu()
+                _globals['torch'].save(_locals['actor_critic'].state_dict(), "{}/{}_model.pth".format(LOG_DIR, ALGO))
+                if _globals['args'].cuda:
+                    _locals['actor_critic'].cuda()
 
+    # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
         win_smooth = visdom_plot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
@@ -146,7 +155,7 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
                         help='number of frames to stack (default: 4)')
@@ -156,7 +165,8 @@ def main():
                         help='visdom server port (default: 8097)')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
-
+    parser.add_argument('--shape-reward', action='store_true', default=False,
+                        help='Shape the reward (reward = - distance) instead of a sparse reward')
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
 
@@ -170,6 +180,8 @@ def main():
         algo = deepq
     elif args.algo == "acer":
         algo = acer
+        # callback is not called after each steps
+        # so we need to reduce log and save interval
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 20
     elif args.algo == "a2c":
@@ -177,6 +189,7 @@ def main():
     elif args.algo == "ppo2":
         algo = ppo2
         LOG_INTERVAL = 10
+        SAVE_INTERVAL = 10
     elif args.algo == "random_agent":
         algo = random_agent
     elif args.algo == "random_search":
@@ -189,15 +202,19 @@ def main():
     parser = algo.customArguments(parser)
     args = parser.parse_args()
     args = configureEnvAndLogFolder(args, algo.kuka_env)
+    args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
     with open(LOG_DIR + "args.json", "w") as f:
-        json.dump(vars(args), f)
+        json.dump(args_dict, f)
 
     # Print Variables
-    pprint(args)
+    printYellow("Arguments:")
+    pprint(args_dict)
+    printYellow("Kuka Env Globals:")
     pprint(filterJSONSerializableObjects(algo.kuka_env.getGlobals()))
     # Save kuka env params
     saveEnvParams(algo.kuka_env)
+    # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     algo.main(args, callback)
 

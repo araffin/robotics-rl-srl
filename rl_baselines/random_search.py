@@ -3,15 +3,16 @@ Random Search: randomly sample actions from the action space
 """
 import time
 
-import numpy as np
 import torch as th
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from torch.autograd import Variable
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from rl_baselines.utils import computeMeanReward
+from srl_priors.utils import printGreen
 
 
 def customArguments(parser):
@@ -30,9 +31,10 @@ def customArguments(parser):
 # TODO: check Uber paper to init network like them
 def initNetwork(args, env, obs_shape):
     """
+    Create a neural network
     :param args: (argparse.Namespace Object)
     :param env: (gym env)
-    :param ob_space: (numpy tensor)
+    :param obs_shape: (numpy tensor)
     :return: (Pytorch Model)
     """
     if len(env.observation_space.shape) == 3:
@@ -55,11 +57,11 @@ def update_current_obs(current_obs, obs, num_stack, env):
     :param env: (gym env object)
     :return: (Torch Tensor)
     """
-    shape_dim0 = env.observation_space.shape[0]
+    n_channels = env.observation_space.shape[0]
     obs = th.from_numpy(obs).float()
     if num_stack > 1:
-        current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-    current_obs[:, -shape_dim0:] = obs
+        current_obs[:, :-n_channels] = current_obs[:, n_channels:]
+    current_obs[:, -n_channels:] = obs
     return current_obs
 
 
@@ -71,10 +73,17 @@ def main(args, callback=None):
     args.cuda = not args.no_cuda and th.cuda.is_available()
     args.deterministic = not args.no_deterministic
 
+    if kuka_env.USE_SRL and args.cuda:
+        assert args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
+
     # Create Environments and wraps them for monitoring/multiprocessing
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=True)
             for i in range(args.num_cpu)]
-    envs = SubprocVecEnv(envs)
+
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
     if len(obs_shape) > 0:
@@ -109,11 +118,11 @@ def main(args, callback=None):
             _, mean_reward = computeMeanReward(args.log_dir, n_done)
             # Save Best model
             if mean_reward > best_mean_reward:
-                print("Saving best model")
+                printGreen("Saving best model")
                 best_mean_reward = mean_reward
                 if args.cuda:
                     actor_critic.cpu()
-                th.save(actor_critic.state_dict(), "{}/random_search.pth".format(args.log_dir))
+                th.save(actor_critic.state_dict(), "{}/random_search_model.pth".format(args.log_dir))
                 if args.cuda:
                     actor_critic.cuda()
             # Initialize a new network

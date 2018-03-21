@@ -15,10 +15,12 @@ from . import kuka
 
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
+# Terminate the episode if the arm is outside the safety sphere during too much time
+N_STEPS_OUTSIDE_SAFETY_SPHERE = 50
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.65  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.70  # Max distance between end effector and the button (for negative reward)
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
@@ -26,7 +28,9 @@ DELTA_V = 0.03  # velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0
+NOISE_STD = 0.01
+SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
+N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -36,6 +40,7 @@ USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
+VERBOSE = False  # Whether to print some debug info
 
 
 def getGlobals():
@@ -43,6 +48,7 @@ def getGlobals():
     :return: (dict)
     """
     return globals()
+
 
 # TODO: improve the physics of the button
 
@@ -56,11 +62,12 @@ class KukaButtonGymEnv(gym.Env):
     """
     Gym wrapper for Kuka environment with a push button
     :param urdf_root: (str) Path to pybullet urdf files
-    :param renders: (bool) Wether to display the GUI or not
+    :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
     :param multi_view (bool) enabling dual-camera view of the scene (return stacked images of the scene on 6 channels)
     :param name: (str) name of the folder where recorded data will be stored
     """
+
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
@@ -91,7 +98,8 @@ class KukaButtonGymEnv(gym.Env):
         self.saver = None
         self.multi_view=multi_view
         if RECORD_DATA:
-            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, relative_pos=RELATIVE_POS, learn_states=LEARN_STATES)
+            self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS,
+                                      learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
             env_object = self if USE_GROUND_TRUTH else None
@@ -128,7 +136,7 @@ class KukaButtonGymEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
 
         if self.use_srl:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32)
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         # Create numpy random generator
         # This seed can be changed later
         self.seed(0)
@@ -146,6 +154,7 @@ class KukaButtonGymEnv(gym.Env):
         """
         self.terminated = False
         self.n_contacts = 0
+        self.n_steps_outside = 0
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
         p.setTimeStep(self._timestep)
@@ -163,25 +172,25 @@ class KukaButtonGymEnv(gym.Env):
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep)
         self._env_step_counter = 0
-        # Close the gripper
-        for _ in range(150):
+        # Close the gripper and wait for the arm to be in rest position
+        for _ in range(500):
             self._kuka.applyAction([0, 0, 0, 0, 0])
             p.stepSimulation()
 
         # Randomize init arm pos: take 5 random actions
-        # for _ in range(5):
-        #     action = [0, 0, 0, 0, 0]
-        #     sign = 1 if self.np_random.rand() > 0.5 else -1
-        #     action_idx = self.np_random.randint(3)  # dx, dy or dz
-        #     action[action_idx] += sign * DELTA_V
-        #     self._kuka.applyAction(action)
-        #     p.stepSimulation()
+        for _ in range(N_RANDOM_ACTIONS_AT_INIT):
+            action = [0, 0, 0, 0, 0]
+            sign = 1 if self.np_random.rand() > 0.5 else -1
+            action_idx = self.np_random.randint(3)  # dx, dy or dz
+            action[action_idx] += sign * DELTA_V
+            self._kuka.applyAction(action)
+            p.stepSimulation()
 
         self._observation = self.getExtendedObservation()
 
-        button_pos = p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0]
+        self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
         if self.saver is not None:
-            self.saver.reset(self._observation, button_pos, self.getArmPos())
+            self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
             # if len(self.saver.srl_model_path) > 0:
@@ -226,9 +235,12 @@ class KukaButtonGymEnv(gym.Env):
             dv = DELTA_V
             dx = action[0] * dv
             dy = action[1] * dv
-            da = action[2] * 0.1
+            dz = action[2] * dv  # TODO: remove up action
             finger_angle = 0.0  # Close the gripper
-            real_action = [dx, dy, -0.002, da, finger_angle]
+            real_action = [dx, dy, dz, 0, finger_angle]
+
+        if VERBOSE:
+            print(np.array2string(np.array(real_action), precision=2))
 
         return self.step2(real_action)
 
@@ -236,6 +248,7 @@ class KukaButtonGymEnv(gym.Env):
         """
         :param action:([float])
         """
+        # Apply force to the button
         p.setJointMotorControl2(self.button_uid, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
 
         for i in range(self._action_repeat):
@@ -323,7 +336,6 @@ class KukaButtonGymEnv(gym.Env):
 
     def _reward(self):
         gripper_pos = self.getArmPos()
-        #p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_end_effector_index)[0]
         distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
         # print(distance)
 
@@ -335,8 +347,13 @@ class KukaButtonGymEnv(gym.Env):
 
         if distance > MAX_DISTANCE or contact_with_table:
             reward = -1
+            self.n_steps_outside += 1
+        else:
+            self.n_steps_outside = 0
 
-        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
+        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 \
+                or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
-
+        if SHAPE_REWARD:
+            return -distance
         return reward
