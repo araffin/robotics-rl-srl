@@ -5,8 +5,8 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN
-from srl_priors.preprocessing import preprocessImage
+from srl_priors.models.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, TripletNet
+from srl_priors.preprocessing.data_loader import preprocessImage
 from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -35,7 +35,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     if env_object is not None:
         model_type = 'ground truth'
         model = SRLGroundTruth(env_object)
-
+    print('path : ',path, '\n, model_type :',model_type, ', env_obj :',env_object)
     if path is not None:
         if 'baselines' in path:
             if 'pca' in path:
@@ -48,6 +48,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         else:
             if 'custom_cnn' in path:
                 model_type = 'custom_cnn'
+            elif 'triplet' in path:
+                model_type = "triplet_cnn"
             else:
                 model_type = 'resnet'
 
@@ -60,6 +62,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     if path is not None:
         printYellow("Loading trained model...")
+        print('path :',path)
         model.load(path)
     return model
 
@@ -116,7 +119,7 @@ class SRLNeuralNetwork(SRLBaseClass):
     def __init__(self, state_dim, cuda, model_type="custom_cnn"):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
-        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder'], \
+        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'triplet_cnn'], \
             "Model type not supported: {}".format(model_type)
         self.model_type = model_type
 
@@ -128,7 +131,9 @@ class SRLNeuralNetwork(SRLBaseClass):
             self.model = SRLConvolutionalNetwork(state_dim, self.cuda, noise_std=NOISE_STD)
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
-
+        elif model_type == "triplet_cnn":
+            self.model = TripletNet (state_dim, self.cuda, noise_std=NOISE_STD)
+            self.model = th.nn.DataParallel(self.model)
         self.model.eval()
 
         if self.cuda:
@@ -145,6 +150,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
+        print('obs :', observation.shape, ", prepocess :", preprocessImage)
         observation = preprocessImage(observation)
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)

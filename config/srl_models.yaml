@@ -1,7 +1,8 @@
 # Base path to SRL log folder
-log_folder: srl_priors/logs/kuka_test/
+#log_folder: srl_priors/logs/kuka_test/
+log_folder: /home/interns/rene/srl-robotic-priors-pytorch/logs/dual_triplet_state_dim_3
 # Path to the different trained SRL models
 autoencoder: baselines/autoencoder_cnn_ST_DIM6_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
 supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
 pca: baselines/pca_ST_DIM5/pca.pkl
-srl_priors: 07-03-18_14h24_49_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth
+srl_priors: /srl_model.pth
