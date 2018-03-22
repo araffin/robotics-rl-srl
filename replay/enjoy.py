@@ -59,9 +59,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = load_args.shape_reward
 
-    # TODO: add a flag in the training arguments for continuous actions.
-    if algo == "ddpg": 
-        kuka_env.IS_DISCRETE = False
+    kuka_env.IS_DISCRETE = not train_args["continuous_actions"]
 
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
