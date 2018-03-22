@@ -312,6 +312,7 @@ def customArguments(parser):
     parser.add_argument('--noise-param', help='Enable parameter noise', action='store_true', default=False)
     parser.add_argument('--noise-param-sigma', help='The variance of the parameter noise', type=float, default=0.2)
     parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks', action='store_true', default=False)
+    parser.add_argument('--batch-size', help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)' , type=int, default=16)
     return parser
 
 
@@ -351,11 +352,9 @@ def main(args, callback):
     if args.srl_model != "":
         critic = DDPGCriticMLP(layer_norm=layer_norm)
         actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
-        batch_size = 64
     else:
         critic = DDPGCriticCNN(layer_norm=layer_norm)
         actor = DDPGActorCNN(n_actions, layer_norm=layer_norm)
-        batch_size = 16
 
     # add save and load functions to DDPG
     DDPG.save = saveDDPG
@@ -383,7 +382,7 @@ def main(args, callback):
         nb_train_steps=50,
         nb_rollout_steps=100,
         nb_eval_steps=100,
-        batch_size=batch_size,
+        batch_size=args.batch_size,
         memory=memory,
         callback=callback
     )
