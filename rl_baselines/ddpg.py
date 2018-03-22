@@ -1,3 +1,11 @@
+import os
+import time
+from collections import deque
+import pickle
+
+import numpy as np
+import tensorflow as tf
+from mpi4py import MPI
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.ddpg import DDPG
@@ -8,16 +16,7 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
-from rl_baselines.policies import ActorCNN, ActorMLP, CriticCNN, CriticMLP
-
-import os
-import time
-from collections import deque
-import pickle
-import numpy as np
-import tensorflow as tf
-from mpi4py import MPI
-
+from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
 
 # Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
@@ -212,7 +211,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 def saveDDPG(self, save_path):
     """
     implemented custom save function, as the openAI implementation lacks one
-    :param save_path: (String)
+    :param save_path: (str)
     """
     # needed, otherwise tensorflow saver wont find the ckpl files
     save_path = save_path.replace("//", "/")
@@ -242,7 +241,7 @@ def saveDDPG(self, save_path):
     net = {
         "actor_name": self.actor.__class__.__name__,
         "critic_name": self.critic.__class__.__name__,
-        "nb_actions": self.actor.nb_actions,
+        "n_actions": self.actor.n_actions,
         "layer_norm": self.actor.layer_norm
     }
     with open(save_path, "wb") as f:
@@ -254,7 +253,7 @@ def saveDDPG(self, save_path):
 def loadDDPG(self, save_path):
     """
     implemented custom load function, as the openAI implementation lacks one
-    :param save_path: (String)
+    :param save_path: (str)
     """
     # needed, otherwise tensorflow saver wont find the ckpl files
     save_path = save_path.replace("//", "/")
@@ -269,7 +268,7 @@ def loadDDPG(self, save_path):
 def load(save_path, sess):
     """
     Create a DDPG model and load weights from a saved one.
-    :param save_path: (String)
+    :param save_path: (str)
     :param sess: (Tensorflow Session)
     :return: (DDPG Object)
     """
@@ -277,17 +276,17 @@ def load(save_path, sess):
         data, net = pickle.load(f)
 
     memory = Memory(limit=100, action_shape=data["action_shape"], observation_shape=data["observation_shape"])
-    if net["actor_name"] == "ActorMLP":
-        actor = ActorMLP(net["nb_actions"], layer_norm=net["layer_norm"])
-    elif net["actor_name"] == "ActorCNN":
-        actor = ActorCNN(net["nb_actions"], layer_norm=net["layer_norm"])
+    if net["actor_name"] == "DDPGActorMLP":
+        actor = DDPGActorMLP(net["n_actions"], layer_norm=net["layer_norm"])
+    elif net["actor_name"] == "DDPGActorCNN":
+        actor = DDPGActorCNN(net["n_actions"], layer_norm=net["layer_norm"])
     else:
         raise NotImplemented
 
-    if net["critic_name"] == "CriticMLP":
-        critic = CriticMLP(layer_norm=net["layer_norm"])
-    elif net["critic_name"] == "CriticCNN":
-        critic = CriticCNN(layer_norm=net["layer_norm"])
+    if net["critic_name"] == "DDPGCriticMLP":
+        critic = DDPGCriticMLP(layer_norm=net["layer_norm"])
+    elif net["critic_name"] == "DDPGCriticCNN":
+        critic = DDPGCriticCNN(layer_norm=net["layer_norm"])
     else:
         raise NotImplemented
 
@@ -307,12 +306,12 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--memory-limit', type=int, default=100)
-    parser.add_argument('--noise-action', type=str, default="ou", choices=["none", "normal", "ou"])
-    parser.add_argument('--noise-action-sigma', type=float, default=0.2)
-    parser.add_argument('--noise-param', action='store_true', default=False)
-    parser.add_argument('--noise-param-sigma', type=float, default=0.2)
-    parser.add_argument('--no-layer-norm', action='store_true', default=False)
+    parser.add_argument('--memory-limit', help='Used to define the size of the replay buffer (in number of observations)' , type=int, default=100)
+    parser.add_argument('--noise-action', help='Define the type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck (used for exploration)',type=str, default="ou", choices=["none", "normal", "ou"])
+    parser.add_argument('--noise-action-sigma', help='The variance of the action noise', type=float, default=0.2)
+    parser.add_argument('--noise-param', help='Enable parameter noise', action='store_true', default=False)
+    parser.add_argument('--noise-param-sigma', help='The variance of the parameter noise', type=float, default=0.2)
+    parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks', action='store_true', default=False)
     return parser
 
 
@@ -335,27 +334,27 @@ def main(args, callback):
     # Parse noise_type
     action_noise = None
     param_noise = None
-    nb_actions = env.action_space.shape[-1]
+    n_actions = env.action_space.shape[-1]
     if args.noise_param:
         param_noise = AdaptiveParamNoiseSpec(initial_stddev=args.noise_param_sigma,
                                              desired_action_stddev=args.noise_param_sigma)
 
     if args.noise_action == 'normal':
-        action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=args.noise_action_sigma * np.ones(nb_actions))
+        action_noise = NormalActionNoise(mu=np.zeros(n_actions), sigma=args.noise_action_sigma * np.ones(n_actions))
     elif args.noise_action == 'ou':
-        action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions),
-                                                    sigma=args.noise_action_sigma * np.ones(nb_actions))
+        action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(n_actions),
+                                                    sigma=args.noise_action_sigma * np.ones(n_actions))
 
     # Configure components.
     memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape,
                     observation_shape=env.observation_space.shape)
     if args.srl_model != "":
-        critic = CriticMLP(layer_norm=layer_norm)
-        actor = ActorMLP(nb_actions, layer_norm=layer_norm)
+        critic = DDPGCriticMLP(layer_norm=layer_norm)
+        actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
         batch_size = 64
     else:
-        critic = CriticCNN(layer_norm=layer_norm)
-        actor = ActorCNN(nb_actions, layer_norm=layer_norm)
+        critic = DDPGCriticCNN(layer_norm=layer_norm)
+        actor = DDPGActorCNN(n_actions, layer_norm=layer_norm)
         batch_size = 16
 
     # add save and load functions to DDPG

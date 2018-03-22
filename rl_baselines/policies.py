@@ -101,19 +101,19 @@ class AcerMlpPolicy(object):
         self.act = act
 
 
-class ActorCNN(Model):
+class DDPGActorCNN(Model):
     """
-    reused from openAI baseline
+    Adapted from openAI baseline, used for DDPG
     """
 
-    def __init__(self, nb_actions, name='ActorCNN', layer_norm=True):
+    def __init__(self, n_actions, name='DDPGActorCNN', layer_norm=True):
         """
-        :param nb_actions: (int)
-        :param name: (String)
+        :param n_actions: (int)
+        :param name: (str)
         :param layer_norm: (bool)
         """
-        super(ActorCNN, self).__init__(name=name)
-        self.nb_actions = nb_actions
+        super(DDPGActorCNN, self).__init__(name=name)
+        self.n_actions = n_actions
         self.layer_norm = layer_norm
 
     def __call__(self, obs, reuse=False):
@@ -154,24 +154,24 @@ class ActorCNN(Model):
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.layers.dense(x, self.nb_actions,
+            x = tf.layers.dense(x, self.n_actions,
                                 kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             x = tf.nn.tanh(x)
 
         return x
 
 
-class CriticCNN(Model):
+class DDPGCriticCNN(Model):
     """
-    reused from openAI baseline
+    Adapted from openAI baseline, used for DDPG
     """
 
-    def __init__(self, name='CriticCNN', layer_norm=True):
+    def __init__(self, name='DDPGCriticCNN', layer_norm=True):
         """
-        :param name: (String)
+        :param name: (str)
         :param layer_norm: (bool)
         """
-        super(CriticCNN, self).__init__(name=name)
+        super(DDPGCriticCNN, self).__init__(name=name)
         self.layer_norm = layer_norm
 
     def __call__(self, obs, action, reuse=False):
@@ -223,19 +223,19 @@ class CriticCNN(Model):
         return output_vars
 
 
-class ActorMLP(Model):
+class DDPGActorMLP(Model):
     """
-    reused from openAI baseline
+    Adapted from openAI baseline, used for DDPG
     """
 
-    def __init__(self, nb_actions, name='ActorMLP', layer_norm=True):
+    def __init__(self, n_actions, name='DDPGActorMLP', layer_norm=True):
         """
-        :param nb_actions: (int)
-        :param name: (String)
+        :param n_actions: (int)
+        :param name: (str)
         :param layer_norm: (bool)
         """
-        super(ActorMLP, self).__init__(name=name)
-        self.nb_actions = nb_actions
+        super(DDPGActorMLP, self).__init__(name=name)
+        self.n_actions = n_actions
         self.layer_norm = layer_norm
 
     def __call__(self, obs, reuse=False):
@@ -259,24 +259,24 @@ class ActorMLP(Model):
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
-            x = tf.layers.dense(x, self.nb_actions,
+            x = tf.layers.dense(x, self.n_actions,
                                 kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             x = tf.nn.tanh(x)
 
         return x
 
 
-class CriticMLP(Model):
+class DDPGCriticMLP(Model):
     """
-    reused from openAI baseline
+    Adapted from openAI baseline, used for DDPG
     """
 
-    def __init__(self, name='CriticMLP', layer_norm=True):
+    def __init__(self, name='DDPGCriticMLP', layer_norm=True):
         """
-        :param name: (String)
+        :param name: (str)
         :param layer_norm: (bool)
         """
-        super(CriticMLP, self).__init__(name=name)
+        super(DDPGCriticMLP, self).__init__(name=name)
         self.layer_norm = layer_norm
 
     def __call__(self, obs, action, reuse=False):

@@ -59,7 +59,8 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = load_args.shape_reward
 
-    if algo == "ddpg":
+    # TODO: add a flag in the training arguments for continuous actions.
+    if algo == "ddpg": 
         kuka_env.IS_DISCRETE = False
 
     if train_args["srl_model"] != "":
@@ -95,7 +96,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
             envs = VecFrameStack(envs, train_args['num_stack'])
         else:
             if load_args.num_cpu > 1:
-                printYellow(algo+" does not support multiprocessing, setting num-cpu=1")
+                printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
             envs = CustomDummyVecEnv([make_env(train_args['env'], load_args.seed, 0, log_dir, pytorch=False)])
             # Normalize only raw pixels
             normalize = train_args['srl_model'] == ""
