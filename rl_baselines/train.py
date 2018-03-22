@@ -62,6 +62,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = args.shape_reward
+    kuka_env.ACTION_JOINTS = args.action_joints
 
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -177,6 +178,7 @@ def main():
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('-ca','--continuous-actions', action='store_true', default=False)
+    parser.add_argument('-aj','--action-joints', help='set actions to the joints of the arm directly, instead of inverse kinematicsn', action='store_true', default=False)
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()

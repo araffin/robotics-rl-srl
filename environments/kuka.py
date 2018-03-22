@@ -7,7 +7,7 @@ import pybullet_data
 
 
 class Kuka:
-    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01):
+    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True):
         self.urdf_root_path = urdf_root_path
         self.timestep = timestep
         self.max_velocity = .35
@@ -15,7 +15,7 @@ class Kuka:
         self.fingerA_force = 2
         self.fingerB_force = 2.5
         self.finger_tip_force = 2
-        self.use_inverse_kinematics = True
+        self.use_inverse_kinematics = use_inverse_kinematics
         self.use_simulation = True
         self.use_null_space = False
         self.use_orientation = True
