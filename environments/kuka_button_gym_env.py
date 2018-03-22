@@ -31,6 +31,7 @@ ACTION_REPEAT = 1
 NOISE_STD = 0.01
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
+IS_DISCRETE = True
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -85,7 +86,7 @@ class KukaButtonGymEnv(gym.Env):
         self._cam_pitch = -36
         self._cam_roll = 0
         self.camera_target_pos = (0.316, -0.2, -0.1)
-        self._is_discrete = is_discrete
+        self._is_discrete = is_discrete and IS_DISCRETE
         self.terminated = False
         self.renderer = p.ER_TINY_RENDERER
         self.debug = False
@@ -230,9 +231,11 @@ class KukaButtonGymEnv(gym.Env):
             real_action = [dx, dy, dz, 0, finger_angle]
         else:
             dv = DELTA_V
+            # Add noise to action
+            dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = action[0] * dv
             dy = action[1] * dv
-            dz = action[2] * dv  # TODO: remove up action
+            dz = -abs(action[2] * dv)  # Remove up action
             finger_angle = 0.0  # Close the gripper
             real_action = [dx, dy, dz, 0, finger_angle]
 
