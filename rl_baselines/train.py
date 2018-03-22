@@ -4,7 +4,6 @@ Train script for openAI RL Baselines
 import argparse
 import json
 import os
-import sys
 from datetime import datetime
 from pprint import pprint
 
@@ -170,7 +169,7 @@ def main():
                         help='disables visdom visualization')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
-    parser.add_argument('--continuous-actions', action='store_true', default=False)
+    parser.add_argument('-ca','--continuous-actions', action='store_true', default=False)
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -201,10 +200,7 @@ def main():
         algo = random_search
     elif args.algo == "ddpg":
         algo = ddpg
-        # ddpg is only used with continuous actions
-        # appending to argv, so it will be saved to logs
-        sys.argv.append("--continuous-actions")
-        args.continuous_actions = True
+        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-ca')"
 
     if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search', 'random_agent']):
         raise ValueError(args.algo + " does not support continuous actions")
