@@ -42,9 +42,13 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
     tf.Session(config=config).__enter__()
 
     if args.continuous_actions:
-        policy = {'cnn': CNNPolicyContinuous, 'lstm': LstmPolicyContinuous, 'lnlstm': LnLstmPolicyContinuous, 'mlp': MlpPolicyContinuous}[args.policy]
+        policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
     else:
         policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicy}[args.policy]
+        
+
+    if policy == None:
+        raise ValueError(args.policy + " not implemented for " + ("discrete" if(args.continuous_actions) else "continuous") + " action space.")
 
 
     if isinstance(lr, float):
