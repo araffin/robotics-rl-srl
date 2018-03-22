@@ -67,6 +67,11 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
 
         if train_args["srl_model"] == "ground_truth":
             kuka_env.USE_GROUND_TRUTH = True
+        elif train_args["srl_model"] == "joints":
+            kuka_env.USE_JOINTS = True
+        elif train_args["srl_model"] == "joints_position":
+            kuka_env.USE_GROUND_TRUTH = True
+            kuka_env.USE_JOINTS = True
         elif path is not None:
             kuka_env.USE_SRL = True
             kuka_env.SRL_MODEL_PATH = srl_models['log_folder'] + path

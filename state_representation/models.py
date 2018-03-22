@@ -33,8 +33,15 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         assert env_object is not None or state_dim > 0, "When learning states, state_dim must be > 0"
 
     if env_object is not None:
-        model_type = 'ground truth'
-        model = SRLGroundTruth(env_object)
+        if env_object.use_ground_truth and env_object.use_joints:
+            model_type = 'joints and position'
+            model = SRLJointsPos(env_object)
+        elif env_object.use_joints:
+            model_type = 'joints'
+            model = SRLJoints(env_object)
+        elif env_object.use_ground_truth:
+            model_type = 'ground truth'
+            model = SRLGroundTruth(env_object)
 
     if path is not None:
         if 'baselines' in path:
@@ -108,6 +115,42 @@ class SRLGroundTruth(SRLBaseClass):
         if self.relative_pos:
             return self.env_object.getArmPos() - self.env_object.button_pos
         return self.env_object.getArmPos()
+
+
+class SRLJoints(SRLBaseClass):
+    def __init__(self, env_object, state_dim=14):
+        super(SRLJoints, self).__init__(state_dim)
+        self.env_object = env_object
+
+    def load(self, path=None):
+        pass
+
+    def getState(self, observation=None):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        return np.array(self.env_object._kuka.joint_positions)
+
+class SRLJointsPos(SRLBaseClass):
+    def __init__(self, env_object, state_dim=17, relative_pos=True):
+        super(SRLJointsPos, self).__init__(state_dim)
+        self.env_object = env_object
+        self.relative_pos = relative_pos
+
+    def load(self, path=None):
+        pass
+
+    def getState(self, observation=None):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        pos = self.env_object.getArmPos()
+        if self.relative_pos:
+            pos = pos -self.env_object.button_pos
+
+        return np.array(self.env_object._kuka.joint_positions + list(pos))
 
 
 class SRLNeuralNetwork(SRLBaseClass):

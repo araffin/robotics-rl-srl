@@ -41,6 +41,7 @@ USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
+USE_JOINTS = False
 VERBOSE = False  # Whether to print some debug info
 
 
@@ -92,7 +93,9 @@ class KukaButtonGymEnv(gym.Env):
         self.debug = False
         self.n_contacts = 0
         self.state_dim = STATE_DIM
-        self.use_srl = USE_SRL or USE_GROUND_TRUTH
+        self.use_srl = USE_SRL or USE_GROUND_TRUTH or USE_JOINTS
+        self.use_ground_truth = USE_GROUND_TRUTH
+        self.use_joints = USE_JOINTS
         self.cuda = th.cuda.is_available()
         self.saver = None
         if RECORD_DATA:
@@ -100,7 +103,7 @@ class KukaButtonGymEnv(gym.Env):
                                       learn_states=LEARN_STATES)
         # SRL model
         if self.use_srl:
-            env_object = self if USE_GROUND_TRUTH else None
+            env_object = self if USE_GROUND_TRUTH or USE_JOINTS else None
             self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, STATE_DIM, env_object)
             self.state_dim = self.srl_model.state_dim
 

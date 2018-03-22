@@ -71,6 +71,13 @@ def configureEnvAndLogFolder(args, kuka_env):
         if args.srl_model == "ground_truth":
             kuka_env.USE_GROUND_TRUTH = True
             PLOT_TITLE = "Ground Truth"
+        elif args.srl_model == "joints":
+            kuka_env.USE_JOINTS = True
+            PLOT_TITLE = "Joints"
+        elif args.srl_model == "joints_position":
+            kuka_env.USE_GROUND_TRUTH = True
+            kuka_env.USE_JOINTS = True
+            PLOT_TITLE = "Joints and position"
         elif path is not None:
             kuka_env.USE_SRL = True
             kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
@@ -157,7 +164,7 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "joints", "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
                         help='number of frames to stack (default: 4)')
