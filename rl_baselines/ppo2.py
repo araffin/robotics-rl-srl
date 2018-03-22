@@ -8,7 +8,7 @@ from baselines import logger
 import tensorflow as tf
 
 from rl_baselines.policies import MlpPolicyDicrete as MlpPolicy
-from rl_baselines.policies import CNNPolicyContinuous, LnLstmPolicyContinuous, LstmPolicyContinuous
+from rl_baselines.policies import CNNPolicyContinuous
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from srl_priors.utils import printYellow
