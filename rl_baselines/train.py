@@ -206,8 +206,8 @@ def main():
         sys.argv.append("--continuous-actions")
         args.continuous_actions = True
 
-    if args.continuous_actions and algo in ['acer', 'deepq', 'a2c', 'random_search', 'random_agent']:
-        raise ValueError(algo + " does not support continuous actions")
+    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search', 'random_agent']):
+        raise ValueError(args.algo + " does not support continuous actions")
 
     algo.kuka_env.IS_DISCRETE = not args.continuous_actions
 
