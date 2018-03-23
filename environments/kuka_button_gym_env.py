@@ -26,7 +26,7 @@ N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.03  # velocity per physics step.
-DELTA_THETA = 0.1  # angular velocity per physics step.
+DELTA_THETA = 0.3  # angular velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
@@ -37,7 +37,7 @@ IS_DISCRETE = True
 ACTION_JOINTS = False
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-FORCE_RENDER = True  # For enjoy script
+FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
@@ -369,5 +369,6 @@ class KukaButtonGymEnv(gym.Env):
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
         if SHAPE_REWARD:
+            print(-distance)
             return -distance
         return reward

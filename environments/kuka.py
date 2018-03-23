@@ -41,7 +41,7 @@ class Kuka:
 
         p.resetBasePositionAndOrientation(self.kuka_uid, [-0.100000, 0.000000, -0.15],
                                           [0.000000, 0.000000, 0.000000, 1.000000])
-        self.joint_positions = [0.006418, 0.413184, -0.011401, -1.589317, 0.005379, 1.137684, -0.006539, 0.000048,
+        self.joint_positions = [0.006418, 0.113184, -0.011401, -1.289317, 0.005379, 1.737684, -0.006539, 0.000048,
                                 -0.299912, 0.000000, -0.000043, 0.299960, 0.000000, -0.000200]
         self.num_joints = p.getNumJoints(self.kuka_uid)
         for jointIndex in range(self.num_joints):
