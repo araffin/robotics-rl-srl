@@ -83,7 +83,6 @@ class Kuka:
         return observation
 
     def applyAction(self, motor_commands):
-
         if self.use_inverse_kinematics:
 
             dx = motor_commands[0]

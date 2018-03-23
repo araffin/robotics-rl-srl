@@ -183,8 +183,11 @@ class KukaButtonGymEnv(gym.Env):
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
-            self._kuka.applyAction([0, 0, 0, 0, 0])
-            p.stepSimulation()
+            if self.action_joints:
+                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[self._kuka.motor_indices]))
+            else:
+                self._kuka.applyAction([0, 0, 0, 0, 0])
+                p.stepSimulation()
 
         # Randomize init arm pos: take 5 random actions
         for _ in range(N_RANDOM_ACTIONS_AT_INIT):
@@ -242,10 +245,12 @@ class KukaButtonGymEnv(gym.Env):
             real_action = [dx, dy, dz, 0, finger_angle]
         else:
             if self.action_joints:
+                arm_joints = np.array(self._kuka.joint_positions)[self._kuka.motor_indices]
+
                 d_theta = DELTA_THETA
                 # Add noise to action
                 d_theta += self.np_random.normal(0.0, scale=NOISE_STD)
-                real_action = list(action * d_theta) #TODO remove up action 
+                real_action = list(action * d_theta + arm_joints) #TODO remove up action 
             else:
                 dv = DELTA_V
                 # Add noise to action
