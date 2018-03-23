@@ -135,7 +135,7 @@ class KukaButtonGymEnv(gym.Env):
         else:
             if self.action_joints:
                 action_dim = 12
-                self._action_bound = math.pi
+                self._action_bound = 1
             else:
                 action_dim = 3
                 self._action_bound = 1

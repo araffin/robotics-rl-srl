@@ -59,6 +59,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = load_args.shape_reward
 
+    kuka_env.ACTION_JOINTS = train_args["action_joints"]
     kuka_env.IS_DISCRETE = not train_args["continuous_actions"]
 
     if train_args["srl_model"] != "":

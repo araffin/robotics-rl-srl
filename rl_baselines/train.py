@@ -177,8 +177,8 @@ def main():
                         help='disables visdom visualization')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
-    parser.add_argument('-ca','--continuous-actions', action='store_true', default=False)
-    parser.add_argument('-aj','--action-joints', help='set actions to the joints of the arm directly, instead of inverse kinematicsn', action='store_true', default=False)
+    parser.add_argument('-c','--continuous-actions', action='store_true', default=False)
+    parser.add_argument('-joints','--action-joints', help='set actions to the joints of the arm directly, instead of inverse kinematicsn', action='store_true', default=False)
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -209,9 +209,9 @@ def main():
         algo = random_search
     elif args.algo == "ddpg":
         algo = ddpg
-        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-ca')"
+        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
 
-    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search', 'random_agent']):
+    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
         raise ValueError(args.algo + " does not support continuous actions")
 
     algo.kuka_env.IS_DISCRETE = not args.continuous_actions
