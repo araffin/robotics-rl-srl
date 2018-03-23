@@ -26,7 +26,7 @@ N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.03  # velocity per physics step.
-DELTA_THETA = 0.03  # angular velocity per physics step.
+DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
@@ -37,7 +37,7 @@ IS_DISCRETE = True
 ACTION_JOINTS = False
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-FORCE_RENDER = False  # For enjoy script
+FORCE_RENDER = True  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
@@ -134,7 +134,7 @@ class KukaButtonGymEnv(gym.Env):
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
             if self.action_joints:
-                action_dim = 12
+                action_dim = 7
                 self._action_bound = 1
             else:
                 action_dim = 3
@@ -184,19 +184,30 @@ class KukaButtonGymEnv(gym.Env):
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
             if self.action_joints:
-                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[self._kuka.motor_indices]))
+                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[self._kuka.motor_indices]) + [0,0])
             else:
                 self._kuka.applyAction([0, 0, 0, 0, 0])
                 p.stepSimulation()
 
         # Randomize init arm pos: take 5 random actions
         for _ in range(N_RANDOM_ACTIONS_AT_INIT):
-            action = [0, 0, 0, 0, 0]
-            sign = 1 if self.np_random.rand() > 0.5 else -1
-            action_idx = self.np_random.randint(3)  # dx, dy or dz
-            action[action_idx] += sign * DELTA_V
-            self._kuka.applyAction(action)
-            p.stepSimulation()
+            if self._is_discrete:
+                action = [0, 0, 0, 0, 0]
+                sign = 1 if self.np_random.rand() > 0.5 else -1
+                action_idx = self.np_random.randint(3)  # dx, dy or dz
+                action[action_idx] += sign * DELTA_V
+                self._kuka.applyAction(action)
+                p.stepSimulation()
+            else:
+                if self.action_joints:
+                    pos = np.array(self._kuka.joint_positions)[:7]
+                    pos += DELTA_THETA * self.np_random.normal(pos.shape)
+                    self._kuka.applyAction(list(pos) + [0,0])
+                else:
+                    action = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+                    action[:3] += DELTA_V * self.np_random.normal((3,))
+                    self._kuka.applyAction(list(action))
+
 
         self._observation = self.getExtendedObservation()
 
@@ -245,12 +256,12 @@ class KukaButtonGymEnv(gym.Env):
             real_action = [dx, dy, dz, 0, finger_angle]
         else:
             if self.action_joints:
-                arm_joints = np.array(self._kuka.joint_positions)[self._kuka.motor_indices]
-
+                arm_joints = np.array(self._kuka.joint_positions)[:7]
                 d_theta = DELTA_THETA
                 # Add noise to action
                 d_theta += self.np_random.normal(0.0, scale=NOISE_STD)
-                real_action = list(action * d_theta + arm_joints) #TODO remove up action 
+                # append [0,0] for finger angles
+                real_action = list(action * d_theta + arm_joints) + [0,0] #TODO remove up action 
             else:
                 dv = DELTA_V
                 # Add noise to action

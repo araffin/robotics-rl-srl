@@ -140,7 +140,24 @@ class Kuka:
                                     force=self.finger_tip_force)
 
         else:
-            for action in range(len(motor_commands)):
-                motor = self.motor_indices[action]
-                p.setJointMotorControl2(self.kuka_uid, motor, p.POSITION_CONTROL, targetPosition=motor_commands[action],
-                                        force=self.max_force)
+            if self.use_simulation:
+                for joint_id in range(self.kuka_end_effector_index + 1):
+                    p.setJointMotorControl2(self.kuka_uid, joint_id, p.POSITION_CONTROL, targetPosition=motor_commands[joint_id],
+                                            targetVelocity=0, force=self.max_force,
+                                            maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
+            else:
+                for i in range(self.num_joints):
+                    p.resetJointState(self.kuka_uid, i, joint_poses[i])
+
+            # fingers
+            p.setJointMotorControl2(self.kuka_uid, 7, p.POSITION_CONTROL, targetPosition=motor_commands[7],
+                                    force=self.max_force)
+            p.setJointMotorControl2(self.kuka_uid, 8, p.POSITION_CONTROL, targetPosition=-motor_commands[8],
+                                    force=self.fingerA_force)
+            p.setJointMotorControl2(self.kuka_uid, 11, p.POSITION_CONTROL, targetPosition=motor_commands[8],
+                                    force=self.fingerB_force)
+
+            p.setJointMotorControl2(self.kuka_uid, 10, p.POSITION_CONTROL, targetPosition=0,
+                                    force=self.finger_tip_force)
+            p.setJointMotorControl2(self.kuka_uid, 13, p.POSITION_CONTROL, targetPosition=0,
+                                    force=self.finger_tip_force)
