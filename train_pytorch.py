@@ -21,7 +21,6 @@ import rl_baselines.train as train
 from rl_baselines.utils import filterJSONSerializableObjects
 
 # To deal with using a second camera
-DIM_CHANNELS = 6
 args = get_args()
 
 train.LOG_INTERVAL = args.vis_interval
@@ -64,6 +63,7 @@ def main():
 
     obs_shape = envs.observation_space.shape
 
+
     # Check if we are using raw pixels or srl models
 
     if len(obs_shape) > 0:
@@ -105,7 +105,6 @@ def main():
         :param observation: (numpy tensor)
         :return: (torch tensor)
         """
-        print("obs shape :", observation)
         n_channels = envs.observation_space.shape[0]
         obs_tensor = torch.from_numpy(observation).float()
         if args.num_stack > 1:
