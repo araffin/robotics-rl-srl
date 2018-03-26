@@ -1,6 +1,6 @@
-from __future__ import division, absolute_import, print_function
 import time
-from gym_baxter.envs.baxter_env import BaxterEnv
+
+from environments.gym_baxter.baxter_env import BaxterEnv
 
 BaxterEnv.RECORD_DATA = True
 # Reduce max distance to have more negative rewards for srl

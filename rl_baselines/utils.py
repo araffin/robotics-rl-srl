@@ -32,7 +32,7 @@ def computeMeanReward(log_dir, last_n_episodes):
     return True, y[-last_n_episodes:].mean()
 
 
-def safeJson(data):
+def isJsonSafe(data):
     """
     Check if an object is json serializable
     :param data: (python object)
@@ -43,9 +43,9 @@ def safeJson(data):
     elif isinstance(data, (bool, int, float, str)):
         return True
     elif isinstance(data, (tuple, list)):
-        return all(safeJson(x) for x in data)
+        return all(isJsonSafe(x) for x in data)
     elif isinstance(data, dict):
-        return all(isinstance(k, str) and safeJson(v) for k, v in data.items())
+        return all(isinstance(k, str) and isJsonSafe(v) for k, v in data.items())
     return False
 
 
@@ -58,6 +58,6 @@ def filterJSONSerializableObjects(input_dict):
     """
     output_dict = OrderedDict()
     for key in sorted(input_dict.keys()):
-        if safeJson(input_dict[key]):
+        if isJsonSafe(input_dict[key]):
             output_dict[key] = input_dict[key]
     return output_dict

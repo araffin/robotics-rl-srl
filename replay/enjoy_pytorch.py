@@ -1,64 +1,16 @@
-import argparse
-import os
-import json
-from datetime import datetime
-
-import yaml
+import numpy as np
 import torch as th
 from torch.autograd import Variable
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
-from pytorch_agents.envs import make_env
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.random_search import initNetwork
 from rl_baselines.utils import computeMeanReward
-from srl_priors.utils import printGreen, printYellow
+from replay.enjoy import parseArguments
 
 
-parser = argparse.ArgumentParser(description="Load trained RL model")
-parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
-parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-parser.add_argument('--log-dir', help='folder with the saved agent model', required=True)
-parser.add_argument('--num-timesteps', type=int, default=int(10e3))
-parser.add_argument('--render', action='store_true', default=False,
-                    help='Render the environment (show the GUI)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='disables CUDA')
-load_args = parser.parse_args()
+supported_models = ['ppo_pytorch', 'a2c_pytorch', 'random_search']
+load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=True)
 
 load_args.cuda = not load_args.no_cuda and th.cuda.is_available()
-
-with open('config/srl_models.yaml', 'rb') as f:
-    models = yaml.load(f)
-
-for algo in ['ppo_pytorch', 'a2c_pytorch', 'random_search', 'not_supported']:
-    if algo in load_args.log_dir:
-        break
-
-if algo == "not_supported":
-    raise ValueError("RL algo not supported for replay")
-printGreen("\n" + algo + "\n")
-
-load_path = "{}/{}_model.pth".format(load_args.log_dir, algo)
-
-env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
-train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
-
-kuka_env.FORCE_RENDER = load_args.render
-kuka_env.ACTION_REPEAT = env_globals['ACTION_REPEAT']
-
-# Log dir for testing the agent
-log_dir = "/tmp/gym/"
-log_dir += "{}/{}/".format(algo, datetime.now().strftime("%m-%d-%y_%Hh%M_%S"))
-os.makedirs(log_dir, exist_ok=True)
-
-
-envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=True)
-                      for i in range(load_args.num_cpu)])
-# envs = VecFrameStack(envs, train_args['num_stack'])
-
 
 obs_shape = envs.observation_space.shape
 if len(obs_shape) > 0:
@@ -75,12 +27,12 @@ states = None
 masks = None
 
 
-def update_current_obs(obs):
+def update_current_obs(observation):
     n_channels = envs.observation_space.shape[0]
-    obs = th.from_numpy(obs).float()
+    obs_tensor = th.from_numpy(observation).float()
     if train_args['num_stack'] > 1:
         current_obs[:, :-n_channels] = current_obs[:, n_channels:]
-    current_obs[:, -n_channels:] = obs
+    current_obs[:, -n_channels:] = obs_tensor
 
 
 obs = envs.reset()
@@ -104,7 +56,7 @@ for _ in range(load_args.num_timesteps):
     obs, _, dones, _ = envs.step(cpu_actions)
 
     # If done then clean the history of observations.
-    masks = th.FloatTensor([[0.0] if done else [1.0] for done in dones])
+    masks = th.from_numpy(np.array(dones).astype(np.float32).reshape(-1, 1))
 
     if load_args.cuda:
         masks = masks.cuda()

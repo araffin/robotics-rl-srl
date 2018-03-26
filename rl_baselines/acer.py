@@ -145,7 +145,7 @@ def customArguments(parser):
     """
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'mlp'], default='cnn')
-    parser.add_argument('--lrschedule', help='Learning rate schedule', choices=['constant', 'linear'],
+    parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
                         default='constant')
     return parser
 
@@ -165,4 +165,4 @@ def main(args, callback):
 
     envs = SubprocVecEnv(envs)
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
-          lrschedule=args.lrschedule, callback=callback)
+          lrschedule=args.lr_schedule, callback=callback)

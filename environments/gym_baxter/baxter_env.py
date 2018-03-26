@@ -1,3 +1,7 @@
+"""
+This program allows to run Baxter Gym Environment as a module
+"""
+
 import numpy as np
 import cv2
 import zmq
@@ -14,20 +18,14 @@ from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
-"""
-This program allows to run Baxter Gym Environment as a module
-"""
 
 MAX_STEPS = 500
+RENDER_HEIGHT = 224
+RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 5
-RENDER_HEIGHT = 84  # 720 // 5   # camera image size
-RENDER_WIDTH = 84  # 960 // 5
-IMG_SHAPE = (3, RENDER_WIDTH, RENDER_HEIGHT)
-Z_TABLE = -0.2
 MAX_DISTANCE = 0.8  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
-BUTTON_LINK_IDX = 1
-RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
+RELATIVE_POS = False
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 DELTA_POS = 0.05
@@ -42,34 +40,21 @@ action_dict = {
     5: [0, 0, DELTA_POS]
 }
 N_DISCRETE_ACTIONS = len(action_dict)
-# logging anomalies
-reward_counts = {}
 
-# ROS Topics
-IMAGE_TOPIC = "/cameras/head_camera_2/image"
-ACTION_TOPIC = "/robot/limb/left/endpoint_action"
-BUTTON_POS_TOPIC = "/button1/position"
-EXIT_KEYS = [113, 27]  # Escape and q
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-STATE_DIM = 3  # When learning states
+FORCE_RENDER = False  # For enjoy script
+STATE_DIM = -1  # When learning states
 LEARN_STATES = False
-USE_SRL = True  # False
-SRL_MODEL_PATH = "/home/natalia/srl-robotic-priors-pytorch/logs/staticButtonSimplest/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
+USE_SRL =  False
+# SRL_MODEL_PATH e.g."/home/natalia/srl-robotic-priors-pytorch/logs/staticButtonSimplest/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
+SRL_MODEL_PATH = None
 RECORD_DATA = True
-USE_GROUND_TRUTH = False  # True #False
-SHAPE_REWARD = True  # Set to true, reward = -distance_to_goal
-
-# Python 2/3 compatibility
-try:
-    input = raw_input
-except NameError:
-    pass
+USE_GROUND_TRUTH = False
+SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 
 # Init seaborn
 sns.set()
-TITLE_MAX_LENGTH = 60
-
 
 def getGlobals():
     """
@@ -93,14 +78,12 @@ class BaxterEnv(gym.Env):
         :param renders: (bool) Whether to display the GUI or not
         :param is_discrete: (bool) true if action space is discrete vs continuous
         :param log_folder: (str) name of the folder where recorded data will be stored
-        :state_dim: dimensionality of the states learned/to learn
     """
 
     def __init__(self,
-                 renders=True,
+                 renders=False,
                  is_discrete=True,
-                 log_folder="baxter_log_folder",
-                 state_dim=STATE_DIM):
+                 log_folder="baxter_log_folder"):
         self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
         self._is_discrete = is_discrete
@@ -108,9 +91,13 @@ class BaxterEnv(gym.Env):
         # Start simulation with first observation
         self._env_step_counter = 0
         self.episode_terminated = False
-        self.state_dim = state_dim
-        self._renders = renders
+        self.state_dim = STATE_DIM
+        self._renders = renders or FORCE_RENDER
         self.np_random = None
+        self.cuda = th.cuda.is_available()
+        self.button_pos = None
+        self.saver = None
+
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -118,47 +105,44 @@ class BaxterEnv(gym.Env):
             self._action_bound = 1
             action_bounds = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
+        # SRL model
         if self.use_srl:
+            env_object = self if USE_GROUND_TRUTH else None
+            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, self.state_dim, env_object)
+            self.state_dim = self.srl_model.state_dim
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
             self.dtype = np.uint8
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=self.dtype)
-        self.cuda = th.cuda.is_available()
-        self.button_pos = None
-        self.saver = None
+            self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
+                                                dtype=self.dtype)
+
+
         if RECORD_DATA:
             self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
-        self.context = zmq.Context()  # TODO: needed in order to apply later destroy?  zmq_ctx_new()
+        self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
 
-        print("Waiting for server connection...")  # note: if takes too long, run first client, then server
+        # note: if takes too long, run first client, then server
+        print("Waiting for server connection...")
         msg = self.socket.recv_json()
         print("Connected to server (received message: {})".format(msg))
 
         self.action = [0, 0, 0]
         self.reward = -1
-        self.arm_pos = [0, 0, 0]  # np.ndarray
+        self.arm_pos = np.array([0, 0, 0])
         self.seed(0)
 
-        # SRL model
-        if self.use_srl:
-            env_object = self if USE_GROUND_TRUTH else None
-            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, self.state_dim, env_object)
-            self.state_dim = self.srl_model.state_dim
-            print('Using learned states with dim {}, rendering {} and model {}, SHAPE_REWARD: {}'.format(self.state_dim, self._renders,
-                                                                                       self.srl_model, SHAPE_REWARD ))
+
 
         # Initialize the state
         self.reset()
         if self._renders:
-            self._width = RENDER_WIDTH
-            self._height = RENDER_HEIGHT
             self.image_plot = None
 
     def seed(self, seed=None):
@@ -172,25 +156,24 @@ class BaxterEnv(gym.Env):
     def step(self, action):
         """
         :action: (int)
-        :return: (observation, reward, done, extras)
+        :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
         """
         assert self.action_space.contains(action)
-        self.action = action_dict[action]  # For saver
+        # Convert int action to action in (x,y,z) space
+        self.action = action_dict[action]
         self._env_step_counter += 1
 
         # Send the action to the server
         self.socket.send_json({"command": "action", "action": self.action})
 
         # Receive state data (position, etc), important to update state related values
-        self.reward = self.getEnvState()['reward']
-        reward_counts[self.reward] = reward_counts.get(self.reward, 0) + 1
+        self.getEnvState()
 
         #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
         if self.saver is not None:
             self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
-
         if self.use_srl:
             return self.srl_model.getState(self.observation), self.reward, done, {}
         else:
@@ -209,12 +192,16 @@ class BaxterEnv(gym.Env):
         self.reward = state_data["reward"]
         self.button_pos = np.array(state_data["button_pos"])
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
+
         # Compute distance from Baxter left arm to goal (the button_pos)
         distance_to_goal = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-        # print('Distance and MAX_DISTANCE {}'.format(distance_to_goal, MAX_DISTANCE)) (TODO: tune max 0.8?)
+
+        # TODO: tune max distance
         self.n_contacts += self.reward
+
         if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.episode_terminated = True
+
         if distance_to_goal > MAX_DISTANCE:  # outside sphere of proximity
             self.reward = -1
         print('state_data: {}'.format(state_data))
@@ -226,9 +213,12 @@ class BaxterEnv(gym.Env):
     def getObservation(self):
         """
         Receive the observation image using a socket (required method by gazebo)
+        :return: np.ndarray (tensor) observation
         """
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
+        # Resize it:
+        self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getArmPos(self):
@@ -240,18 +230,16 @@ class BaxterEnv(gym.Env):
     def reset(self):
         """
         Reset the environment
-        :return: (numpy tensor) first observation of the env
+        :return: (numpy ndarray) first observation of the env
         """
         self.episode_terminated = False
         self.n_contacts = 0
         # Step count since episode start
         self._env_step_counter = 0
-        self.socket.send_json({
-            "command": "reset"
-        })
-        # update state related variables, important step to get both data and
+        self.socket.send_json({"command": "reset"})
+        # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
-        state = self.getEnvState()
+        self.getEnvState()
         self.observation = self.getObservation()
         if self.saver is not None:
             self.saver.reset(self.observation, self.button_pos, self.arm_pos)
@@ -276,16 +264,11 @@ class BaxterEnv(gym.Env):
             self._env_step_counter, reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
-        cv2.destroyAllWindows()
         self.socket.close()
 
-    def render(self, mode='rgb_array', title='Baxter reinforcement learning'):
+    def render(self, mode='rgb_array'):
         """
-        Method required by OpenAI Gym.
-        Gets from x,y,z sliders, proj_matrix
-        Returns an rgb np.array.
-        Note: should be called only from within the environment, not to hang
-        the program, since it requires previous to render, to call recv_json()
+        :return: (numpy array) BGR image
         """
         if mode != "rgb_array":
             print('render in human mode not yet supported')
@@ -293,12 +276,16 @@ class BaxterEnv(gym.Env):
 
         plt.ion()  # needed for interactive update
         if self.image_plot is None:
-            fig = plt.figure('Baxter RL')
+            plt.figure('Baxter RL')
             self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
-            self.image_plot.axes.set_title(title)
             self.image_plot.axes.grid(False)
         else:
             self.image_plot.set_data(bgr2rgb(self.observation))
         plt.draw()
-        plt.pause(0.0001)  # so that plot is visible
+        # Wait a bit, so that plot is visible
+        plt.pause(0.0001)
         return self.observation
+
+    def close(self):
+        # TODO: implement close function to close GUI
+        pass

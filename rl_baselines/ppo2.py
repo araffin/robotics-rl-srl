@@ -2,19 +2,37 @@ from baselines.ppo2.ppo2 import *
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-import tensorflow as tf
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines import logger
+import tensorflow as tf
 
 from rl_baselines.policies import MlpPolicyDicrete
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from srl_priors.utils import printYellow
 
-
+# Modified version of OpenAI to work with SRL models
 def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
           vf_coef=0.5, max_grad_norm=0.5, gamma=0.99, lam=0.95,
           log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
           save_interval=0, callback=None):
+    """
+    :param args: (Arguments object)
+    :param env: (gym VecEnv)
+    :parma nsteps: (int)
+    :param total_timesteps: (int)
+    :param ent_coef: (float) entropy coefficient
+    :param lr: (float or function) learning rate
+    :param vf_coef: (float)
+    :param gamma: (float) discount factor
+    :parma lam: (float) lambda ?
+    :param log_interval: (int)
+    :param nminibatches: (int)
+    :param noptepochs: (int)
+    :param cliprange: (float or function)
+    :param save_interval: (int)
+    :param callback: (function)
+    """
     config = tf.ConfigProto(allow_soft_placement=True,
                             intra_op_parallelism_threads=args.num_cpu,
                             inter_op_parallelism_threads=args.num_cpu)
@@ -135,7 +153,11 @@ def main(args, callback):
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
 
-    envs = SubprocVecEnv(envs)
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
+
     envs = VecFrameStack(envs, args.num_stack)
 
     logger.configure()

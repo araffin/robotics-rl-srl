@@ -1,10 +1,7 @@
-import copy
 import os
 import time
 import json
-from datetime import datetime
 
-import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,24 +17,22 @@ from pytorch_agents.kfac import KFACOptimizer
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from pytorch_agents.storage import RolloutStorage
 import environments.kuka_button_gym_env as kuka_env
-import rl_baselines.train as common
+import rl_baselines.train as train
 from rl_baselines.utils import filterJSONSerializableObjects
-
 
 args = get_args()
 
-common.LOG_INTERVAL = args.vis_interval
-common.SAVE_INTERVAL = 100
-common.ALGO = args.algo + "_pytorch"
+train.LOG_INTERVAL = args.vis_interval
+train.SAVE_INTERVAL = 100
+train.ALGO = args.algo + "_pytorch"
 
-args = common.configureEnvAndLogFolder(args, kuka_env)
-common.saveEnvParams(kuka_env)
+args = train.configureEnvAndLogFolder(args, kuka_env)
+train.saveEnvParams(kuka_env)
 
 args_dict = filterJSONSerializableObjects(vars(args))
 # Save args
 with open(args.log_dir + "args.json", "w") as f:
     json.dump(args_dict, f)
-
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
@@ -50,20 +45,27 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-os.makedirs(args.log_dir, exist_ok=True)
-
 
 def main():
+    if kuka_env.USE_SRL and not args.no_cuda:
+        assert args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
+
     envs = [make_env(args.env, args.seed, i, args.log_dir)
             for i in range(args.num_cpu)]
 
-    envs = SubprocVecEnv(envs)
+    # Use multiprocessing only when needed
+    # it prevents from a cuda error
+    if args.num_cpu == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
     print(obs_shape)
 
-    # In pytorch, images are channel first
+    # Check if we are using raw pixels or srl models
     if len(obs_shape) > 0:
+        # In pytorch, images are channel first
         obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
     else:
         obs_shape = (args.num_stack, *obs_shape[0])
@@ -95,25 +97,23 @@ def main():
     rollouts = RolloutStorage(args.num_steps, args.num_cpu, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_cpu, *obs_shape)
 
-    def update_current_obs(obs):
+    def update_current_obs(observation):
         """
         Update the current observation:
         Convert numpy array to torch tensor and stack observations if needed
+        :param observation: (numpy tensor)
+        :return: (torch tensor)
         """
         n_channels = envs.observation_space.shape[0]
-        obs = torch.from_numpy(obs).float()
+        obs_tensor = torch.from_numpy(observation).float()
         if args.num_stack > 1:
             current_obs[:, :-n_channels] = current_obs[:, n_channels:]
-        current_obs[:, -n_channels:] = obs
+        current_obs[:, -n_channels:] = obs_tensor
 
     obs = envs.reset()
     update_current_obs(obs)
 
     rollouts.observations[0].copy_(current_obs)
-
-    # These variables are used to compute average rewards for all processes.
-    episode_rewards = torch.zeros([args.num_cpu, 1])
-    final_rewards = torch.zeros([args.num_cpu, 1])
 
     if args.cuda:
         current_obs = current_obs.cuda()
@@ -131,17 +131,13 @@ def main():
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Observe reward and next obs
-            # done is a list of bool (size = num processes)
-            # reward is tensor of size = num_processes x 1
-            obs, reward, done, info = envs.step(cpu_actions)
-            reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-            episode_rewards += reward
+            # dones is a list of bool (size = num processes)
+            # rewards is tensor of size = num_processes x 1
+            obs, rewards, dones, info = envs.step(cpu_actions)
+            rewards = torch.from_numpy(np.expand_dims(np.stack(rewards), 1)).float()
 
             # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
-            final_rewards *= masks
-            final_rewards += (1 - masks) * episode_rewards
-            episode_rewards *= masks
+            masks = torch.from_numpy(np.array(dones).astype(np.float32).reshape(-1, 1))
 
             if args.cuda:
                 masks = masks.cuda()
@@ -151,8 +147,9 @@ def main():
             else:
                 current_obs *= masks
 
+            # Update the stacked observations
             update_current_obs(obs)
-            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, reward,
+            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, rewards,
                             masks)
 
         next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True),
@@ -161,6 +158,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
+        # Updates for the different algorithms
         if args.algo in ['a2c', 'acktr']:
             values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(
                 Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
@@ -239,7 +237,7 @@ def main():
 
         rollouts.after_update()
 
-        common.callback(locals(), globals())
+        train.callback(locals(), globals())
 
 
 if __name__ == "__main__":

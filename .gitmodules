@@ -5,4 +5,4 @@
 [submodule "srl_priors"]
 	path = srl_priors
 	url = https://github.com/araffin/srl-robotic-priors-pytorch
-	branch = rl-connect
+	branch = master

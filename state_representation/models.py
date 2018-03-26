@@ -14,7 +14,8 @@ NOISE_STD = 1e-6  # To avoid NaN for SRL
 
 def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     """
-    :param path: (str)
+    Load a trained SRL model, it will try to guess the model type from the path
+    :param path: (str) Path to a srl model
     :param cuda: (bool)
     :param state_dim: (int)
     :param env_object: (gym env object)
@@ -23,13 +24,15 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     model_type = None
     model = None
     if path is not None:
+        # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
 
         with open(log_folder + 'exp_config.json', 'r') as f:
             state_dim = json.load(f)['state_dim']
     else:
         assert env_object is not None or state_dim > 0, \
-            "When learning states, state_dim must be > 0"
+            "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
+            to a srl_model.pth file with learned states."
 
     if env_object is not None:
         model_type = 'ground truth'
@@ -57,7 +60,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
 
-    printGreen("\n Using {} \n".format(model_type))
+    printGreen("\nSRL: Using {} \n".format(model_type))
 
     if path is not None:
         printYellow("Loading trained model...{}".format(path))
@@ -69,6 +72,10 @@ class SRLBaseClass(object):
     """Base class for state representation learning models"""
 
     def __init__(self, state_dim, cuda=False):
+        """
+        :param state_dim: (int)
+        :param cuda: (bool)
+        """
         super(SRLBaseClass, self).__init__()
         self.state_dim = state_dim
         self.cuda = cuda
@@ -89,9 +96,10 @@ class SRLBaseClass(object):
 
 
 class SRLGroundTruth(SRLBaseClass):
-    def __init__(self, env_object, state_dim=3):
+    def __init__(self, env_object, state_dim=3, relative_pos=True):
         super(SRLGroundTruth, self).__init__(state_dim)
         self.env_object = env_object
+        self.relative_pos = relative_pos
 
     def load(self, path=None):
         pass
@@ -101,6 +109,8 @@ class SRLGroundTruth(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy array) 1D
         """
+        if self.relative_pos:
+            return self.env_object.getArmPos() - self.env_object.button_pos
         return self.env_object.getArmPos()
 
 
@@ -155,7 +165,7 @@ class SRLNeuralNetwork(SRLBaseClass):
 
         if self.cuda:
             state = state.cpu()
-        return state.data.numpy()
+        return state.data.numpy()[0]
 
 
 class SRLPCA(SRLBaseClass):
@@ -169,11 +179,11 @@ class SRLPCA(SRLBaseClass):
         :param path: (str)
         """
         try:
-            with open(path, "wb") as f:
+            with open(path, "rb") as f:
                 self.model = pkl.load(f)
         except UnicodeDecodeError:
             # Load pickle files saved with python 2
-            with open(path, "wb") as f:
+            with open(path, "rb") as f:
                 self.model = pkl.load(f, encoding='latin1')
 
     def getState(self, observation):
@@ -181,6 +191,9 @@ class SRLPCA(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
+        observation = observation[None]  # Add a dimension
+        # n_features = width * height * n_channels
         n_features = np.prod(observation.shape[1:])
-        observation.reshape(-1, n_features)
-        return self.model.transform(observation)
+        # Convert to a 1D array
+        observation = observation.reshape(-1, n_features)
+        return self.model.transform(observation)[0]
