@@ -81,7 +81,8 @@ def getGlobals():
 def bgr2rgb(bgr_img):
     """
     Convert an image from BGR to RGB
-    :param bgr_img:
+    :param bgr_img: np.ndarray
+    :return: np.ndarray
     """
     return cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
 
@@ -161,12 +162,17 @@ class BaxterEnv(gym.Env):
             self.image_plot = None
 
     def seed(self, seed=None):
+        """
+        :seed: (int)
+        :return: (int array)
+        """
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def step(self, action):
         """
         :action: (int)
+        :return: (observation, reward, done, extras)
         """
         assert self.action_space.contains(action)
         self.action = action_dict[action]  # For saver
@@ -194,7 +200,7 @@ class BaxterEnv(gym.Env):
         """
         Returns a dictionary containing info about the environment state.
         It also sets the reward: the agent is rewarded for pushing the button
-        and reward is discounted if the arm goes outside the bounding sphere
+        and the reward value is negative if the arm goes outside the bounding sphere
         surrounding the button.
         :return: (dict) state_data containing data related to the state: button_pos,
         arm_pos and reward.
@@ -205,20 +211,21 @@ class BaxterEnv(gym.Env):
         self.arm_pos = np.array(state_data["position"])  # gripper_pos
         # Compute distance from Baxter left arm to goal (the button_pos)
         distance_to_goal = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-        # print('Distance and MAX_DISTANCE {}, {} (TODO: tune max 0.8?)'.format(distance_to_goal, MAX_DISTANCE))
+        # print('Distance and MAX_DISTANCE {}'.format(distance_to_goal, MAX_DISTANCE)) (TODO: tune max 0.8?)
         self.n_contacts += self.reward
         if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
             self.episode_terminated = True
         if distance_to_goal > MAX_DISTANCE:  # outside sphere of proximity
             self.reward = -1
+        print('state_data: {}'.format(state_data))
         if SHAPE_REWARD:
             self.reward = -distance_to_goal
-        print('state_data: {}-> adjusted reward: {}'.format(state_data, self.reward))
+            print('-> shaped reward: {}'.format(self.reward))
         return state_data
 
     def getObservation(self):
         """
-        Required method by gazebo
+        Receive the observation image using a socket (required method by gazebo)
         """
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
@@ -255,7 +262,7 @@ class BaxterEnv(gym.Env):
 
     def _hasEpisodeTerminated(self):
         """
-        Returns if the episode_saver terminated, not of the whole environment run
+        Returns True if the episode is over and False otherwise
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
             return True
@@ -265,8 +272,8 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
-        print('\nStep counter reached MAX_STEPS: {}. Summary of reward counts:{}'.format(self._env_step_counter,
-                                                                                         reward_counts))
+        print('\nStep counter reached MAX_STEPS: {}. Summary of reward counts:{}'.format(
+            self._env_step_counter, reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         cv2.destroyAllWindows()

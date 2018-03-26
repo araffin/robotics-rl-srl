@@ -28,7 +28,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             state_dim = json.load(f)['state_dim']
     else:
-        assert env_object is not None or state_dim > 0, "When learning states, state_dim must be > 0"
+        assert env_object is not None or state_dim > 0, \
+            "When learning states, state_dim must be > 0"
 
     if env_object is not None:
         model_type = 'ground truth'
@@ -49,7 +50,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             else:
                 model_type = 'resnet'
 
-    assert model_type is not None or model is not None, "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given, or ground truth must be used."
+    assert model_type is not None or model is not None, \
+    "Model type not supported. In order to use loadSRLModel, a path to an SRL \
+    model must be given, or ground truth must be used."
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
@@ -96,7 +99,7 @@ class SRLGroundTruth(SRLBaseClass):
     def getState(self, observation=None):
         """
         :param observation: (numpy tensor)
-        :return: (numpy matrix) TODO: Why not np.array? or why 2d?
+        :return: (numpy array) 1D
         """
         return self.env_object.getArmPos()
 
