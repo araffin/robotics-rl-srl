@@ -22,11 +22,11 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     :return: (Arguments, dict, str, str, str, SubprocVecEnv)
     """
     parser = argparse.ArgumentParser(description="Load trained RL model")
-    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
+    parser.add_argument('--env', help='environment ID', type=str, default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--log-dir', help='folder with the saved agent model', type=str, required=True)
-    parser.add_argument('--num-timesteps', type=int, default=int(10e3))
+    parser.add_argument('--num-timesteps', type=int, default=int(1e4))
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render the environment (show the GUI)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -59,6 +59,10 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = load_args.shape_reward
 
+    # TODO: add a flag in the training arguments for continuous actions.
+    if algo == "ddpg":
+        kuka_env.IS_DISCRETE = False
+
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
         path = srl_models.get(train_args["srl_model"])
@@ -86,13 +90,13 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
         else:
             envs = SubprocVecEnv(envs)
     else:
-        if algo != "deepq":
+        if algo not in ["deepq", "ddpg"]:
             envs = SubprocVecEnv([make_env(train_args['env'], load_args.seed, i, log_dir, pytorch=False)
                                   for i in range(load_args.num_cpu)])
             envs = VecFrameStack(envs, train_args['num_stack'])
         else:
             if load_args.num_cpu > 1:
-                printYellow("Deepq does not support multiprocessing, setting num-cpu=1")
+                printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
             envs = CustomDummyVecEnv([make_env(train_args['env'], load_args.seed, 0, log_dir, pytorch=False)])
             # Normalize only raw pixels
             normalize = train_args['srl_model'] == ""

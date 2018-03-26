@@ -17,6 +17,7 @@ import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
 import rl_baselines.random_search as random_search
+import rl_baselines.ddpg as ddpg
 from pytorch_agents.visualize import visdom_plot, episode_plot
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.utils import computeMeanReward
@@ -123,6 +124,8 @@ def callback(_locals, _globals):
             printGreen("Saving new best model")
             if ALGO == "deepq":
                 _locals['act'].save(LOG_DIR + "deepq_model.pkl")
+            elif ALGO == "ddpg":
+                _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
             elif ALGO in ["acer", "a2c", "ppo2"]:
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
             elif "pytorch" in ALGO:
@@ -146,7 +149,7 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent'],
+    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
                         help='OpenAI baseline to use')
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -195,6 +198,9 @@ def main():
         algo = random_agent
     elif args.algo == "random_search":
         algo = random_search
+    elif args.algo == "ddpg":
+        algo = ddpg
+        algo.kuka_env.IS_DISCRETE = False
 
     printGreen("\nAgent = {} \n".format(args.algo))
 
