@@ -24,6 +24,12 @@ Launch visdom server:
 python -m visdom.server
 ```
 
+
+To test the environment with random actions:
+```
+python -m environments.test_env
+```
+
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input, dividing it by 255.
@@ -70,23 +76,32 @@ python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
 Please look the [SRL Repo](https://github.com/araffin/srl-robotic-priors-pytorch) to learn how to train a state representation model.
 Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
 
-## Baxter Robot \w Gazebo and ROS
-Gym Wrapper for baxter environment + RL algorithms
+## Baxter Robot with Gazebo and ROS
+Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
 
+1. Start ros nodes (Python 2):
 ```
 roslaunch arm_scenario_simulator baxter_world.launch
 rosrun arm_scenario_simulator spawn_objects_example
 
 python -m gazebo.gazebo_server
+```
+
+Then, you can either try to teleoperate the robot (python 3):
+```
 python -m gazebo.teleop_client
 ```
-Note, the first 3 commands need to be run in Python 2, while the teleop_client runs on
-Anaconda py35 env.
+or test the environment with random actions (using the gym wrapper):
 
+```
+python -m environments.gym_baxter.test_baxter_env
+```
 
+If the port is already used, you can see the program pid using the following command:
 ```
 sudo netstat -lpn | grep :7777
 ```
+and then kill it (with `kill -9 program_pid`)
 
 ## Troubleshooting
 If a submodule is not downloaded:

@@ -5,6 +5,9 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
+"""
+Represents the Kuka arm in the PyBullet environment.
+"""
 
 class Kuka:
     def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01):

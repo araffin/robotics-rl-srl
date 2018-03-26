@@ -30,7 +30,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             state_dim = json.load(f)['state_dim']
     else:
-        assert env_object is not None or state_dim > 0, "When learning states, state_dim must be > 0"
+        assert env_object is not None or state_dim > 0, \
+            "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
+            to a srl_model.pth file with learned states."
 
     if env_object is not None:
         model_type = 'ground truth'
@@ -51,7 +53,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             else:
                 model_type = 'resnet'
 
-    assert model_type is not None or model is not None, "Model type not supported"
+    assert model_type is not None or model is not None, \
+    "Model type not supported. In order to use loadSRLModel, a path to an SRL \
+    model must be given, or ground truth must be used."
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
@@ -59,7 +63,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     printGreen("\nSRL: Using {} \n".format(model_type))
 
     if path is not None:
-        printYellow("Loading trained model...")
+        printYellow("Loading trained model...{}".format(path))
         model.load(path)
     return model
 
@@ -103,7 +107,7 @@ class SRLGroundTruth(SRLBaseClass):
     def getState(self, observation=None):
         """
         :param observation: (numpy tensor)
-        :return: (numpy matrix)
+        :return: (numpy array) 1D
         """
         if self.relative_pos:
             return self.env_object.getArmPos() - self.env_object.button_pos

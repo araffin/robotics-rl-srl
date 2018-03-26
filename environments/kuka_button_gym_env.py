@@ -53,6 +53,9 @@ def getGlobals():
 
 # TODO: improve the physics of the button
 
+"""
+Gym wrapper for Kuka arm RL
+"""
 
 class KukaButtonGymEnv(gym.Env):
     metadata = {
