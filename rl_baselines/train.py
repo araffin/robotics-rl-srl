@@ -150,8 +150,8 @@ def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
     parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
-                        help='OpenAI baseline to use')
-    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
+                        help='OpenAI baseline to use', type=str)
+    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--episode_window', type=int, default=40, help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--log-dir', default='/tmp/gym/', type=str,

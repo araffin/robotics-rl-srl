@@ -11,7 +11,7 @@ from srl_priors.utils import printGreen
 
 # Init seaborn
 sns.set()
-
+# Style for the title
 fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
 

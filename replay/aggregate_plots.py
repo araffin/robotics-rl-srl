@@ -12,7 +12,7 @@ from srl_priors.utils import printGreen, printYellow
 
 # Init seaborn
 sns.set()
-
+# Style for the title
 fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
 # Colorbrewer Paired_12, you can use palettable to retrieve it
@@ -22,6 +22,7 @@ colors = [(r / 255, g / 255, b / 255) for (r, g, b) in colors]
 lightcolors = colors[0::2]
 darkcolors = colors[1::2]
 
+# y-limits for the plot
 Y_LIM_SPARSE_REWARD = [-3, 6]
 Y_LIM_SHAPED_REWARD = [-220, -130]
 
@@ -41,13 +42,12 @@ def loadEpisodesData(folder):
     return x, y
 
 
-
 def millions(x, pos):
     """
     formatter for matplotlib
     The two args are the value and tick position
     :param x: (float)
-    :param pos: (int)
+    :param pos: (int) tick position (not used here
     :return: (str)
     """
     return '{:.1f}M'.format(x * 1e-6)
@@ -56,6 +56,7 @@ def millions(x, pos):
 def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
                             timesteps=False, shaped_reward=False, output_file=""):
     """
+    Compute mean and standard error for several experiments and plot the learning curve
     :param folders: ([str]) Log folders, where the monitor.csv are stored
     :param window: (int) Smoothing window
     :param algo: (str) name of the RL algo
@@ -63,7 +64,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     :param min_num_x: (int) Minimum number of episode/timesteps to keep an experiment (default: -1, no minimum)
     :param timesteps: (bool) Plot timesteps instead of episodes
     :param shaped_reward: (bool)
-    :param output_file: (str)
+    :param output_file: (str) Path to a file where the plot data will be saved
     """
     y_list = []
     x_list = []
@@ -137,6 +138,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
         np.savez(output_file, x=x, y=y)
 
     plt.show()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plot trained agent")
