@@ -42,7 +42,6 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     for algo in supported_models + ['not_supported']:
         if algo in load_args.log_dir:
             break
-    print('supported :',supported_models, 'loaded args :', load_args)
     if algo == "not_supported":
         raise ValueError("RL algo not supported for replay")
     printGreen("\n" + algo + "\n")

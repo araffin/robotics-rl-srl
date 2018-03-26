@@ -63,10 +63,6 @@ def main():
         envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
-    print(obs_shape,envs)    
-    #obs_shape = (DIM_CHANNELS,obs_shape[1],obs_shape[2])
-    print(obs_shape)
-
 
     # Check if we are using raw pixels or srl models
 

@@ -35,7 +35,6 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     if env_object is not None:
         model_type = 'ground truth'
         model = SRLGroundTruth(env_object)
-    print('path : ',path, '\n, model_type :',model_type, ', env_obj :',env_object)
     if path is not None:
         if 'baselines' in path:
             if 'pca' in path:
@@ -150,7 +149,6 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
-        #print('obs :', observation.shape, ", prepocess :", preprocessImage)
         observation = preprocessImage(observation)
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
