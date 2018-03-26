@@ -5,7 +5,6 @@ from baselines.a2c.utils import fc, sample
 from baselines.common.distributions import make_pdtype
 from baselines.ddpg.models import Model
 from baselines.ppo2.policies import nature_cnn
-from baselines.a2c.utils import batch_to_seq, seq_to_batch, lstm, lnlstm
 
 
 class MlpPolicyDicrete(object):
@@ -52,7 +51,6 @@ class MlpPolicyDicrete(object):
         self.value = value
 
 
-
 class CNNPolicyContinuous(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
         """
@@ -67,13 +65,13 @@ class CNNPolicyContinuous(object):
         nh, nw, nc = ob_space.shape
         ob_shape = (nbatch, nh, nw, nc)
         actdim = ac_space.shape[0]
-        X = tf.placeholder(tf.uint8, ob_shape) #obs
+        X = tf.placeholder(tf.uint8, ob_shape)  # obs
         with tf.variable_scope("model", reuse=reuse):
             h = nature_cnn(X)
             pi = fc(h, 'pi', actdim, init_scale=0.01)
-            vf = fc(h, 'v', 1)[:,0]
+            vf = fc(h, 'v', 1)[:, 0]
             logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                initializer=tf.zeros_initializer())
+                                     initializer=tf.zeros_initializer())
 
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
 
@@ -85,11 +83,11 @@ class CNNPolicyContinuous(object):
         self.initial_state = None
 
         def step(ob, *_args, **_kwargs):
-            a, v, neglogp = sess.run([a0, vf, neglogp0], {X:ob})
+            a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
             return a, v, self.initial_state, neglogp
 
         def value(ob, *_args, **_kwargs):
-            return sess.run(vf, {X:ob})
+            return sess.run(vf, {X: ob})
 
         self.X = X
         self.pi = pi
@@ -105,7 +103,6 @@ class AcerMlpPolicy(object):
         :param sess: (tf Session)
         :param ob_space: (tuple)
         :param ac_space: (gym action space)
-        :param nbatch: (int)
         :param nsteps: (int)
         :param nstack: (int)
         :param reuse: (bool) for tensorflow

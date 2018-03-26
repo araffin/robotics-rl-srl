@@ -142,9 +142,10 @@ class Kuka:
         else:
             if self.use_simulation:
                 for joint_id in range(self.kuka_end_effector_index + 1):
-                    p.setJointMotorControl2(self.kuka_uid, joint_id, p.POSITION_CONTROL, targetPosition=motor_commands[joint_id],
-                                            targetVelocity=0, force=self.max_force,
-                                            maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
+                    p.setJointMotorControl2(self.kuka_uid, joint_id, p.POSITION_CONTROL,
+                                            targetPosition=motor_commands[joint_id], targetVelocity=0,
+                                            force=self.max_force, maxVelocity=self.max_velocity, positionGain=0.3,
+                                            velocityGain=1)
             else:
                 for i in range(self.num_joints):
                     p.resetJointState(self.kuka_uid, i, joint_poses[i])

@@ -13,6 +13,7 @@ import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from srl_priors.utils import printYellow
 
+
 # Modified version of OpenAI to work with SRL models
 def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
           vf_coef=0.5, max_grad_norm=0.5, gamma=0.99, lam=0.95,
@@ -45,11 +46,10 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
         policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
     else:
         policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicy}[args.policy]
-        
 
-    if policy == None:
-        raise ValueError(args.policy + " not implemented for " + ("discrete" if(args.continuous_actions) else "continuous") + " action space.")
-
+    if policy is None:
+        raise ValueError(args.policy + " not implemented for " + (
+            "discrete" if args.continuous_actions else "continuous") + " action space.")
 
     if isinstance(lr, float):
         lr = constfn(lr)

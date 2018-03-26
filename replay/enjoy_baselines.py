@@ -2,8 +2,8 @@
 Enjoy script for OpenAI Baselines
 """
 from baselines.acer.acer_simple import *
-from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy, MlpPolicy
+from baselines.acer.policies import AcerCnnPolicy
+from baselines.ppo2.policies import CnnPolicy, MlpPolicy
 from baselines.common import tf_util
 from baselines.common import set_global_seeds
 from baselines import deepq
@@ -65,7 +65,7 @@ elif algo == "ddpg":
 
 dones = [False for _ in range(load_args.num_cpu)]
 obs = envs.reset()
-#print(obs.shape)
+# print(obs.shape)
 
 n_done = 0
 last_n_done = 0

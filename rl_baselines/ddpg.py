@@ -18,6 +18,7 @@ from rl_baselines.utils import createTensorflowSession
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
 
+
 # Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
           normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
@@ -311,13 +312,20 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--memory-limit', help='Used to define the size of the replay buffer (in number of observations)' , type=int, default=100)
-    parser.add_argument('--noise-action', help='Define the type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck (used for exploration)',type=str, default="ou", choices=["none", "normal", "ou"])
+    parser.add_argument('--memory-limit',
+                        help='Used to define the size of the replay buffer (in number of observations)', type=int,
+                        default=100)
+    parser.add_argument('--noise-action',
+                        help='The type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck',
+                        type=str, default="ou", choices=["none", "normal", "ou"])
     parser.add_argument('--noise-action-sigma', help='The variance of the action noise', type=float, default=0.2)
     parser.add_argument('--noise-param', help='Enable parameter noise', action='store_true', default=False)
     parser.add_argument('--noise-param-sigma', help='The variance of the parameter noise', type=float, default=0.2)
-    parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks', action='store_true', default=False)
-    parser.add_argument('--batch-size', help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)' , type=int, default=16)
+    parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks',
+                        action='store_true', default=False)
+    parser.add_argument('--batch-size',
+                        help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)', type=int,
+                        default=16)
     return parser
 
 

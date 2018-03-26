@@ -17,7 +17,7 @@ from . import kuka
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
-N_STEPS_OUTSIDE_SAFETY_SPHERE = 50
+N_STEPS_OUTSIDE_SAFETY_SPHERE = 500
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
@@ -369,6 +369,5 @@ class KukaButtonGymEnv(gym.Env):
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
         if SHAPE_REWARD:
-            print(-distance)
             return -distance
         return reward
