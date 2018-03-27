@@ -52,7 +52,7 @@ def comparePlots(path, plots, title="Learning Curve",
         # Compute standard error
         s = np.squeeze(np.asarray(np.std(y, axis=0)))
         n = y.shape[0]
-        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=lightcolors[i % len(lightcolors)])
+        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=lightcolors[i % len(lightcolors)], alpha=0.5)
         plt.plot(x, m, color=darkcolors[i % len(darkcolors)], label=label, linewidth=2)
 
     if timesteps:

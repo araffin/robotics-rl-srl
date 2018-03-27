@@ -83,7 +83,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
-
+    # TODO: wait one second if the folder exist to avoid overwritting logs
     os.makedirs(args.log_dir, exist_ok=True)
 
     return args
