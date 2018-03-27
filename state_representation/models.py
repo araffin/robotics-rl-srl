@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN
+from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE
 from srl_priors.preprocessing import preprocessImage
 from srl_priors.utils import printGreen, printYellow
 
@@ -30,7 +30,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             state_dim = json.load(f)['state_dim']
     else:
-        assert env_object is not None or state_dim > 0, "When learning states, state_dim must be > 0"
+        assert env_object is not None or state_dim > 0, \
+            "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
+            to a srl_model.pth file with learned states."
 
     if env_object is not None:
         if env_object.use_ground_truth and env_object.use_joints:
@@ -56,13 +58,17 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'supervised_custom_cnn'
             elif 'autoencoder' in path:
                 model_type = 'autoencoder'
+            elif 'vae' in path:
+                model_type = 'vae'
         else:
             if 'custom_cnn' in path:
                 model_type = 'custom_cnn'
             else:
                 model_type = 'resnet'
 
-    assert model_type is not None or model is not None, "Model type not supported"
+    assert model_type is not None or model is not None, \
+    "Model type not supported. In order to use loadSRLModel, a path to an SRL \
+    model must be given, or ground truth must be used."
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
@@ -70,7 +76,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     printGreen("\nSRL: Using {} \n".format(model_type))
 
     if path is not None:
-        printYellow("Loading trained model...")
+        printYellow("Loading trained model...{}".format(path))
         model.load(path)
     return model
 
@@ -114,7 +120,7 @@ class SRLGroundTruth(SRLBaseClass):
     def getState(self, observation=None):
         """
         :param observation: (numpy tensor)
-        :return: (numpy matrix)
+        :return: (numpy array) 1D
         """
         if self.relative_pos:
             return self.env_object.getArmPos() - self.env_object.button_pos
@@ -169,7 +175,7 @@ class SRLNeuralNetwork(SRLBaseClass):
     def __init__(self, state_dim, cuda, model_type="custom_cnn"):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
-        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder'], \
+        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'vae'], \
             "Model type not supported: {}".format(model_type)
         self.model_type = model_type
 
@@ -179,8 +185,11 @@ class SRLNeuralNetwork(SRLBaseClass):
             self.model = CustomCNN(state_dim)
         elif model_type == "resnet":
             self.model = SRLConvolutionalNetwork(state_dim, self.cuda, noise_std=NOISE_STD)
+        # TODO: support mlp models
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
+        elif model_type == "vae":
+            self.model = CNNVAE(self.state_dim)
 
         self.model.eval()
 
@@ -207,10 +216,12 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.cuda:
             observation = observation.cuda()
 
-        if self.model_type != "autoencoder":
-            state = self.model(observation)
+        if self.model_type == "autoencoder":
+            state = self.model.encode(observation)
+        elif self.model_type == "vae":
+            state, _ = self.model.encode(observation)
         else:
-            state, _ = self.model(observation)
+            state = self.model(observation)
 
         if self.cuda:
             state = state.cpu()

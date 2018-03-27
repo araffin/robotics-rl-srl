@@ -36,8 +36,10 @@ NOISE_STD_CONTINUOUS = 0.0001
 NOISE_STD_JOINTS = 0.002
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
-IS_DISCRETE = True
+
 ACTION_JOINTS = False # Set actions to apply to the joint space
+CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
+IS_DISCRETE = True  # Whether to use discrete or continuous actions
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -60,6 +62,9 @@ def getGlobals():
 
 # TODO: improve the physics of the button
 
+"""
+Gym wrapper for Kuka arm RL
+"""
 
 class KukaButtonGymEnv(gym.Env):
     metadata = {
@@ -133,6 +138,9 @@ class KukaButtonGymEnv(gym.Env):
 
         else:
             p.connect(p.DIRECT)
+
+        global CONNECTED_TO_SIMULATOR
+        CONNECTED_TO_SIMULATOR = True
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -234,7 +242,8 @@ class KukaButtonGymEnv(gym.Env):
         return np.array(self._observation)
 
     def __del__(self):
-        p.disconnect()
+        if CONNECTED_TO_SIMULATOR:
+            p.disconnect()
 
     def seed(self, seed=None):
         """

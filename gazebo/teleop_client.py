@@ -60,7 +60,7 @@ while True:
     socket.send_json({"command": "action", "action": action})
     # Receive state data (position, etc)
     state_data = socket.recv_json()
-    print(state_data)
+    print('state data: {}'.format(state_data))
 
     # Receive a camera image from the server
     img = recvMatrix(socket)

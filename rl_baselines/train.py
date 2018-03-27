@@ -94,7 +94,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
-
+    # TODO: wait one second if the folder exist to avoid overwritting logs
     os.makedirs(args.log_dir, exist_ok=True)
 
     return args
@@ -158,18 +158,19 @@ def callback(_locals, _globals):
 
 
 def main():
-    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
+    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq',
+    parser.add_argument('--algo', default='deepq', 
                         choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
-                        help='OpenAI baseline to use')
-    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
+                        help='OpenAI baseline to use', type=str)
+    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-    parser.add_argument('--log-dir', default='/tmp/gym/',
+    parser.add_argument('--episode_window', type=int, default=40, help='Episode window for moving average plot (default: 40)')
+    parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "joints", "joints_position"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
                         help='number of frames to stack (default: 4)')
@@ -192,6 +193,7 @@ def main():
     ENV_NAME = args.env
     ALGO = args.algo
     VISDOM_PORT = args.port
+    EPISODE_WINDOW = args.episode_window
     if args.no_vis:
         viz = False
 

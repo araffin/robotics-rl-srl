@@ -102,9 +102,10 @@ def main(args, callback=None):
     start_time = time.time()
     best_mean_reward = - 10000 # - np.inf
     n_done, mean_reward = 0, 0
+    num_updates = args.num_timesteps // args.num_cpu
 
     # TODO: reset env for multi-cpu
-    for step in range(args.num_timesteps):
+    for step in range(num_updates):
 
         # Sample actions
         _, action, _, _ = actor_critic.act(Variable(current_obs, volatile=True), None, None,
