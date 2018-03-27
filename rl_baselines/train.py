@@ -157,7 +157,8 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
+    parser.add_argument('--algo', default='deepq',
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
                         help='OpenAI baseline to use')
     parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -177,8 +178,10 @@ def main():
                         help='disables visdom visualization')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
-    parser.add_argument('-c','--continuous-actions', action='store_true', default=False)
-    parser.add_argument('-joints','--action-joints', help='set actions to the joints of the arm directly, instead of inverse kinematicsn', action='store_true', default=False)
+    parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
+    parser.add_argument('-joints', '--action-joints',
+                        help='set actions to the joints of the arm directly, instead of inverse kinematics',
+                        action='store_true', default=False)
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()

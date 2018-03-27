@@ -1,7 +1,6 @@
 import os
 import pybullet as p
 import time
-import math
 
 import gym
 import numpy as np
@@ -14,7 +13,7 @@ from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 from . import kuka
 
-# Number of steps before termination
+#  Number of steps before termination
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
@@ -38,7 +37,7 @@ IS_DISCRETE = True
 ACTION_JOINTS = False
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-FORCE_RENDER = True  # For enjoy script
+FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
@@ -180,12 +179,13 @@ class KukaButtonGymEnv(gym.Env):
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
 
         p.setGravity(0, 0, -10)
-        self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep, use_inverse_kinematics=(not self.action_joints))
+        self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
+                               use_inverse_kinematics=(not self.action_joints))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
             if self.action_joints:
-                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[self._kuka.motor_indices]) + [0,0])
+                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[self._kuka.motor_indices]) + [0, 0])
             else:
                 self._kuka.applyAction([0, 0, 0, 0, 0])
                 p.stepSimulation()
@@ -203,15 +203,14 @@ class KukaButtonGymEnv(gym.Env):
                 if self.action_joints:
                     pos = np.array(self._kuka.joint_positions)[:7]
                     pos += DELTA_THETA * self.np_random.normal(pos.shape)
-                    self._kuka.applyAction(list(pos) + [0,0])
+                    self._kuka.applyAction(list(pos) + [0, 0])
                 else:
                     action = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
                     rand_direction = self.np_random.normal((3,))
                     # L2 normalize, so that the random direction is not too high or too low
-                    rand_direction /= np.sqrt(np.sum(np.pow(rand_direction,2)))
+                    rand_direction /= np.sqrt(np.sum(np.power(rand_direction, 2)))
                     action[:3] += DELTA_V * rand_direction
                     self._kuka.applyAction(list(action))
-
 
         self._observation = self.getExtendedObservation()
 
@@ -250,7 +249,7 @@ class KukaButtonGymEnv(gym.Env):
         if self._is_discrete:
             dv = DELTA_V  # velocity per physics step.
             # Add noise to action
-            dv += self.np_random.normal(0.0, scale=NOISE_STD*DELTA_V)
+            dv += self.np_random.normal(0.0, scale=NOISE_STD * DELTA_V)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
@@ -263,13 +262,13 @@ class KukaButtonGymEnv(gym.Env):
                 arm_joints = np.array(self._kuka.joint_positions)[:7]
                 d_theta = DELTA_THETA
                 # Add noise to action
-                d_theta += self.np_random.normal(0.0, scale=NOISE_STD*DELTA_THETA)
+                d_theta += self.np_random.normal(0.0, scale=NOISE_STD * DELTA_THETA)
                 # append [0,0] for finger angles
-                real_action = list(action * d_theta + arm_joints) + [0,0] #TODO remove up action 
+                real_action = list(action * d_theta + arm_joints) + [0, 0]  # TODO remove up action
             else:
                 dv = DELTA_V
                 # Add noise to action
-                dv += self.np_random.normal(0.0, scale=NOISE_STD*DELTA_V)
+                dv += self.np_random.normal(0.0, scale=NOISE_STD * DELTA_V)
                 dx = action[0] * dv
                 dy = action[1] * dv
                 dz = -abs(action[2] * dv)  # Remove up action
