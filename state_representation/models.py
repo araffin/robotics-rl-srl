@@ -122,6 +122,9 @@ class SRLGroundTruth(SRLBaseClass):
 
 
 class SRLJoints(SRLBaseClass):
+    """
+    Using Joint space for state representation model
+    """
     def __init__(self, env_object, state_dim=14):
         super(SRLJoints, self).__init__(state_dim)
         self.env_object = env_object
@@ -137,6 +140,9 @@ class SRLJoints(SRLBaseClass):
         return np.array(self.env_object._kuka.joint_positions)
 
 class SRLJointsPos(SRLBaseClass):
+    """
+    Using Joint and position space for state representation model
+    """
     def __init__(self, env_object, state_dim=17, relative_pos=True):
         super(SRLJointsPos, self).__init__(state_dim)
         self.env_object = env_object

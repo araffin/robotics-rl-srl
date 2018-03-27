@@ -26,15 +26,18 @@ N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.0035  # velocity per physics step.
+DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = True 
 ACTION_REPEAT = 1  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0.02
+NOISE_STD = 0.0001
+NOISE_STD_CONTINUOUS = 0.0001
+NOISE_STD_JOINTS = 0.002
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
 IS_DISCRETE = True
-ACTION_JOINTS = False
+ACTION_JOINTS = False # Set actions to apply to the joint space
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
@@ -44,7 +47,7 @@ USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
-USE_JOINTS = False
+USE_JOINTS = False # Set input to include the joint angles (only if not using SRL model)
 VERBOSE = False  # Whether to print some debug info
 
 
@@ -135,9 +138,11 @@ class KukaButtonGymEnv(gym.Env):
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
             if self.action_joints:
+                # 7 angles for the arm rotation, from -1 to 1
                 action_dim = 7
                 self._action_bound = 1
             else:
+                # 3 direction for the arm movement, from -1 to 1
                 action_dim = 3
                 self._action_bound = 1
             action_high = np.array([self._action_bound] * action_dim)
@@ -205,13 +210,15 @@ class KukaButtonGymEnv(gym.Env):
                     pos = np.array(self._kuka.joint_positions)[:7]
                     pos += DELTA_THETA * self.np_random.normal(pos.shape)
                     self._kuka.applyAction(list(pos) + [0, 0])
+                    p.stepSimulation()
                 else:
-                    action = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+                    action = np.zeros(5)
                     rand_direction = self.np_random.normal((3,))
                     # L2 normalize, so that the random direction is not too high or too low
-                    rand_direction /= np.sqrt(np.sum(np.power(rand_direction, 2)))
-                    action[:3] += DELTA_V * rand_direction
+                    rand_direction /= np.linalg.norm(rand_direction, 2)
+                    action[:3] += DELTA_V_CONTINUOUS * rand_direction
                     self._kuka.applyAction(list(action))
+                    p.stepSimulation()
 
         self._observation = self.getExtendedObservation()
 
@@ -250,7 +257,7 @@ class KukaButtonGymEnv(gym.Env):
         if self._is_discrete:
             dv = DELTA_V  # velocity per physics step.
             # Add noise to action
-            dv += self.np_random.normal(0.0, scale=NOISE_STD * DELTA_V)
+            dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
@@ -263,13 +270,13 @@ class KukaButtonGymEnv(gym.Env):
                 arm_joints = np.array(self._kuka.joint_positions)[:7]
                 d_theta = DELTA_THETA
                 # Add noise to action
-                d_theta += self.np_random.normal(0.0, scale=NOISE_STD * DELTA_THETA)
+                d_theta += self.np_random.normal(0.0, scale=NOISE_STD_JOINTS)
                 # append [0,0] for finger angles
                 real_action = list(action * d_theta + arm_joints) + [0, 0]  # TODO remove up action
             else:
-                dv = DELTA_V
+                dv = DELTA_V_CONTINUOUS
                 # Add noise to action
-                dv += self.np_random.normal(0.0, scale=NOISE_STD * DELTA_V)
+                dv += self.np_random.normal(0.0, scale=NOISE_STD_CONTINUOUS)
                 dx = action[0] * dv
                 dy = action[1] * dv
                 dz = -abs(action[2] * dv)  # Remove up action

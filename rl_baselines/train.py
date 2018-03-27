@@ -62,6 +62,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = args.shape_reward
+    # Actions in joint space or relative position space
     kuka_env.ACTION_JOINTS = args.action_joints
 
     if args.srl_model != "":
