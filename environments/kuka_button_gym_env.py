@@ -14,10 +14,11 @@ from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 from . import kuka
 
+# Number of steps before termination
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
-N_STEPS_OUTSIDE_SAFETY_SPHERE = 500
+N_STEPS_OUTSIDE_SAFETY_SPHERE = 50
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
@@ -25,19 +26,19 @@ MAX_DISTANCE = 0.70  # Max distance between end effector and the button (for neg
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-DELTA_V = 0.03  # velocity per physics step.
-DELTA_THETA = 0.3  # angular velocity per physics step.
+DELTA_V = 0.0035  # velocity per physics step.
+DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 ACTION_REPEAT = 1
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0.01
+NOISE_STD = 0.02
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
 IS_DISCRETE = True
 ACTION_JOINTS = False
 
 # Parameters defined outside init because gym.make() doesn't allow arguments
-FORCE_RENDER = False  # For enjoy script
+FORCE_RENDER = True  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL = False
@@ -205,7 +206,10 @@ class KukaButtonGymEnv(gym.Env):
                     self._kuka.applyAction(list(pos) + [0,0])
                 else:
                     action = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-                    action[:3] += DELTA_V * self.np_random.normal((3,))
+                    rand_direction = self.np_random.normal((3,))
+                    # L2 normalize, so that the random direction is not too high or too low
+                    rand_direction /= np.sqrt(np.sum(np.pow(rand_direction,2)))
+                    action[:3] += DELTA_V * rand_direction
                     self._kuka.applyAction(list(action))
 
 
@@ -246,7 +250,7 @@ class KukaButtonGymEnv(gym.Env):
         if self._is_discrete:
             dv = DELTA_V  # velocity per physics step.
             # Add noise to action
-            dv += self.np_random.normal(0.0, scale=NOISE_STD)
+            dv += self.np_random.normal(0.0, scale=NOISE_STD*DELTA_V)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
@@ -259,13 +263,13 @@ class KukaButtonGymEnv(gym.Env):
                 arm_joints = np.array(self._kuka.joint_positions)[:7]
                 d_theta = DELTA_THETA
                 # Add noise to action
-                d_theta += self.np_random.normal(0.0, scale=NOISE_STD)
+                d_theta += self.np_random.normal(0.0, scale=NOISE_STD*DELTA_THETA)
                 # append [0,0] for finger angles
                 real_action = list(action * d_theta + arm_joints) + [0,0] #TODO remove up action 
             else:
                 dv = DELTA_V
                 # Add noise to action
-                dv += self.np_random.normal(0.0, scale=NOISE_STD)
+                dv += self.np_random.normal(0.0, scale=NOISE_STD*DELTA_V)
                 dx = action[0] * dv
                 dy = action[1] * dv
                 dz = -abs(action[2] * dv)  # Remove up action
@@ -368,6 +372,16 @@ class KukaButtonGymEnv(gym.Env):
         if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 \
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
+
         if SHAPE_REWARD:
-            return -distance
+            # Button pushed
+            if self.terminated and reward > 0:
+                return 50
+            # out of bounds
+            elif self.terminated and reward < 0:
+                return -250
+            # anything else
+            else:
+                return -distance
+
         return reward

@@ -314,7 +314,7 @@ def customArguments(parser):
     """
     parser.add_argument('--memory-limit',
                         help='Used to define the size of the replay buffer (in number of observations)', type=int,
-                        default=100)
+                        default=100000)
     parser.add_argument('--noise-action',
                         help='The type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck',
                         type=str, default="ou", choices=["none", "normal", "ou"])
@@ -325,7 +325,7 @@ def customArguments(parser):
                         action='store_true', default=False)
     parser.add_argument('--batch-size',
                         help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)', type=int,
-                        default=16)
+                        default=64)
     return parser
 
 
@@ -392,9 +392,9 @@ def main(args, callback):
         popart=False,
         gamma=0.99,
         clip_norm=None,
-        nb_train_steps=50,
+        nb_train_steps=100,
         nb_rollout_steps=100,
-        nb_eval_steps=100,
+        nb_eval_steps=50,
         batch_size=args.batch_size,
         memory=memory,
         callback=callback
