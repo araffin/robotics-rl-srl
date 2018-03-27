@@ -25,13 +25,13 @@ MAX_DISTANCE = 0.70  # Max distance between end effector and the button (for neg
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-DELTA_V = 0.0035  # velocity per physics step.
+DELTA_V = 0.03  # velocity per physics step.
 DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = True 
 ACTION_REPEAT = 1  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0.0001
+NOISE_STD = 0.01
 NOISE_STD_CONTINUOUS = 0.0001
 NOISE_STD_JOINTS = 0.002
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
@@ -381,14 +381,17 @@ class KukaButtonGymEnv(gym.Env):
             self.terminated = True
 
         if SHAPE_REWARD:
-            # Button pushed
-            if self.terminated and reward > 0:
-                return 50
-            # out of bounds
-            elif self.terminated and reward < 0:
-                return -250
-            # anything else
-            else:
+            if IS_DISCRETE:
                 return -distance
+            else:
+                # Button pushed
+                if self.terminated and reward > 0:
+                    return 50
+                # out of bounds
+                elif self.terminated and reward < 0:
+                    return -250
+                # anything else
+                else:
+                    return -distance
 
         return reward
