@@ -48,7 +48,7 @@ Several algorithms from [Open AI baselines](https://github.com/openai/baselines)
 
 To train an agent:
 ```
-python -m rl_baselines.train --algo acer --log-dir logs/
+python -m rl_baselines.train --algo ppo2 --log-dir logs/
 ```
 
 To load a trained agent and see the result:
@@ -70,6 +70,26 @@ To load a trained agent and see the result:
 ```
 python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
 ```
+
+### Plot Learning Curve
+
+To plot a learning curve from logs in visdom, you have to pass path to the experiment log folder:
+```
+python -m replay.plot --log-dir /logs/raw_pixels/ppo2/18-03-14_11h04_16/
+```
+
+To aggregate data from different experiments (different seeds) and plot them (mean + standard error).
+You have to pass path to rl algorithm log folder (parent of the experiments log folders):
+```
+python -m replay.aggregate_plots --log-dir /logs/raw_pixels/ppo2/ --shape-reward --timesteps --min-x 1000 -o logs/path/to/output_file
+```
+Here it plots experiments with reward shaping and that have a minimum of 1000 data points (using timesteps on the x-axis), the plot data will be saved in the file `output_file.npz`.
+
+To create a comparison plots from saved plots (.npz files), you need to pass a path to folder containing .npz files:
+```
+python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timesteps
+```
+
 
 ## State Representation Learning Models
 
@@ -107,4 +127,8 @@ and then kill it (with `kill -9 program_pid`)
 If a submodule is not downloaded:
 ```
 git submodule update --init
+```
+If you have troubles installing mpi4py, make sure you the following installed:
+```
+sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
 ```
