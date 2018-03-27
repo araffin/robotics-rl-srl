@@ -74,9 +74,11 @@ def configureEnvAndLogFolder(args, kuka_env):
             kuka_env.USE_GROUND_TRUTH = True
             PLOT_TITLE = "Ground Truth"
         elif args.srl_model == "joints":
+            # Observations in joint space
             kuka_env.USE_JOINTS = True
             PLOT_TITLE = "Joints"
         elif args.srl_model == "joints_position":
+            # Observations in joint and position space
             kuka_env.USE_GROUND_TRUTH = True
             kuka_env.USE_JOINTS = True
             PLOT_TITLE = "Joints and position"
