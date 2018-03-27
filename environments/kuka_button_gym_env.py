@@ -27,8 +27,8 @@ BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.0035  # velocity per physics step.
 DELTA_THETA = 0.1  # angular velocity per physics step.
-RELATIVE_POS = False  # number of timesteps an action is repeated (here it is equivalent to frameskip)
-ACTION_REPEAT = 1
+RELATIVE_POS = True 
+ACTION_REPEAT = 1  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
 NOISE_STD = 0.02
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
@@ -100,6 +100,7 @@ class KukaButtonGymEnv(gym.Env):
         self.use_ground_truth = USE_GROUND_TRUTH
         self.use_joints = USE_JOINTS
         self.action_joints = ACTION_JOINTS
+        self.relative_pos = RELATIVE_POS
         self.cuda = th.cuda.is_available()
         self.saver = None
         if RECORD_DATA:
@@ -185,7 +186,7 @@ class KukaButtonGymEnv(gym.Env):
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
             if self.action_joints:
-                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[self._kuka.motor_indices]) + [0, 0])
+                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[:7]) + [0, 0])
             else:
                 self._kuka.applyAction([0, 0, 0, 0, 0])
                 p.stepSimulation()

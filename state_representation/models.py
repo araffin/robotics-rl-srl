@@ -35,13 +35,17 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     if env_object is not None:
         if env_object.use_ground_truth and env_object.use_joints:
             model_type = 'joints and position'
-            model = SRLJointsPos(env_object)
+            if not env_object.relative_pos:
+                model_type += " (absolute pos)"
+            model = SRLJointsPos(env_object, relative_pos=env_object.relative_pos)
         elif env_object.use_joints:
             model_type = 'joints'
             model = SRLJoints(env_object)
         elif env_object.use_ground_truth:
             model_type = 'ground truth'
-            model = SRLGroundTruth(env_object)
+            if not env_object.relative_pos:
+                model_type += " (absolute pos)"
+            model = SRLGroundTruth(env_object, relative_pos=env_object.relative_pos)
 
     if path is not None:
         if 'baselines' in path:
@@ -114,7 +118,7 @@ class SRLGroundTruth(SRLBaseClass):
         """
         if self.relative_pos:
             return self.env_object.getArmPos() - self.env_object.button_pos
-        return self.env_object.getArmPos()
+        return np.array(self.env_object.getArmPos())
 
 
 class SRLJoints(SRLBaseClass):
