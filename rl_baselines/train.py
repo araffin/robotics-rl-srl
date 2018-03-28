@@ -60,7 +60,6 @@ def configureEnvAndLogFolder(args, kuka_env):
     """
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
-    print("namespace: ",args)
     kuka_env.SHAPE_REWARD = args.shape_reward
 
     if args.srl_model != "":
