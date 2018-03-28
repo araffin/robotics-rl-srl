@@ -15,9 +15,9 @@ sns.set()
 # Style for the title
 fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
-# Colorbrewer Paired_12, you can use palettable to retrieve it
+# Modified Colorbrewer Paired_12, you can use palettable to retrieve it
 colors = [[166, 206, 227], [31, 120, 180], [178, 223, 138], [51, 160, 44], [251, 154, 153], [227, 26, 28],
-          [253, 191, 111], [255, 127, 0], [202, 178, 214], [106, 61, 154], [255, 255, 153], [177, 89, 40]]
+          [253, 191, 111], [255, 127, 0], [202, 178, 214], [106, 61, 154], [143, 156, 212], [64, 57, 178], [255, 255, 153], [177, 89, 40]]
 colors = [(r / 255, g / 255, b / 255) for (r, g, b) in colors]
 lightcolors = colors[0::2]
 darkcolors = colors[1::2]
