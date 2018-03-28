@@ -2,21 +2,21 @@
 Enjoy script for OpenAI Baselines
 """
 from baselines.acer.acer_simple import *
-from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
+from baselines.acer.policies import AcerCnnPolicy
+from baselines.ppo2.policies import CnnPolicy, MlpPolicy
 from baselines.common import tf_util
 from baselines.common import set_global_seeds
 from baselines import deepq
 
-
+import rl_baselines.ddpg as ddpg
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
-from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy
+from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
 from srl_priors.utils import printYellow
 from replay.enjoy import parseArguments
 
 
-supported_models = ['acer', 'ppo2', 'a2c', 'deepq']
+supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg']
 load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=False)
 
 nstack = train_args['num_stack']
@@ -34,9 +34,17 @@ if algo == "acer":
     policy = {'cnn': AcerCnnPolicy, 'mlp': AcerMlpPolicy}[train_args["policy"]]
     # nstack is already handled in the VecFrameStack
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, nstack=1, reuse=False)
-elif algo in ["a2c", "ppo2"]:
+elif algo == "a2c":
     policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
+elif algo == "ppo2":
+    if train_args["continuous_actions"]:
+        policy = {'cnn': CNNPolicyContinuous, 'mlp': MlpPolicy}[train_args["policy"]]
+    else:
+        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
+    model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
+elif algo == "ddpg":
+    model = ddpg.load(load_path, sess)
 
 
 params = find_trainable_variables("model")
@@ -52,6 +60,8 @@ if algo in ["acer", "a2c", "ppo2"]:
     ps = sess.run(restores)
 elif algo == "deepq":
     model = deepq.load(load_path)
+elif algo == "ddpg":
+    model.load(load_path)
 
 dones = [False for _ in range(load_args.num_cpu)]
 obs = envs.reset()
@@ -66,9 +76,11 @@ for _ in range(load_args.num_timesteps):
         actions, _, states, _ = model.step(obs, None, dones)
     elif algo == "deepq":
         actions = model(obs[None])[0]
+    elif algo == "ddpg":
+        actions = model.pi(obs, apply_noise=False, compute_Q=False)[0]
     obs, rewards, dones, _ = envs.step(actions)
 
-    if algo == "deepq":
+    if algo in ["deepq", "ddpg"]:
         if dones:
             obs = envs.reset()
         dones = [dones]

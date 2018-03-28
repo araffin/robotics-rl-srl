@@ -33,8 +33,8 @@ def main(args, callback=None):
     obs = envs.reset()
     num_updates = int(args.num_timesteps) // args.num_cpu
     start_time = time.time()
-    # for j in range(num_updates):
-    for step in range(args.num_timesteps):
+
+    for step in range(num_updates):
         actions = [envs.action_space.sample() for _ in range(args.num_cpu)]
         obs, reward, done, info = envs.step(actions)
         if callback is not None:

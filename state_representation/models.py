@@ -5,8 +5,8 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, TripletNet
-from srl_priors.preprocessing.data_loader import preprocessImage
+from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE,  TripletNet
+from srl_priors.preprocessing import preprocessImage
 from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -30,11 +30,25 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             state_dim = json.load(f)['state_dim']
     else:
-        assert env_object is not None or state_dim > 0, "When learning states, state_dim must be > 0"
+        assert env_object is not None or state_dim > 0, \
+            "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
+            to a srl_model.pth file with learned states."
 
     if env_object is not None:
-        model_type = 'ground truth'
-        model = SRLGroundTruth(env_object)
+        if env_object.use_ground_truth and env_object.use_joints:
+            model_type = 'joints and position'
+            if not env_object.relative_pos:
+                model_type += " (absolute pos)"
+            model = SRLJointsPos(env_object, relative_pos=env_object.relative_pos)
+        elif env_object.use_joints:
+            model_type = 'joints'
+            model = SRLJoints(env_object)
+        elif env_object.use_ground_truth:
+            model_type = 'ground truth'
+            if not env_object.relative_pos:
+                model_type += " (absolute pos)"
+            model = SRLGroundTruth(env_object, relative_pos=env_object.relative_pos)
+
     if path is not None:
         if 'baselines' in path:
             if 'pca' in path:
@@ -44,6 +58,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'supervised_custom_cnn'
             elif 'autoencoder' in path:
                 model_type = 'autoencoder'
+            elif 'vae' in path:
+                model_type = 'vae'
         else:
             if 'custom_cnn' in path:
                 model_type = 'custom_cnn'
@@ -52,7 +68,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             else:
                 model_type = 'resnet'
 
-    assert model_type is not None or model is not None, "Model type not supported"
+    assert model_type is not None or model is not None, \
+    "Model type not supported. In order to use loadSRLModel, a path to an SRL \
+    model must be given, or ground truth must be used."
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
@@ -60,8 +78,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     printGreen("\nSRL: Using {} \n".format(model_type))
 
     if path is not None:
-        printYellow("Loading trained model...")
-        print('path :',path)
+        printYellow("Loading trained model...{}".format(path))
         model.load(path)
     return model
 
@@ -105,11 +122,53 @@ class SRLGroundTruth(SRLBaseClass):
     def getState(self, observation=None):
         """
         :param observation: (numpy tensor)
-        :return: (numpy matrix)
+        :return: (numpy array) 1D
         """
         if self.relative_pos:
             return self.env_object.getArmPos() - self.env_object.button_pos
-        return self.env_object.getArmPos()
+        return np.array(self.env_object.getArmPos())
+
+
+class SRLJoints(SRLBaseClass):
+    """
+    Using Joint space for state representation model
+    """
+    def __init__(self, env_object, state_dim=14):
+        super(SRLJoints, self).__init__(state_dim)
+        self.env_object = env_object
+
+    def load(self, path=None):
+        pass
+
+    def getState(self, observation=None):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        return np.array(self.env_object._kuka.joint_positions)
+
+class SRLJointsPos(SRLBaseClass):
+    """
+    Using Joint and position space for state representation model
+    """
+    def __init__(self, env_object, state_dim=17, relative_pos=True):
+        super(SRLJointsPos, self).__init__(state_dim)
+        self.env_object = env_object
+        self.relative_pos = relative_pos
+
+    def load(self, path=None):
+        pass
+
+    def getState(self, observation=None):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        pos = self.env_object.getArmPos()
+        if self.relative_pos:
+            pos = pos -self.env_object.button_pos
+
+        return np.array(self.env_object._kuka.joint_positions + list(pos))
 
 
 class SRLNeuralNetwork(SRLBaseClass):
@@ -118,7 +177,7 @@ class SRLNeuralNetwork(SRLBaseClass):
     def __init__(self, state_dim, cuda, model_type="custom_cnn"):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
-        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'triplet_cnn'], \
+        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'vae', 'triplet_cnn'], \
             "Model type not supported: {}".format(model_type)
         self.model_type = model_type
 
@@ -128,11 +187,15 @@ class SRLNeuralNetwork(SRLBaseClass):
             self.model = CustomCNN(state_dim)
         elif model_type == "resnet":
             self.model = SRLConvolutionalNetwork(state_dim, self.cuda, noise_std=NOISE_STD)
+        # TODO: support mlp models
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
         elif model_type == "triplet_cnn":
             self.model = TripletNet(state_dim, self.cuda, noise_std=NOISE_STD)
             self.model = th.nn.DataParallel(self.model)
+        elif model_type == "vae":
+            self.model = CNNVAE(self.state_dim)
+
         self.model.eval()
 
         if self.cuda:
@@ -159,9 +222,11 @@ class SRLNeuralNetwork(SRLBaseClass):
             observation = observation.cuda()
 
         if self.model_type == "autoencoder":
-            state, _ = self.model(observation)            
+            state = self.model.encode(observation)            
         elif self.model_type == "triplet_cnn":
             state = self.model.module.embedding(observation)
+        elif self.model_type == "vae":
+            state, _ = self.model.encode(observation)
         else:
             state = self.model(observation)
 

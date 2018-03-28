@@ -17,6 +17,7 @@ import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
 import rl_baselines.random_search as random_search
+import rl_baselines.ddpg as ddpg
 from pytorch_agents.visualize import visdom_plot, episode_plot
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.utils import computeMeanReward
@@ -61,6 +62,8 @@ def configureEnvAndLogFolder(args, kuka_env):
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = args.shape_reward
+    # Actions in joint space or relative position space
+    kuka_env.ACTION_JOINTS = args.action_joints
 
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -70,6 +73,15 @@ def configureEnvAndLogFolder(args, kuka_env):
         if args.srl_model == "ground_truth":
             kuka_env.USE_GROUND_TRUTH = True
             PLOT_TITLE = "Ground Truth"
+        elif args.srl_model == "joints":
+            # Observations in joint space
+            kuka_env.USE_JOINTS = True
+            PLOT_TITLE = "Joints"
+        elif args.srl_model == "joints_position":
+            # Observations in joint and position space
+            kuka_env.USE_GROUND_TRUTH = True
+            kuka_env.USE_JOINTS = True
+            PLOT_TITLE = "Joints and position"
         elif path is not None:
             kuka_env.USE_SRL = True
             kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
@@ -82,7 +94,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
-
+    # TODO: wait one second if the folder exist to avoid overwritting logs
     os.makedirs(args.log_dir, exist_ok=True)
 
     return args
@@ -123,6 +135,8 @@ def callback(_locals, _globals):
             printGreen("Saving new best model")
             if ALGO == "deepq":
                 _locals['act'].save(LOG_DIR + "deepq_model.pkl")
+            elif ALGO == "ddpg":
+                _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
             elif ALGO in ["acer", "a2c", "ppo2"]:
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
             elif "pytorch" in ALGO:
@@ -144,17 +158,19 @@ def callback(_locals, _globals):
 
 
 def main():
-    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL
+    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent'],
-                        help='OpenAI baseline to use')
-    parser.add_argument('--env', help='environment ID', default='KukaButtonGymEnv-v0')
+    parser.add_argument('--algo', default='deepq', 
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
+                        help='OpenAI baseline to use', type=str)
+    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-    parser.add_argument('--log-dir', default='/tmp/gym/',
+    parser.add_argument('--episode_window', type=int, default=40, help='Episode window for moving average plot (default: 40)')
+    parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
                         help='number of frames to stack (default: 4)')
@@ -166,12 +182,18 @@ def main():
                         help='disables visdom visualization')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
+    parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
+    parser.add_argument('-joints', '--action-joints',
+                        help='set actions to the joints of the arm directly, instead of inverse kinematics',
+                        action='store_true', default=False)
+
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
 
     ENV_NAME = args.env
     ALGO = args.algo
     VISDOM_PORT = args.port
+    EPISODE_WINDOW = args.episode_window
     if args.no_vis:
         viz = False
 
@@ -193,6 +215,14 @@ def main():
         algo = random_agent
     elif args.algo == "random_search":
         algo = random_search
+    elif args.algo == "ddpg":
+        algo = ddpg
+        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
+
+    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
+        raise ValueError(args.algo + " does not support continuous actions")
+
+    algo.kuka_env.IS_DISCRETE = not args.continuous_actions
 
     printGreen("\nAgent = {} \n".format(args.algo))
 
