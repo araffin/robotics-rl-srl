@@ -158,13 +158,12 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.cuda:
             observation = observation.cuda()
 
-        if self.model_type != "autoencoder":
-            if self.model_type == "triplet_cnn":
-                state = self.model.module.embedding(observation)
-            else:
-                state = self.model(observation)
+        if self.model_type == "autoencoder":
+            state, _ = self.model(observation)            
+        elif self.model_type == "triplet_cnn":
+            state = self.model.module.embedding(observation)
         else:
-            state, _ = self.model(observation)
+            state = self.model(observation)
 
         if self.cuda:
             state = state.cpu()
