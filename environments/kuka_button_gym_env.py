@@ -202,7 +202,7 @@ class KukaButtonGymEnv(gym.Env):
                 self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[:7]) + [0, 0])
             else:
                 self._kuka.applyAction([0, 0, 0, 0, 0])
-                p.stepSimulation()
+               p.stepSimulation()
 
         # Randomize init arm pos: take 5 random actions
         for _ in range(N_RANDOM_ACTIONS_AT_INIT):
