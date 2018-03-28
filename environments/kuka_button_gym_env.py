@@ -223,7 +223,7 @@ class KukaButtonGymEnv(gym.Env):
                     rand_direction /= np.linalg.norm(rand_direction, 2)
                     action[:3] += DELTA_V_CONTINUOUS * rand_direction
 
-            self._kuka.applyAction(list(actions))
+            self._kuka.applyAction(list(action))
             p.stepSimulation()
 
         self._observation = self.getExtendedObservation()
