@@ -93,7 +93,7 @@ class Kuka:
     def getObservation(self):
         """
         Returns the position and angle of the effector
-        :return: (int)
+        :return: ([float])
         """
         observation = []
         state = p.getLinkState(self.kuka_uid, self.kuka_gripper_index)
@@ -109,7 +109,7 @@ class Kuka:
     def applyAction(self, motor_commands):
         """
         Applies the action to the effector arm
-        :param motor_commands: (list int) dx,dy,dz,da and finger angle if inverse kinematics is enabled, otherwise joint angles
+        :param motor_commands: (list int) dx,dy,dz,da and finger angle if inverse kinematics is enabled, otherwise 9 joint angles
         """
 
         if self.use_inverse_kinematics:

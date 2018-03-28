@@ -45,6 +45,7 @@ Several algorithms from [Open AI baselines](https://github.com/openai/baselines)
 - ACER: Sample Efficient Actor-Critic with Experience Replay
 - A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
 - PPO2: Proximal Policy Optimization (GPU Implementation)
+- DDPG: Deep Deterministic Policy Gradients
 
 To train an agent:
 ```
@@ -55,6 +56,18 @@ To load a trained agent and see the result:
 ```
 python -m replay.enjoy_baselines --log-dir path/to/trained/agent/
 ```
+
+Contiuous actions have been implemented for DDPG, PPO2 and random agent.
+To use continuous actions in the position space:
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c
+```
+
+To use continuous actions in the joint space:
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c -joints
+```
+
 
 ### Pytorch Agents
 
@@ -95,6 +108,21 @@ python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timestep
 
 Please look the [SRL Repo](https://github.com/araffin/srl-robotic-priors-pytorch) to learn how to train a state representation model.
 Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
+
+To train the Reinforcement learning baselines on a specific SRL model:
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --srl-model model_name
+```
+
+the available state representation model are:
+- autoencoder: an autoencoder from the raw pixels
+- ground_truth: the arm's x,y,z position
+- srl_priors: SRL priors model
+- supervised: a supervised model from the raw pixels to the arm's x,y,z position
+- pca: pca applied to the raw pixels
+- vae: a variational autoencoder from the raw pixels
+- joints: the arm's joints angles
+- joints_position: the arm's x,y,z position and joints angles
 
 ## Baxter Robot with Gazebo and ROS
 Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).

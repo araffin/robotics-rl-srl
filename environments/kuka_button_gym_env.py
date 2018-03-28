@@ -211,22 +211,20 @@ class KukaButtonGymEnv(gym.Env):
                 sign = 1 if self.np_random.rand() > 0.5 else -1
                 action_idx = self.np_random.randint(3)  # dx, dy or dz
                 action[action_idx] += sign * DELTA_V
-                self._kuka.applyAction(action)
-                p.stepSimulation()
             else:
                 if self.action_joints:
-                    pos = np.array(self._kuka.joint_positions)[:7]
-                    pos += DELTA_THETA * self.np_random.normal(pos.shape)
-                    self._kuka.applyAction(list(pos) + [0, 0])
-                    p.stepSimulation()
+                    joints = np.array(self._kuka.joint_positions)[:7]
+                    joints += DELTA_THETA * self.np_random.normal(joints.shape)
+                    action = list(joints) + [0, 0]
                 else:
                     action = np.zeros(5)
                     rand_direction = self.np_random.normal((3,))
                     # L2 normalize, so that the random direction is not too high or too low
                     rand_direction /= np.linalg.norm(rand_direction, 2)
                     action[:3] += DELTA_V_CONTINUOUS * rand_direction
-                    self._kuka.applyAction(list(action))
-                    p.stepSimulation()
+
+            self._kuka.applyAction(list(actions))
+            p.stepSimulation()
 
         self._observation = self.getExtendedObservation()
 
