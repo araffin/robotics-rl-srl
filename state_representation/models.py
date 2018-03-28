@@ -35,8 +35,19 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             to a srl_model.pth file with learned states."
 
     if env_object is not None:
-        model_type = 'ground truth'
-        model = SRLGroundTruth(env_object)
+        if env_object.use_ground_truth and env_object.use_joints:
+            model_type = 'joints and position'
+            if not env_object.relative_pos:
+                model_type += " (absolute pos)"
+            model = SRLJointsPos(env_object, relative_pos=env_object.relative_pos)
+        elif env_object.use_joints:
+            model_type = 'joints'
+            model = SRLJoints(env_object)
+        elif env_object.use_ground_truth:
+            model_type = 'ground truth'
+            if not env_object.relative_pos:
+                model_type += " (absolute pos)"
+            model = SRLGroundTruth(env_object, relative_pos=env_object.relative_pos)
 
     if path is not None:
         if 'baselines' in path:
@@ -113,7 +124,49 @@ class SRLGroundTruth(SRLBaseClass):
         """
         if self.relative_pos:
             return self.env_object.getArmPos() - self.env_object.button_pos
-        return self.env_object.getArmPos()
+        return np.array(self.env_object.getArmPos())
+
+
+class SRLJoints(SRLBaseClass):
+    """
+    Using Joint space for state representation model
+    """
+    def __init__(self, env_object, state_dim=14):
+        super(SRLJoints, self).__init__(state_dim)
+        self.env_object = env_object
+
+    def load(self, path=None):
+        pass
+
+    def getState(self, observation=None):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        return np.array(self.env_object._kuka.joint_positions)
+
+class SRLJointsPos(SRLBaseClass):
+    """
+    Using Joint and position space for state representation model
+    """
+    def __init__(self, env_object, state_dim=17, relative_pos=True):
+        super(SRLJointsPos, self).__init__(state_dim)
+        self.env_object = env_object
+        self.relative_pos = relative_pos
+
+    def load(self, path=None):
+        pass
+
+    def getState(self, observation=None):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        pos = self.env_object.getArmPos()
+        if self.relative_pos:
+            pos = pos -self.env_object.button_pos
+
+        return np.array(self.env_object._kuka.joint_positions + list(pos))
 
 
 class SRLNeuralNetwork(SRLBaseClass):

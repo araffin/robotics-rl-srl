@@ -62,6 +62,8 @@ def configureEnvAndLogFolder(args, kuka_env):
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
     kuka_env.SHAPE_REWARD = args.shape_reward
+    # Actions in joint space or relative position space
+    kuka_env.ACTION_JOINTS = args.action_joints
 
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -71,6 +73,15 @@ def configureEnvAndLogFolder(args, kuka_env):
         if args.srl_model == "ground_truth":
             kuka_env.USE_GROUND_TRUTH = True
             PLOT_TITLE = "Ground Truth"
+        elif args.srl_model == "joints":
+            # Observations in joint space
+            kuka_env.USE_JOINTS = True
+            PLOT_TITLE = "Joints"
+        elif args.srl_model == "joints_position":
+            # Observations in joint and position space
+            kuka_env.USE_GROUND_TRUTH = True
+            kuka_env.USE_JOINTS = True
+            PLOT_TITLE = "Joints and position"
         elif path is not None:
             kuka_env.USE_SRL = True
             kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
@@ -149,7 +160,8 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
+    parser.add_argument('--algo', default='deepq', 
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -158,7 +170,7 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=4,
                         help='number of frames to stack (default: 4)')
@@ -170,6 +182,11 @@ def main():
                         help='disables visdom visualization')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
+    parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
+    parser.add_argument('-joints', '--action-joints',
+                        help='set actions to the joints of the arm directly, instead of inverse kinematics',
+                        action='store_true', default=False)
+
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
 
@@ -200,7 +217,12 @@ def main():
         algo = random_search
     elif args.algo == "ddpg":
         algo = ddpg
-        algo.kuka_env.IS_DISCRETE = False
+        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
+
+    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
+        raise ValueError(args.algo + " does not support continuous actions")
+
+    algo.kuka_env.IS_DISCRETE = not args.continuous_actions
 
     printGreen("\nAgent = {} \n".format(args.algo))
 
