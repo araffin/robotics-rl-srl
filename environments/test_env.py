@@ -4,7 +4,7 @@ import time
 
 import environments.kuka_button_gym_env as kuka_env
 
-
+# Reduce max distance to have more negative rewards for srl
 kuka_env.MAX_DISTANCE = 0.65
 kuka_env.RECORD_DATA = False
 
