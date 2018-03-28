@@ -3,6 +3,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from baselines.common.vec_env.vec_normalize import VecNormalize
 from baselines import logger
 import tensorflow as tf
 
@@ -146,9 +147,6 @@ def main(args, callback):
     :param args: (argparse.Namespace Object)
     :param callback: (function)
     """
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
 
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
             for i in range(args.num_cpu)]
@@ -159,6 +157,11 @@ def main(args, callback):
         envs = SubprocVecEnv(envs)
 
     envs = VecFrameStack(envs, args.num_stack)
+
+    if args.srl_model != "":
+        printYellow("Using MLP policy because working on state representation")
+        args.policy = "mlp"
+        envs = VecNormalize(envs)
 
     logger.configure()
     learn(args, envs, nsteps=128,
