@@ -113,7 +113,8 @@ class KukaButtonGymEnv(gym.Env):
         self.relative_pos = RELATIVE_POS
         self.cuda = th.cuda.is_available()
         self.saver = None
-        self.multi_view=multi_view
+        self.multi_view = multi_view
+
         if RECORD_DATA:
             self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)

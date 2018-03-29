@@ -74,9 +74,9 @@ class EpisodeSaver(object):
         self.images_path.append(image_path)
         
         # in the case of dual/multi-camera
-        if observation.shape[2]>3:
-            observation1 = cv2.cvtColor(observation[:,:,:3], cv2.COLOR_BGR2RGB)
-            observation2 = cv2.cvtColor(observation[:,:,3:], cv2.COLOR_BGR2RGB)
+        if observation.shape[2] > 3:
+            observation1 = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_BGR2RGB)
+            observation2 = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_BGR2RGB)
             
             cv2.imwrite("srl_priors/data/{}".format(image_path+"_1.jpg"), observation1)
             cv2.imwrite("srl_priors/data/{}".format(image_path+"_2.jpg"), observation2)
