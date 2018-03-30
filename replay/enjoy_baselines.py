@@ -9,6 +9,7 @@ from baselines.common import set_global_seeds
 from baselines import deepq
 
 import rl_baselines.ddpg as ddpg
+import rl_baselines.ars as ars
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
@@ -16,7 +17,7 @@ from srl_priors.utils import printYellow
 from replay.enjoy import parseArguments
 
 
-supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg']
+supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars']
 load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=False)
 
 nstack = train_args['num_stack']
@@ -45,6 +46,8 @@ elif algo == "ppo2":
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
 elif algo == "ddpg":
     model = ddpg.load(load_path, sess)
+elif algo == "ars":
+    model = ars.load(load_path)
 
 
 params = find_trainable_variables("model")
@@ -78,6 +81,8 @@ for _ in range(load_args.num_timesteps):
         actions = model(obs[None])[0]
     elif algo == "ddpg":
         actions = model.pi(obs, apply_noise=False, compute_Q=False)[0]
+    elif algo == "ars":
+        actions = model.getAction(obs.reshape(1,-1))
     obs, rewards, dones, _ = envs.step(actions)
 
     if algo in ["deepq", "ddpg"]:
