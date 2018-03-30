@@ -1,7 +1,7 @@
 from . import kuka_button_gym_env as kuka_env
 from .kuka_button_gym_env import *
 
-kuka_env.FORCE_RENDER = True
+kuka_env.FORCE_RENDER = False
 
 class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
