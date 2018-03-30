@@ -9,8 +9,24 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 
+
 class ARS:
-    def __init__(self, n_population, observation_space, action_space, type='v1', top_population=2, rollout_length=1000, step_size=0.02, exploration_noise=0.02, continuous_actions=False):
+    """
+    Augmented Random Search algorithm for gym enviroment
+    https://arxiv.org/abs/1803.07055
+    :param n_population: (int)
+    :param observation_space: (int) vectorized length of the obs space
+    :param action_space: (int) vectorized length of the action space
+    :param algo_type: (str) version of ARS (v1 without rolling norm, v2 with)
+    :param top_population: (int) how many of the population are used in updating
+    :param rollout_length: (int) maximum time step for the algorithms
+    :param step_size: (float) the step size for the parameter update
+    :param exploration_noise: (float) standard deviation of the exploration noise
+    :param continuous_actions: (bool)
+    """
+
+    def __init__(self, n_population, observation_space, action_space, algo_type='v1', top_population=2,
+                 rollout_length=1000, step_size=0.02, exploration_noise=0.02, continuous_actions=False):
         self.n = 0
         self.mu = 0
         self.sigma = 0
@@ -18,19 +34,24 @@ class ARS:
         self.new_sigma = 0
 
         self.n_population = n_population
-        self.type = type
+        self.algo_type = algo_type
         self.top_population = top_population
         self.rollout_length = rollout_length
         self.step_size = step_size
         self.exploration_noise = exploration_noise
         self.continuous_actions = continuous_actions
-        
-        self.M = np.zeros((observation_space,action_space))
 
+        self.M = np.zeros((observation_space, action_space))
 
     def getAction(self, obs, delta=0):
-        # v2 is a rolling normalized version of v1.
-        if self.type == "v2":
+        """
+        returns the policy action
+        :param obs: (float array) vectorized observation
+        :param delta: (float array) the exploration noise added to the param (default=0)
+        :return: (float array) the chosen action
+        """
+        #  v2 is a rolling normalized version of v1.
+        if self.algo_type == "v2":
             self.n += 1
             if self.n == 1:
                 # init rolling average
@@ -41,14 +62,14 @@ class ARS:
             else:
                 rolling_delta = obs - self.new_mu
                 self.new_mu += rolling_delta / self.n
-                self.new_sigma += rolling_delta*rolling_delta*(self.n-1)/self.n
+                self.new_sigma += rolling_delta * rolling_delta * (self.n - 1) / self.n
 
             x = (obs - self.mu) / (self.sigma + 1e-8)
-            
+
         else:
             x = obs
 
-        action = np.dot(x, self.M+delta)
+        action = np.dot(x, self.M + delta)
 
         if not self.continuous_actions:
             action = np.argmax(action, axis=1)
@@ -56,39 +77,47 @@ class ARS:
         return action
 
     def save(self, save_path):
+        """
+        :param save_path: (str)
+        """
         with open(save_path, "wb") as f:
             pickle.dump(self.__dict__, f)
 
-    def train(self, env, callback, num_updates=1e6):
+    def train(self, env, callback, num_updates=int(1e6 * 1.1)):
+        """
+        :param env: (gym enviroment)
+        :param callback: (function)
+        :param num_updates: (int) the number of updates to do (default=110000)
+        """
         start_time = time.time()
         step = 0
 
         for _ in range(num_updates):
-            r = np.zeros((self.n_population,2))
+            r = np.zeros((self.n_population, 2))
             delta = np.random.normal(size=(self.n_population,) + self.M.shape)
-            done = np.full((self.n_population*2,), False)
+            done = np.full((self.n_population * 2,), False)
             obs = env.reset()
             for _ in range(self.rollout_length):
                 actions = []
                 for k in range(self.n_population):
-                    for dir in range(2):
-                        if not done[k*2+dir]:
-                            current_obs = obs[k*2+dir].reshape(-1)
-                            if dir == 0:
-                                action = self.getAction(current_obs, delta=(self.exploration_noise*delta[k]))
+                    for direction in range(2):
+                        if not done[k * 2 + direction]:
+                            current_obs = obs[k * 2 + direction].reshape(-1)
+                            if direction == 0:
+                                action = self.getAction(current_obs, delta=(self.exploration_noise * delta[k]))
                             else:
-                                action = self.getAction(current_obs, delta=(-self.exploration_noise*delta[k]))
+                                action = self.getAction(current_obs, delta=(-self.exploration_noise * delta[k]))
 
                             actions.append(action)
                         else:
-                            actions.append(np.zeros(self.M.shape[1])) # do nothing, as we are done
+                            actions.append(np.zeros(self.M.shape[1]))  # do nothing, as we are done
 
                 obs, reward, done, info = env.step(actions)
-                step += 1 
+                step += 1
 
                 # cumulate the reward for every enviroment that is not finished
-                update_idx = ~(done.reshape(self.n_population,2))
-                r[update_idx] += (reward.reshape(self.n_population,2))[update_idx]
+                update_idx = ~(done.reshape(self.n_population, 2))
+                r[update_idx] += (reward.reshape(self.n_population, 2))[update_idx]
 
                 if callback is not None:
                     callback(locals(), globals())
@@ -99,26 +128,29 @@ class ARS:
                 if done.all():
                     break
 
-            if type == "v2":
+            if self.algo_type == "v2":
                 self.mu = self.new_mu
-                self.sigma = np.sqrt(self.new_sigma / (self.n-1))
+                self.sigma = np.sqrt(self.new_sigma / (self.n - 1))
 
             idx = np.argsort(np.max(r, axis=1))[::-1]
 
             delta_sum = 0
             for i in range(self.top_population):
-                delta_sum += (r[idx[i],0] - r[idx[i],1]) * delta[idx[i]]
-            self.M += self.step_size/(self.top_population*np.std(r[idx[:self.top_population]])) * delta_sum
-
-
+                delta_sum += (r[idx[i], 0] - r[idx[i], 1]) * delta[idx[i]]
+            self.M += self.step_size / (self.top_population * np.std(r[idx[:self.top_population]])) * delta_sum
 
 
 def load(save_path):
+    """
+    :param save_path: (str)
+    :return: (ARS Object)
+    """
     with open(save_path, "rb") as f:
         class_dict = pickle.load(f)
-    model = ARS(1,0,0)
+    model = ARS(1, 0, 0)
     model.__dict__ = class_dict
     return model
+
 
 def customArguments(parser):
     """
@@ -126,10 +158,12 @@ def customArguments(parser):
     :return: (ArgumentParser Object)
     """
     parser.add_argument('--num-population', help='Number of population (each one has 2 threads)', type=int, default=20)
-    parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float, default=0.02)
+    parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float,
+                        default=0.02)
     parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)
     parser.add_argument('--top-population', help='Number of top population to use in update', type=int, default=2)
-    parser.add_argument('--type', help='"v1" is standard ARS, "v2" is for rolling average normalization.', type=str, default="v1")
+    parser.add_argument('--algo-type', help='"v1" is standard ARS, "v2" is for rolling average normalization.',
+                        type=str, default="v1", choices=["v1", "v2"])
     parser.add_argument('--rollout-length', help='The max number of rollout for each episodes', type=int, default=1000)
     return parser
 
@@ -140,11 +174,17 @@ def main(args, callback=None):
     :param callback: (function)
     """
 
-    assert kuka_env.MAX_STEPS <= args.rollout_length, "rollout_length cannot be less than an episode of the enviroment (%d)." % kuka_env.MAX_STEPS
-    assert args.top_population <= args.num_population, "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
+    # TODO: fix rollout_length
+    # this assert is due to the fact that callback does not save, unless an episode has occured.
+    assert kuka_env.MAX_STEPS <= args.rollout_length, \
+        "rollout_length cannot be less than an episode of the enviroment (%d)." % kuka_env.MAX_STEPS
+
+    assert args.top_population <= args.num_population, \
+        "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
+    assert args.num_population > 1, "The population cannot be less than 2."
 
     envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
-            for i in range(args.num_population*2)]
+            for i in range(args.num_population * 2)]
 
     if len(envs) == 1:
         envs = DummyVecEnv(envs)
@@ -158,19 +198,15 @@ def main(args, callback=None):
         action_space = envs.action_space.n
 
     model = ARS(
-        args.num_population, 
-        np.prod(envs.observation_space.shape), 
+        args.num_population,
+        np.prod(envs.observation_space.shape),
         action_space,
-        type=args.type, 
-        top_population=args.top_population, 
+        algo_type=args.algo_type,
+        top_population=args.top_population,
         rollout_length=args.rollout_length,
-        step_size=args.step_size, 
-        exploration_noise=args.exploration_noise, 
+        step_size=args.step_size,
+        exploration_noise=args.exploration_noise,
         continuous_actions=args.continuous_actions
     )
 
-    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population*2))
-
-
-
-        
+    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))

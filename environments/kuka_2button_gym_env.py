@@ -3,8 +3,8 @@ from .kuka_button_gym_env import *
 
 kuka_env.FORCE_RENDER = False
 
-class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
+class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     """
     Gym wrapper for Kuka environment with a push button
     :param urdf_root: (str) Path to pybullet urdf files
@@ -12,12 +12,13 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     :param is_discrete: (bool)
     :param name: (str) name of the folder where recorded data will be stored
     """
+
     def __init__(self,
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
                  is_discrete=True,
                  name="kuka_2button_gym"):
-        super(Kuka2ButtonGymEnv, self).__init__()
+        super(Kuka2ButtonGymEnv, self).__init__(urdf_root, renders, is_discrete, name)
 
     def reset(self):
         """
