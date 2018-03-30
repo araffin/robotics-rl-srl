@@ -17,6 +17,13 @@ register(
 )
 
 register(
+    _id='Kuka2ButtonGymEnv-v0',
+    entry_point='environments.kuka_2button_gym_env:Kuka2ButtonGymEnv',
+    timestep_limit=500,
+    reward_threshold=5.0,  # Threshold at which the environment is considered as solved
+)
+
+register(
     _id='Baxter-v0',
     entry_point='environments.gym_baxter.baxter_env:BaxterEnv',
     timestep_limit=500,
