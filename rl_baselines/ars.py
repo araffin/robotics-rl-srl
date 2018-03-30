@@ -46,9 +46,9 @@ class ARS:
     def getAction(self, obs, delta=0):
         """
         returns the policy action
-        :param obs: (float array) vectorized observation
-        :param delta: (float array) the exploration noise added to the param (default=0)
-        :return: (float array) the chosen action
+        :param obs: ([float]) vectorized observation
+        :param delta: ([float]) the exploration noise added to the param (default=0)
+        :return: ([float]) the chosen action
         """
         #  v2 is a rolling normalized version of v1.
         if self.algo_type == "v2":
@@ -183,7 +183,7 @@ def main(args, callback=None):
         "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
     assert args.num_population > 1, "The population cannot be less than 2."
 
-    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
+    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False, allow_early_resets=True)
             for i in range(args.num_population * 2)]
 
     if len(envs) == 1:
