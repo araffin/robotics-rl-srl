@@ -52,6 +52,9 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
             if (x_pos < self.button_pos[0] - 0.1) or (x_pos > self.button_pos[0] + 0.1) or (y_pos < self.button_pos[1] - 0.1) or (y_pos > self.button_pos[1] + 0.1):
                 p.loadURDF(os.path.join(self._urdf_root, obj), [x_pos, y_pos, Z_TABLE+0.1])
 
+
+        self.sphere = p.loadURDF(os.path.join(self._urdf_root, "sphere_small.urdf"), [0,0.3,Z_TABLE+0.3])
+
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
                                use_inverse_kinematics=(not self.action_joints), small_constraints=False)
@@ -98,3 +101,10 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
             return self.srl_model.getState(self._observation)
 
         return np.array(self._observation)
+
+    def step(self, action):
+        """
+        :param action: (int)
+        """
+        p.resetBasePositionAndOrientation(self.sphere, [np.sin(self._env_step_counter/15)/2+0.25, np.cos(self._env_step_counter/3)/6-0.3, Z_TABLE+0.05], [0,0,0,1])
+        return super(KukaRandButtonGymEnv, self).step(action)

@@ -136,11 +136,11 @@ class Kuka:
 
             # Constrain effector position
             self.end_effector_pos[0] += dx
-            self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], min_x, max_x)
+            self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], self.min_x, self.max_x)
             self.end_effector_pos[1] += dy
-            self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], min_y, max_y)
+            self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], self.min_y, self.max_y)
             self.end_effector_pos[2] += dz
-            self.end_effector_pos[2] = np.clip(self.end_effector_pos[2], min_z, max_z)
+            self.end_effector_pos[2] = np.clip(self.end_effector_pos[2], self.min_z, self.max_z)
             self.end_effector_angle += da
 
             pos = self.end_effector_pos
