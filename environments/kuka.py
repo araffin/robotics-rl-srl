@@ -16,7 +16,7 @@ class Kuka:
     :param timestep: (float) 
     :param use_inverse_kinematics: (bool) enable dx,dy,dz control rather than direct joint control
     """
-    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True):
+    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True, small_constraints=True):
         self.urdf_root_path = urdf_root_path
         self.timestep = timestep
         self.max_velocity = .35
@@ -42,6 +42,20 @@ class Kuka:
         self.jd = [0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001,
                    0.00001, 0.00001, 0.00001]
         self.kuka_uid = None
+        if small_constraints:
+            self.min_x = 0.50
+            self.max_x = 0.65
+            self.min_y = -0.17
+            self.max_y = 0.22
+            self.min_z = 0
+            self.max_z = 0.5
+        else:
+            self.min_x = 0.35
+            self.max_x = 0.65
+            self.min_y = -0.30
+            self.max_y = 0.30
+            self.min_z = 0
+            self.max_z = 0.5
         self.reset()
 
     def reset(self):
@@ -122,10 +136,11 @@ class Kuka:
 
             # Constrain effector position
             self.end_effector_pos[0] += dx
-            self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], 0.50, 0.65)
+            self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], min_x, max_x)
             self.end_effector_pos[1] += dy
-            self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], -0.17, 0.22)
+            self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], min_y, max_y)
             self.end_effector_pos[2] += dz
+            self.end_effector_pos[2] = np.clip(self.end_effector_pos[2], min_z, max_z)
             self.end_effector_angle += da
 
             pos = self.end_effector_pos
@@ -160,7 +175,7 @@ class Kuka:
                                         maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
         else:
             # reset the joint state (ignoring all dynamics, not recommended to use during simulation)
-            for i in range(self.num_joints):
+            for i in range(self.kuka_end_effector_index + 1):
                 p.resetJointState(self.kuka_uid, i, joint_poses[i])
                 
         # Effectors grabbers angle 

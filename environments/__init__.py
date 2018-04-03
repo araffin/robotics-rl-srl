@@ -17,9 +17,16 @@ register(
 )
 
 register(
+    _id='KukaRandButtonGymEnv-v0',
+    entry_point='environments.kuka_rand_button_gym_env:KukaRandButtonGymEnv',
+    timestep_limit=1000,
+    reward_threshold=5.0,  # Threshold at which the environment is considered as solved
+)
+
+register(
     _id='Kuka2ButtonGymEnv-v0',
     entry_point='environments.kuka_2button_gym_env:Kuka2ButtonGymEnv',
-    timestep_limit=500,
+    timestep_limit=1500,
     reward_threshold=5.0,  # Threshold at which the environment is considered as solved
 )
 
