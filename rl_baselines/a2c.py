@@ -5,7 +5,7 @@ from baselines.common.distributions import make_pdtype
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
+from .utils import WrapVecNormalize
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
 import environments.kuka_button_gym_env as kuka_env
@@ -157,13 +157,13 @@ def main(args, callback):
     if len(envs) == 1:
         envs = DummyVecEnv(envs)
     else:
-        envs = SubprocVecEnv(envs)
-
-    # Warning: if we use VecNormalize, we need to save the moving average
-    # if args.srl_model == "ground_truth":
-    #     envs = VecNormalize(envs)
+        envs = SubprocVecEnv(envs)  
 
     envs = VecFrameStack(envs, args.num_stack)
+    
+    # Warning: if we use VecNormalize, we need to save the moving average
+    envs =  WrapVecNormalize(envs)   
+        
     logger.configure()
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
           lrschedule=args.lr_schedule, callback=callback)

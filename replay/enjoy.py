@@ -11,6 +11,7 @@ from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from pytorch_agents.envs import make_env
 import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
+from rl_baselines.utils import WrapVecNormalize
 from srl_priors.utils import printGreen, printYellow
 
 
@@ -101,5 +102,9 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
             # Normalize only raw pixels
             normalize = train_args['srl_model'] == ""
             envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
+            
+            envs = WrapVecNormalize(envs)
+            envs.loadRunningAverage('ob_rms')
+            envs.loadRunningAverage('ret_rms')        
 
     return load_args, train_args, load_path, log_dir, algo, envs

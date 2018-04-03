@@ -3,7 +3,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
+from .utils import WrapVecNormalize
 from baselines import logger
 import tensorflow as tf
 
@@ -161,7 +161,7 @@ def main(args, callback):
     if args.srl_model != "":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
-        envs = VecNormalize(envs)
+        envs = WrapVecNormalize(envs)
 
     logger.configure()
     learn(args, envs, nsteps=128,

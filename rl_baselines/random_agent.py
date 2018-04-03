@@ -7,7 +7,7 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-
+from .utils import WrapVecNormalize
 
 def customArguments(parser):
     """
@@ -30,6 +30,8 @@ def main(args, callback=None):
         envs = DummyVecEnv(envs)
     else:
         envs = SubprocVecEnv(envs)
+    envs = WrapVecNormalize(envs)
+    
     obs = envs.reset()
     num_updates = int(args.num_timesteps) // args.num_cpu
     start_time = time.time()

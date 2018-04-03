@@ -13,7 +13,7 @@ from pytorch_agents.envs import make_env
 from pytorch_agents.model import CNNPolicy, MLPPolicy
 from rl_baselines.utils import computeMeanReward
 from srl_priors.utils import printGreen
-
+from .utils import WrapVecNormalize
 
 def customArguments(parser):
     """
@@ -84,7 +84,8 @@ def main(args, callback=None):
         envs = DummyVecEnv(envs)
     else:
         envs = SubprocVecEnv(envs)
-
+    envs = WrapVecNormalize(envs)
+    
     obs_shape = envs.observation_space.shape
     if len(obs_shape) > 0:
         obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])

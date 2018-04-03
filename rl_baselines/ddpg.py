@@ -17,6 +17,7 @@ from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
+from .utils import WrapVecNormalize
 
 # Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
@@ -328,7 +329,8 @@ def main(args, callback):
     normalize = args.srl_model == ""
     # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
     env = WrapFrameStack(env, args.num_stack, normalize=normalize)
-
+    env =  WrapVecNormalize(env)
+    
     createTensorflowSession()
     layer_norm = not args.no_layer_norm
 

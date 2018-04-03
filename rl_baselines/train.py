@@ -120,6 +120,9 @@ def callback(_locals, _globals):
 
         # Save Best model
         if mean_reward > best_mean_reward:
+            _locals['env'].saveRunningAverage('ret_rms')
+            _locals['env'].saveRunningAverage('ob_rms')      
+            
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
             if ALGO == "deepq":

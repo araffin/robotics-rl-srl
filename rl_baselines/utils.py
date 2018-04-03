@@ -2,9 +2,10 @@ from collections import OrderedDict
 
 import numpy as np
 import tensorflow as tf
+import pickle
 
 from pytorch_agents.visualize import load_csv
-
+from baselines.common.vec_env.vec_normalize import VecNormalize
 
 def createTensorflowSession():
     """
@@ -61,3 +62,40 @@ def filterJSONSerializableObjects(input_dict):
         if isJsonSafe(input_dict[key]):
             output_dict[key] = input_dict[key]
     return output_dict
+
+
+class WrapVecNormalize(VecNormalize):
+    
+    def step_wait(self):
+        """
+        Apply sequence of actions to sequence of environments
+        actions -> (observations, rewards, news)
+
+        where 'news' is a boolean vector indicating whether each element is new.
+        """
+        obs, rews, news, infos = self.venv.step_wait()
+        self.ret = self.ret * self.gamma + rews
+        obs = self._obfilt(obs)
+        if self.ret_rms:
+            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
+        return obs, rews, news, infos
+
+    def _obfilt(self, obs):
+        if self.ob_rms:
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+            return obs
+        else:
+            return obs
+
+    def saveRunningAverage(self, fname):
+        if fname == 'ret_rms':
+            avg = self.ret_rms
+        else:
+            avg = self.ob_rms            
+        pickle.dump( avg, open(fname + ".f",'wb'))
+
+    def loadRunningAverage(self, file_r_avg):
+        if file_r_avg == 'ret_rms':
+            self.ret_rms = pickle.load( open(file_r_avg + '.f', 'rb'))
+        else:
+            self.ob_rms = pickle.load( open(file_r_avg + '.f', 'rb'))

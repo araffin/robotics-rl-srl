@@ -6,7 +6,7 @@ from baselines.common.vec_env import VecEnv
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
 from rl_baselines.utils import createTensorflowSession
-
+from .utils import WrapVecNormalize
 
 class CustomDummyVecEnv(VecEnv):
     """Dummy class in order to use FrameStack with DQN"""
@@ -86,7 +86,8 @@ def main(args, callback):
     normalize = args.srl_model == ""
     # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
     env = WrapFrameStack(env, args.num_stack, normalize=normalize)
-
+    env =  WrapVecNormalize(env)
+    
     createTensorflowSession()
 
     if args.srl_model != "":
