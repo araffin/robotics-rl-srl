@@ -103,7 +103,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
             normalize = train_args['srl_model'] == ""
             envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
             
-            envs = WrapVecNormalize(envs)
+            envs = WrapVecNormalize(envs, training=False, log_dir=log_dir)
             envs.loadRunningAverage('ob_rms')
             envs.loadRunningAverage('ret_rms')        
 

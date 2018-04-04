@@ -6,6 +6,7 @@ import pickle
 
 from pytorch_agents.visualize import load_csv
 from baselines.common.vec_env.vec_normalize import VecNormalize
+from baselines.common.running_mean_std import RunningMeanStd
 
 def createTensorflowSession():
     """
@@ -65,6 +66,21 @@ def filterJSONSerializableObjects(input_dict):
 
 
 class WrapVecNormalize(VecNormalize):
+    """
+    Vectorized environment base class
+    """
+    def __init__(self, venv, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8, \
+                 training=True, log_dir="/tmp/gym/test/"):
+        VecNormalize.__init__(self, venv)
+        self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
+        self.ret_rms = RunningMeanStd(shape=()) if ret else None
+        self.clipob = clipob
+        self.cliprew = cliprew
+        self.ret = np.zeros(self.num_envs)
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.training = training
+        self.log_dir = log_dir
     
     def step_wait(self):
         """
@@ -77,25 +93,29 @@ class WrapVecNormalize(VecNormalize):
         self.ret = self.ret * self.gamma + rews
         obs = self._obfilt(obs)
         if self.ret_rms:
+            if self.training:
+                self.ret_rms.update(self.ret)
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
         return obs, rews, news, infos
 
     def _obfilt(self, obs):
         if self.ob_rms:
+            if self.training:
+                self.ob_rms.update(obs)
             obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
             return obs
         else:
             return obs
 
-    def saveRunningAverage(self, fname):
-        if fname == 'ret_rms':
+    def saveRunningAverage(self, name):
+        if 'ret_rms' in name:
             avg = self.ret_rms
         else:
             avg = self.ob_rms            
-        pickle.dump( avg, open(fname + ".f",'wb'))
+        pickle.dump( avg, open(self.log_dir + name + ".f",'wb'))
 
-    def loadRunningAverage(self, file_r_avg):
-        if file_r_avg == 'ret_rms':
-            self.ret_rms = pickle.load( open(file_r_avg + '.f', 'rb'))
+    def loadRunningAverage(self, r_avg):
+        if 'ret_rms' in r_avg: 
+            self.ret_rms = pickle.load( open(self.log_dir + r_avg + '.f', 'rb'))
         else:
-            self.ob_rms = pickle.load( open(file_r_avg + '.f', 'rb'))
+            self.ob_rms = pickle.load( open(self.log_dir + r_avg + '.f', 'rb'))
