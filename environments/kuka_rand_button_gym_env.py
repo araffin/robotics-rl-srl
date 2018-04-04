@@ -8,7 +8,8 @@ from .kuka_button_gym_env import *
 
 class KukaRandButtonGymEnv(KukaButtonGymEnv):
     """
-    Gym wrapper for Kuka environment with a push button
+    Gym wrapper for Kuka environment with a push button in a random position 
+        and some random objects
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
@@ -53,7 +54,7 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
                 p.loadURDF(os.path.join(self._urdf_root, obj), [x_pos, y_pos, Z_TABLE+0.1])
 
 
-        self.sphere = p.loadURDF(os.path.join(self._urdf_root, "sphere_small.urdf"), [0,0.3,Z_TABLE+0.3])
+        self.sphere = p.loadURDF(os.path.join(self._urdf_root, "sphere_small.urdf"), [0.25,-0.2,Z_TABLE+0.3])
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
@@ -96,8 +97,6 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
-            # if len(self.saver.srl_model_path) > 0:
-            # self.srl_model.load(self.saver.srl_model_path))
             return self.srl_model.getState(self._observation)
 
         return np.array(self._observation)
@@ -106,5 +105,16 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         """
         :param action: (int)
         """
-        p.resetBasePositionAndOrientation(self.sphere, [np.sin(self._env_step_counter/15)/2+0.25, np.cos(self._env_step_counter/3)/6-0.3, Z_TABLE+0.05], [0,0,0,1])
+        # sin wave position
+        # p.resetBasePositionAndOrientation(self.sphere, [np.sin(self._env_step_counter/15)/2+0.25, np.cos(self._env_step_counter/3)/6-0.3, Z_TABLE+0.05], [0,0,0,1])
+
+        # force applied to the ball
+        if self._env_step_counter == 10:
+            force = np.random.normal(size=(3,))
+            force[2] = 0                                # set up force to 0, so that our amplitude is correct
+            force = force/np.linalg.norm(force, 2)*100  # set force amplitude to 100
+            force[2] = 1                                # up force to reduce friction
+            force = np.abs(force)                       # go towards the center of the table
+            p.applyExternalForce(self.sphere, -1, force, [0,0,0], p.WORLD_FRAME)
+
         return super(KukaRandButtonGymEnv, self).step(action)
