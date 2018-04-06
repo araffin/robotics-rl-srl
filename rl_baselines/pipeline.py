@@ -54,7 +54,7 @@ def main():
         for env in envs:
             for seed_idx in range(len(SEEDS)):
 
-                printGreen("\nItteration_num={}, environment='{}', srl-model='{}'".format(seed_idx, env, model))
+                printGreen("\nIteration_num={}, Environment='{}', SRL-Model='{}'".format(seed_idx, env, model))
 
                 # redefine the parsed args for rl_baselines.train
                 if model != "raw_pixels":
