@@ -23,7 +23,7 @@ from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDP
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
           normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
           popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-          tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None):
+          tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None, num_max_step=int(1e6*1.1)):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -64,6 +64,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         episode_step = 0
         episodes = 0
         t = 0
+        total_steps = 0
 
         epoch = 0
         start_time = time.time()
@@ -80,6 +81,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
             for cycle in range(nb_epoch_cycles):
                 # Perform rollouts.
                 for t_rollout in range(nb_rollout_steps):
+                    if total_steps >= num_max_step:
+                        return
+                        
                     # Predict next action.
                     action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
@@ -92,6 +96,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     new_obs, r, done, info = env.step(
                         max_action * action)
                     t += 1
+                    total_steps += 1
                     if rank == 0 and render:
                         env.render()
                     episode_reward += r
@@ -139,10 +144,14 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 if eval_env is not None:
                     eval_episode_reward = 0.
                     for t_rollout in range(nb_eval_steps):
+                        if total_steps >= num_max_step:
+                            return
+
                         eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
                         # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                         eval_obs, eval_r, eval_done, eval_info = eval_env.step(
                             max_action * eval_action)
+                        total_steps += 1
                         if render_eval:
                             eval_env.render()
                         eval_episode_reward += eval_r
@@ -397,7 +406,8 @@ def main(args, callback):
         nb_eval_steps=50,
         batch_size=args.batch_size,
         memory=memory,
-        callback=callback
+        callback=callback,
+        num_max_step=args.num_timesteps
     )
 
     env.close()

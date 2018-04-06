@@ -68,6 +68,10 @@ To use continuous actions in the joint space:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c -joints
 ```
 
+To run all the enviroments with all the SRL models for a given algorithm:
+```
+python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/
+```
 
 ### Pytorch Agents
 
@@ -160,3 +164,7 @@ If you have troubles installing mpi4py, make sure you the following installed:
 ```
 sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
 ```
+
+## Known issues
+
+The inverse kinematics function has trouble finding a solution when the arm is fully straight and the arm must bend to reach the requested point.
