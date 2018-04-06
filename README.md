@@ -164,3 +164,7 @@ If you have troubles installing mpi4py, make sure you the following installed:
 ```
 sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
 ```
+
+## Known issues
+
+The inverse kinematics function has trouble finding a solution when the arm is fully straight and the arm must bend to reach the requested point.
