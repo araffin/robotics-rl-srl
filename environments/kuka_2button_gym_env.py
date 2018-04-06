@@ -189,13 +189,16 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid)
         contact_points2 = p.getContactPoints(self.button_uid2, self._kuka.kuka_uid)
         self.n_contacts += int(len(contact_points) > 0)
-        self.n_contacts2 += int(len(contact_points2) > 0)
 
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
+        if self.button_pressed:
+            self.n_contacts2 += int(len(contact_points2) > 0)
+            reward = int(len(contact_points2) > 0)
+
+        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 and not self.button_pressed:
             self.button_pos = self.button_pos2
             self.button_pos[2] = 0.1
             self.button_pressed = True
-            reward = int(len(contact_points2) > 0)
+            
 
         contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
 
