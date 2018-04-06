@@ -12,8 +12,8 @@ SEEDS = [0, 2, 4, 6]  # the seeds used in trainning the baseline.
 
 def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines Benchmark")
-    parser.add_argument('--algo', default='deepq',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
+    parser.add_argument('--algo', default='ppo2',
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='all',
                         choices=["all", "KukaButtonGymEnv-v0"])
