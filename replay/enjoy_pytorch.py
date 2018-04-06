@@ -7,7 +7,7 @@ from rl_baselines.utils import computeMeanReward
 from replay.enjoy import parseArguments
 
 
-supported_models = ['ppo_pytorch', 'a2c_pytorch', 'random_search']
+supported_models = ['ppo_pytorch', 'a2c_pytorch']
 load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=True)
 
 load_args.cuda = not load_args.no_cuda and th.cuda.is_available()

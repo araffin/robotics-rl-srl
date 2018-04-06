@@ -34,6 +34,7 @@ python -m environments.test_env
 
 Note: All CNN policies normalize input, dividing it by 255.
 By default, 4 observations are stacked.
+For SRL, states are normalized using a running mean/std average.
 
 About frame-stacking, action repeat (frameskipping) please read this blog post: [Frame Skipping and Pre-Processing for DQN on Atari](https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/)
 
