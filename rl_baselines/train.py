@@ -174,8 +174,8 @@ def main():
     parser.add_argument('--srl-model', type=str, default='',
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
                         help='SRL model to use')
-    parser.add_argument('--num-stack', type=int, default=4,
-                        help='number of frames to stack (default: 4)')
+    parser.add_argument('--num-stack', type=int, default=1,
+                        help='number of frames to stack (default: 1)')
     parser.add_argument('--action-repeat', type=int, default=1,
                         help='number of times an action will be repeated (default: 1)')
     parser.add_argument('--port', type=int, default=8097,
