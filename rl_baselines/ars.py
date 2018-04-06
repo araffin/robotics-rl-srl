@@ -72,7 +72,7 @@ class ARS:
         action = np.dot(x, self.M + delta)
 
         if not self.continuous_actions:
-            action = np.argmax(action, axis=1)
+            action = np.argmax(action)
 
         return action
 
@@ -110,7 +110,7 @@ class ARS:
 
                             actions.append(action)
                         else:
-                            actions.append(np.zeros(self.M.shape[1]))  # do nothing, as we are done
+                            actions.append(None)  # do nothing, as we are done
 
                 obs, reward, done, info = env.step(actions)
                 step += 1

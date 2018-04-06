@@ -260,6 +260,13 @@ class KukaButtonGymEnv(gym.Env):
         """
         :param action: (int)
         """
+        # if you choose to do nothing
+        if action == None:
+            if self.action_joints:
+                return self.step2(list(np.array(self._kuka.joint_positions)[:7]) + [0, 0])
+            else:
+                return self.step2([0, 0, 0, 0, 0])
+
         self.action = action  # For saver
         if self._is_discrete:
             dv = DELTA_V  # velocity per physics step.
