@@ -74,21 +74,6 @@ To run all the enviroments with all the SRL models for a given algorithm:
 python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/
 ```
 
-### Pytorch Agents
-
-This concerns the `train_pytorch.py` script.
-
-We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.com/baselines-acktr-a2c/) from [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr) (see `pytorch_agents` folder):
-
-- A2C: See above
-- ACKTR: (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region
-- PPO:Proximal Policy Optimization
-
-To load a trained agent and see the result:
-```
-python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
-```
-
 ### Plot Learning Curve
 
 To plot a learning curve from logs in visdom, you have to pass path to the experiment log folder:
