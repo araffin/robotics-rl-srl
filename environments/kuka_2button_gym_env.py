@@ -172,7 +172,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         done = self._termination()
         reward = self._reward()
-        print(reward*1000)
         if self.saver is not None:
             self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
