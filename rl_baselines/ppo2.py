@@ -1,3 +1,4 @@
+from baselines.ppo2.ppo2 import *
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 from baselines.ppo2.policies import MlpPolicy as MlpPolicyContinuous
 from baselines import logger
@@ -41,7 +42,7 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
     if args.continuous_actions:
         policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
     else:
-        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicy}[args.policy]
+        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDicrete}[args.policy]
 
     if policy is None:
         raise ValueError(args.policy + " not implemented for " + (
