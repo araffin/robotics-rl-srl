@@ -11,7 +11,7 @@ from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from pytorch_agents.envs import make_env
 import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
-from rl_baselines.utils import WrapVecNormalize
+from rl_baselines.utils import CustomVecNormalize
 from srl_priors.utils import printGreen, printYellow
 
 
@@ -102,9 +102,16 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
             # Normalize only raw pixels
             normalize = train_args['srl_model'] == ""
             envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
-            
-            envs = WrapVecNormalize(envs, training=False, log_dir=log_dir)
-            envs.loadRunningAverage('ob_rms')
-            envs.loadRunningAverage('ret_rms')        
+
+
+    if train_args["srl_model"] != "":
+        envs = CustomVecNormalize(envs, training=False)
+        # Temp fix for experiments where no running average were saved
+        try:
+            printGreen("Loading saved running average")
+            envs.loadRunningAverage(load_args.log_dir)
+        except FileNotFoundError:
+            envs.training = True
+            printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
 
     return load_args, train_args, load_path, log_dir, algo, envs

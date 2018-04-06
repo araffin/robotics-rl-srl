@@ -14,10 +14,10 @@ import baselines.common.tf_util as tf_util
 
 import environments.kuka_button_gym_env as kuka_env
 from pytorch_agents.envs import make_env
-from rl_baselines.utils import createTensorflowSession
+from rl_baselines.utils import createTensorflowSession, CustomVecNormalize
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
-from .utils import WrapVecNormalize
+
 
 # Copied from openai ddpg/training, in order to add callback functions
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
@@ -307,13 +307,20 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--memory-limit', help='Used to define the size of the replay buffer (in number of observations)' , type=int, default=100)
-    parser.add_argument('--noise-action', help='Define the type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck (used for exploration)',type=str, default="ou", choices=["none", "normal", "ou"])
+    parser.add_argument('--memory-limit',
+                        help='Used to define the size of the replay buffer (in number of observations)', type=int,
+                        default=100)
+    parser.add_argument('--noise-action',
+                        help='Define the type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck (used for exploration)',
+                        type=str, default="ou", choices=["none", "normal", "ou"])
     parser.add_argument('--noise-action-sigma', help='The variance of the action noise', type=float, default=0.2)
     parser.add_argument('--noise-param', help='Enable parameter noise', action='store_true', default=False)
     parser.add_argument('--noise-param-sigma', help='The variance of the parameter noise', type=float, default=0.2)
-    parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks', action='store_true', default=False)
-    parser.add_argument('--batch-size', help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)' , type=int, default=16)
+    parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks',
+                        action='store_true', default=False)
+    parser.add_argument('--batch-size',
+                        help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)', type=int,
+                        default=16)
     return parser
 
 
@@ -325,12 +332,7 @@ def main(args, callback):
 
     logger.configure()
     env = CustomDummyVecEnv([make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)])
-    # Normalize only raw pixels
-    normalize = args.srl_model == ""
-    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
-    env =  WrapVecNormalize(env)
-    
+
     createTensorflowSession()
     layer_norm = not args.no_layer_norm
 
@@ -354,9 +356,15 @@ def main(args, callback):
     if args.srl_model != "":
         critic = DDPGCriticMLP(layer_norm=layer_norm)
         actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
+        env = CustomVecNormalize(env)
     else:
         critic = DDPGCriticCNN(layer_norm=layer_norm)
         actor = DDPGActorCNN(n_actions, layer_norm=layer_norm)
+
+    # Normalize only raw pixels
+    normalize = args.srl_model == ""
+    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
+    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
 
     # add save and load functions to DDPG
     DDPG.save = saveDDPG

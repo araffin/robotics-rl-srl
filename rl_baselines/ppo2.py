@@ -1,16 +1,12 @@
-from baselines.ppo2.ppo2 import *
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from .utils import WrapVecNormalize
-from baselines import logger
+from baselines.ppo2.ppo2 import *
 import tensorflow as tf
+from baselines import logger
 
-from rl_baselines.policies import MlpPolicyDicrete
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
-from srl_priors.utils import printYellow
+from rl_baselines.policies import MlpPolicyDicrete
+from rl_baselines.utils import createEnvs
+
 
 # Modified version of OpenAI to work with SRL models
 def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
@@ -20,18 +16,19 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
     """
     :param args: (Arguments object)
     :param env: (gym VecEnv)
-    :parma nsteps: (int)
+    :param nsteps: (int)
     :param total_timesteps: (int)
     :param ent_coef: (float) entropy coefficient
     :param lr: (float or function) learning rate
     :param vf_coef: (float)
     :param gamma: (float) discount factor
-    :parma lam: (float) lambda ?
+    :param lam: (float) lambda ?
     :param log_interval: (int)
     :param nminibatches: (int)
     :param noptepochs: (int)
     :param cliprange: (float or function)
     :param save_interval: (int)
+    :param max_grad_norm: (float)
     :param callback: (function)
     """
     config = tf.ConfigProto(allow_soft_placement=True,
@@ -148,20 +145,7 @@ def main(args, callback):
     :param callback: (function)
     """
 
-    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
-            for i in range(args.num_cpu)]
-
-    if len(envs) == 1:
-        envs = DummyVecEnv(envs)
-    else:
-        envs = SubprocVecEnv(envs)
-
-    envs = VecFrameStack(envs, args.num_stack)
-
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
-        envs = WrapVecNormalize(envs)
+    envs = createEnvs(args)
 
     logger.configure()
     learn(args, envs, nsteps=128,

@@ -1,12 +1,18 @@
+import pickle
 from collections import OrderedDict
 
 import numpy as np
 import tensorflow as tf
-import pickle
-
-from pytorch_agents.visualize import load_csv
-from baselines.common.vec_env.vec_normalize import VecNormalize
+from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.running_mean_std import RunningMeanStd
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+
+from pytorch_agents.envs import make_env
+from pytorch_agents.visualize import load_csv
+from srl_priors.utils import printYellow
+
 
 def createTensorflowSession():
     """
@@ -65,23 +71,34 @@ def filterJSONSerializableObjects(input_dict):
     return output_dict
 
 
-class WrapVecNormalize(VecNormalize):
+class CustomVecNormalize(VecEnvWrapper):
     """
-    Vectorized environment base class
+    Custom vectorized environment, it adds support for saving/loading moving average
+    It can normalize observation and reward by computing a moving average
+    :param venv: (VecEnv Object)
+    :param training: (bool) Whether to update or not the moving average
+    :param norm_obs: (bool) Whether to normalize observation or not (default: True)
+    :param norm_rewards: (bool) Whether to normalize rewards or not (default: False)
+    :param clip_obs: (float) Max absolute value for observation
+    :param clip_reward: (float) Max value absolute for discounted reward
+    :param gamma: (float) discount factor
+    :param epsilon: (float) To avoid division by zero
     """
-    def __init__(self, venv, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8, \
-                 training=True, log_dir="/tmp/gym/test/"):
-        VecNormalize.__init__(self, venv)
-        self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
-        self.ret_rms = RunningMeanStd(shape=()) if ret else None
-        self.clipob = clipob
-        self.cliprew = cliprew
+
+    def __init__(self, venv, training=True, norm_obs=True, norm_rewards=False,
+                 clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
+        VecEnvWrapper.__init__(self, venv)
+        self.obs_rms = RunningMeanStd(shape=self.observation_space.shape)
+        self.ret_rms = RunningMeanStd(shape=())
+        self.clip_obs = clip_obs
+        self.clip_reward = clip_reward
         self.ret = np.zeros(self.num_envs)
         self.gamma = gamma
         self.epsilon = epsilon
         self.training = training
-        self.log_dir = log_dir
-    
+        self.norm_obs = norm_obs
+        self.norm_rewards = norm_rewards
+
     def step_wait(self):
         """
         Apply sequence of actions to sequence of environments
@@ -91,31 +108,68 @@ class WrapVecNormalize(VecNormalize):
         """
         obs, rews, news, infos = self.venv.step_wait()
         self.ret = self.ret * self.gamma + rews
-        obs = self._obfilt(obs)
-        if self.ret_rms:
+        obs = self._normalizeObservation(obs)
+        if self.norm_rewards:
             if self.training:
                 self.ret_rms.update(self.ret)
-            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
+            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.clip_reward, self.clip_reward)
         return obs, rews, news, infos
 
-    def _obfilt(self, obs):
-        if self.ob_rms:
+    def _normalizeObservation(self, obs):
+        """
+        :param obs: (numpy tensor)
+        """
+        if self.norm_obs:
             if self.training:
-                self.ob_rms.update(obs)
-            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+                self.obs_rms.update(obs)
+            obs = np.clip((obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.epsilon), -self.clip_obs,
+                          self.clip_obs)
             return obs
         else:
             return obs
 
-    def saveRunningAverage(self, name):
-        if 'ret_rms' in name:
-            avg = self.ret_rms
-        else:
-            avg = self.ob_rms            
-        pickle.dump( avg, open(self.log_dir + name + ".f",'wb'))
+    def reset(self):
+        """
+        Reset all environments
+        """
+        obs = self.venv.reset()
+        return self._normalizeObservation(obs)
 
-    def loadRunningAverage(self, r_avg):
-        if 'ret_rms' in r_avg: 
-            self.ret_rms = pickle.load( open(self.log_dir + r_avg + '.f', 'rb'))
-        else:
-            self.ob_rms = pickle.load( open(self.log_dir + r_avg + '.f', 'rb'))
+    def saveRunningAverage(self, path):
+        """
+        :param path: (str) path to log dir
+        """
+        for rms, name in zip([self.obs_rms, self.ret_rms], ['obs_rms', 'ret_rms']):
+            with open("{}/{}.pkl".format(path, name), 'wb') as f:
+                pickle.dump(rms, f)
+
+    def loadRunningAverage(self, path):
+        """
+        :param path: (str) path to log dir
+        """
+        for name in ['obs_rms', 'ret_rms']:
+            with open("{}/{}.pkl".format(path, name), 'rb') as f:
+                setattr(self, name, pickle.load(f))
+
+
+def createEnvs(args, pytorch=False):
+    """
+    :param args: (argparse.Namespace Object)
+    :param pytorch: (bool)
+    :return: (Gym VecEnv)
+    """
+    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=pytorch)
+            for i in range(args.num_cpu)]
+
+    if len(envs) == 1:
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
+
+    envs = VecFrameStack(envs, args.num_stack)
+
+    if args.srl_model != "":
+        printYellow("Using MLP policy because working on state representation")
+        args.policy = "mlp"
+        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+    return envs

@@ -1,14 +1,10 @@
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
-from rl_baselines.utils import createTensorflowSession
+from rl_baselines.utils import createTensorflowSession, createEnvs
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer
-from .utils import WrapVecNormalize
-from srl_priors.utils import printYellow
 
 
 class Runner(object):
@@ -156,16 +152,7 @@ def main(args, callback):
     :param args: (argparse.Namespace Object)
     :param callback: (function)
     """
+    envs = createEnvs(args)
 
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
-        
-    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
-            for i in range(args.num_cpu)]
-
-    envs = SubprocVecEnv(envs)    
-    envs =  WrapVecNormalize(envs)
-    
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
           lrschedule=args.lr_schedule, callback=callback)

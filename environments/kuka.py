@@ -23,7 +23,7 @@ class Kuka:
         self.use_null_space = False
         self.use_orientation = True
         self.kuka_end_effector_index = 6
-        self.kuka_gripper_index = 7
+        self.kuka_gripper_index = 8  # Finger A
         # lower limits for null space
         self.ll = [-.967, -2, -2.96, 0.19, -2.96, -2.09, -3.05]
         # upper limits for null space
