@@ -31,6 +31,9 @@
       <geometry>
         <mesh filename="meshes/base_button.dae" scale="1.0 1.0 1.0"/>
       </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
     </visual>
   </link>
   <link name="simple_push_button__cylinder">
@@ -50,6 +53,9 @@
       <geometry>
         <mesh filename="meshes/base_cylinder.dae" scale="1.0 1.0 1.0"/>
       </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
     </visual>
   </link>
   <link name="simple_push_button__button">
@@ -69,6 +75,9 @@
       <geometry>
         <mesh filename="meshes/button.dae" scale="1.0 1.0 1.0"/>
       </geometry>
+      <material name="yellow">
+        <color rgba="1 1 0 1"/>
+      </material>
     </visual>
   </link>
 </robot>

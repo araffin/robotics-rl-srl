@@ -148,9 +148,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         if VERBOSE:
             print(np.array2string(np.array(real_action), precision=2))
-        print(action)
-        print(real_action)
-        print(DELTA_V_CONTINUOUS)
 
         return self.step2(real_action)
 
