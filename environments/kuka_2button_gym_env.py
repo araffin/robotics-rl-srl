@@ -1,6 +1,6 @@
 from . import kuka_button_gym_env as kuka_env
 
-kuka_env.FORCE_RENDER = False
+kuka_env.FORCE_RENDER = True
 kuka_env.MAX_STEPS = 1500
 kuka_env.MAX_DISTANCE = 2
 
@@ -219,24 +219,21 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             self.terminated = True
 
         if SHAPE_REWARD:
-            if IS_DISCRETE and False:
-                return -distance
+            # both Buttons pushed
+            if self.terminated and reward > 0:
+                return 50
+            # button 1 pushed
+            elif (self.n_contacts < N_CONTACTS_BEFORE_TERMINATION - 1) and (len(contact_points) > 0):
+                print("BUTTON 1 PRESSED")
+                return 25
+            # table
+            elif contact_with_table:
+                return -250
+            # out of bounds
+            elif distance > MAX_DISTANCE:
+                return -20
+            # anything else
             else:
-                # both Buttons pushed
-                if self.terminated and reward > 0:
-                    return 0.5
-                # button 1 pushed
-                elif (self.n_contacts < N_CONTACTS_BEFORE_TERMINATION - 1) and (len(contact_points) > 0):
-                    print("BUTTON 1 PRESSED")
-                    return 0.5
-                # table
-                elif contact_with_table:
-                    return -(distance + 0.5)/1000
-                # out of bounds
-                elif distance > MAX_DISTANCE:
-                    return -0.02
-                # anything else
-                else:
-                    return -distance/1000
+                return -distance
 
         return reward
