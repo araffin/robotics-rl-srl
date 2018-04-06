@@ -25,6 +25,7 @@ def main():
                         help='number of timesteps the baseline should run')
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Display baseline STDOUT')
 
+    # returns the parsed arguments, and the rest are assumed to be arguments for rl_baselines.train
     args, train_args = parser.parse_known_args()
 
     if args.srl_model == "all":
@@ -53,9 +54,9 @@ def main():
         for env in envs:
             for seed_idx in range(len(SEEDS)):
 
-                printGreen("\nitteration_num={}, environment='{}', srl-model='{}'".format(seed_idx, env, model))
+                printGreen("\nItteration_num={}, environment='{}', srl-model='{}'".format(seed_idx, env, model))
 
-                # redefine the args for rl_baselines.train
+                # redefine the parsed args for rl_baselines.train
                 if model != "raw_pixels":
                     # raw_pixels is when --srl-model is left as default
                     train_args.extend(['--srl-model', model])

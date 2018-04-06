@@ -23,7 +23,7 @@ from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDP
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
           normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
           popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-          tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None, nb_max_step=int(1e6*1.1)):
+          tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None, num_max_step=int(1e6*1.1)):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -81,7 +81,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
             for cycle in range(nb_epoch_cycles):
                 # Perform rollouts.
                 for t_rollout in range(nb_rollout_steps):
-                    if total_steps >= nb_max_step:
+                    if total_steps >= num_max_step:
                         return
                         
                     # Predict next action.
@@ -144,7 +144,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 if eval_env is not None:
                     eval_episode_reward = 0.
                     for t_rollout in range(nb_eval_steps):
-                        if total_steps >= nb_max_step:
+                        if total_steps >= num_max_step:
                             return
 
                         eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
@@ -407,7 +407,7 @@ def main(args, callback):
         batch_size=args.batch_size,
         memory=memory,
         callback=callback,
-        nb_max_step=args.num_timesteps
+        num_max_step=args.num_timesteps
     )
 
     env.close()
