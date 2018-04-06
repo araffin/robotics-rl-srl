@@ -261,7 +261,7 @@ class KukaButtonGymEnv(gym.Env):
         :param action: (int)
         """
         # if you choose to do nothing
-        if action == None:
+        if action is None:
             if self.action_joints:
                 return self.step2(list(np.array(self._kuka.joint_positions)[:7]) + [0, 0])
             else:
