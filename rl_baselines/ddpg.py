@@ -28,15 +28,16 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
     max_action = env.action_space.high
-    logger.info('scaling actions by {} before executing in env'.format(max_action))
+
+    # Mute the initialization information
+    logger.set_level(logger.DISABLED)
     agent = DDPG(actor, critic, memory, env.observation_space.shape, env.action_space.shape,
                  gamma=gamma, tau=tau, normalize_returns=normalize_returns,
                  normalize_observations=normalize_observations,
                  batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
                  actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
                  reward_scale=reward_scale)
-    logger.info('Using agent with the following configuration:')
-    logger.info(str(agent.__dict__.items()))
+    logger.set_level(logger.INFO)
 
     # Set up logging stuff only for a single worker.
     if rank == 0:
@@ -295,7 +296,11 @@ def load(save_path, sess):
     DDPG.save = saveDDPG
     DDPG.load = loadDDPG
 
+    # Mute the initialization information
+    logger.set_level(logger.DISABLED)
     agent = DDPG(actor=actor, critic=critic, memory=memory, **data)
+    logger.set_level(logger.INFO)
+
     agent.saver = tf.train.Saver()
     agent.sess = sess
 
@@ -309,9 +314,9 @@ def customArguments(parser):
     """
     parser.add_argument('--memory-limit',
                         help='Used to define the size of the replay buffer (in number of observations)', type=int,
-                        default=100)
+                        default=100000)
     parser.add_argument('--noise-action',
-                        help='Define the type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck (used for exploration)',
+                        help='The type of action noise added to the output, can be gaussian or OrnsteinUhlenbeck',
                         type=str, default="ou", choices=["none", "normal", "ou"])
     parser.add_argument('--noise-action-sigma', help='The variance of the action noise', type=float, default=0.2)
     parser.add_argument('--noise-param', help='Enable parameter noise', action='store_true', default=False)
@@ -320,7 +325,7 @@ def customArguments(parser):
                         action='store_true', default=False)
     parser.add_argument('--batch-size',
                         help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)', type=int,
-                        default=16)
+                        default=64)
     return parser
 
 
@@ -389,9 +394,9 @@ def main(args, callback):
         popart=False,
         gamma=0.99,
         clip_norm=None,
-        nb_train_steps=50,
+        nb_train_steps=100,
         nb_rollout_steps=100,
-        nb_eval_steps=100,
+        nb_eval_steps=50,
         batch_size=args.batch_size,
         memory=memory,
         callback=callback

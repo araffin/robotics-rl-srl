@@ -2,8 +2,8 @@
 Enjoy script for OpenAI Baselines
 """
 from baselines.acer.acer_simple import *
-from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
+from baselines.acer.policies import AcerCnnPolicy
+from baselines.ppo2.policies import CnnPolicy, MlpPolicy
 from baselines.common import tf_util
 from baselines.common import set_global_seeds
 from baselines import deepq
@@ -11,7 +11,7 @@ from baselines import deepq
 import rl_baselines.ddpg as ddpg
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
-from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy
+from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
 from srl_priors.utils import printYellow
 from replay.enjoy import parseArguments
 
@@ -34,8 +34,14 @@ if algo == "acer":
     policy = {'cnn': AcerCnnPolicy, 'mlp': AcerMlpPolicy}[train_args["policy"]]
     # nstack is already handled in the VecFrameStack
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, nstack=1, reuse=False)
-elif algo in ["a2c", "ppo2"]:
+elif algo == "a2c":
     policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
+    model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
+elif algo == "ppo2":
+    if train_args["continuous_actions"]:
+        policy = {'cnn': CNNPolicyContinuous, 'mlp': MlpPolicy}[train_args["policy"]]
+    else:
+        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
     model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
 elif algo == "ddpg":
     model = ddpg.load(load_path, sess)
@@ -59,7 +65,7 @@ elif algo == "ddpg":
 
 dones = [False for _ in range(load_args.num_cpu)]
 obs = envs.reset()
-#print(obs.shape)
+# print(obs.shape)
 
 n_done = 0
 last_n_done = 0

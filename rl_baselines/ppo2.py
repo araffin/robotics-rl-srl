@@ -1,11 +1,12 @@
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-from baselines.ppo2.ppo2 import *
-import tensorflow as tf
+from baselines.ppo2.policies import MlpPolicy as MlpPolicyContinuous
 from baselines import logger
+import tensorflow as tf
 
 import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.policies import MlpPolicyDicrete
 from rl_baselines.utils import createEnvs
+
 
 
 # Modified version of OpenAI to work with SRL models
@@ -37,7 +38,14 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
     config.gpu_options.allow_growth = True
     tf.Session(config=config).__enter__()
 
-    policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDicrete}[args.policy]
+    if args.continuous_actions:
+        policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
+    else:
+        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicy}[args.policy]
+
+    if policy is None:
+        raise ValueError(args.policy + " not implemented for " + (
+            "discrete" if args.continuous_actions else "continuous") + " action space.")
 
     if isinstance(lr, float):
         lr = constfn(lr)

@@ -3,14 +3,14 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 from baselines.a2c.utils import fc, sample
 from baselines.common.distributions import make_pdtype
-
 from baselines.ddpg.models import Model
+from baselines.ppo2.policies import nature_cnn
 
 
 class MlpPolicyDicrete(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
         """
-        Modified version of OpenAI MLP so it can support discrete actions
+        Modified version of OpenAI PPO2 MLP so it can support discrete actions
         :param sess: (tf Session)
         :param ob_space: (tuple)
         :param ac_space: (gym action space)
@@ -51,6 +51,51 @@ class MlpPolicyDicrete(object):
         self.value = value
 
 
+class CNNPolicyContinuous(object):
+    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
+        """
+        Modified version of OpenAI PPO2 CNN so it can support continuous actions
+        :param sess: (tf Session)
+        :param ob_space: (tuple)
+        :param ac_space: (gym action space)
+        :param nbatch: (int)
+        :param nsteps: (int)
+        :param reuse: (bool) for tensorflow
+        """
+        nh, nw, nc = ob_space.shape
+        ob_shape = (nbatch, nh, nw, nc)
+        actdim = ac_space.shape[0]
+        X = tf.placeholder(tf.uint8, ob_shape)  # obs
+        with tf.variable_scope("model", reuse=reuse):
+            h = nature_cnn(X)
+            pi = fc(h, 'pi', actdim, init_scale=0.01)
+            vf = fc(h, 'v', 1)[:, 0]
+            logstd = tf.get_variable(name="logstd", shape=[1, actdim],
+                                     initializer=tf.zeros_initializer())
+
+        pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
+
+        self.pdtype = make_pdtype(ac_space)
+        self.pd = self.pdtype.pdfromflat(pdparam)
+
+        a0 = self.pd.sample()
+        neglogp0 = self.pd.neglogp(a0)
+        self.initial_state = None
+
+        def step(ob, *_args, **_kwargs):
+            a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
+            return a, v, self.initial_state, neglogp
+
+        def value(ob, *_args, **_kwargs):
+            return sess.run(vf, {X: ob})
+
+        self.X = X
+        self.pi = pi
+        self.vf = vf
+        self.step = step
+        self.value = value
+
+
 class AcerMlpPolicy(object):
 
     def __init__(self, sess, ob_space, ac_space, nenv, nsteps, nstack, reuse=False):
@@ -58,7 +103,6 @@ class AcerMlpPolicy(object):
         :param sess: (tf Session)
         :param ob_space: (tuple)
         :param ac_space: (gym action space)
-        :param nbatch: (int)
         :param nsteps: (int)
         :param nstack: (int)
         :param reuse: (bool) for tensorflow
