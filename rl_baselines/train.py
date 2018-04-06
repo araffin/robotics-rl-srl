@@ -130,7 +130,11 @@ def callback(_locals, _globals):
 
         # Save Best model
         if mean_reward > best_mean_reward:
-            _locals['env'].saveRunningAverage(LOG_DIR)
+            # Try saving the running average (only valid for mlp policy)
+            try:
+                _locals['env'].saveRunningAverage(LOG_DIR)
+            except AttributeError:
+                pass
 
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
