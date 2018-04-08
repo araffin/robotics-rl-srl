@@ -11,9 +11,11 @@ from gym.utils import seeding
 
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
+from srl_priors.preprocessing.preprocess import N_CHANNELS
+
 from . import kuka
 
-#  Number of steps before termination
+#  Number of steps before termination
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
@@ -257,6 +259,8 @@ class KukaButtonGymEnv(gym.Env):
         return [seed]
 
     def getExtendedObservation(self):
+        if N_CHANNELS > 3:
+            self.multi_view = True
         self._observation = self.render("rgb_array")
         return self._observation
 
@@ -328,6 +332,7 @@ class KukaButtonGymEnv(gym.Env):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
+
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos

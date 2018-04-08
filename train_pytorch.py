@@ -19,7 +19,8 @@ import environments.kuka_button_gym_env as kuka_env
 import rl_baselines.train as train
 from rl_baselines.utils import filterJSONSerializableObjects
 
-# To deal with using a second cameraargs = get_args()
+# To deal with using a second camera
+args = get_args()
 
 train.LOG_INTERVAL = args.vis_interval
 train.SAVE_INTERVAL = 100

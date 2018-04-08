@@ -5,8 +5,9 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE,  TripletNet
+from srl_priors.models.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE,  TripletNet
 from srl_priors.preprocessing import preprocessImage
+from srl_priors.preprocessing.preprocess import N_CHANNELS
 from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -191,8 +192,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
         elif model_type == "triplet_cnn":
-            self.model = TripletNet(state_dim, self.cuda, noise_std=NOISE_STD)
-            self.model = th.nn.DataParallel(self.model)
+            self.model = TripletNet(state_dim)
         elif model_type == "vae":
             self.model = CNNVAE(self.state_dim)
 
@@ -211,8 +211,12 @@ class SRLNeuralNetwork(SRLBaseClass):
         """
         :param observation: (numpy tensor)
         :return: (numpy matrix)
-        """
-        observation = preprocessImage(observation)
+        """        
+        if N_CHANNELS > 3:
+            observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
+        else:
+            observation = preprocessImage(observation)
+                
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
         # Channel first
@@ -224,7 +228,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.model_type == "autoencoder":
             state = self.model.encode(observation)            
         elif self.model_type == "triplet_cnn":
-            state = self.model.module.embedding(observation)
+            state = self.model.get_embedding(observation)
         elif self.model_type == "vae":
             state, _ = self.model.encode(observation)
         else:
