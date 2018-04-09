@@ -1,22 +1,22 @@
 import os
+import pickle
 import time
 from collections import deque
-import pickle
 
+import baselines.common.tf_util as tf_util
 import numpy as np
 import tensorflow as tf
-from mpi4py import MPI
-from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
-from baselines.ddpg.memory import Memory
-from baselines.ddpg.ddpg import DDPG
 from baselines import logger
-import baselines.common.tf_util as tf_util
+from baselines.ddpg.ddpg import DDPG
+from baselines.ddpg.memory import Memory
+from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
+from mpi4py import MPI
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
-from rl_baselines.utils import createTensorflowSession
+from environments.utils import makeEnv
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
+from rl_baselines.utils import createTensorflowSession, CustomVecNormalize
 
 
 # Copied from openai ddpg/training, in order to add callback functions
@@ -83,7 +83,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 for t_rollout in range(nb_rollout_steps):
                     if total_steps >= num_max_step:
                         return
-                        
+
                     # Predict next action.
                     action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
@@ -345,11 +345,7 @@ def main(args, callback):
     """
 
     logger.configure()
-    env = CustomDummyVecEnv([make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)])
-    # Normalize only raw pixels
-    normalize = args.srl_model == ""
-    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
+    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir)])
 
     createTensorflowSession()
     layer_norm = not args.no_layer_norm
@@ -374,9 +370,15 @@ def main(args, callback):
     if args.srl_model != "":
         critic = DDPGCriticMLP(layer_norm=layer_norm)
         actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
+        env = CustomVecNormalize(env)
     else:
         critic = DDPGCriticCNN(layer_norm=layer_norm)
         actor = DDPGActorCNN(n_actions, layer_norm=layer_norm)
+
+    # Normalize only raw pixels
+    normalize = args.srl_model == ""
+    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
+    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
 
     # add save and load functions to DDPG
     DDPG.save = saveDDPG

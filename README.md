@@ -33,7 +33,8 @@ python -m environments.test_env
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input, dividing it by 255.
-By default, 4 observations are stacked.
+By default, observations are not stacked.
+For SRL, states are normalized using a running mean/std average.
 
 About frame-stacking, action repeat (frameskipping) please read this blog post: [Frame Skipping and Pre-Processing for DQN on Atari](https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/)
 
@@ -68,24 +69,9 @@ To use continuous actions in the joint space:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c -joints
 ```
 
-To run all the enviroments with all the SRL models for a given algorithm:
+To run all the enviroments with all the SRL models for a given algorithm (you can use the same arguments as for training):
 ```
 python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/
-```
-
-### Pytorch Agents
-
-This concerns the `train_pytorch.py` script.
-
-We are using Pytorch Implementation of A2C, PPO and [ACKTR](https://blog.openai.com/baselines-acktr-a2c/) from [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr) (see `pytorch_agents` folder):
-
-- A2C: See above
-- ACKTR: (pronounced “actor”) Actor Critic using Kronecker-factored Trust Region
-- PPO:Proximal Policy Optimization
-
-To load a trained agent and see the result:
-```
-python -m replay.enjoy_pytorch --log-dir path/to/trained/agent/
 ```
 
 ### Plot Learning Curve

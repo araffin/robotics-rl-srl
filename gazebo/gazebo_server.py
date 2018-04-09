@@ -126,7 +126,7 @@ try:
             print("end_point_position_candidate:{}".format(end_point_position_candidate))
             print(e)
 
-        if joints:  #print('action and type:'); print(action) ;print(type(action))
+        if joints:
             action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
             end_point_position = end_point_position_candidate
             left_arm.move_to_joint_positions(joints, timeout=3)

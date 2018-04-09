@@ -1,18 +1,10 @@
-from baselines import logger
 from baselines.a2c.a2c import *
-from baselines.a2c.utils import fc
-from baselines.common.distributions import make_pdtype
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
+from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
 from rl_baselines.policies import MlpPolicyDicrete
-from rl_baselines.utils import createTensorflowSession
-from srl_priors.utils import printYellow
+from rl_baselines.utils import createTensorflowSession, createEnvs
 
 
 # Redefine runner to add support for srl models
@@ -147,23 +139,8 @@ def main(args, callback):
     :param callback: (function)
     """
 
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
+    envs = createEnvs(args)
 
-    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False)
-            for i in range(args.num_cpu)]
-
-    if len(envs) == 1:
-        envs = DummyVecEnv(envs)
-    else:
-        envs = SubprocVecEnv(envs)
-
-    # Warning: if we use VecNormalize, we need to save the moving average
-    # if args.srl_model == "ground_truth":
-    #     envs = VecNormalize(envs)
-
-    envs = VecFrameStack(envs, args.num_stack)
     logger.configure()
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
           lrschedule=args.lr_schedule, callback=callback)
