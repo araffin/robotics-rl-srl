@@ -24,7 +24,7 @@ darkcolors = colors[1::2]
 
 # y-limits for the plot
 Y_LIM_SPARSE_REWARD = [-3, 6]
-Y_LIM_SHAPED_REWARD = [-220, -130]
+Y_LIM_SHAPED_REWARD = [-90, -35]
 
 
 def loadEpisodesData(folder):
