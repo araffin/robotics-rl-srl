@@ -2,13 +2,9 @@ import time
 import pickle
 
 import numpy as np
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
-
+from rl_baselines.utils import createEnvs
 
 class ARS:
     """
@@ -157,7 +153,7 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--num-population', help='Number of population (each one has 2 threads)', type=int, default=20)
+    parser.add_argument('--num-cpu', help='Number of population (each one has 2 threads)', type=int, default=20)
     parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float,
                         default=0.02)
     parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)
@@ -183,14 +179,8 @@ def main(args, callback=None):
         "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
     assert args.num_population > 1, "The population cannot be less than 2."
 
-    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=False, allow_early_resets=True)
-            for i in range(args.num_population * 2)]
 
-    if len(envs) == 1:
-        envs = DummyVecEnv(envs)
-    else:
-        envs = SubprocVecEnv(envs)
-    envs = VecNormalize(envs)
+    envs = createEnvs(args)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)
