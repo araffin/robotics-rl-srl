@@ -3,14 +3,14 @@ from collections import OrderedDict
 
 import numpy as np
 import tensorflow as tf
-from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.running_mean_std import RunningMeanStd
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
-from pytorch_agents.envs import make_env
-from pytorch_agents.visualize import load_csv
+from environments.utils import makeEnv
+from rl_baselines.visualize import loadCsv
 from srl_priors.utils import printYellow
 
 
@@ -33,7 +33,7 @@ def computeMeanReward(log_dir, last_n_episodes):
     :param last_n_episodes: (int)
     :return: (bool, numpy array)
     """
-    result, _ = load_csv(log_dir)
+    result, _ = loadCsv(log_dir)
     if len(result) == 0:
         return False, 0
     y = np.array(result)[:, 1]
@@ -158,7 +158,7 @@ def createEnvs(args, pytorch=False):
     :param pytorch: (bool)
     :return: (Gym VecEnv)
     """
-    envs = [make_env(args.env, args.seed, i, args.log_dir, pytorch=pytorch)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir)
             for i in range(args.num_cpu)]
 
     if len(envs) == 1:

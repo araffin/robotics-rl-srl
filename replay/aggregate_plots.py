@@ -2,12 +2,12 @@ import argparse
 import json
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+import numpy as np
 import seaborn as sns
+from matplotlib.ticker import FuncFormatter
 
-from pytorch_agents.visualize import load_csv, moving_average, load_data
+from rl_baselines.visualize import loadCsv, movingAverage, loadData
 from srl_priors.utils import printGreen, printYellow
 
 # Init seaborn
@@ -32,7 +32,7 @@ def loadEpisodesData(folder):
     :param folder: (str)
     :return: (numpy array, numpy array) or (None, None)
     """
-    result, _ = load_csv(folder)
+    result, _ = loadCsv(folder)
 
     if len(result) == 0:
         return None, None
@@ -70,7 +70,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     x_list = []
     for folder in folders:
         if timesteps:
-            x, y = load_data(folder, smooth=1, bin_size=100)
+            x, y = loadData(folder, smooth=1, bin_size=100)
             if x is not None:
                 x, y = np.array(x), np.array(y)
         else:
@@ -85,7 +85,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
             printYellow("Not enough episodes for current window size = {}".format(window))
             continue
 
-        y = moving_average(y, window)
+        y = movingAverage(y, window)
         y_list.append(y)
 
         # Truncate x

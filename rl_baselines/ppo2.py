@@ -42,6 +42,7 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
     if args.continuous_actions:
         policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
     else:
+        # LN-LSTM: Layer Normalization LSTM
         policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDicrete}[args.policy]
 
     if policy is None:

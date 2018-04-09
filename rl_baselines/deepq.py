@@ -1,10 +1,10 @@
 from baselines import deepq
 from baselines import logger
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env import VecEnv
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
+from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize
 
 
@@ -96,7 +96,7 @@ def main(args, callback):
     """
     logger.configure()
 
-    env = CustomDummyVecEnv([make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)])
+    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir)])
 
     createTensorflowSession()
 

@@ -13,13 +13,13 @@ from visdom import Visdom
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
+import rl_baselines.ddpg as ddpg
 import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
-import rl_baselines.ddpg as ddpg
-from pytorch_agents.visualize import visdom_plot, episode_plot
-from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.utils import computeMeanReward
+from rl_baselines.utils import filterJSONSerializableObjects
+from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
 
 VISDOM_PORT = 8097
@@ -154,10 +154,10 @@ def callback(_locals, _globals):
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
-        win_smooth = visdom_plot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
-        win_episodes = episode_plot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
-                                    title=PLOT_TITLE + " [Episodes]")
+        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
+        win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
+                                   title=PLOT_TITLE + " [Episodes]")
     n_steps += 1
     return False
 
