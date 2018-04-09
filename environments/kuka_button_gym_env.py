@@ -11,7 +11,7 @@ from gym.utils import seeding
 
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
-from srl_priors.preprocessing.preprocess import N_CHANNELS
+from srl_priors.preprocessing import N_CHANNELS
 
 from . import kuka
 
@@ -79,7 +79,7 @@ class KukaButtonGymEnv(gym.Env):
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
-    :param multi_view (bool) enabling dual-camera view of the scene (return stacked images of the scene on 6 channels)
+    :param multi_view :(bool) if TRUE -> returns stacked images of the scene on 6 channels (two cameras)
     :param name: (str) name of the folder where recorded data will be stored
     """
 

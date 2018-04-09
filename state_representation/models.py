@@ -5,9 +5,9 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE,  TripletNet
+from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet
 from srl_priors.preprocessing import preprocessImage
-from srl_priors.preprocessing.preprocess import N_CHANNELS
+from srl_priors.preprocessing import N_CHANNELS
 from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -148,6 +148,7 @@ class SRLJoints(SRLBaseClass):
         """
         return np.array(self.env_object._kuka.joint_positions)
 
+
 class SRLJointsPos(SRLBaseClass):
     """
     Using Joint and position space for state representation model
@@ -228,7 +229,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.model_type == "autoencoder":
             state = self.model.encode(observation)            
         elif self.model_type == "triplet_cnn":
-            state = self.model.get_embedding(observation)
+            state = self.model.encode(observation)
         elif self.model_type == "vae":
             state, _ = self.model.encode(observation)
         else:
