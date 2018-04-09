@@ -162,6 +162,7 @@ def createEnvs(args, pytorch=False):
             for i in range(args.num_cpu)]
 
     if len(envs) == 1:
+        # No need for subprocesses when having only one env
         envs = DummyVecEnv(envs)
     else:
         envs = SubprocVecEnv(envs)
