@@ -92,6 +92,7 @@ class CustomVecNormalize(VecEnvWrapper):
         self.ret_rms = RunningMeanStd(shape=())
         self.clip_obs = clip_obs
         self.clip_reward = clip_reward
+        # Returns: discounted rewards
         self.ret = np.zeros(self.num_envs)
         self.gamma = gamma
         self.epsilon = epsilon
