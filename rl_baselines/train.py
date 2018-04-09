@@ -251,7 +251,7 @@ def main():
     saveEnvParams(algo.kuka_env)
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
-    # Augment the number of timesteps (when using mutliprocesses this number is not reached)
+    # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
     algo.main(args, callback)
