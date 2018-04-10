@@ -171,7 +171,7 @@ class BaxterEnv(gym.Env):
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
         if self.saver is not None:
-            self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
+            self.saver.step(self.observation, action, self.reward, done, self.arm_pos)
         if self.use_srl:
             return self.srl_model.getState(self.observation), self.reward, done, {}
         else:
