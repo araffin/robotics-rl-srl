@@ -51,6 +51,7 @@ RECORD_DATA = False
 USE_GROUND_TRUTH = False
 USE_JOINTS = False # Set input to include the joint angles (only if not using SRL model)
 VERBOSE = False  # Whether to print some debug info
+BUTTON_RANDOM = False # Set the button position to a random position on the table
 
 
 def getGlobals():
@@ -187,8 +188,12 @@ class KukaButtonGymEnv(gym.Env):
                                     0.000000, 0.000000, 0.0, 1.0)
 
         # Initialize button position
-        x_pos = 0.5 + 0.0 * self.np_random.uniform(-1, 1)
-        y_pos = 0 + 0.0 * self.np_random.uniform(-1, 1)
+        x_pos = 0.5
+        y_pos = 0
+        if BUTTON_RANDOM:
+            x_pos += 0.15 * self.np_random.uniform(-1, 1)
+            y_pos += 0.3 * self.np_random.uniform(-1, 1)
+
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
 

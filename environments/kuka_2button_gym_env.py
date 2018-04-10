@@ -1,8 +1,9 @@
 from . import kuka_button_gym_env as kuka_env
 
-kuka_env.FORCE_RENDER = True
+kuka_env.FORCE_RENDER = False
 kuka_env.MAX_STEPS = 1500
 kuka_env.MAX_DISTANCE = 2
+kuka_env.BUTTON_RANDOM = False
 
 from .kuka_button_gym_env import *
 
@@ -42,14 +43,24 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
                                     0.000000, 0.000000, 0.0, 1.0)
 
         # Initialize button position
+        x_pos = 0.5
+        y_pos = 0.125
+        if BUTTON_RANDOM:
+            x_pos += 0.15 * self.np_random.uniform(-1, 1)
+            y_pos += 0.175 * self.np_random.uniform(0, 1)
+
         x_pos = 0.5 + 0.0 * self.np_random.uniform(-1, 1)
         y_pos = 0.125 + 0.0 * self.np_random.uniform(-1, 1)
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos1 = np.array([x_pos, y_pos, Z_TABLE])
 
-        x_pos = 0.5 + 0.0 * self.np_random.uniform(-1, 1)
-        y_pos = -0.125 + 0.0 * self.np_random.uniform(-1, 1)
-        self.button_uid2 = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
+        x_pos = 0.5
+        y_pos = -0.125
+        if BUTTON_RANDOM:
+            x_pos += 0.15 * self.np_random.uniform(-1, 1)
+            y_pos += 0.175 * self.np_random.uniform(-1, 0)
+
+        self.button_uid2 = p.loadURDF("/urdf/simple_button_2.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos2 = np.array([x_pos, y_pos, Z_TABLE])
 
         self.button_pos = self.button_pos1

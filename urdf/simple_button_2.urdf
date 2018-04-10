@@ -1,0 +1,83 @@
+<?xml version="1.0" ?>
+<robot name="simple_push_button">
+  <joint name="simple_push_button__base_cylinder_fixation" type="fixed">
+    <parent link="simple_push_button__base"/>
+    <child link="simple_push_button__cylinder"/>
+    <origin rpy="0  0  0" xyz="0     0     0.005"/>
+    <axis xyz="0  0  0"/>
+    <limit effort="0" lower="0" upper="0" velocity="0"/>
+  </joint>
+  <joint name="simple_push_button__glider" type="prismatic">
+    <parent link="simple_push_button__base"/>
+    <child link="simple_push_button__button"/>
+    <origin rpy="0  0  0" xyz="0     0     0.005"/>
+    <axis xyz="0  0  1"/>
+    <limit effort="0.0" lower="0.0" upper="0.01" velocity="0.0"/>
+  </joint>
+  <link name="simple_push_button__base">
+    <inertial>
+      <mass value="5"/>
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <inertia ixx="0.0500104166667" ixy="0" ixz="0" iyy="0.0500104166667" iyz="0" izz="0.1"/>
+    </inertial>
+    <collision name="simple_push_button__base_collision">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/base_button.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <visual name="simple_push_button__base_visual">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/base_button.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+  </link>
+  <link name="simple_push_button__cylinder">
+    <inertial>
+      <mass value="5"/>
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <inertia ixx="0.275260416667" ixy="0" ixz="0" iyy="0.275260416667" iyz="0" izz="0.181"/>
+    </inertial>
+    <collision name="simple_push_button__cylinder_collision">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/base_cylinder.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <visual name="simple_push_button__cylinder_visual">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/base_cylinder.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+  </link>
+  <link name="simple_push_button__button">
+    <inertial>
+      <mass value="0.1"/>
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <inertia ixx="0.0008175" ixy="0" ixz="0" iyy="0.0008175" iyz="0" izz="0.00162"/>
+    </inertial>
+    <collision name="simple_push_button__button_collision">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/button.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <visual name="simple_push_button__button_visual">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/button.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.6 0.38 1"/>
+      </material>
+    </visual>
+  </link>
+</robot>

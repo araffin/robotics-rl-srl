@@ -1,8 +1,10 @@
 from . import kuka_button_gym_env as kuka_env
 
 kuka_env.FORCE_RENDER = False
-kuka_env.MAX_DISTANCE = 2
 kuka_env.MAX_STEPS = 1000
+kuka_env.MAX_DISTANCE = 2
+kuka_env.BUTTON_RANDOM = False
+BALL_FORCE = 10
 
 from .kuka_button_gym_env import *
 
@@ -40,8 +42,12 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
                                     0.000000, 0.000000, 0.0, 1.0)
 
         # Initialize button position
-        x_pos = 0.5 + 0.15 * self.np_random.uniform(-1, 1)
-        y_pos = 0 + 0.3 * self.np_random.uniform(-1, 1)
+        x_pos = 0.5
+        y_pos = 0
+        if BUTTON_RANDOM:
+            x_pos += 0.15 * self.np_random.uniform(-1, 1)
+            y_pos += 0.3 * self.np_random.uniform(-1, 1)
+
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
 
@@ -111,10 +117,10 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         # force applied to the ball
         if self._env_step_counter == 10:
             force = np.random.normal(size=(3,))
-            force[2] = 0                                # set up force to 0, so that our amplitude is correct
-            force = force/np.linalg.norm(force, 2)*100  # set force amplitude to 100
-            force[2] = 1                                # up force to reduce friction
-            force = np.abs(force)                       # go towards the center of the table
+            force[2] = 0                                        # set up force to 0, so that our amplitude is correct
+            force = force/np.linalg.norm(force, 2)*BALL_FORCE   # set force amplitude
+            force[2] = 1                                        # up force to reduce friction
+            force = np.abs(force)                               # go towards the center of the table
             p.applyExternalForce(self.sphere, -1, force, [0,0,0], p.WORLD_FRAME)
 
         return super(KukaRandButtonGymEnv, self).step(action)
