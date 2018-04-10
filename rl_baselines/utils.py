@@ -153,10 +153,9 @@ class CustomVecNormalize(VecEnvWrapper):
                 setattr(self, name, pickle.load(f))
 
 
-def createEnvs(args, pytorch=False):
+def createEnvs(args):
     """
     :param args: (argparse.Namespace Object)
-    :param pytorch: (bool)
     :return: (Gym VecEnv)
     """
     envs = [makeEnv(args.env, args.seed, i, args.log_dir)

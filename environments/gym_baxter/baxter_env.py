@@ -13,17 +13,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
-from gazebo.constants import SERVER_PORT, HOSTNAME
+from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
 
-MAX_STEPS = 500
+MAX_STEPS = 50
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 5
-MAX_DISTANCE = 0.8  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
 RELATIVE_POS = False
 
@@ -37,7 +37,8 @@ action_dict = {
     2: [0, - DELTA_POS, 0],
     3: [0, DELTA_POS, 0],
     4: [0, 0, - DELTA_POS],
-    5: [0, 0, DELTA_POS]
+    # Remove Up action
+    # 5: [0, 0, DELTA_POS]
 }
 N_DISCRETE_ACTIONS = len(action_dict)
 
@@ -47,9 +48,8 @@ FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
 USE_SRL =  False
-# SRL_MODEL_PATH e.g."/home/natalia/srl-robotic-priors-pytorch/logs/staticButtonSimplest/18-03-15_17h00_18_custom_cnn_ProTemCauRep_ST_DIM6_SEED0_priors/srl_model.pth"
 SRL_MODEL_PATH = None
-RECORD_DATA = True
+RECORD_DATA = False
 USE_GROUND_TRUTH = False
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 
@@ -119,6 +119,7 @@ class BaxterEnv(gym.Env):
 
 
         if RECORD_DATA:
+            print("Recording data...")
             self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)
@@ -134,14 +135,11 @@ class BaxterEnv(gym.Env):
         print("Connected to server (received message: {})".format(msg))
 
         self.action = [0, 0, 0]
-        self.reward = -1
+        self.reward = 0
         self.arm_pos = np.array([0, 0, 0])
         self.seed(0)
 
-
-
         # Initialize the state
-        self.reset()
         if self._renders:
             self.image_plot = None
 
@@ -173,7 +171,7 @@ class BaxterEnv(gym.Env):
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
         if self.saver is not None:
-            self.saver.step(self.observation, self.action, self.reward, done, self.arm_pos)
+            self.saver.step(self.observation, action, self.reward, done, self.arm_pos)
         if self.use_srl:
             return self.srl_model.getState(self.observation), self.reward, done, {}
         else:
@@ -199,15 +197,20 @@ class BaxterEnv(gym.Env):
         # TODO: tune max distance
         self.n_contacts += self.reward
 
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1:
+        contact_with_table = self.arm_pos[2] < Z_TABLE - 0.01
+
+        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 or contact_with_table:
             self.episode_terminated = True
 
-        if distance_to_goal > MAX_DISTANCE:  # outside sphere of proximity
+        # print("dist=", distance_to_goal)
+
+        if distance_to_goal > MAX_DISTANCE or contact_with_table:  # outside sphere of proximity
             self.reward = -1
-        print('state_data: {}'.format(state_data))
+
+        # print('state_data: {}'.format(state_data))
+
         if SHAPE_REWARD:
             self.reward = -distance_to_goal
-            print('-> shaped reward: {}'.format(self.reward))
         return state_data
 
     def getObservation(self):
@@ -260,8 +263,6 @@ class BaxterEnv(gym.Env):
         """
         To be called at the end of running the program, externally
         """
-        print('\nStep counter reached MAX_STEPS: {}. Summary of reward counts:{}'.format(
-            self._env_step_counter, reward_counts))
         print("Baxter_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         self.socket.close()
@@ -274,16 +275,17 @@ class BaxterEnv(gym.Env):
             print('render in human mode not yet supported')
             return np.array([])
 
-        plt.ion()  # needed for interactive update
-        if self.image_plot is None:
-            plt.figure('Baxter RL')
-            self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
-            self.image_plot.axes.grid(False)
-        else:
-            self.image_plot.set_data(bgr2rgb(self.observation))
-        plt.draw()
-        # Wait a bit, so that plot is visible
-        plt.pause(0.0001)
+        if self._renders:
+            plt.ion()  # needed for interactive update
+            if self.image_plot is None:
+                plt.figure('Baxter RL')
+                self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
+                self.image_plot.axes.grid(False)
+            else:
+                self.image_plot.set_data(bgr2rgb(self.observation))
+            plt.draw()
+            # Wait a bit, so that plot is visible
+            plt.pause(0.0001)
         return self.observation
 
     def close(self):

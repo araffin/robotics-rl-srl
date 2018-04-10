@@ -117,5 +117,5 @@ A1: sudo netstat -ltnp, See the process owning the port (because we use 7777, do
 ```
  and Kill it with kill -9 <pid> or do all at once within
  ```
- sudo kill -9 `sudo lsof -t -i:7777`
+ kill -9 `sudo lsof -t -i:7777`
  ```

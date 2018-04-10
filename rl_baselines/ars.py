@@ -2,9 +2,13 @@ import time
 import pickle
 
 import numpy as np
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
-from rl_baselines.utils import createEnvs
+from environments.utils import makeEnv
+from rl_baselines.utils import CustomVecNormalize
+from srl_priors.utils import printYellow
 
 
 class ARS:
@@ -154,7 +158,7 @@ def customArguments(parser):
     :param parser: (ArgumentParser Object)
     :return: (ArgumentParser Object)
     """
-    parser.add_argument('--num-cpu', help='Number of population (each one has 2 threads)', type=int, default=20)
+    parser.add_argument('--num-population', help='Number of population (each one has 2 threads)', type=int, default=20)
     parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float,
                         default=0.02)
     parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)
@@ -176,11 +180,19 @@ def main(args, callback=None):
     assert kuka_env.MAX_STEPS <= args.rollout_length, \
         "rollout_length cannot be less than an episode of the enviroment (%d)." % kuka_env.MAX_STEPS
 
-    assert args.top_population <= args.num_cpu, \
-        "Cannot select top %d, from population of %d." % (args.top_population, args.num_cpu)
-    assert args.num_cpu > 1, "The population cannot be less than 2."
+    assert args.top_population <= args.num_population, \
+        "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
+    assert args.num_population > 1, "The population cannot be less than 2."
 
-    envs = createEnvs(args)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True)
+            for i in range(args.num_population * 2)]
+    envs = SubprocVecEnv(envs)
+    envs = VecFrameStack(envs, args.num_stack)
+
+    if args.srl_model != "":
+        printYellow("Using MLP policy because working on state representation")
+        args.policy = "mlp"
+        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)
@@ -188,7 +200,7 @@ def main(args, callback=None):
         action_space = envs.action_space.n
 
     model = ARS(
-        args.num_cpu,
+        args.num_population,
         np.prod(envs.observation_space.shape),
         action_space,
         algo_type=args.algo_type,
@@ -199,4 +211,4 @@ def main(args, callback=None):
         continuous_actions=args.continuous_actions
     )
 
-    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_cpu * 2))
+    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))

@@ -15,10 +15,9 @@ from rl_baselines.utils import CustomVecNormalize
 from srl_priors.utils import printGreen, printYellow
 
 
-def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
+def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
     """
     :param supported_models: ([str])
-    :param pytorch: (bool)
     :param log_dir: (str) Log dir for testing the agent
     :return: (Arguments, dict, str, str, str, SubprocVecEnv)
     """
@@ -30,8 +29,6 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     parser.add_argument('--num-timesteps', type=int, default=int(1e4))
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render the environment (show the GUI)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
-                        help='disables CUDA (works only with pytorch models)')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     load_args = parser.parse_args()
@@ -49,8 +46,7 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
         raise ValueError("RL algo not supported for replay")
     printGreen("\n" + algo + "\n")
 
-    extension = 'pth' if pytorch else 'pkl'
-    load_path = "{}/{}_model.{}".format(load_args.log_dir, algo, extension)
+    load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo)
 
     env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
@@ -84,28 +80,17 @@ def parseArguments(supported_models, pytorch=False, log_dir="/tmp/gym/test/"):
     log_dir += "{}/{}/".format(algo, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     os.makedirs(log_dir, exist_ok=True)
 
-    if pytorch:
-        if kuka_env.USE_SRL and not load_args.no_cuda:
-            assert load_args.num_cpu == 1, "Multiprocessing not supported for srl models with CUDA (for pytorch_agents)"
-
-        envs = [makeEnv(train_args['env'], load_args.seed, i, log_dir)
-                for i in range(load_args.num_cpu)]
-        if load_args.num_cpu == 1:
-            envs = DummyVecEnv(envs)
-        else:
-            envs = SubprocVecEnv(envs)
+    if algo not in ["deepq", "ddpg"]:
+        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
+                              for i in range(load_args.num_cpu)])
+        envs = VecFrameStack(envs, train_args['num_stack'])
     else:
-        if algo not in ["deepq", "ddpg"]:
-            envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
-                                  for i in range(load_args.num_cpu)])
-            envs = VecFrameStack(envs, train_args['num_stack'])
-        else:
-            if load_args.num_cpu > 1:
-                printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
-            envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir)])
-            # Normalize only raw pixels
-            normalize = train_args['srl_model'] == ""
-            envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
+        if load_args.num_cpu > 1:
+            printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
+        envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir)])
+        # Normalize only raw pixels
+        normalize = train_args['srl_model'] == ""
+        envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
 
 
     if train_args["srl_model"] != "":
