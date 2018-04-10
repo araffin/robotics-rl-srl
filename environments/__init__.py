@@ -34,6 +34,6 @@ register(
     _id='Baxter-v0',
     entry_point='environments.gym_baxter.baxter_env:BaxterEnv',
     timestep_limit=500,
-     # Threshold at which the environment is considered as solved
+    # Threshold at which the environment is considered as solved
     reward_threshold=5.0,
 )

@@ -17,7 +17,6 @@ import rl_baselines.ddpg as ddpg
 import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
-import rl_baselines.ddpg as ddpg
 import rl_baselines.ars as ars
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects

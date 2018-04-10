@@ -6,6 +6,7 @@ import numpy as np
 import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.utils import createEnvs
 
+
 class ARS:
     """
     Augmented Random Search algorithm for gym enviroment
@@ -175,10 +176,9 @@ def main(args, callback=None):
     assert kuka_env.MAX_STEPS <= args.rollout_length, \
         "rollout_length cannot be less than an episode of the enviroment (%d)." % kuka_env.MAX_STEPS
 
-    assert args.top_population <= args.num_population, \
-        "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
-    assert args.num_population > 1, "The population cannot be less than 2."
-
+    assert args.top_population <= args.num_cpu, \
+        "Cannot select top %d, from population of %d." % (args.top_population, args.num_cpu)
+    assert args.num_cpu > 1, "The population cannot be less than 2."
 
     envs = createEnvs(args)
 
@@ -188,7 +188,7 @@ def main(args, callback=None):
         action_space = envs.action_space.n
 
     model = ARS(
-        args.num_population,
+        args.num_cpu,
         np.prod(envs.observation_space.shape),
         action_space,
         algo_type=args.algo_type,
@@ -199,4 +199,4 @@ def main(args, callback=None):
         continuous_actions=args.continuous_actions
     )
 
-    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))
+    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_cpu * 2))

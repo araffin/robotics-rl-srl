@@ -7,6 +7,7 @@ kuka_env.BUTTON_RANDOM = False
 
 from .kuka_button_gym_env import *
 
+
 class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     """
     Gym wrapper for Kuka environment with a push button
@@ -134,7 +135,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, dv][action] 
+            dz = [0, 0, 0, 0, -dv, dv][action]
             # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
@@ -153,7 +154,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
                 dv += self.np_random.normal(0.0, scale=NOISE_STD_CONTINUOUS)
                 dx = action[0] * dv
                 dy = action[1] * dv
-                dz = action[2] * dv 
+                dz = action[2] * dv
                 finger_angle = 0.0  # Close the gripper
                 real_action = [dx, dy, dz, 0, finger_angle]
 
@@ -194,7 +195,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     def _reward(self):
         gripper_pos = self.getArmPos()
         distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
-        # print(distance)
         reward = 0
 
         contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid)
@@ -209,7 +209,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             self.button_pos = self.button_pos2
             self.button_pos[2] = 0.1
             self.button_pressed = True
-            
 
         contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
 
@@ -219,14 +218,9 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         else:
             self.n_steps_outside = 0
 
-        if contact_with_table or ((self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1) and (self.n_contacts2 >= N_CONTACTS_BEFORE_TERMINATION - 1)) \
+        if contact_with_table or ((self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1) and (
+                self.n_contacts2 >= N_CONTACTS_BEFORE_TERMINATION - 1)) \
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
-            if contact_with_table:
-                print("TABLE END")
-            elif self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
-                print("OUT OF BOUND")
-            else:
-                print("GOOD END")
             self.terminated = True
 
         if SHAPE_REWARD:
@@ -235,7 +229,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
                 return 50
             # button 1 pushed
             elif (self.n_contacts < N_CONTACTS_BEFORE_TERMINATION - 1) and (len(contact_points) > 0):
-                print("BUTTON 1 PRESSED")
                 return 25
             # table
             elif contact_with_table:

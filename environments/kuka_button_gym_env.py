@@ -28,7 +28,7 @@ BUTTON_GLIDER_IDX = 1  # Button glider joint
 DELTA_V = 0.03  # velocity per physics step.
 DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
-RELATIVE_POS = True 
+RELATIVE_POS = True
 ACTION_REPEAT = 1  # number of timesteps an action is repeated (here it is equivalent to frameskip)
 # NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
 NOISE_STD = 0.01
@@ -37,7 +37,7 @@ NOISE_STD_JOINTS = 0.002
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
 
-ACTION_JOINTS = False # Set actions to apply to the joint space
+ACTION_JOINTS = False  # Set actions to apply to the joint space
 CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
 IS_DISCRETE = True  # Whether to use discrete or continuous actions
 
@@ -49,9 +49,9 @@ USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
-USE_JOINTS = False # Set input to include the joint angles (only if not using SRL model)
+USE_JOINTS = False  # Set input to include the joint angles (only if not using SRL model)
 VERBOSE = False  # Whether to print some debug info
-BUTTON_RANDOM = False # Set the button position to a random position on the table
+BUTTON_RANDOM = False  # Set the button position to a random position on the table
 
 
 def getGlobals():
@@ -66,6 +66,7 @@ def getGlobals():
 """
 Gym wrapper for Kuka arm RL
 """
+
 
 class KukaButtonGymEnv(gym.Env):
     metadata = {
@@ -234,7 +235,7 @@ class KukaButtonGymEnv(gym.Env):
         self._observation = self.getExtendedObservation()
 
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
-        self.button_pos[2] += 0.28 # Set the target position on the top of the button
+        self.button_pos[2] += 0.28  # Set the target position on the top of the button
         if self.saver is not None:
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
