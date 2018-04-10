@@ -95,7 +95,7 @@ python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timestep
 
 ## Environments
 
-When starting a baseline, you can chose an environment:
+When starting a baseline, you can chose from different environments:
 ```bash
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ --env env_name
 ```
