@@ -93,6 +93,17 @@ To create a comparison plots from saved plots (.npz files), you need to pass a p
 python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timesteps
 ```
 
+## Environments
+
+When starting a baseline, you can chose an environment:
+```bash
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --env env_name
+```
+
+the available environments are:
+- KukaButtonGymEnv-v0 (default): a single button in front of the arm
+- Kuka2ButtonGymEnv-v0: 2 buttons next to each others, they must be pressed in order
+- KukaRandButtonGymEnv-v0: a single button in front of the arm, with some randomly positioned objects
 
 ## State Representation Learning Models
 
