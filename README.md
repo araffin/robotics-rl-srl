@@ -125,6 +125,10 @@ the available state representation model are:
 - joints: the arm's joints angles
 - joints_position: the arm's x,y,z position and joints angles
 
+In the case of a custom_cnn (SRL priors model) trained with views of two cameras,
+set the global variable N_CHANNELS to 6 in srl_priors/preprocessing/preprocess.py
+to perform the inference.
+
 ## Baxter Robot with Gazebo and ROS
 Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
 

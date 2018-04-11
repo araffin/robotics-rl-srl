@@ -6,8 +6,7 @@ import torch as th
 from torch.autograd import Variable
 
 from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet
-from srl_priors.preprocessing import preprocessImage
-from srl_priors.preprocessing import N_CHANNELS
+from srl_priors.preprocessing import preprocessImage, N_CHANNELS
 from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
