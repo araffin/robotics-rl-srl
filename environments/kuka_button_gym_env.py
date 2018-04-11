@@ -11,9 +11,11 @@ from gym.utils import seeding
 
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
+from srl_priors.preprocessing import N_CHANNELS
+
 from . import kuka
 
-#  Number of steps before termination
+#  Number of steps before termination
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
@@ -77,6 +79,7 @@ class KukaButtonGymEnv(gym.Env):
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
+    :param multi_view :(bool) if TRUE -> returns stacked images of the scene on 6 channels (two cameras)
     :param name: (str) name of the folder where recorded data will be stored
     """
 
@@ -84,6 +87,7 @@ class KukaButtonGymEnv(gym.Env):
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
                  is_discrete=True,
+                 multi_view=False,
                  name="kuka_button_gym"):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
@@ -111,6 +115,8 @@ class KukaButtonGymEnv(gym.Env):
         self.relative_pos = RELATIVE_POS
         self.cuda = th.cuda.is_available()
         self.saver = None
+        self.multi_view = multi_view
+
         if RECORD_DATA:
             self.saver = EpisodeSaver(name, MAX_DISTANCE, STATE_DIM, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=LEARN_STATES)
@@ -253,6 +259,8 @@ class KukaButtonGymEnv(gym.Env):
         return [seed]
 
     def getExtendedObservation(self):
+        if N_CHANNELS > 3:
+            self.multi_view = True
         self._observation = self.render("rgb_array")
         return self._observation
 
@@ -324,6 +332,7 @@ class KukaButtonGymEnv(gym.Env):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
+
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos
@@ -339,22 +348,41 @@ class KukaButtonGymEnv(gym.Env):
             # self._cam_roll = p.readUserDebugParameter(self.roll_slider)
 
         # TODO: recompute view_matrix and proj_matrix only in debug mode
-        view_matrix = p.computeViewMatrixFromYawPitchRoll(
+        view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=camera_target_pos,
             distance=self._cam_dist,
             yaw=self._cam_yaw,
             pitch=self._cam_pitch,
             roll=self._cam_roll,
             upAxisIndex=2)
-        proj_matrix = p.computeProjectionMatrixFOV(
+        proj_matrix1 = p.computeProjectionMatrixFOV(
             fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
             nearVal=0.1, farVal=100.0)
-        (_, _, px, _, _) = p.getCameraImage(
-            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
-            projectionMatrix=proj_matrix, renderer=self.renderer)
-        rgb_array = np.array(px)
-        rgb_array = rgb_array[:, :, :3]
-        return rgb_array
+        (_, _, px1, _, _) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
+            projectionMatrix=proj_matrix1, renderer=self.renderer)
+        rgb_array1 = np.array(px1)        
+        
+        if self.multi_view:
+            # adding a second camera on the other side of the robot
+            view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
+                cameraTargetPosition=(0.316, 0.316, -0.105),            
+                distance=1.05,
+                yaw=32,
+                pitch=-13,
+                roll=0,
+                upAxisIndex=2)
+            proj_matrix2 = p.computeProjectionMatrixFOV(
+                fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                nearVal=0.1, farVal=100.0)
+            (_, _, px2, _, _) = p.getCameraImage(
+                width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
+                projectionMatrix=proj_matrix2, renderer=self.renderer)
+            rgb_array2 = np.array(px2)
+            rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
+        else :
+            rgb_array_res = rgb_array1[:, :, :3]
+        return rgb_array_res
 
     def close(self):
         # TODO: implement close function to close GUI

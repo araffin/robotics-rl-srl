@@ -19,6 +19,7 @@ import environments.kuka_button_gym_env as kuka_env
 import rl_baselines.train as train
 from rl_baselines.utils import filterJSONSerializableObjects
 
+# To deal with using a second camera
 args = get_args()
 
 train.LOG_INTERVAL = args.vis_interval
@@ -60,15 +61,15 @@ def main():
         envs = SubprocVecEnv(envs)
 
     obs_shape = envs.observation_space.shape
-    print(obs_shape)
+
 
     # Check if we are using raw pixels or srl models
+
     if len(obs_shape) > 0:
         # In pytorch, images are channel first
         obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
     else:
         obs_shape = (args.num_stack, *obs_shape[0])
-
     if len(envs.observation_space.shape) == 3:
         print("Using CNNPolicy")
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy, input_dim=obs_shape[1])
@@ -108,6 +109,7 @@ def main():
         if args.num_stack > 1:
             current_obs[:, :-n_channels] = current_obs[:, n_channels:]
         current_obs[:, -n_channels:] = obs_tensor
+
 
     obs = envs.reset()
     update_current_obs(obs)
