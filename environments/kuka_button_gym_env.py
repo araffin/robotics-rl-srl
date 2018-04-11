@@ -201,7 +201,7 @@ class KukaButtonGymEnv(gym.Env):
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
-                               use_inverse_kinematics=(not self.action_joints))
+                               use_inverse_kinematics=(not self.action_joints), small_constraints=(not BUTTON_RANDOM))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
