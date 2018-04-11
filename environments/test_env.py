@@ -40,9 +40,10 @@ SEEDS = range(args.num_cpu)
 assert (not args.record_data) or (not os.path.exists(args.save_folder+args.save_name)), \
     "Error: save directory '{}' already exists".format(args.save_folder+args.save_name)
 
-assert (args.num_cpu <= 0), "Error: number of cpu cannot be negative or zero"
+assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
+assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
 
-def env_thread(thread_num):
+def env_thread(thread_num, partition=True):
     set_global_seeds(SEEDS[thread_num])
     if args.env == "KukaButtonGymEnv":
         env_class = kuka_env.KukaButtonGymEnv
@@ -51,7 +52,12 @@ def env_thread(thread_num):
     elif args.env == "KukaRandButtonGymEnv":
         env_class = kuka_env_rand.KukaRandButtonGymEnv
 
-    env = env_class(renders=(thread_num==0 and not args.no_display), is_discrete=(not args.continuous_actions), name=args.save_name+"_part-"+str(thread_num))
+    if partition:
+        name = args.save_name+"_part-"+str(thread_num)
+    else:
+        name = args.save_name
+
+    env = env_class(renders=(thread_num==0 and not args.no_display), is_discrete=(not args.continuous_actions), name=name)
 
     i = 0
     start_time = time.time()
@@ -75,7 +81,7 @@ def env_thread(thread_num):
 
 # try and divide into multiple processes, with an environment each
 if args.num_cpu == 1:
-    env_thread(0)
+    env_thread(0, partition=False)
 else:
     try:
         jobs = []
@@ -100,7 +106,7 @@ else:
 
 
 
-if args.record_data:
+if args.record_data and args.num_cpu > 1:
 
     # get all the parts 
     file_parts = glob.glob(args.save_folder+args.save_name+"_part-[0-9]*")
