@@ -106,14 +106,10 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         self._observation = self.getExtendedObservation()
 
-        # self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
-        # self.button_pos2 = np.array(p.getLinkState(self.button_uid2, BUTTON_LINK_IDX)[0])
         if self.saver is not None:
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
-            # if len(self.saver.srl_model_path) > 0:
-            # self.srl_model.load(self.saver.srl_model_path))
             return self.srl_model.getState(self._observation)
 
         return np.array(self._observation)
@@ -137,9 +133,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
             dz = [0, 0, 0, 0, -dv, dv][action]
-            # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
             finger_angle = 0.0  # Close the gripper
-            # real_action = [dx, dy, -0.002, da, finger_angle]
             real_action = [dx, dy, dz, 0, finger_angle]
         else:
             if self.action_joints:

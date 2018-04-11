@@ -31,7 +31,7 @@ python -m environments.test_env
 ```
 
 To record data from the environment for SRL training, using random actions:
-```
+```bash
 python -m environments.test_env --record-data --num-cpu 4 --save-name folder_name
 ```
 

@@ -20,14 +20,13 @@ class ARS:
     :param action_space: (int) vectorized length of the action space
     :param algo_type: (str) version of ARS (v1 without rolling norm, v2 with)
     :param top_population: (int) how many of the population are used in updating
-    :param rollout_length: (int) maximum time step for the algorithms
     :param step_size: (float) the step size for the parameter update
     :param exploration_noise: (float) standard deviation of the exploration noise
     :param continuous_actions: (bool)
     """
 
     def __init__(self, n_population, observation_space, action_space, algo_type='v1', top_population=2,
-                 rollout_length=1000, step_size=0.02, exploration_noise=0.02, continuous_actions=False):
+                 step_size=0.02, exploration_noise=0.02, continuous_actions=False):
         self.n = 0
         self.mu = 0
         self.sigma = 0
@@ -37,7 +36,6 @@ class ARS:
         self.n_population = n_population
         self.algo_type = algo_type
         self.top_population = top_population
-        self.rollout_length = rollout_length
         self.step_size = step_size
         self.exploration_noise = exploration_noise
         self.continuous_actions = continuous_actions
@@ -98,7 +96,7 @@ class ARS:
             delta = np.random.normal(size=(self.n_population,) + self.M.shape)
             done = np.full((self.n_population * 2,), False)
             obs = env.reset()
-            for _ in range(self.rollout_length):
+            while not done.all():
                 actions = []
                 for k in range(self.n_population):
                     for direction in range(2):
@@ -124,10 +122,6 @@ class ARS:
                     callback(locals(), globals())
                 if (step + 1) % 500 == 0:
                     print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
-
-                # Should all enviroments end before the rollout_length, stop the loop
-                if done.all():
-                    break
 
             if self.algo_type == "v2":
                 self.mu = self.new_mu
@@ -165,7 +159,6 @@ def customArguments(parser):
     parser.add_argument('--top-population', help='Number of top population to use in update', type=int, default=2)
     parser.add_argument('--algo-type', help='"v1" is standard ARS, "v2" is for rolling average normalization.',
                         type=str, default="v1", choices=["v1", "v2"])
-    parser.add_argument('--rollout-length', help='The max number of rollout for each episodes', type=int, default=1000)
     return parser
 
 
@@ -174,11 +167,6 @@ def main(args, callback=None):
     :param args: (argparse.Namespace Object)
     :param callback: (function)
     """
-
-    # TODO: fix rollout_length
-    # this assert is due to the fact that callback does not save, unless an episode has occured.
-    assert kuka_env.MAX_STEPS <= args.rollout_length, \
-        "rollout_length cannot be less than an episode of the enviroment (%d)." % kuka_env.MAX_STEPS
 
     assert args.top_population <= args.num_population, \
         "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
@@ -205,7 +193,6 @@ def main(args, callback=None):
         action_space,
         algo_type=args.algo_type,
         top_population=args.top_population,
-        rollout_length=args.rollout_length,
         step_size=args.step_size,
         exploration_noise=args.exploration_noise,
         continuous_actions=args.continuous_actions

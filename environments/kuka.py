@@ -9,14 +9,18 @@ import pybullet_data
 Represents the Kuka arm in the PyBullet environment.
 """
 
+
 class Kuka:
     """
     The Kuka pybullet enviroment
     :param urdf_root_path: (str) Path to pybullet urdf files
     :param timestep: (float) 
     :param use_inverse_kinematics: (bool) enable dx,dy,dz control rather than direct joint control
+    :param small_constraints: (bool) reduce the searchable space
     """
-    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True, small_constraints=True):
+
+    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True,
+                 small_constraints=True):
         self.urdf_root_path = urdf_root_path
         self.timestep = timestep
         self.max_velocity = .35
@@ -42,6 +46,7 @@ class Kuka:
         self.jd = [0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001,
                    0.00001, 0.00001, 0.00001]
         self.kuka_uid = None
+        # affects the clipping of the end_effector_pos
         if small_constraints:
             self.min_x = 0.50
             self.max_x = 0.65
@@ -166,7 +171,6 @@ class Kuka:
             self.end_effector_angle += motor_commands[7]
             finger_angle = motor_commands[8]
 
-
         if self.use_simulation:
             # using dynamic control
             for i in range(self.kuka_end_effector_index + 1):
@@ -177,7 +181,7 @@ class Kuka:
             # reset the joint state (ignoring all dynamics, not recommended to use during simulation)
             for i in range(self.kuka_end_effector_index + 1):
                 p.resetJointState(self.kuka_uid, i, joint_poses[i])
-                
+
         # Effectors grabbers angle 
         p.setJointMotorControl2(self.kuka_uid, 7, p.POSITION_CONTROL, targetPosition=self.end_effector_angle,
                                 force=self.max_force)
