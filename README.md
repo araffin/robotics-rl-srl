@@ -29,7 +29,7 @@ To test the environment with random actions:
 ```
 python -m environments.test_env
 ```
-Can be as well used render views (or dataset) with two cameras if `multi_view=True`.
+Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
 ## Reinforcement Learning
 
