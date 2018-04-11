@@ -91,7 +91,7 @@ class ARS:
         start_time = time.time()
         step = 0
 
-        for _ in range(num_updates):
+        while(step < num_updates):
             r = np.zeros((self.n_population, 2))
             delta = np.random.normal(size=(self.n_population,) + self.M.shape)
             done = np.full((self.n_population * 2,), False)
@@ -111,8 +111,10 @@ class ARS:
                         else:
                             actions.append(None)  # do nothing, as we are done
 
-                obs, reward, done, info = env.step(actions)
-                step += 1
+                obs, reward, new_done, info = env.step(actions)
+                step += self.n_population
+
+                done = np.bitwise_or(done,new_done)
 
                 # cumulate the reward for every enviroment that is not finished
                 update_idx = ~(done.reshape(self.n_population, 2))
@@ -120,7 +122,7 @@ class ARS:
 
                 if callback is not None:
                     callback(locals(), globals())
-                if (step + 1) % 500 == 0:
+                if (step/self.n_population + 1) % 500 == 0:
                     print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
 
             if self.algo_type == "v2":

@@ -18,6 +18,7 @@ import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
 import rl_baselines.ars as ars
+import rl_baselines.cma_es as cma_es
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
@@ -167,7 +168,7 @@ def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
     parser.add_argument('--algo', default='deepq', 
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars'],
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma_es'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -226,6 +227,8 @@ def main():
         assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
     elif args.algo == "ars":
         algo = ars
+    elif args.algo == "cma_es":
+        algo = cma_es
 
     if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
         raise ValueError(args.algo + " does not support continuous actions")

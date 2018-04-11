@@ -134,3 +134,4 @@ dependencies:
     - urllib3==1.22
     - visdom==0.1.7
     - zmq==0.0.0
+    - cma==2.5.3
