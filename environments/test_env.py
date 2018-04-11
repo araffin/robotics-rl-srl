@@ -40,7 +40,7 @@ SEEDS = range(args.num_cpu)
 assert (not args.record_data) or (not os.path.exists(args.save_folder+args.save_name)), \
     "Error: save directory '{}' already exists".format(args.save_folder+args.save_name)
 
-assert (args.num_cpu <= 0), 
+assert (args.num_cpu <= 0), "Error: number of cpu cannot be negative or zero"
 
 def env_thread(thread_num):
     set_global_seeds(SEEDS[thread_num])
