@@ -100,6 +100,7 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         self._observation = self.getExtendedObservation()
 
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
+        self.button_pos[2] += BUTTON_DISTANCE_HEIGHT  # Set the target position on the top of the button
         if self.saver is not None:
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 

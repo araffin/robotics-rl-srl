@@ -17,7 +17,7 @@ from . import kuka
 MAX_STEPS = 500
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
-N_STEPS_OUTSIDE_SAFETY_SPHERE = 50
+N_STEPS_OUTSIDE_SAFETY_SPHERE = 5000
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
@@ -36,6 +36,7 @@ NOISE_STD_CONTINUOUS = 0.0001
 NOISE_STD_JOINTS = 0.002
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
+BUTTON_DISTANCE_HEIGHT = 0.28  # Extra height added to the buttons position in the distance calculation 
 
 ACTION_JOINTS = False  # Set actions to apply to the joint space
 CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
@@ -235,7 +236,7 @@ class KukaButtonGymEnv(gym.Env):
         self._observation = self.getExtendedObservation()
 
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
-        self.button_pos[2] += 0.28  # Set the target position on the top of the button
+        self.button_pos[2] += BUTTON_DISTANCE_HEIGHT  # Set the target position on the top of the button
         if self.saver is not None:
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 

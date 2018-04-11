@@ -30,6 +30,11 @@ To test the environment with random actions:
 python -m environments.test_env
 ```
 
+To record data from the environment for SRL training, using random actions:
+```
+python -m environments.test_env --record-data --num-cpu 4 --save-name folder_name
+```
+
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input, dividing it by 255.

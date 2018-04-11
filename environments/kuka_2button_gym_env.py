@@ -54,6 +54,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         y_pos = 0.125 + 0.0 * self.np_random.uniform(-1, 1)
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos1 = np.array([x_pos, y_pos, Z_TABLE])
+        self.button_pos1[2] += BUTTON_DISTANCE_HEIGHT
 
         x_pos = 0.5
         y_pos = -0.125
@@ -63,9 +64,9 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         self.button_uid2 = p.loadURDF("/urdf/simple_button_2.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos2 = np.array([x_pos, y_pos, Z_TABLE])
+        self.button_pos2[2] += BUTTON_DISTANCE_HEIGHT
 
         self.button_pos = self.button_pos1
-        self.button_pos[2] = 0.1
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
