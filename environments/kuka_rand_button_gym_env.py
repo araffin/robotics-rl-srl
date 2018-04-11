@@ -2,7 +2,7 @@ from . import kuka_button_gym_env as kuka_env
 
 kuka_env.FORCE_RENDER = False
 kuka_env.MAX_STEPS = 1000
-kuka_env.MAX_DISTANCE = 2
+# kuka_env.MAX_DISTANCE = 2
 kuka_env.BUTTON_RANDOM = False
 BALL_FORCE = 10
 
@@ -11,7 +11,7 @@ from .kuka_button_gym_env import *
 
 class KukaRandButtonGymEnv(KukaButtonGymEnv):
     """
-    Gym wrapper for Kuka environment with a push button in a random position 
+    Gym wrapper for Kuka environment with a push button in a random position
         and some random objects
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
