@@ -127,7 +127,6 @@ def main():
             printRed("Error: unable to start thread")
             raise e
 
-<<<<<<< HEAD
     if args.record_data and args.num_cpu > 1:
 
         # get all the parts 
