@@ -14,7 +14,6 @@ import environments.kuka_button_gym_env as kuka_env
 import environments.kuka_rand_button_gym_env as kuka_env_rand
 from srl_priors.utils import printRed
 
-
 def convertImagePath(args, path, record_id_start):
     """
     Used to convert an image path, from one location, to an other
@@ -128,6 +127,7 @@ def main():
             printRed("Error: unable to start thread")
             raise e
 
+<<<<<<< HEAD
     if args.record_data and args.num_cpu > 1:
 
         # get all the parts 
