@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 from __future__ import division, print_function, absolute_import
 
+import os
 import subprocess
 import signal
 
@@ -9,6 +10,7 @@ import baxter_interface
 import numpy as np
 import rospy
 import zmq
+import cv2
 from baxter_interface import Limb, Head, Gripper, CHECK_VERSION
 from arm_scenario_experiments import baxter_utils
 from arm_scenario_experiments import utils as arm_utils
@@ -18,7 +20,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 
 from .constants import DELTA_POS, SERVER_PORT, IMAGE_TOPIC, \
-    ACTION_TOPIC
+    ACTION_TOPIC, SECOND_CAM_TOPIC, DATA_FOLDER_SECOND_CAM
 from .utils import sendMatrix, getActions
 
 REF_POINT_LEFT_ARM = [ 0.69850099,  0.14505832,  0.08032852]
@@ -83,13 +85,26 @@ def move_left_arm_to_init():
     left_arm.move_to_joint_positions(joints)
     return position
 
+def saveSecondCamImage(im, episode_folder, episode_step, path="real_baxter_2nd_cam"):
+    """
+    Write an image to disk
+    :param im: (numpy matrix) BGR image
+    """
+    image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    cv2.imwrite("srl_priors/data/{}".format(image_path), im)
 
 rospy.init_node('real_baxter_server', anonymous=True)
 
 # Connect to ROS Topics
 image_cb_wrapper = ImageCallback()
 img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
-action_pub = rospy.Publisher(ACTION_TOPIC, Vector3Stamped, queue_size=1)
+# action_pub = rospy.Publisher(ACTION_TOPIC, Vector3Stamped, queue_size=1)
+if SECOND_CAM_TOPIC is not None:
+    DATA_FOLDER_SECOND_CAM = "real_baxter_2nd_cam"
+    image_cb_wrapper_2 = ImageCallback()
+    img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback)
+
 
 # Retrieve the different gazebo objects
 left_arm = baxter_interface.Limb('left')
@@ -121,6 +136,9 @@ print("Connected to client")
 
 action = [0, 0, 0]
 joints = None
+episode_step = 0
+episode_idx = -1
+episode_folder = None
 
 while not should_exit[0]:
     msg = socket.recv_json()
@@ -130,6 +148,14 @@ while not should_exit[0]:
         end_point_position = baxter_utils.get_ee_position(left_arm)
         print('Environment reset')
         action = [0, 0, 0]
+        episode_idx += 1
+        episode_step = 0
+        if SECOND_CAM_TOPIC is not None:
+            episode_folder = "record_{:03d}".format(episode_idx)
+            try:
+                os.makedirs("srl_priors/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
+            except OSError:
+                pass
 
     elif command == 'action':
         action = np.array(msg['action'])
@@ -140,7 +166,6 @@ while not should_exit[0]:
     else:
         raise ValueError("Unknown command: {}".format(msg))
 
-    # action = randomAction(possible_actions)
     end_point_position_candidate = end_point_position + action
 
     print("End-effector Position:", end_point_position_candidate)
@@ -153,7 +178,7 @@ while not should_exit[0]:
         print(e)
 
     if joints:
-        action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
+        # action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
         end_point_position = end_point_position_candidate
         left_arm.move_to_joint_positions(joints, timeout=3)
     else:
@@ -176,6 +201,10 @@ while not should_exit[0]:
     )
 
     img = image_cb_wrapper.valid_img
+
+    if SECOND_CAM_TOPIC is not None:
+        saveSecondCamImage(image_cb_wrapper_2.valid_img, episode_folder, episode_step, DATA_FOLDER_SECOND_CAM)
+        episode_step += 1
     # to contiguous, otherwise ZMQ will complain
     img = np.ascontiguousarray(img, dtype=np.uint8)
     sendMatrix(socket, img)
