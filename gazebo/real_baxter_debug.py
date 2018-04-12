@@ -2,6 +2,8 @@
 from __future__ import division, print_function, absolute_import
 
 import subprocess
+import signal
+
 
 import arm_scenario_simulator as arm_sim
 import baxter_interface
@@ -18,6 +20,18 @@ from std_msgs.msg import Header
 
 from .constants import IMAGE_TOPIC, ACTION_TOPIC
 
+REF_POINT_LEFT_ARM = [ 0.69850099, 0.14505832, 0.08032852]
+LEFT_ARM_ORIENTATION = [ 0.99893116, -0.04207143, -0.00574656, -0.01826233]
+BUTTON_POS = [ 0.7090276, 0.13833109, -0.11170768]
+IK_SEED_POSITIONS = None
+
+should_exit = [False]
+
+# Stop the robot on ctrl+c and exit the script
+def ctrl_c(signum, frame):
+    should_exit[0] = True
+
+signal.signal(signal.SIGINT, ctrl_c)
 
 def resetPose():
     rs = baxter_interface.RobotEnable(baxter_interface.CHECK_VERSION)
@@ -29,21 +43,13 @@ def resetPose():
         # Untuck arms
         subprocess.call(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
 
-
 rospy.init_node('real_baxter_server', anonymous=True)
 
-# Connect to ROS Topics
-# image_cb_wrapper = ImageCallback()
-# img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
-action_pub = rospy.Publisher(ACTION_TOPIC, Vector3Stamped, queue_size=1)
 
 # Retrieve the different gazebo objects
 left_arm = baxter_interface.Limb('left')
 right_arm = baxter_interface.Limb('right')
 ee_orientation = baxter_utils.get_ee_orientation(left_arm)
-
-# baxter_position = arm_utils.point2array(baxter_pose.position)
-# baxter_orientation = arm_utils.quat2array(baxter_pose.orientation)
 
 rospy.sleep(1)
 
@@ -51,10 +57,16 @@ print("Initializing robot...")
 # Init robot pose
 resetPose()
 print("Init Robot pose over")
+
 try:
-    while True:
+    while not should_exit[0]:
         for name, arm in zip(["left_arm", "right_arm"], [left_arm, right_arm]):
             arm_pos = baxter_utils.get_ee_position(arm)
-            print(name, arm_pos)
+            if name == "left_arm":
+                ee_orientation = baxter_utils.get_ee_orientation(left_arm)
+                # print(ee_orientation)
+                print(name, arm_pos)
+                # print(np.linalg.norm(BUTTON_POS - arm_pos, 2))
+        rospy.sleep(0.5)
 except KeyboardInterrupt:
     print("Exiting....")

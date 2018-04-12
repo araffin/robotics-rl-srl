@@ -20,11 +20,12 @@ from .constants import DELTA_POS, SERVER_PORT, IMAGE_TOPIC, \
     ACTION_TOPIC
 from .utils import sendMatrix, getActions
 
-REF_POINT_LEFT_ARM = [0.6, 0.30, 0.20]  # TODO: Calibrate
-BUTTON_POS = [0, 0, 0]  # TODO: Calibrate
-# Are they the right ones ?
-# ['left_e0', 'left_e1', 'left_s0', 'left_s1', 'left_w0', 'left_w1', 'left_w2']
-IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
+REF_POINT_LEFT_ARM = [ 0.69850099,  0.14505832,  0.08032852]
+LEFT_ARM_ORIENTATION = [ 0.99893116, -0.04207143, -0.00574656, -0.01826233]
+
+BUTTON_POS = [ 0.7090276,   0.13833109, -0.11170768]
+
+IK_SEED_POSITIONS = None
 
 bridge = CvBridge()
 
@@ -38,35 +39,8 @@ def resetPose():
         rs.enable()
         # Untuck arms
         subprocess.call(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
-        # TODO: use IK to reset to fixed pose
-        # or calibrate:
-        # head = Head()
-        # left_arm = Limb('left')
-        # right_arm = Limb('right')
-        # grip_left = Gripper('left', CHECK_VERSION)
-        # grip_right = Gripper('right', CHECK_VERSION)
-        #
-        # names = ['head_pan', 'l_gripper_l_finger_joint', 'l_gripper_r_finger_joint',
-        #         'left_e0', 'left_e1', 'left_s0',
-        #         'left_s1', 'left_w0', 'left_w1',
-        #         'left_w2', 'r_gripper_l_finger_joint', 'r_gripper_r_finger_joint',
-        #         'right_e0', 'right_e1', 'right_s0',
-        #         'right_s1', 'right_w0', 'right_w1', 'right_w2']
-        #
-        # positions = [1.9175123711079323e-09, 3.0089229734974557e-05, 1.1656136997545379e-08,
-        #             -1.5557922490972862, 1.4869254432037105, 0.2966753816741825,
-        #             -0.043254170670461, 1.4459875320633593, 1.4934273103021356,
-        #             -0.5197388002153112,0.020833031933134405, 3.920833833842966e-08,
-        #             1.1897546738059388, 1.9397502577790355, -1.25925592718432,
-        #             -0.9998100343641312, -0.6698868022939237, 1.029853661574463, 0.4999199143249742]
-        #
-        # positions_dico = {names[i]: positions[i] for i in range(len(names))}
-        #
-        # left_arm.move_to_joint_positions({joint: positions_dico[joint] for joint in left_arm.joint_names()})
-        # right_arm.move_to_joint_positions({joint: positions_dico[joint] for joint in right_arm.joint_names()})
-        # grip_left.close()
-        # head.set_pan(0)
-
+    print("Moving left arm to init")
+    move_left_arm_to_init()
 
 class ImageCallback(object):
     def __init__(self):
@@ -91,10 +65,10 @@ def move_left_arm_to_init():
     position = REF_POINT_LEFT_ARM
     while not joints:
         try:
-            joints = baxter_utils.IK(left_arm, position, ee_orientation, IK_SEED_POSITIONS)
+            joints = baxter_utils.IK(left_arm, position, LEFT_ARM_ORIENTATION, IK_SEED_POSITIONS)
         except Exception:
             try:
-                joints = baxter_utils.IK(left_arm, position, ee_orientation, IK_SEED_POSITIONS)
+                joints = baxter_utils.IK(left_arm, position, LEFT_ARM_ORIENTATION, IK_SEED_POSITIONS)
             except Exception:
                 raise
     left_arm.move_to_joint_positions(joints)
@@ -125,7 +99,6 @@ print("Initializing robot...")
 resetPose()
 print("Init Robot pose over")
 end_point_position = baxter_utils.get_ee_position(left_arm)
-# end_point_position = move_left_arm_to_init()
 
 print('Starting up on port number {}'.format(SERVER_PORT))
 context = zmq.Context()
@@ -178,12 +151,17 @@ try:
         else:
             print("No joints position, returning previous one")
 
+        reward = 0
+        if np.linalg.norm(BUTTON_POS - end_point_position, 2) < 0.035:
+            reward = 1
+            print("Button ")
+
         # Send arm position, button position, ...
         socket.send_json(
             {
                 # XYZ position
                 "position": list(end_point_position),
-                "reward": 0,
+                "reward": reward,
                 "button_pos": list(BUTTON_POS)
             },
             flags=zmq.SNDMORE

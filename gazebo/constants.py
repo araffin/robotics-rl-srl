@@ -7,11 +7,17 @@ REF_POINT = [0.6, 0.30, 0.20]
 # ['left_e0', 'left_e1', 'left_s0', 'left_s1', 'left_w0', 'left_w1', 'left_w2']
 IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
 HOSTNAME = 'localhost'
-DELTA_POS = 0.05
-Z_TABLE = -0.14
+DELTA_POS = 0.02
+# Z_TABLE = -0.14
+# right_arm [ 0.77416686 -0.18256031 -0.19254151]
+# Real Table
+# Z_TABLE = - 0.17
+Z_TABLE = - 0.10
+
 
 # ROS Topics
-IMAGE_TOPIC = "/cameras/head_camera_2/image"
+# IMAGE_TOPIC = "/cameras/head_camera_2/image"
+IMAGE_TOPIC = "/kinect2/hd/image_color"
 ACTION_TOPIC = "/robot/limb/left/endpoint_action"
 BUTTON_POS_TOPIC = "/button1/position"
 
