@@ -2,6 +2,7 @@
 from __future__ import division, print_function, absolute_import
 
 import subprocess
+import signal
 
 import arm_scenario_simulator as arm_sim
 import baxter_interface
@@ -28,6 +29,14 @@ BUTTON_POS = [ 0.7090276,   0.13833109, -0.11170768]
 IK_SEED_POSITIONS = None
 
 bridge = CvBridge()
+
+should_exit = [False]
+
+# exit the script on ctrl+c
+def ctrl_c(signum, frame):
+    should_exit[0] = True
+
+signal.signal(signal.SIGINT, ctrl_c)
 
 
 def resetPose():
@@ -113,66 +122,64 @@ print("Connected to client")
 action = [0, 0, 0]
 joints = None
 
-try:
-    while True:
-        msg = socket.recv_json()
-        command = msg.get('command', '')
-        if command == 'reset':
-            resetPose()
-            end_point_position = baxter_utils.get_ee_position(left_arm)
-            print('Environment reset')
-            action = [0, 0, 0]
+while not should_exit[0]:
+    msg = socket.recv_json()
+    command = msg.get('command', '')
+    if command == 'reset':
+        resetPose()
+        end_point_position = baxter_utils.get_ee_position(left_arm)
+        print('Environment reset')
+        action = [0, 0, 0]
 
-        elif command == 'action':
-            action = np.array(msg['action'])
-            print("action:", action)
+    elif command == 'action':
+        action = np.array(msg['action'])
+        print("action:", action)
 
-        elif command == "exit":
-            break
-        else:
-            raise ValueError("Unknown command: {}".format(msg))
+    elif command == "exit":
+        break
+    else:
+        raise ValueError("Unknown command: {}".format(msg))
 
-        # action = randomAction(possible_actions)
-        end_point_position_candidate = end_point_position + action
+    # action = randomAction(possible_actions)
+    end_point_position_candidate = end_point_position + action
 
-        print("End-effector Position:", end_point_position_candidate)
-        joints = None
-        try:
-            joints = baxter_utils.IK(left_arm, end_point_position_candidate, ee_orientation)
-        except Exception as e:
-            print("[ERROR] no joints position returned by the Inverse Kinematic fn")
-            print("end_point_position_candidate:{}".format(end_point_position_candidate))
-            print(e)
+    print("End-effector Position:", end_point_position_candidate)
+    joints = None
+    try:
+        joints = baxter_utils.IK(left_arm, end_point_position_candidate, ee_orientation)
+    except Exception as e:
+        print("[ERROR] no joints position returned by the Inverse Kinematic fn")
+        print("end_point_position_candidate:{}".format(end_point_position_candidate))
+        print(e)
 
-        if joints:
-            action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
-            end_point_position = end_point_position_candidate
-            left_arm.move_to_joint_positions(joints, timeout=3)
-        else:
-            print("No joints position, returning previous one")
+    if joints:
+        action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
+        end_point_position = end_point_position_candidate
+        left_arm.move_to_joint_positions(joints, timeout=3)
+    else:
+        print("No joints position, returning previous one")
 
-        reward = 0
-        if np.linalg.norm(BUTTON_POS - end_point_position, 2) < 0.035:
-            reward = 1
-            print("Button ")
+    reward = 0
+    if np.linalg.norm(BUTTON_POS - end_point_position, 2) < 0.035:
+        reward = 1
+        print("Button touched!")
 
-        # Send arm position, button position, ...
-        socket.send_json(
-            {
-                # XYZ position
-                "position": list(end_point_position),
-                "reward": reward,
-                "button_pos": list(BUTTON_POS)
-            },
-            flags=zmq.SNDMORE
-        )
+    # Send arm position, button position, ...
+    socket.send_json(
+        {
+            # XYZ position
+            "position": list(end_point_position),
+            "reward": reward,
+            "button_pos": list(BUTTON_POS)
+        },
+        flags=zmq.SNDMORE
+    )
 
-        img = image_cb_wrapper.valid_img
-        # to contiguous, otherwise ZMQ will complain
-        img = np.ascontiguousarray(img, dtype=np.uint8)
-        sendMatrix(socket, img)
-except KeyboardInterrupt:
-    pass
+    img = image_cb_wrapper.valid_img
+    # to contiguous, otherwise ZMQ will complain
+    img = np.ascontiguousarray(img, dtype=np.uint8)
+    sendMatrix(socket, img)
+
 
 # TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
 print(" Exiting server - closing socket...")

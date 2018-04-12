@@ -17,7 +17,7 @@ Z_TABLE = - 0.10
 
 # ROS Topics
 # IMAGE_TOPIC = "/cameras/head_camera_2/image"
-IMAGE_TOPIC = "/kinect2/hd/image_color"
+IMAGE_TOPIC = "/kinect2/qhd/image_color"
 ACTION_TOPIC = "/robot/limb/left/endpoint_action"
 BUTTON_POS_TOPIC = "/button1/position"
 

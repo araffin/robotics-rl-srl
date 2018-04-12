@@ -27,7 +27,7 @@ IK_SEED_POSITIONS = None
 
 should_exit = [False]
 
-# Stop the robot on ctrl+c and exit the script
+# exit the script on ctrl+c
 def ctrl_c(signum, frame):
     should_exit[0] = True
 
@@ -65,8 +65,8 @@ try:
             if name == "left_arm":
                 ee_orientation = baxter_utils.get_ee_orientation(left_arm)
                 # print(ee_orientation)
-                print(name, arm_pos)
-                # print(np.linalg.norm(BUTTON_POS - arm_pos, 2))
+                # print(name, arm_pos)
+                print(np.linalg.norm(BUTTON_POS - arm_pos, 2))
         rospy.sleep(0.5)
 except KeyboardInterrupt:
     print("Exiting....")

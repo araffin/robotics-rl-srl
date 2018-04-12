@@ -13,22 +13,21 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
-from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE
+from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
 
-MAX_STEPS = 50
+MAX_STEPS = 100
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-N_CONTACTS_BEFORE_TERMINATION = 5
+N_CONTACTS_BEFORE_TERMINATION = 2
 MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
 RELATIVE_POS = False
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
-DELTA_POS = 0.05
 # Each action array is [dx, dy, dz]: representing movements up, down, left, right,
 # backward and forward from Baxter coordinate system center
 action_dict = {
@@ -221,7 +220,7 @@ class BaxterEnv(gym.Env):
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
         # Resize it:
-        self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        # self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getArmPos(self):
