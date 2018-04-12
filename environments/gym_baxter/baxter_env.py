@@ -25,7 +25,7 @@ RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 2
 MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
 THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
-RELATIVE_POS = False
+RELATIVE_POS = True
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Each action array is [dx, dy, dz]: representing movements up, down, left, right,
@@ -85,6 +85,9 @@ class BaxterEnv(gym.Env):
                  log_folder="baxter_log_folder"):
         self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
+        self.use_ground_truth = USE_GROUND_TRUTH
+        self.use_joints = False
+        self.relative_pos = RELATIVE_POS
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
@@ -136,6 +139,8 @@ class BaxterEnv(gym.Env):
         self.action = [0, 0, 0]
         self.reward = 0
         self.arm_pos = np.array([0, 0, 0])
+        # Create numpy random generator
+        # This seed can be changed later
         self.seed(0)
 
         # Initialize the state
@@ -220,7 +225,7 @@ class BaxterEnv(gym.Env):
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
         # Resize it:
-        # self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getArmPos(self):

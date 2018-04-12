@@ -5,6 +5,8 @@ from baselines import logger
 import tensorflow as tf
 
 import environments.kuka_button_gym_env as kuka_env
+# HACK: uncomment to use real baxter
+# import environments.gym_baxter.baxter_env as kuka_env
 from rl_baselines.policies import MlpPolicyDicrete
 from rl_baselines.utils import createEnvs
 

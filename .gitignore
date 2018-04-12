@@ -6,6 +6,7 @@
 data/
 trained_models/
 logs/
+logs_real/
 *.bak
 
 # Byte-compiled / optimized / DLL files
