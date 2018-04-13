@@ -90,7 +90,7 @@ for _ in range(load_args.num_timesteps):
     elif algo == "ars":
         actions = model.getAction(obs.reshape(1,-1))
     elif algo == "cma-es":
-        actions = model.getAction(obs)
+        actions = [model.getAction(obs)]
     obs, rewards, dones, _ = envs.step(actions)
 
     if algo in ["deepq", "ddpg"]:
