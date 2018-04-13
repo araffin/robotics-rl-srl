@@ -4,10 +4,12 @@ import time
 
 import environments.kuka_button_gym_env as kuka_env
 
-kuka_env.RECORD_DATA = False
 # Reduce max distance to have more negative rewards for srl
 kuka_env.MAX_DISTANCE = 0.65
-env = kuka_env.KukaButtonGymEnv(renders=True, is_discrete=True, name="kuka_test")
+kuka_env.RECORD_DATA = False
+
+env = kuka_env.KukaButtonGymEnv(renders=False, is_discrete=True, multi_view=False, name="kuka_test")
+# env.num_envs = 1
 
 i = 0
 start_time = time.time()
