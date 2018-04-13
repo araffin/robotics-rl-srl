@@ -42,7 +42,7 @@ class PytorchPolicy(Policy):
     def __init__(self, model, continuous_actions):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
-        self.param_len = np.sum([np.prod(x.shape for x in self.model.parameters()])
+        self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
 
     def getAction(self, obs):
@@ -149,7 +149,7 @@ class CMAES:
         self.init_sigma = sigma
         self.continuous_actions = continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
-        self.best_model = None
+        self.best_model = self.es.result.xbest
 
     def getAction(self, obs):
         """
@@ -157,7 +157,6 @@ class CMAES:
         :param obs: ([float])
         :return: the action
         """
-        self.policy.setParam(self.best_model)
         return self.policy.getAction(obs)
 
     def save(self, save_path):
@@ -181,13 +180,13 @@ class CMAES:
             r = np.zeros((self.n_population,))
             population = self.es.ask()
             done = np.full((self.n_population,), False)
-            while not done.all():
+            while (not done.all()):
                 actions = []
                 for k in range(self.n_population):
                     if not done[k]:
                         current_obs = obs[k].reshape(-1)
                         self.policy.setParam(population[k])
-                        action = self.policy.getAction(obs)
+                        action = self.policy.getAction(obs[k])
                         actions.append(action)
                     else:
                         actions.append(None) # do nothing, as we are done
@@ -202,16 +201,15 @@ class CMAES:
 
                 if callback is not None:
                     callback(locals(), globals())
-                if (step/self.n_population + 1) % 500 == 0:
-                    print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
-
+                    
+            print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
             self.es.tell(population, -r)
             self.best_model = self.es.result.xbest
 
 def load(save_path):
     """
     :param save_path: (str)
-    :return: (ARS Object)
+    :return: (CMAES Object)
     """
     with open(save_path, "rb") as f:
         class_dict = pickle.load(f)

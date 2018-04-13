@@ -10,6 +10,7 @@ from baselines import deepq
 
 import rl_baselines.ddpg as ddpg
 import rl_baselines.ars as ars
+import rl_baselines.cma_es as cma_es
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
@@ -17,7 +18,7 @@ from srl_priors.utils import printYellow
 from replay.enjoy import parseArguments
 
 
-supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars']
+supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models)
 
 nstack = train_args['num_stack']
@@ -48,6 +49,9 @@ elif algo == "ddpg":
     model = ddpg.load(load_path, sess)
 elif algo == "ars":
     model = ars.load(load_path)
+elif algo == "cma-es":
+    model = cma_es.load(load_path)
+
 
 
 params = find_trainable_variables("model")
@@ -65,6 +69,8 @@ elif algo == "deepq":
     model = deepq.load(load_path)
 elif algo == "ddpg":
     model.load(load_path)
+elif algo == "cma-es":
+    model.policy.setParam(model.best_model)
 
 dones = [False for _ in range(load_args.num_cpu)]
 obs = envs.reset()
@@ -83,6 +89,8 @@ for _ in range(load_args.num_timesteps):
         actions = model.pi(obs, apply_noise=False, compute_Q=False)[0]
     elif algo == "ars":
         actions = model.getAction(obs.reshape(1,-1))
+    elif algo == "cma-es":
+        actions = model.getAction(obs)
     obs, rewards, dones, _ = envs.step(actions)
 
     if algo in ["deepq", "ddpg"]:

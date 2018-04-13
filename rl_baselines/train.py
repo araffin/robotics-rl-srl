@@ -147,6 +147,8 @@ def callback(_locals, _globals):
                 _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
             elif ALGO in ["acer", "a2c", "ppo2"]:
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
+            elif ALGO in ['ars', 'cma-es']:
+                _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
             elif "pytorch" in ALGO:
                 # Bring back the weights to the cpu
                 if _globals['args'].cuda:
@@ -169,7 +171,7 @@ def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
     parser.add_argument('--algo', default='deepq', 
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma_es'],
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma-es'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -228,7 +230,7 @@ def main():
         assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
     elif args.algo == "ars":
         algo = ars
-    elif args.algo == "cma_es":
+    elif args.algo == "cma-es":
         algo = cma_es
 
     if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
