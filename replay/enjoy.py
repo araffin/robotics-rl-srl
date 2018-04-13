@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 
 import yaml
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
@@ -91,7 +90,6 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
         # Normalize only raw pixels
         normalize = train_args['srl_model'] == ""
         envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
-
 
     if train_args["srl_model"] != "":
         envs = CustomVecNormalize(envs, training=False)

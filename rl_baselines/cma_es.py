@@ -15,13 +15,16 @@ from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize
 from srl_priors.utils import printYellow
 
+
 class Policy(object):
     """
     The policy object for genetic algorithms
     :param continuous_actions: (bool)
     """
-    def __init__(self, continuous_actions):
+
+    def __init__(self, continuous_actions, srl_model=True):
         self.continuous_actions = continuous_actions
+        self.srl_model = srl_model
 
     def getAction(self, obs):
         raise NotImplementedError
@@ -29,21 +32,29 @@ class Policy(object):
     def getParamSpace(self):
         raise NotImplementedError
 
-    def setParam(self):
+    def setParam(self, param):
         raise NotImplementedError
 
 
 class PytorchPolicy(Policy):
     """
     The policy object for genetic algorithms, using Pytorch networks
-    :param model: (Pytorch nn.Module)
+    :param model: (Pytorch nn.Module) make sure there is no Sequential, as it breaks .shape function
     :param continuous_actions: (bool)
+    :param srl_model: (bool) if using an srl model or not
+    :param cuda: (bool)
     """
-    def __init__(self, model, continuous_actions):
+
+    def __init__(self, model, continuous_actions, srl_model=True, cuda=False):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
-        self.param_len = np.sum([np.prod(x.shape for x in self.model.parameters()])
+        self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
+        self.srl_model = srl_model
+        self.cuda = cuda
+
+        if self.cuda:
+            self.model.cuda()
 
     def getAction(self, obs):
         """
@@ -51,19 +62,25 @@ class PytorchPolicy(Policy):
         :param obs: ([float])
         :return: the action
         """
-        if self.continuous_actions:
-            return self.model(self.make_var(obs.reshape(-1))).data.numpy()
-        else:
-            return np.argmax(F.softmax(self.model(self.make_var(obs.reshape(-1))), dim=-1).data)
+        if not self.srl_model:
+            obs = obs.reshape(1, 224, 224, 3)
+            obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
-    @staticmethod
-    def make_var(arr):
+        if self.continuous_actions:
+            return self.model(self.make_var(obs)).data.numpy()
+        else:
+            return np.argmax(F.softmax(self.model(self.make_var(obs)), dim=-1).data)
+
+    def make_var(self, arr):
         """
         Returns a pytorch Variable object from a numpy array
         :param arr: ([float])
         :return: (Variable)
         """
-        return Variable(torch.from_numpy(arr))
+        if self.cuda:
+            return Variable(torch.from_numpy(arr)).float().cuda()
+        else:
+            return Variable(torch.from_numpy(arr)).float()
 
     def getParamSpace(self):
         """
@@ -85,28 +102,44 @@ class CNNPolicyPytorch(nn.Module):
     A simple CNN policy using pytorch
     :param out_dim: (int)
     """
-    #TODO remove sequencial, as it breaks .shape function
+
+    # TODO 
     def __init__(self, out_dim):
         super(CNNPolicyPytorch, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=5, padding=2),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.MaxPool2d(2))
-        self.layer2 = nn.Sequential(
-            nn.Conv2d(16, 32, kernel_size=5, padding=2),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(2))
-        self.fc = nn.Linear(7*7*32, out_dim)
-        
+        self.conv1 = nn.Conv2d(3, 8, kernel_size=5, padding=2, stride=2)
+        self.norm1 = nn.BatchNorm2d(8)
+        self.pool1 = nn.MaxPool2d(2)
+
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1, stride=2)
+        self.norm2 = nn.BatchNorm2d(16)
+        self.pool2 = nn.MaxPool2d(2)
+
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2)
+        self.norm3 = nn.BatchNorm2d(32)
+        self.pool3 = nn.MaxPool2d(2)
+
+        self.fc = nn.Linear(288, out_dim)
+
     def forward(self, x):
-        x = self.layer1(x)
-        x = self.layer2(x)
-        print(x.dim())
+        x = self.conv1(x)
+        x = self.norm1(x)
+        x = F.relu(x)
+        x = self.pool1(x)
+
+        x = self.conv2(x)
+        x = self.norm2(x)
+        x = F.relu(x)
+        x = self.pool2(x)
+
+        x = self.conv3(x)
+        x = self.norm3(x)
+        x = F.relu(x)
+        x = self.pool3(x)
+
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
+
 
 class MLPPolicyPytorch(nn.Module):
     """
@@ -115,14 +148,15 @@ class MLPPolicyPytorch(nn.Module):
     :param hidden_dims: ([int])
     :param out_dim: (int)
     """
+
     def __init__(self, in_dim, hidden_dims, out_dim):
         super(MLPPolicyPytorch, self).__init__()
         self.fc_hidden_name = []
 
         self.fc_in = nn.Linear(int(in_dim), int(hidden_dims[0]))
-        for i in range(len(hidden_dims)-1):
-           self.add_module("fc_"+str(i), nn.Linear(int(hidden_dims[i]), int(hidden_dims[i+1])))
-           self.fc_hidden_name.append("fc_"+str(i))
+        for i in range(len(hidden_dims) - 1):
+            self.add_module("fc_" + str(i), nn.Linear(int(hidden_dims[i]), int(hidden_dims[i + 1])))
+            self.fc_hidden_name.append("fc_" + str(i))
         self.fc_out = nn.Linear(int(hidden_dims[-1]), int(out_dim))
 
     def forward(self, x):
@@ -142,6 +176,7 @@ class CMAES:
     :param sigma: (float) default=1
     :param continuous_actions: (bool) default=False
     """
+
     def __init__(self, n_population, policy, mu=0, sigma=1, continuous_actions=False):
         self.policy = policy
         self.n_population = n_population
@@ -149,7 +184,7 @@ class CMAES:
         self.init_sigma = sigma
         self.continuous_actions = continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
-        self.best_model = None
+        self.best_model = self.es.result.xbest
 
     def getAction(self, obs):
         """
@@ -157,7 +192,6 @@ class CMAES:
         :param obs: ([float])
         :return: the action
         """
-        self.policy.setParam(self.best_model)
         return self.policy.getAction(obs)
 
     def save(self, save_path):
@@ -176,7 +210,7 @@ class CMAES:
         start_time = time.time()
         step = 0
 
-        while(step < num_updates):
+        while step < num_updates:
             obs = env.reset()
             r = np.zeros((self.n_population,))
             population = self.es.ask()
@@ -187,37 +221,38 @@ class CMAES:
                     if not done[k]:
                         current_obs = obs[k].reshape(-1)
                         self.policy.setParam(population[k])
-                        action = self.policy.getAction(obs)
+                        action = self.policy.getAction(obs[k])
                         actions.append(action)
                     else:
-                        actions.append(None) # do nothing, as we are done
+                        actions.append(None)  # do nothing, as we are done
 
                 obs, reward, new_done, info = env.step(actions)
                 step += self.n_population
 
-                done = np.bitwise_or(done,new_done)
+                done = np.bitwise_or(done, new_done)
 
                 # cumulate the reward for every enviroment that is not finished
                 r[~done] += reward[~done]
 
                 if callback is not None:
                     callback(locals(), globals())
-                if (step/self.n_population + 1) % 500 == 0:
-                    print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
 
+            print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
             self.es.tell(population, -r)
             self.best_model = self.es.result.xbest
+
 
 def load(save_path):
     """
     :param save_path: (str)
-    :return: (ARS Object)
+    :return: (CMAES Object)
     """
     with open(save_path, "rb") as f:
         class_dict = pickle.load(f)
     model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"], class_dict["init_sigma"])
     model.__dict__ = class_dict
     return model
+
 
 def customArguments(parser):
     """
@@ -229,7 +264,10 @@ def customArguments(parser):
                         help='inital location for gaussian sampling of network parameters')
     parser.add_argument('--sigma', type=float, default=0.2,
                         help='inital scale for gaussian sampling of network parameters')
+    parser.add_argument('--cuda', action='store_true', default=False
+                        help='use gpu for the neural network')
     return parser
+
 
 def main(args, callback=None):
     """
@@ -255,14 +293,14 @@ def main(args, callback=None):
     else:
         net = CNNPolicyPytorch(action_space)
 
-    policy = PytorchPolicy(net, args.continuous_actions)
+    policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
 
     model = CMAES(
-        args.num_population, 
-        policy, 
+        args.num_population,
+        policy,
         mu=args.mu,
         sigma=args.sigma,
         continuous_actions=args.continuous_actions
     )
 
-    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population*2))
+    model.train(envs, callback, num_updates=int(args.num_timesteps))
