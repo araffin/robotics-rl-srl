@@ -263,4 +263,4 @@ def main(args, callback=None):
         continuous_actions=args.continuous_actions
     )
 
-    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population*2))
+    model.train(envs, callback, num_updates=int(args.num_timesteps))

@@ -22,7 +22,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
                  renders=False,
                  is_discrete=True,
                  name="kuka_2button_gym"):
-        super(Kuka2ButtonGymEnv, self).__init__(urdf_root, renders, is_discrete, name)
+        super(Kuka2ButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, name=name)
         self.n_contacts2 = 0
 
     def reset(self):

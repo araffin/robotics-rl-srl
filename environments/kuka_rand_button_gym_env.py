@@ -24,7 +24,7 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
                  renders=False,
                  is_discrete=True,
                  name="kuka_rand_button_gym"):
-        super(KukaRandButtonGymEnv, self).__init__(urdf_root, renders, is_discrete, name)
+        super(KukaRandButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, name=name)
 
     def reset(self):
         """
