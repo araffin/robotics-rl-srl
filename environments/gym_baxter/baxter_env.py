@@ -24,7 +24,6 @@ RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 2
 MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
-THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
 RELATIVE_POS = True
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====

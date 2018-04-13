@@ -23,11 +23,15 @@ from .constants import DELTA_POS, SERVER_PORT, IMAGE_TOPIC, \
     ACTION_TOPIC, SECOND_CAM_TOPIC, DATA_FOLDER_SECOND_CAM
 from .utils import sendMatrix, getActions
 
-REF_POINT_LEFT_ARM = [ 0.69850099,  0.14505832,  0.08032852]
+# Calibrated values for real baxter
+# Initial position of the arm
+LEFT_ARM_INIT_POS = [ 0.69850099,  0.14505832,  0.08032852]
+# Initial orientation
 LEFT_ARM_ORIENTATION = [ 0.99893116, -0.04207143, -0.00574656, -0.01826233]
-
+# Button position (target)
 BUTTON_POS = [ 0.7090276,   0.13833109, -0.11170768]
-
+# Distance below which the target is considered to be reached
+DIST_TO_TARGET_THRESHOLD = 0.035
 IK_SEED_POSITIONS = None
 
 bridge = CvBridge()
@@ -73,7 +77,7 @@ def move_left_arm_to_init():
     :return: ([float])
     """
     joints = None
-    position = REF_POINT_LEFT_ARM
+    position = LEFT_ARM_INIT_POS
     while not joints:
         try:
             joints = baxter_utils.IK(left_arm, position, LEFT_ARM_ORIENTATION, IK_SEED_POSITIONS)
@@ -185,7 +189,7 @@ while not should_exit[0]:
         print("No joints position, returning previous one")
 
     reward = 0
-    if np.linalg.norm(BUTTON_POS - end_point_position, 2) < 0.035:
+    if np.linalg.norm(BUTTON_POS - end_point_position, 2) < DIST_TO_TARGET_THRESHOLD:
         reward = 1
         print("Button touched!")
 

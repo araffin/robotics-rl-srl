@@ -9,6 +9,8 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
+# HACK: uncomment to use real baxter
+# import environments.gym_baxter.baxter_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.utils import CustomVecNormalize

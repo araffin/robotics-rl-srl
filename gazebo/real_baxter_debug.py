@@ -4,7 +4,6 @@ from __future__ import division, print_function, absolute_import
 import subprocess
 import signal
 
-
 import arm_scenario_simulator as arm_sim
 import baxter_interface
 import numpy as np
@@ -20,9 +19,9 @@ from std_msgs.msg import Header
 
 from .constants import IMAGE_TOPIC, ACTION_TOPIC
 
-REF_POINT_LEFT_ARM = [ 0.69850099, 0.14505832, 0.08032852]
-LEFT_ARM_ORIENTATION = [ 0.99893116, -0.04207143, -0.00574656, -0.01826233]
-BUTTON_POS = [ 0.7090276, 0.13833109, -0.11170768]
+# Calibrated values for real baxter
+# Button position (target)
+BUTTON_POS = [ 0.7090276,   0.13833109, -0.11170768]
 IK_SEED_POSITIONS = None
 
 should_exit = [False]
