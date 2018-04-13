@@ -1,4 +1,7 @@
-# Modified version of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/visualize.py
+"""
+Modified version of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/visualize.py
+Script used to send plot data to visdom
+"""
 import glob
 import os
 

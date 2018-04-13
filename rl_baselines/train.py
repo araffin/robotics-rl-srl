@@ -149,13 +149,7 @@ def callback(_locals, _globals):
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
             elif ALGO in ['ars', 'cma-es']:
                 _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
-            elif "pytorch" in ALGO:
-                # Bring back the weights to the cpu
-                if _globals['args'].cuda:
-                    _locals['actor_critic'].cpu()
-                _globals['torch'].save(_locals['actor_critic'].state_dict(), "{}/{}_model.pth".format(LOG_DIR, ALGO))
-                if _globals['args'].cuda:
-                    _locals['actor_critic'].cuda()
+
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
