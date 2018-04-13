@@ -150,6 +150,7 @@ class CMAES:
         self.n_population = n_population
         self.continuous_actions = continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
+        self.best_model = None
 
     def getAction(self, obs):
         """
@@ -157,6 +158,7 @@ class CMAES:
         :param obs: ([float])
         :return: the action
         """
+        self.policy.setParam(self.best_model)
         return self.policy.getAction(obs)
 
     # TODO
@@ -187,7 +189,7 @@ class CMAES:
                     if not done[k]:
                         current_obs = obs[k].reshape(-1)
                         self.policy.setParam(population[k])
-                        action = self.getAction(current_obs)
+                        action = self.policy.getAction(obs)
                         actions.append(action)
                     else:
                         actions.append(None) # do nothing, as we are done
@@ -206,10 +208,7 @@ class CMAES:
                     print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
 
             self.es.tell(population, -r)
-
-        # output 
-        # TODO
-        self.es.result.xbest
+            self.best_model = self.es.result.xbest
 
 
 # TODO
@@ -220,7 +219,7 @@ def load(save_path):
     """
     with open(save_path, "rb") as f:
         class_dict = pickle.load(f)
-    model = CMAES(1,(1,1))
+    model = CMAES(class_dict["n_population"], class_dict["policy"])
     model.__dict__ = class_dict
     return model
 
