@@ -15,10 +15,6 @@ from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize
 from srl_priors.utils import printYellow
 
-# TODO: remove new best friend
-# my new best friend (signed hill-a)
-np.seterr(invalid='raise')
-
 class Policy(object):
     """
     The policy object for genetic algorithms
@@ -46,7 +42,7 @@ class PytorchPolicy(Policy):
     def __init__(self, model, continuous_actions):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
-        self.param_len = np.sum([np.prod(x.dim()) for x in self.model.parameters()])
+        self.param_len = np.sum([np.prod(x.shape for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
 
     def getAction(self, obs):
@@ -89,6 +85,7 @@ class CNNPolicyPytorch(nn.Module):
     A simple CNN policy using pytorch
     :param out_dim: (int)
     """
+    #TODO remove sequencial, as it breaks .shape function
     def __init__(self, out_dim):
         super(CNNPolicyPytorch, self).__init__()
         self.layer1 = nn.Sequential(
@@ -148,6 +145,8 @@ class CMAES:
     def __init__(self, n_population, policy, mu=0, sigma=1, continuous_actions=False):
         self.policy = policy
         self.n_population = n_population
+        self.init_mu = mu
+        self.init_sigma = sigma
         self.continuous_actions = continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
         self.best_model = None
@@ -161,7 +160,6 @@ class CMAES:
         self.policy.setParam(self.best_model)
         return self.policy.getAction(obs)
 
-    # TODO
     def save(self, save_path):
         """
         :param save_path: (str)
@@ -210,8 +208,6 @@ class CMAES:
             self.es.tell(population, -r)
             self.best_model = self.es.result.xbest
 
-
-# TODO
 def load(save_path):
     """
     :param save_path: (str)
@@ -219,7 +215,7 @@ def load(save_path):
     """
     with open(save_path, "rb") as f:
         class_dict = pickle.load(f)
-    model = CMAES(class_dict["n_population"], class_dict["policy"])
+    model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"], class_dict["init_sigma"])
     model.__dict__ = class_dict
     return model
 
