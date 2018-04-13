@@ -69,6 +69,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
         path = models.get(args.srl_model)
+        args.log_dir += args.env + "/"
         args.log_dir += args.srl_model + "/"
 
         if args.srl_model == "ground_truth":

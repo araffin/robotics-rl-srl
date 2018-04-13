@@ -46,7 +46,7 @@ class PytorchPolicy(Policy):
     def __init__(self, model, continuous_actions):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
-        self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
+        self.param_len = np.sum([np.prod(x.dim()) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
 
     def getAction(self, obs):
@@ -90,7 +90,7 @@ class CNNPolicyPytorch(nn.Module):
     :param out_dim: (int)
     """
     def __init__(self, out_dim):
-        super(CNN, self).__init__()
+        super(CNNPolicyPytorch, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=5, padding=2),
             nn.BatchNorm2d(16),
@@ -106,7 +106,7 @@ class CNNPolicyPytorch(nn.Module):
     def forward(self, x):
         x = self.layer1(x)
         x = self.layer2(x)
-        print(x.shape)
+        print(x.dim())
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
@@ -247,6 +247,10 @@ def main(args, callback=None):
     envs = SubprocVecEnv(envs)
     envs = VecFrameStack(envs, args.num_stack)
 
+    if args.continuous_actions:
+        action_space = np.prod(envs.action_space.shape)
+    else:
+        action_space = envs.action_space.n
 
     if args.srl_model != "":
         printYellow("Using MLP policy because working on state representation")
@@ -255,11 +259,6 @@ def main(args, callback=None):
         net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
     else:
         net = CNNPolicyPytorch(action_space)
-
-    if args.continuous_actions:
-        action_space = np.prod(envs.action_space.shape)
-    else:
-        action_space = envs.action_space.n
 
     policy = PytorchPolicy(net, args.continuous_actions)
 
