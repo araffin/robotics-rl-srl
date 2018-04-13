@@ -85,7 +85,7 @@ def main():
                         choices=["KukaButtonGymEnv", "Kuka2ButtonGymEnv", "KukaRandButtonGymEnv"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
-    parser.add_argument('--max-distance', type=int, default=0.65,
+    parser.add_argument('--max-distance', type=float, default=0.28,
                         help='Beyond this distance from the goal, the agent gets a negative reward')
     parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
     parser.add_argument('--seed', type=int, default=0, help='the seed (default: 0)')
