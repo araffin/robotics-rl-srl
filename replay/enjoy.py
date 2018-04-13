@@ -32,7 +32,6 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     load_args = parser.parse_args()
-
     # load_args.cuda = not load_args.no_cuda and th.cuda.is_available()
 
     with open('config/srl_models.yaml', 'rb') as f:
@@ -41,7 +40,6 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
     for algo in supported_models + ['not_supported']:
         if algo in load_args.log_dir:
             break
-
     if algo == "not_supported":
         raise ValueError("RL algo not supported for replay")
     printGreen("\n" + algo + "\n")

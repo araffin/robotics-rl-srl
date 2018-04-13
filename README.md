@@ -29,6 +29,7 @@ To test the environment with random actions:
 ```
 python -m environments.test_env
 ```
+Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
 ## Reinforcement Learning
 
@@ -114,6 +115,10 @@ the available state representation model are:
 - joints: the arm's joints angles
 - joints_position: the arm's x,y,z position and joints angles
 
+In the case of a custom_cnn (SRL priors model) trained with views of two cameras,
+set the global variable N_CHANNELS to 6 in srl_priors/preprocessing/preprocess.py
+to perform the inference.
+
 ## Baxter Robot with Gazebo and ROS
 Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
 
@@ -150,3 +155,7 @@ If you have troubles installing mpi4py, make sure you the following installed:
 ```
 sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
 ```
+
+## Known issues
+
+The inverse kinematics function has trouble finding a solution when the arm is fully straight and the arm must bend to reach the requested point.
