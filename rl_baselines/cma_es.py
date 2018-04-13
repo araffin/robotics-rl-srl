@@ -264,7 +264,7 @@ def customArguments(parser):
                         help='inital location for gaussian sampling of network parameters')
     parser.add_argument('--sigma', type=float, default=0.2,
                         help='inital scale for gaussian sampling of network parameters')
-    parser.add_argument('--cuda', action='store_true', default=False
+    parser.add_argument('--cuda', action='store_true', default=False,
                         help='use gpu for the neural network')
     return parser
 

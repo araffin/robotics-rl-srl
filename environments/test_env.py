@@ -202,6 +202,5 @@ def main():
         np.savez(args.save_folder + args.save_name + "/ground_truth.npz", **ground_truth)
         np.savez(args.save_folder + args.save_name + "/preprocessed_data.npz", **preprocessed_data)
 
-
 if __name__ == '__main__':
     main()

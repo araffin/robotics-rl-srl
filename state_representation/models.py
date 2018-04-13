@@ -5,8 +5,8 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE
-from srl_priors.preprocessing import preprocessImage
+from srl_priors.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet
+from srl_priors.preprocessing import preprocessImage, N_CHANNELS
 from srl_priors.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -63,6 +63,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         else:
             if 'custom_cnn' in path:
                 model_type = 'custom_cnn'
+            elif 'triplet' in path:
+                model_type = "triplet_cnn"
             else:
                 model_type = 'resnet'
 
@@ -145,6 +147,7 @@ class SRLJoints(SRLBaseClass):
         """
         return np.array(self.env_object._kuka.joint_positions)
 
+
 class SRLJointsPos(SRLBaseClass):
     """
     Using Joint and position space for state representation model
@@ -175,7 +178,7 @@ class SRLNeuralNetwork(SRLBaseClass):
     def __init__(self, state_dim, cuda, model_type="custom_cnn"):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
-        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'vae'], \
+        assert model_type in ['resnet', 'custom_cnn', 'supervised_custom_cnn', 'autoencoder', 'vae', 'triplet_cnn'], \
             "Model type not supported: {}".format(model_type)
         self.model_type = model_type
 
@@ -188,6 +191,8 @@ class SRLNeuralNetwork(SRLBaseClass):
         # TODO: support mlp models
         elif model_type == "autoencoder":
             self.model = CNNAutoEncoder(self.state_dim)
+        elif model_type == "triplet_cnn":
+            self.model = TripletNet(state_dim)
         elif model_type == "vae":
             self.model = CNNVAE(self.state_dim)
 
@@ -206,8 +211,12 @@ class SRLNeuralNetwork(SRLBaseClass):
         """
         :param observation: (numpy tensor)
         :return: (numpy matrix)
-        """
-        observation = preprocessImage(observation)
+        """        
+        if N_CHANNELS > 3:
+            observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
+        else:
+            observation = preprocessImage(observation)
+                
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
         # Channel first
@@ -217,6 +226,8 @@ class SRLNeuralNetwork(SRLBaseClass):
             observation = observation.cuda()
 
         if self.model_type == "autoencoder":
+            state = self.model.encode(observation)            
+        elif self.model_type == "triplet_cnn":
             state = self.model.encode(observation)
         elif self.model_type == "vae":
             state, _ = self.model.encode(observation)
