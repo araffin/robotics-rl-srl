@@ -1,15 +1,16 @@
 from baselines import deepq
 from baselines import logger
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.vec_env import VecEnv
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
-from pytorch_agents.envs import make_env
-from rl_baselines.utils import createTensorflowSession
+from environments.utils import makeEnv
+from rl_baselines.utils import createTensorflowSession, CustomVecNormalize
 
 
 class CustomDummyVecEnv(VecEnv):
     """Dummy class in order to use FrameStack with DQN"""
+
     def __init__(self, env_fns):
         """
         :param env_fns: ([function])
@@ -62,6 +63,20 @@ class WrapFrameStack(VecFrameStack):
         stackedobs = super(WrapFrameStack, self).reset()
         return stackedobs[0] / self.factor
 
+    def saveRunningAverage(self, path):
+        """
+        Hack to use CustomVecNormalize
+        :param path: (str) path to log dir
+        """
+        self.venv.saveRunningAverage(path)
+
+    def loadRunningAverage(self, path):
+        """
+        Hack to use CustomVecNormalize
+        :param path: (str) path to log dir
+        """
+        self.venv.loadRunningAverage(path)
+
 
 def customArguments(parser):
     """
@@ -81,16 +96,13 @@ def main(args, callback):
     """
     logger.configure()
 
-    env = CustomDummyVecEnv([make_env(args.env, args.seed, 0, args.log_dir, pytorch=False)])
-    # Normalize only raw pixels
-    normalize = args.srl_model == ""
-    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
+    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir)])
 
     createTensorflowSession()
 
     if args.srl_model != "":
         model = deepq.models.mlp([64, 64])
+        env = CustomVecNormalize(env)
     else:
         # Atari CNN
         model = deepq.models.cnn_to_mlp(
@@ -98,6 +110,11 @@ def main(args, callback):
             hiddens=[256],
             dueling=bool(args.dueling),
         )
+
+    # Normalize only raw pixels
+    normalize = args.srl_model == ""
+    # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
+    env = WrapFrameStack(env, args.num_stack, normalize=normalize)
 
     # TODO: tune params
     act = deepq.learn(

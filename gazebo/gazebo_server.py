@@ -30,7 +30,7 @@ class ImageCallback(object):
     def imageCallback(self, msg):
         try:
             # Convert your ROS Image message to OpenCV
-            cv2_img = bridge.imgmsg_to_cv2(msg, "bgr8")
+            cv2_img = bridge.imgmsg_to_cv2(msg, "rgb8")
             self.valid_img = cv2_img
         except CvBridgeError as e:
             print("CvBridgeError:", e)
@@ -69,6 +69,13 @@ right_arm = baxter_interface.Limb('right')
 ee_orientation = baxter_utils.get_ee_orientation(left_arm)
 lever = arm_sim.Lever('lever1')
 button = arm_sim.Button('button1')
+
+button_pos = button.get_state().pose.position
+
+baxter = arm_sim.Button('baxter')
+baxter_pose = baxter.get_state().pose
+baxter_position = arm_utils.point2array(baxter_pose.position)
+baxter_orientation = arm_utils.quat2array(baxter_pose.orientation)
 
 # ===== Get list of allowed actions ====
 possible_actions = getActions(DELTA_POS, n_actions=6)
@@ -126,7 +133,7 @@ try:
             print("end_point_position_candidate:{}".format(end_point_position_candidate))
             print(e)
 
-        if joints:  #print('action and type:'); print(action) ;print(type(action))
+        if joints:
             action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
             end_point_position = end_point_position_candidate
             left_arm.move_to_joint_positions(joints, timeout=3)
@@ -136,6 +143,8 @@ try:
         # Get current position of the button
         button_pos = button.get_state().pose.position
         button_pos_absolute = arm_utils.point2array(button_pos)
+        # Button position relative to baxter
+        button_pos_relative = arm_utils.change_CS(button_pos_absolute, baxter_position, baxter_orientation)
 
         # Send arm position, button position, ...
         socket.send_json(
@@ -143,7 +152,7 @@ try:
                 # XYZ position
                 "position": list(end_point_position),
                 "reward": int(button.is_pressed()),
-                "button_pos": list(button_pos_absolute)
+                "button_pos": list(button_pos_relative)
             },
             flags=zmq.SNDMORE
         )

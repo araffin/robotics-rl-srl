@@ -17,7 +17,7 @@ from replay.enjoy import parseArguments
 
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg']
-load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models, pytorch=False)
+load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models)
 
 nstack = train_args['num_stack']
 ob_space = envs.observation_space

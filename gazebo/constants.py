@@ -8,6 +8,7 @@ REF_POINT = [0.6, 0.30, 0.20]
 IK_SEED_POSITIONS = [-1.535, 1.491, -0.038, 0.194, 1.546, 1.497, -0.520]
 HOSTNAME = 'localhost'
 DELTA_POS = 0.05
+Z_TABLE = -0.14
 
 # ROS Topics
 IMAGE_TOPIC = "/cameras/head_camera_2/image"

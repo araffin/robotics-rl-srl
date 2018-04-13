@@ -13,14 +13,13 @@ from visdom import Visdom
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
+import rl_baselines.ddpg as ddpg
 import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
-import rl_baselines.random_search as random_search
-import rl_baselines.ddpg as ddpg
-from pytorch_agents.visualize import visdom_plot, episode_plot
-from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.utils import computeMeanReward
+from rl_baselines.utils import filterJSONSerializableObjects
+from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
 
 VISDOM_PORT = 8097
@@ -131,6 +130,12 @@ def callback(_locals, _globals):
 
         # Save Best model
         if mean_reward > best_mean_reward:
+            # Try saving the running average (only valid for mlp policy)
+            try:
+                _locals['env'].saveRunningAverage(LOG_DIR)
+            except AttributeError:
+                pass
+
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
             if ALGO == "deepq":
@@ -139,20 +144,13 @@ def callback(_locals, _globals):
                 _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
             elif ALGO in ["acer", "a2c", "ppo2"]:
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
-            elif "pytorch" in ALGO:
-                # Bring back the weights to the cpu
-                if _globals['args'].cuda:
-                    _locals['actor_critic'].cpu()
-                _globals['torch'].save(_locals['actor_critic'].state_dict(), "{}/{}_model.pth".format(LOG_DIR, ALGO))
-                if _globals['args'].cuda:
-                    _locals['actor_critic'].cuda()
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        win = visdom_plot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
-        win_smooth = visdom_plot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
-        win_episodes = episode_plot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
-                                    title=PLOT_TITLE + " [Episodes]")
+        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
+        win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
+                                   title=PLOT_TITLE + " [Episodes]")
     n_steps += 1
     return False
 
@@ -160,20 +158,21 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', 
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_search', 'random_agent', 'ddpg'],
+    parser.add_argument('--algo', default='ppo2',
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-    parser.add_argument('--episode_window', type=int, default=40, help='Episode window for moving average plot (default: 40)')
+    parser.add_argument('--episode_window', type=int, default=40,
+                        help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
                         help='SRL model to use')
-    parser.add_argument('--num-stack', type=int, default=4,
-                        help='number of frames to stack (default: 4)')
+    parser.add_argument('--num-stack', type=int, default=1,
+                        help='number of frames to stack (default: 1)')
     parser.add_argument('--action-repeat', type=int, default=1,
                         help='number of times an action will be repeated (default: 1)')
     parser.add_argument('--port', type=int, default=8097,
@@ -194,6 +193,7 @@ def main():
     ALGO = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
+
     if args.no_vis:
         viz = False
 
@@ -213,8 +213,6 @@ def main():
         SAVE_INTERVAL = 10
     elif args.algo == "random_agent":
         algo = random_agent
-    elif args.algo == "random_search":
-        algo = random_search
     elif args.algo == "ddpg":
         algo = ddpg
         assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
@@ -230,6 +228,7 @@ def main():
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()
+
     args = configureEnvAndLogFolder(args, algo.kuka_env)
     args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
@@ -245,6 +244,9 @@ def main():
     saveEnvParams(algo.kuka_env)
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
+    # Augment the number of timesteps (when using mutliprocessing this number is not reached)
+    args.num_timesteps = int(1.1 * args.num_timesteps)
+    # Train the agent
     algo.main(args, callback)
 
 
