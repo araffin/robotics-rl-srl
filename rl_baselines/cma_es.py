@@ -264,6 +264,8 @@ def customArguments(parser):
                         help='inital location for gaussian sampling of network parameters')
     parser.add_argument('--sigma', type=float, default=0.2,
                         help='inital scale for gaussian sampling of network parameters')
+    parser.add_argument('--cuda', action='store_true', default=False
+                        help='use gpu for the neural network')
     return parser
 
 
@@ -291,7 +293,7 @@ def main(args, callback=None):
     else:
         net = CNNPolicyPytorch(action_space)
 
-    policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=True)
+    policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
 
     model = CMAES(
         args.num_population,
