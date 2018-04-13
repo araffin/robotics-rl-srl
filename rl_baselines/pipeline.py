@@ -16,7 +16,7 @@ def main():
                         choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='all',
-                        choices=["all", "KukaButtonGymEnv-v0"])
+                        choices=["all", "KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0"])
     parser.add_argument('--srl-model', type=str, default='all',
                         choices=['all', "autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae",
                                  "joints", "joints_position", "raw_pixels"],
@@ -35,7 +35,7 @@ def main():
         models = [args.srl_model]
 
     if args.env == "all":
-        envs = ["KukaButtonGymEnv-v0"]
+        envs = ["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0"]
     else:
         envs = [args.env]
 
