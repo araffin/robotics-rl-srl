@@ -14,6 +14,7 @@ import environments.kuka_button_gym_env as kuka_env
 import environments.kuka_rand_button_gym_env as kuka_env_rand
 from srl_priors.utils import printRed
 
+
 def convertImagePath(args, path, record_id_start):
     """
     Used to convert an image path, from one location, to an other
@@ -27,6 +28,7 @@ def convertImagePath(args, path, record_id_start):
     # of the folder
     new_record_id = record_id_start + int(path.split("/")[-2].split("_")[-1])
     return args.save_name + "/record_{:03d}".format(new_record_id) + "/" + image_name
+
 
 def env_thread(args, thread_num, partition=True):
     """
@@ -89,7 +91,7 @@ def main():
                         help='Beyond this distance from the goal, the agent gets a negative reward')
     parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
     parser.add_argument('--seed', type=int, default=0, help='the seed')
-    parser.add_argument('-f', '--force', action='store_true', default=False, 
+    parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else (including partial parts if they exist)')
 
     args = parser.parse_args()
@@ -104,14 +106,13 @@ def main():
     # File exists, need to deal with it
     if args.record_data and os.path.exists(args.save_folder + args.save_name):
         assert args.force, "Error: save directory '{}' already exists".format(args.save_folder + args.save_name)
-        
+
         shutil.rmtree(args.save_folder + args.save_name)
         for part in glob.glob(args.save_folder + args.save_name + "_part-[0-9]*"):
             shutil.rmtree(part)
     elif args.record_data:
         # create the output
         os.mkdir(args.save_folder + args.save_name)
-        
 
     if args.num_cpu == 1:
         env_thread(args, 0, partition=False)

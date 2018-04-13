@@ -17,14 +17,12 @@ from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyCont
 from srl_priors.utils import printYellow
 from replay.enjoy import parseArguments
 
-
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 load_args, train_args, load_path, log_dir, algo, envs = parseArguments(supported_models)
 
 nstack = train_args['num_stack']
 ob_space = envs.observation_space
 ac_space = envs.action_space
-
 
 tf.reset_default_graph()
 set_global_seeds(load_args.seed)
@@ -51,8 +49,6 @@ elif algo == "ars":
     model = ars.load(load_path)
 elif algo == "cma-es":
     model = cma_es.load(load_path)
-
-
 
 params = find_trainable_variables("model")
 
@@ -88,7 +84,7 @@ for _ in range(load_args.num_timesteps):
     elif algo == "ddpg":
         actions = model.pi(obs, apply_noise=False, compute_Q=False)[0]
     elif algo == "ars":
-        actions = model.getAction(obs.reshape(1,-1))
+        actions = model.getAction(obs.reshape(1, -1))
     elif algo == "cma-es":
         actions = [model.getAction(obs)]
     obs, rewards, dones, _ = envs.step(actions)
