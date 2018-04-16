@@ -23,7 +23,7 @@ N_STEPS_OUTSIDE_SAFETY_SPHERE = 5000
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 Z_TABLE = -0.2
-MAX_DISTANCE = 0.70  # Max distance between end effector and the button (for negative reward)
+MAX_DISTANCE = 0.4  # Max distance between end effector and the button (for negative reward)
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
@@ -38,7 +38,7 @@ NOISE_STD_CONTINUOUS = 0.0001
 NOISE_STD_JOINTS = 0.002
 SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
-BUTTON_DISTANCE_HEIGHT = 0.28  # Extra height added to the buttons position in the distance calculation 
+BUTTON_DISTANCE_HEIGHT = 0.28  # Extra height added to the buttons position in the distance calculation
 
 ACTION_JOINTS = False  # Set actions to apply to the joint space
 CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
@@ -290,7 +290,7 @@ class KukaButtonGymEnv(gym.Env):
             dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
+            dz = [0, 0, 0, 0, -dv, dv][action]  # Remove up action
             # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
@@ -309,7 +309,8 @@ class KukaButtonGymEnv(gym.Env):
                 dv += self.np_random.normal(0.0, scale=NOISE_STD_CONTINUOUS)
                 dx = action[0] * dv
                 dy = action[1] * dv
-                dz = -abs(action[2] * dv)  # Remove up action
+                dz = action[2] * dv
+                # dz = -abs(action[2] * dv)  # Remove up action
                 finger_angle = 0.0  # Close the gripper
                 real_action = [dx, dy, dz, 0, finger_angle]
 
@@ -376,12 +377,12 @@ class KukaButtonGymEnv(gym.Env):
         (_, _, px1, _, _) = p.getCameraImage(
             width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
             projectionMatrix=proj_matrix1, renderer=self.renderer)
-        rgb_array1 = np.array(px1)        
-        
+        rgb_array1 = np.array(px1)
+
         if self.multi_view:
             # adding a second camera on the other side of the robot
             view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
-                cameraTargetPosition=(0.316, 0.316, -0.105),            
+                cameraTargetPosition=(0.316, 0.316, -0.105),
                 distance=1.05,
                 yaw=32,
                 pitch=-13,
