@@ -2,7 +2,6 @@ from . import kuka_button_gym_env as kuka_env
 
 kuka_env.MAX_STEPS = 1500
 kuka_env.MAX_DISTANCE = 2
-kuka_env.BUTTON_RANDOM = False
 
 from .kuka_button_gym_env import *
 
