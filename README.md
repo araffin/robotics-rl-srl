@@ -46,13 +46,15 @@ About frame-stacking, action repeat (frameskipping) please read this blog post: 
 
 ### OpenAI Baselines
 
-Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent and random search:
+Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with some evolution strategies:
 
 - DQN and variants (Double, Dueling, prioritized experience replay)
 - ACER: Sample Efficient Actor-Critic with Experience Replay
 - A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
 - PPO2: Proximal Policy Optimization (GPU Implementation)
 - DDPG: Deep Deterministic Policy Gradients
+- ARS: Augmented Random Search
+- CMA-ES: Covariance Matrix Adaptation Evolution Strategy
 
 To train an agent:
 ```
@@ -101,7 +103,7 @@ python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timestep
 
 ## Environments
 
-When starting a baseline, you can chose from different environments:
+When starting a baseline, you can choose from different environments:
 ```bash
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ --env env_name
 ```

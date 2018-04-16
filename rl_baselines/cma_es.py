@@ -63,7 +63,7 @@ class PytorchPolicy(Policy):
         :return: the action
         """
         if not self.srl_model:
-            obs = obs.reshape(1, 224, 224, 3)
+            obs = obs.reshape([1] + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
@@ -103,7 +103,6 @@ class CNNPolicyPytorch(nn.Module):
     :param out_dim: (int)
     """
 
-    # TODO 
     def __init__(self, out_dim):
         super(CNNPolicyPytorch, self).__init__()
         self.conv1 = nn.Conv2d(3, 8, kernel_size=5, padding=2, stride=2)

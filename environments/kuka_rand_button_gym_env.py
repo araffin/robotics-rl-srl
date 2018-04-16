@@ -1,8 +1,6 @@
 from . import kuka_button_gym_env as kuka_env
 
-kuka_env.FORCE_RENDER = False
 kuka_env.MAX_STEPS = 1000
-# kuka_env.MAX_DISTANCE = 2
 kuka_env.BUTTON_RANDOM = False
 BALL_FORCE = 10
 

@@ -1,6 +1,5 @@
 from . import kuka_button_gym_env as kuka_env
 
-kuka_env.FORCE_RENDER = False
 kuka_env.MAX_STEPS = 1500
 kuka_env.MAX_DISTANCE = 2
 kuka_env.BUTTON_RANDOM = False
@@ -10,7 +9,7 @@ from .kuka_button_gym_env import *
 
 class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     """
-    Gym wrapper for Kuka environment with a push button
+    Gym wrapper for Kuka environment with 2 push buttons
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
@@ -23,7 +22,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
                  is_discrete=True,
                  name="kuka_2button_gym"):
         super(Kuka2ButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, name=name)
-        self.n_contacts2 = 0
+        self.n_contacts = [0,0]
 
     def reset(self):
         """
@@ -31,10 +30,12 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         :return: (numpy tensor) first observation of the env
         """
         self.terminated = False
-        self.n_contacts = 0
-        self.n_contacts2 = 0
+        self.n_contacts = [0,0]
+        self.button_all_pos = []
+        self.button_uid = []
+        self.goal_id = 0 # here, goal_id is used to know which button is the next one to press
         self.n_steps_outside = 0
-        self.button_pressed = False
+        self.button_pressed = [False]
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
         p.setTimeStep(self._timestep)
@@ -52,9 +53,8 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         x_pos = 0.5 + 0.0 * self.np_random.uniform(-1, 1)
         y_pos = 0.125 + 0.0 * self.np_random.uniform(-1, 1)
-        self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
-        self.button_pos1 = np.array([x_pos, y_pos, Z_TABLE])
-        self.button_pos1[2] += BUTTON_DISTANCE_HEIGHT
+        self.button_uid.append(p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE]))
+        self.button_all_pos.append(np.array([x_pos, y_pos, Z_TABLE + BUTTON_DISTANCE_HEIGHT]))
 
         x_pos = 0.5
         y_pos = -0.125
@@ -62,11 +62,11 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.175 * self.np_random.uniform(-1, 0)
 
-        self.button_uid2 = p.loadURDF("/urdf/simple_button_2.urdf", [x_pos, y_pos, Z_TABLE])
-        self.button_pos2 = np.array([x_pos, y_pos, Z_TABLE])
-        self.button_pos2[2] += BUTTON_DISTANCE_HEIGHT
+        self.button_uid.append(p.loadURDF("/urdf/simple_button_2.urdf", [x_pos, y_pos, Z_TABLE]))
+        self.button_all_pos.append(np.array([x_pos, y_pos, Z_TABLE + BUTTON_DISTANCE_HEIGHT]))
 
-        self.button_pos = self.button_pos1
+        # need to define this for the ground_truth model
+        self.button_pos = self.button_all_pos[0]
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
@@ -107,64 +107,21 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         self._observation = self.getExtendedObservation()
 
         if self.saver is not None:
-            self.saver.reset(self._observation, self.button_pos, self.getArmPos())
+            self.saver.reset(self._observation, self.button_all_pos[self.goal_id], self.getArmPos())
 
         if self.use_srl:
             return self.srl_model.getState(self._observation)
 
         return np.array(self._observation)
 
-    def step(self, action):
-        """
-        :param action: (int)
-        """
-        # if you choose to do nothing
-        if action is None:
-            if self.action_joints:
-                return self.step2(list(np.array(self._kuka.joint_positions)[:7]) + [0, 0])
-            else:
-                return self.step2([0, 0, 0, 0, 0])
-
-        self.action = action  # For saver
-        if self._is_discrete:
-            dv = DELTA_V  # velocity per physics step.
-            # Add noise to action
-            dv += self.np_random.normal(0.0, scale=NOISE_STD)
-            dx = [-dv, dv, 0, 0, 0, 0][action]
-            dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, dv][action]
-            finger_angle = 0.0  # Close the gripper
-            real_action = [dx, dy, dz, 0, finger_angle]
-        else:
-            if self.action_joints:
-                arm_joints = np.array(self._kuka.joint_positions)[:7]
-                d_theta = DELTA_THETA
-                # Add noise to action
-                d_theta += self.np_random.normal(0.0, scale=NOISE_STD_JOINTS)
-                # append [0,0] for finger angles
-                real_action = list(action * d_theta + arm_joints) + [0, 0]  # TODO remove up action
-            else:
-                dv = DELTA_V_CONTINUOUS
-                # Add noise to action
-                dv += self.np_random.normal(0.0, scale=NOISE_STD_CONTINUOUS)
-                dx = action[0] * dv
-                dy = action[1] * dv
-                dz = action[2] * dv
-                finger_angle = 0.0  # Close the gripper
-                real_action = [dx, dy, dz, 0, finger_angle]
-
-        if VERBOSE:
-            print(np.array2string(np.array(real_action), precision=2))
-
-        return self.step2(real_action)
 
     def step2(self, action):
         """
         :param action:([float])
         """
         # Apply force to the button
-        p.setJointMotorControl2(self.button_uid, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
-        p.setJointMotorControl2(self.button_uid2, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
+        for uid in self.button_uid:
+            p.setJointMotorControl2(uid, BUTTON_GLIDER_IDX, controlMode=p.POSITION_CONTROL, targetPosition=0.1)
 
         for i in range(self._action_repeat):
             self._kuka.applyAction(action)
@@ -177,8 +134,8 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         if self._renders:
             time.sleep(self._timestep)
 
-        done = self._termination()
         reward = self._reward()
+        done = self._termination()
         if self.saver is not None:
             self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
@@ -189,21 +146,23 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
     def _reward(self):
         gripper_pos = self.getArmPos()
-        distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
+        distance = np.linalg.norm(self.button_all_pos[self.goal_id] - gripper_pos, 2)
         reward = 0
 
-        contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid)
-        contact_points2 = p.getContactPoints(self.button_uid2, self._kuka.kuka_uid)
-        self.n_contacts += int(len(contact_points) > 0)
+        contact_points = p.getContactPoints(self.button_uid[self.goal_id], self._kuka.kuka_uid)
+        self.n_contacts[self.goal_id] += int(len(contact_points) > 0)
 
-        if self.button_pressed:
-            self.n_contacts2 += int(len(contact_points2) > 0)
-            reward = int(len(contact_points2) > 0)
+        # for the sparse reward
+        if self.goal_id == len(self.button_uid)-1:
+            reward = int(len(contact_points) > 0)
 
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 and not self.button_pressed:
-            self.button_pos = self.button_pos2
-            self.button_pos[2] = 0.1
-            self.button_pressed = True
+        # next button
+        if self.n_contacts[self.goal_id] >= N_CONTACTS_BEFORE_TERMINATION - 1 and not self.button_pressed[self.goal_id]:
+            self.button_pressed[self.goal_id] = True
+            self.button_pressed.append(False)
+            if len(self.button_all_pos) > self.goal_id + 1:
+                self.button_pos = self.button_all_pos[self.goal_id + 1]
+                self.goal_id += 1
 
         contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
 
@@ -213,8 +172,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         else:
             self.n_steps_outside = 0
 
-        if contact_with_table or ((self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1) and (
-                self.n_contacts2 >= N_CONTACTS_BEFORE_TERMINATION - 1)) \
+        if contact_with_table or (self.n_contacts[-1] >= N_CONTACTS_BEFORE_TERMINATION - 1) \
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
 
@@ -222,8 +180,8 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             # both Buttons pushed
             if self.terminated and reward > 0:
                 return 50
-            # button 1 pushed
-            elif (self.n_contacts < N_CONTACTS_BEFORE_TERMINATION - 1) and (len(contact_points) > 0):
+            # button pushed
+            elif (self.n_contacts[self.goal_id] < N_CONTACTS_BEFORE_TERMINATION - 1) and (len(contact_points) > 0):
                 return 25
             # table
             elif contact_with_table:

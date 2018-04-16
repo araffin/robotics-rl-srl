@@ -48,19 +48,13 @@ class Kuka:
         self.kuka_uid = None
         # affects the clipping of the end_effector_pos
         if small_constraints:
-            self.min_x = 0.50
-            self.max_x = 0.65
-            self.min_y = -0.17
-            self.max_y = 0.22
-            self.min_z = 0
-            self.max_z = 0.5
+            self.min_x, self.max_x = 0.50, 0.65
+            self.min_y, self.max_y = -0.17, 0.22
+            self.min_z, self.max_z = 0, 0.5
         else:
-            self.min_x = 0.35
-            self.max_x = 0.65
-            self.min_y = -0.30
-            self.max_y = 0.30
-            self.min_z = 0
-            self.max_z = 0.5
+            self.min_x, self.max_x = 0.35, 0.65
+            self.min_y, self.max_y = -0.30, 0.30
+            self.min_z, self.max_z = 0, 0.5
         self.reset()
 
     def reset(self):
