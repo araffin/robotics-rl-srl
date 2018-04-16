@@ -16,7 +16,7 @@ from srl_priors.preprocessing import N_CHANNELS
 from . import kuka
 
 #  Number of steps before termination
-MAX_STEPS = 500
+MAX_STEPS = 1000  # WARNING: should be also change in __init__.py (timestep_limit)
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
 N_STEPS_OUTSIDE_SAFETY_SPHERE = 5000
@@ -337,8 +337,8 @@ class KukaButtonGymEnv(gym.Env):
         if self._renders:
             time.sleep(self._timestep)
 
-        done = self._termination()
         reward = self._reward()
+        done = self._termination()
         if self.saver is not None:
             self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
@@ -427,8 +427,8 @@ class KukaButtonGymEnv(gym.Env):
         else:
             self.n_steps_outside = 0
 
-        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 \
-                or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
+        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION \
+                or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE:
             self.terminated = True
 
         if SHAPE_REWARD:

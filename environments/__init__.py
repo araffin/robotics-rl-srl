@@ -12,7 +12,7 @@ def register(_id, **kvargs):
 register(
     _id='KukaButtonGymEnv-v0',
     entry_point='environments.kuka_button_gym_env:KukaButtonGymEnv',
-    timestep_limit=500,
+    timestep_limit=5000,  # This limit is changed in the file
     reward_threshold=5.0,  # Threshold at which the environment is considered as solved
 )
 
@@ -33,7 +33,7 @@ register(
 register(
     _id='Baxter-v0',
     entry_point='environments.gym_baxter.baxter_env:BaxterEnv',
-    timestep_limit=500,
+    timestep_limit=5000, # This limit is changed in the file
     # Threshold at which the environment is considered as solved
     reward_threshold=5.0,
 )
