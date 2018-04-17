@@ -40,12 +40,18 @@ def env_thread(args, thread_num, partition=True):
     if args.env == "KukaButtonGymEnv":
         env_class = kuka_env.KukaButtonGymEnv
         kuka_env.MAX_DISTANCE = args.max_distance
+        kuka_env.FORCE_DOWN = True
+        kuka_env.BUTTON_RANDOM = args.relative
     elif args.env == "Kuka2ButtonGymEnv":
         env_class = kuka_env_2.Kuka2ButtonGymEnv
         kuka_env_2.MAX_DISTANCE = args.max_distance
+        kuka_env_2.FORCE_DOWN = True
+        kuka_env_2.BUTTON_RANDOM = args.relative
     elif args.env == "KukaRandButtonGymEnv":
         env_class = kuka_env_rand.KukaRandButtonGymEnv
         kuka_env_rand.MAX_DISTANCE = args.max_distance
+        kuka_env_rand.FORCE_DOWN = True
+        kuka_env_rand.BUTTON_RANDOM = args.relative
 
     if partition:
         name = args.save_name + "_part-" + str(thread_num)
@@ -93,6 +99,7 @@ def main():
     parser.add_argument('--seed', type=int, default=0, help='the seed')
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else (including partial parts if they exist)')
+    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
 
     args = parser.parse_args()
 
