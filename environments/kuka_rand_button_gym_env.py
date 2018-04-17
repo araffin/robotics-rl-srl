@@ -20,8 +20,9 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
                  urdf_root=pybullet_data.getDataPath(),
                  renders=False,
                  is_discrete=True,
+                 multi_view=False,
                  name="kuka_rand_button_gym"):
-        super(KukaRandButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, name=name)
+        super(KukaRandButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, multi_view=multi_view, name=name)
 
     def reset(self):
         """
