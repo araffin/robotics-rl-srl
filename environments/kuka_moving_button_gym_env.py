@@ -10,8 +10,7 @@ from .kuka_button_gym_env import *
 
 class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     """
-    Gym wrapper for Kuka environment with a push button in a random position
-        and some random objects
+    Gym wrapper for Kuka environment with a push button that is moving
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool)
