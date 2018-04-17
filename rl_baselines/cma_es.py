@@ -60,7 +60,7 @@ class PytorchPolicy(Policy):
         :return: the action
         """
         if not self.srl_model:
-            obs = obs.reshape([1] + obs.shape)
+            obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
