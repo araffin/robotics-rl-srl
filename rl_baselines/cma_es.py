@@ -7,12 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
-from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize
+from rl_baselines.utils import createEnvs
 from srl_priors.utils import printYellow
 
 
@@ -284,7 +281,6 @@ def main(args, callback=None):
     if args.srl_model != "":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
-        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
         net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
     else:
         net = CNNPolicyPytorch(action_space)
