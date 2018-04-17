@@ -112,6 +112,7 @@ the available environments are:
 - KukaButtonGymEnv-v0 (default): a single button in front of the arm
 - Kuka2ButtonGymEnv-v0: 2 buttons next to each others, they must be pressed in order
 - KukaRandButtonGymEnv-v0: a single button in front of the arm, with some randomly positioned objects
+- KukaMovingButtonGymEnv-v0: a single button in front of the arm, slowly moving left to right
 
 ## State Representation Learning Models
 
