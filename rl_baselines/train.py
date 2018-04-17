@@ -66,7 +66,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     # Actions in joint space or relative position space
     kuka_env.ACTION_JOINTS = args.action_joints
     args.log_dir += args.env + "/"
-    
+
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
         path = models.get(args.srl_model)
@@ -164,7 +164,7 @@ def callback(_locals, _globals):
 def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='deepq', 
+    parser.add_argument('--algo', default='ppo2',
                         choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma-es'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
@@ -191,6 +191,7 @@ def main():
     parser.add_argument('-joints', '--action-joints',
                         help='set actions to the joints of the arm directly, instead of inverse kinematics',
                         action='store_true', default=False)
+    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -235,6 +236,10 @@ def main():
     printGreen("\nAgent = {} \n".format(args.algo))
 
     algo.kuka_env.ACTION_REPEAT = args.action_repeat
+    # Random init position for button
+    algo.kuka_env.BUTTON_RANDOM = args.relative
+    # Allow up action
+    # algo.kuka_env.FORCE_DOWN = False
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()

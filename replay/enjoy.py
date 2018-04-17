@@ -55,6 +55,9 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
 
     kuka_env.ACTION_JOINTS = train_args["action_joints"]
     kuka_env.IS_DISCRETE = not train_args["continuous_actions"]
+    kuka_env.BUTTON_RANDOM = train_args.get('relative', False)
+    # Allow up action
+    # kuka_env.FORCE_DOWN = False
 
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
