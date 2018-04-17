@@ -2,6 +2,7 @@ from . import kuka_button_gym_env as kuka_env
 
 kuka_env.MAX_STEPS = 1500
 kuka_env.MAX_DISTANCE = 2
+kuka_env.FORCE_DOWN = False
 
 from .kuka_button_gym_env import *
 
@@ -156,7 +157,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             reward = int(len(contact_points) > 0)
 
         # next button
-        if self.n_contacts[self.goal_id] >= N_CONTACTS_BEFORE_TERMINATION - 1 and not self.button_pressed[self.goal_id]:
+        if self.n_contacts[self.goal_id] >= N_CONTACTS_BEFORE_TERMINATION and not self.button_pressed[self.goal_id]:
             self.button_pressed[self.goal_id] = True
             self.button_pressed.append(False)
             if len(self.button_all_pos) > self.goal_id + 1:
@@ -171,7 +172,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         else:
             self.n_steps_outside = 0
 
-        if contact_with_table or (self.n_contacts[-1] >= N_CONTACTS_BEFORE_TERMINATION - 1) \
+        if contact_with_table or (self.n_contacts[-1] >= N_CONTACTS_BEFORE_TERMINATION) \
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE - 1:
             self.terminated = True
 
@@ -180,7 +181,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             if self.terminated and reward > 0:
                 return 50
             # button pushed
-            elif (self.n_contacts[self.goal_id] < N_CONTACTS_BEFORE_TERMINATION - 1) and (len(contact_points) > 0):
+            elif (self.n_contacts[self.goal_id] < N_CONTACTS_BEFORE_TERMINATION) and (len(contact_points) > 0):
                 return 25
             # table
             elif contact_with_table:
