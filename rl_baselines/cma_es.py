@@ -273,11 +273,8 @@ def main(args, callback=None):
     :param args: (argparse.Namespace Object)
     :param callback: (function)
     """
-
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True)
-            for i in range(args.num_population)]
-    envs = SubprocVecEnv(envs)
-    envs = VecFrameStack(envs, args.num_stack)
+    args.num_cpu = args.num_population
+    envs = createEnvs(args, allow_early_resets=True)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)
