@@ -7,12 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
-from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize
+from rl_baselines.utils import createEnvs
 from srl_priors.utils import printYellow
 
 
@@ -63,7 +60,7 @@ class PytorchPolicy(Policy):
         :return: the action
         """
         if not self.srl_model:
-            obs = obs.reshape([1] + obs.shape)
+            obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
@@ -273,11 +270,8 @@ def main(args, callback=None):
     :param args: (argparse.Namespace Object)
     :param callback: (function)
     """
-
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True)
-            for i in range(args.num_population)]
-    envs = SubprocVecEnv(envs)
-    envs = VecFrameStack(envs, args.num_stack)
+    args.num_cpu = args.num_population
+    envs = createEnvs(args, allow_early_resets=True)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)
@@ -287,7 +281,6 @@ def main(args, callback=None):
     if args.srl_model != "":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
-        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
         net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
     else:
         net = CNNPolicyPytorch(action_space)

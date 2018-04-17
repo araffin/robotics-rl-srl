@@ -153,12 +153,13 @@ class CustomVecNormalize(VecEnvWrapper):
                 setattr(self, name, pickle.load(f))
 
 
-def createEnvs(args):
+def createEnvs(args, allow_early_resets=False):
     """
     :param args: (argparse.Namespace Object)
+    :param allow_early_resets: (bool)
     :return: (Gym VecEnv)
     """
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets)
             for i in range(args.num_cpu)]
 
     if len(envs) == 1:
