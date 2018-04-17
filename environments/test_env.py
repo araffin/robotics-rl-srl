@@ -37,6 +37,8 @@ def env_thread(args, thread_num, partition=True):
     :param thread_num: (int) The thread ID of the environment session
     :param partition: (bool) If the output should be in multiple parts (default=True)
     """
+    # As Kuka2ButtonGymEnv and KukaRandButtonGymEnv inherite from KukaButtonGymEnv, we need to define the parameter for
+    # both, as some functions are in KukaButtonGymEnv and the rest are in the target class
     if args.env == "KukaButtonGymEnv":
         env_class = kuka_env.KukaButtonGymEnv
     elif args.env == "Kuka2ButtonGymEnv":
