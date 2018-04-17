@@ -290,7 +290,7 @@ class KukaButtonGymEnv(gym.Env):
             dv += self.np_random.normal(0.0, scale=NOISE_STD)
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, dv][action]  # Remove up action
+            dz = [0, 0, 0, 0, -dv, -dv][action]  # Remove up action
             # da = [0, 0, 0, 0, 0, -0.1, 0.1][action]  # end effector angle
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
@@ -309,8 +309,8 @@ class KukaButtonGymEnv(gym.Env):
                 dv += self.np_random.normal(0.0, scale=NOISE_STD_CONTINUOUS)
                 dx = action[0] * dv
                 dy = action[1] * dv
-                dz = action[2] * dv
-                # dz = -abs(action[2] * dv)  # Remove up action
+                # dz = action[2] * dv
+                dz = -abs(action[2] * dv)  # Remove up action
                 finger_angle = 0.0  # Close the gripper
                 real_action = [dx, dy, dz, 0, finger_angle]
 
