@@ -136,3 +136,4 @@ dependencies:
     - visdom==0.1.7
     - zmq==0.0.0
     - cma==2.5.3
+    - h5py==2.8.0rc1

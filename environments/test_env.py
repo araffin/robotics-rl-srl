@@ -12,6 +12,7 @@ import numpy as np
 import environments.kuka_2button_gym_env as kuka_env_2
 import environments.kuka_button_gym_env as kuka_env
 import environments.kuka_rand_button_gym_env as kuka_env_rand
+import environments.kuka_moving_button_gym_env as kuka_env_moving
 from srl_priors.utils import printRed
 
 
@@ -51,6 +52,11 @@ def env_thread(args, thread_num, partition=True):
         kuka_env_rand.MAX_DISTANCE = args.max_distance
         kuka_env_rand.BUTTON_RANDOM = args.relative
         kuka_env_rand.FORCE_DOWN = True
+    elif args.env == "KukaMovingButtonGymEnv":
+        env_class = kuka_env_moving.KukaMovingButtonGymEnv
+        kuka_env_moving.MAX_DISTANCE = args.max_distance
+        kuka_env_moving.BUTTON_RANDOM = args.relative
+        kuka_env_moving.FORCE_DOWN = True
 
     kuka_env.MAX_DISTANCE = args.max_distance
     kuka_env.BUTTON_RANDOM = args.relative
@@ -64,8 +70,6 @@ def env_thread(args, thread_num, partition=True):
     env = env_class(renders=(thread_num == 0 and not args.no_display), is_discrete=(not args.continuous_actions),
                     multi_view=args.multi_view, name=name)
     env.seed(args.seed + thread_num)
-
-    print(kuka_env.FORCE_DOWN)
 
     frames = 0
     start_time = time.time()
@@ -95,7 +99,7 @@ def main():
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv', help='The environment wanted',
-                        choices=["KukaButtonGymEnv", "Kuka2ButtonGymEnv", "KukaRandButtonGymEnv"])
+                        choices=["KukaButtonGymEnv", "Kuka2ButtonGymEnv", "KukaRandButtonGymEnv", "KukaMovingButtonGymEnv"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
