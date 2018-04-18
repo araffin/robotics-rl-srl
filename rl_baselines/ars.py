@@ -21,15 +21,17 @@ class ARS:
     :param step_size: (float) the step size for the parameter update
     :param exploration_noise: (float) standard deviation of the exploration noise
     :param continuous_actions: (bool)
+    :param max_step_amplitude: (float) the maximum amplitude factor for step_size 
     """
 
     def __init__(self, n_population, observation_space, action_space, top_population=2,
-                 step_size=0.02, exploration_noise=0.02, continuous_actions=False):
+                 step_size=0.02, exploration_noise=0.02, continuous_actions=False, max_step_amplitude=10):
         self.n_population = n_population
         self.top_population = top_population
         self.step_size = step_size
         self.exploration_noise = exploration_noise
         self.continuous_actions = continuous_actions
+        self.max_step_amplitude = max_step_amplitude
 
         self.M = np.zeros((observation_space, action_space))
 
@@ -102,7 +104,8 @@ class ARS:
             delta_sum = 0
             for i in range(self.top_population):
                 delta_sum += (r[idx[i], 0] - r[idx[i], 1]) * delta[idx[i]]
-            self.M += self.step_size / (self.top_population * np.std(r[idx[:self.top_population]])) * delta_sum
+            # here, we need to be careful with the normalization of step_size, as the variance can be 0 on sparse reward
+            self.M += self.step_size / max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) * delta_sum
 
 
 def load(save_path):
@@ -129,6 +132,8 @@ def customArguments(parser):
     parser.add_argument('--top-population', help='Number of top population to use in update', type=int, default=2)
     parser.add_argument('--algo-type', help='"v1" is standard ARS, "v2" is for rolling average normalization.',
                         type=str, default="v2", choices=["v1", "v2"])
+    parser.add_argument('--max-step-amplitude', type=float, default=10, 
+                        help='Set the maximum update vectors amplitude (mesured in factors of step_size)')
     return parser
 
 
@@ -165,7 +170,8 @@ def main(args, callback=None):
         top_population=args.top_population,
         step_size=args.step_size,
         exploration_noise=args.exploration_noise,
-        continuous_actions=args.continuous_actions
+        continuous_actions=args.continuous_actions,
+        max_step_amplitude=args.max_step_amplitude
     )
 
     model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))

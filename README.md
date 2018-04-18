@@ -86,7 +86,7 @@ python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/
 
 To plot a learning curve from logs in visdom, you have to pass path to the experiment log folder:
 ```
-python -m replay.plot --log-dir /logs/raw_pixels/ppo2/18-03-14_11h04_16/
+python -m replay.plots --log-dir /logs/raw_pixels/ppo2/18-03-14_11h04_16/
 ```
 
 To aggregate data from different experiments (different seeds) and plot them (mean + standard error).

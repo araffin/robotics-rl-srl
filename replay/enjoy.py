@@ -79,25 +79,14 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
     log_dir += "{}/{}/".format(algo, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     os.makedirs(log_dir, exist_ok=True)
 
-    if algo in ["deepq", "ddpg"]:
+    if algo not in ["deepq", "ddpg"]:
+        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
+                              for i in range(load_args.num_cpu)])
+        envs = VecFrameStack(envs, train_args['num_stack'])
+    else:
         if load_args.num_cpu > 1:
             printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
         envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir)])
-        # Normalize only raw pixels
-        normalize = train_args['srl_model'] == ""
-        envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
-    else:
-        if algo == "ars":
-            num_cpu = load_args.num_population * 2
-        elif algo == "cma-es":
-            num_cpu = load_args.num_population
-        else:
-            num_cpu = load_args.num_cpu
-
-        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
-                              for i in range(num_cpu)])
-        envs = VecFrameStack(envs, train_args['num_stack'])
-
 
     if train_args["srl_model"] != "":
         # special case where ars type v1 is not normalized
@@ -110,5 +99,11 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
         except FileNotFoundError:
             envs.training = True
             printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
+
+
+    if algo in ["deepq", "ddpg"]:
+        # Normalize only raw pixels
+        normalize = train_args['srl_model'] == ""
+        envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
 
     return load_args, train_args, load_path, log_dir, algo, envs

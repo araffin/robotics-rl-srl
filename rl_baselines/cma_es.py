@@ -100,9 +100,9 @@ class CNNPolicyPytorch(nn.Module):
     :param out_dim: (int)
     """
 
-    def __init__(self, out_dim):
+    def __init__(self, in_dim, out_dim):
         super(CNNPolicyPytorch, self).__init__()
-        self.conv1 = nn.Conv2d(3, 8, kernel_size=5, padding=2, stride=2)
+        self.conv1 = nn.Conv2d(in_dim, 8, kernel_size=5, padding=2, stride=2)
         self.norm1 = nn.BatchNorm2d(8)
         self.pool1 = nn.MaxPool2d(2)
 
@@ -180,7 +180,7 @@ class CMAES:
         self.init_sigma = sigma
         self.continuous_actions = continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
-        self.best_model = self.es.result.xbest
+        self.best_model = np.array(self.policy.getParamSpace() * [mu])
 
     def getAction(self, obs):
         """
@@ -223,7 +223,7 @@ class CMAES:
                         actions.append(None)  # do nothing, as we are done
 
                 obs, reward, new_done, info = env.step(actions)
-                step += self.n_population
+                step += np.sum(~done)
 
                 done = np.bitwise_or(done, new_done)
 
@@ -283,7 +283,7 @@ def main(args, callback=None):
         args.policy = "mlp"
         net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
     else:
-        net = CNNPolicyPytorch(action_space)
+        net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
 
     policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
 
