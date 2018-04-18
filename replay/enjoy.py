@@ -5,12 +5,11 @@ from datetime import datetime
 
 import yaml
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 import environments.kuka_button_gym_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
-from rl_baselines.utils import CustomVecNormalize
+from rl_baselines.utils import CustomVecNormalize, VecFrameStack
 from srl_priors.utils import printGreen, printYellow
 
 
@@ -81,19 +80,29 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
     os.makedirs(log_dir, exist_ok=True)
 
     if algo not in ["deepq", "ddpg"]:
-        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
-                              for i in range(load_args.num_cpu)])
-        envs = VecFrameStack(envs, train_args['num_stack'])
-    else:
         if load_args.num_cpu > 1:
             printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
         envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir)])
         # Normalize only raw pixels
         normalize = train_args['srl_model'] == ""
         envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
+    else:
+        if algo == "ars":
+            num_cpu = load_args.num_population * 2
+        elif algo == "cma-es":
+            num_cpu = load_args.num_population
+        else:
+            num_cpu = load_args.num_cpu
+
+        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
+                              for i in range(num_cpu)])
+        envs = VecFrameStack(envs, train_args['num_stack'])
+
 
     if train_args["srl_model"] != "":
-        envs = CustomVecNormalize(envs, training=False)
+        # special case where ars type v1 is not normalized
+        if algo != "ars" or load_args.type != "v1":
+            envs = CustomVecNormalize(envs, training=False)
         # Temp fix for experiments where no running average were saved
         try:
             printGreen("Loading saved running average")
