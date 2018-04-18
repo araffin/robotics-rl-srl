@@ -32,7 +32,7 @@ def main():
     args, train_args = parser.parse_known_args()
 
     # Sanity check
-    assert args.num_timesteps > 0, "Error: --num-timesteps cannot be 0 or less"
+    assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
 
 
     if args.srl_model == "all":

@@ -10,6 +10,8 @@ from pprint import pprint
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
+import tensorflow as tf
+import gym.envs.registration
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
@@ -39,6 +41,8 @@ params_saved = False
 best_mean_reward = -10000
 
 win, win_smooth, win_episodes = None, None, None
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
@@ -195,6 +199,16 @@ def main():
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
+
+    # Sanity check
+    assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
+    assert args.env in gym.envs.registration.registry.env_specs, \
+        "Error: could not find the environment {}".format(args.env)
+    assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
+    assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
+    assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
+    assert args.port >= 0 and args.port < 65535, \
+        "Error: invalid visdom port number {}, port number must be an unsigned 16bit number [0,65535].".format(args.port)
 
     ENV_NAME = args.env
     ALGO = args.algo
