@@ -18,23 +18,15 @@ class ARS:
     :param n_population: (int)
     :param observation_space: (int) vectorized length of the obs space
     :param action_space: (int) vectorized length of the action space
-    :param algo_type: (str) version of ARS (v1 without rolling norm, v2 with)
     :param top_population: (int) how many of the population are used in updating
     :param step_size: (float) the step size for the parameter update
     :param exploration_noise: (float) standard deviation of the exploration noise
     :param continuous_actions: (bool)
     """
 
-    def __init__(self, n_population, observation_space, action_space, algo_type='v1', top_population=2,
+    def __init__(self, n_population, observation_space, action_space, top_population=2,
                  step_size=0.02, exploration_noise=0.02, continuous_actions=False):
-        self.n = 0
-        self.mu = 0
-        self.sigma = 0
-        self.new_mu = 0
-        self.new_sigma = 0
-
         self.n_population = n_population
-        self.algo_type = algo_type
         self.top_population = top_population
         self.step_size = step_size
         self.exploration_noise = exploration_noise
@@ -49,26 +41,7 @@ class ARS:
         :param delta: ([float]) the exploration noise added to the param (default=0)
         :return: ([float]) the chosen action
         """
-        #  v2 is a rolling normalized version of v1.
-        if self.algo_type == "v2":
-            self.n += 1
-            if self.n == 1:
-                # init rolling average
-                self.mu = obs
-                self.new_mu = self.mu
-                self.sigma = self.mu
-                self.new_sigma = 0
-            else:
-                rolling_delta = obs - self.new_mu
-                self.new_mu += rolling_delta / self.n
-                self.new_sigma += rolling_delta * rolling_delta * (self.n - 1) / self.n
-
-            x = (obs - self.mu) / (self.sigma + 1e-8)
-
-        else:
-            x = obs
-
-        action = np.dot(x, self.M + delta)
+        action = np.dot(obs, self.M + delta)
 
         if not self.continuous_actions:
             action = np.argmax(action)
@@ -125,10 +98,6 @@ class ARS:
                 if (step / self.n_population + 1) % 500 == 0:
                     print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
 
-            if self.algo_type == "v2":
-                self.mu = self.new_mu
-                self.sigma = np.sqrt(self.new_sigma / (self.n - 1))
-
             idx = np.argsort(np.max(r, axis=1))[::-1]
 
             delta_sum = 0
@@ -160,7 +129,7 @@ def customArguments(parser):
     parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)
     parser.add_argument('--top-population', help='Number of top population to use in update', type=int, default=2)
     parser.add_argument('--algo-type', help='"v1" is standard ARS, "v2" is for rolling average normalization.',
-                        type=str, default="v1", choices=["v1", "v2"])
+                        type=str, default="v2", choices=["v1", "v2"])
     return parser
 
 
@@ -182,7 +151,8 @@ def main(args, callback=None):
     if args.srl_model != "":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
-        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+        if args.algo_type == "v2":
+            envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)
@@ -193,7 +163,6 @@ def main(args, callback=None):
         args.num_population,
         np.prod(envs.observation_space.shape),
         action_space,
-        algo_type=args.algo_type,
         top_population=args.top_population,
         step_size=args.step_size,
         exploration_noise=args.exploration_noise,
