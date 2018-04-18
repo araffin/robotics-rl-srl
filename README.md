@@ -63,10 +63,10 @@ python -m rl_baselines.train --algo ppo2 --log-dir logs/
 
 To load a trained agent and see the result:
 ```
-python -m replay.enjoy_baselines --log-dir path/to/trained/agent/
+python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
 ```
 
-Contiuous actions have been implemented for DDPG, PPO2 and random agent.
+Contiuous actions have been implemented for DDPG, PPO2, ARS, CMA-ES and random agent.
 To use continuous actions in the position space:
 ```
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c
