@@ -79,7 +79,7 @@ def parseArguments(supported_models, log_dir="/tmp/gym/test/"):
     log_dir += "{}/{}/".format(algo, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     os.makedirs(log_dir, exist_ok=True)
 
-    if algo not in ["deepq", "ddpg"]:
+    if algo in ["deepq", "ddpg"]:
         if load_args.num_cpu > 1:
             printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
         envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir)])
