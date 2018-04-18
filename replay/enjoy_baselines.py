@@ -84,7 +84,7 @@ for _ in range(load_args.num_timesteps):
     elif algo == "ddpg":
         actions = model.pi(obs, apply_noise=False, compute_Q=False)[0]
     elif algo == "ars":
-        actions = model.getAction(obs.flatten())
+        actions = [model.getAction(obs.flatten())]
     elif algo == "cma-es":
         actions = [model.getAction(obs)]
     obs, rewards, dones, _ = envs.step(actions)
