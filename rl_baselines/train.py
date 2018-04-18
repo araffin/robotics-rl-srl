@@ -201,9 +201,9 @@ def main():
     args, unknown = parser.parse_known_args()
 
     # Sanity check
-    assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.env in gym.envs.registration.registry.env_specs, \
         "Error: could not find the environment {}".format(args.env)
+    assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
