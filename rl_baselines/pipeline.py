@@ -5,9 +5,12 @@ import os
 import argparse
 import subprocess
 
+import tensorflow as tf
+
 from srl_priors.utils import printGreen, printRed
 
 SEEDS = list(range(15))  # the seeds used in training the baseline.
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 
 def main():
@@ -27,6 +30,10 @@ def main():
 
     # returns the parsed arguments, and the rest are assumed to be arguments for rl_baselines.train
     args, train_args = parser.parse_known_args()
+
+    # Sanity check
+    assert args.num_timesteps > 0, "Error: --num-timesteps cannot be 0 or less"
+
 
     if args.srl_model == "all":
         models = ["autoencoder", "ground_truth", "srl_priors", "supervised",
