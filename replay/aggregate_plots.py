@@ -165,6 +165,10 @@ if __name__ == '__main__':
         if train_args["shape_reward"] == args.shape_reward:
             folders.append(path)
 
+    if len(folders) == 0:
+        printYellow("No experiment corresponding to the criterions")
+        exit()
+
     srl_model = train_args['srl_model'] if train_args['srl_model'] != "" else "raw pixels"
     if args.timesteps:
         title = srl_model + " [Timesteps]"
