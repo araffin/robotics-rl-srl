@@ -157,10 +157,11 @@ def callback(_locals, _globals):
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
+        is_es = ALGO in ['ars', 'cma-es']
+        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed", is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
-                                   title=PLOT_TITLE + " [Episodes]")
+                                   title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
     return False
 
