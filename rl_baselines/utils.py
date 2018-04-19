@@ -26,14 +26,15 @@ def createTensorflowSession():
     tf.Session(config=config).__enter__()
 
 
-def computeMeanReward(log_dir, last_n_episodes):
+def computeMeanReward(log_dir, last_n_episodes, is_es=False):
     """
     Compute the mean reward for the last n episodes
     :param log_dir: (str)
     :param last_n_episodes: (int)
+    :param is_es: (bool)
     :return: (bool, numpy array)
     """
-    result, _ = loadCsv(log_dir)
+    result, _ = loadCsv(log_dir, is_es=is_es)
     if len(result) == 0:
         return False, 0
     y = np.array(result)[:, 1]

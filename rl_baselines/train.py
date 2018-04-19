@@ -117,6 +117,8 @@ def callback(_locals, _globals):
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
+    is_es = ALGO in ['ars', 'cma-es']
+
     # Save RL agent parameters
     if not params_saved:
         # Filter locals
@@ -128,7 +130,7 @@ def callback(_locals, _globals):
     # Save the RL model if it has improved
     if (n_steps + 1) % SAVE_INTERVAL == 0:
         # Evaluate network performance
-        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL)
+        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es)
         if ok:
             print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
         else:
@@ -157,7 +159,6 @@ def callback(_locals, _globals):
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        is_es = ALGO in ['ars', 'cma-es']
         win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
         win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed", is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
