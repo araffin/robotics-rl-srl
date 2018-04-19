@@ -110,3 +110,37 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         p.resetBasePositionAndOrientation(self.button_uid, self.button_pos - np.array([0,0,BUTTON_DISTANCE_HEIGHT]), [0,0,0,1])
 
         return super(KukaMovingButtonGymEnv, self).step(action)
+
+    def _reward(self):
+        gripper_pos = self.getArmPos()
+        distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
+        # print(distance)
+
+        contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid, BUTTON_LINK_IDX)
+        reward = int(len(contact_points) > 0)
+        self.n_contacts += reward
+
+        contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
+
+        if distance > MAX_DISTANCE or contact_with_table:
+            reward = -1
+            self.n_steps_outside += 1
+        else:
+            self.n_steps_outside = 0
+
+        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION \
+                or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE:
+            self.terminated = True
+
+        if SHAPE_REWARD:
+            # Button pushed
+            if self.terminated and reward > 0:
+                return 50
+            # out of bounds
+            elif self.terminated and reward < 0:
+                return -250
+            # anything else
+            else:
+                return -distance
+
+        return reward
