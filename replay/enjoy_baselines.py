@@ -121,7 +121,7 @@ def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/"):
 
     if train_args["srl_model"] != "":
         # special case where ars type v1 is not normalized
-        if algo != "ars" or load_args.type != "v1":
+        if algo != "ars" or train_args['algo_type'] != "v1":
             envs = CustomVecNormalize(envs, training=False)
         # Temp fix for experiments where no running average were saved
         try:
