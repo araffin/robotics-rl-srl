@@ -53,6 +53,9 @@ def resetPose():
 
 
 class ImageCallback(object):
+    """
+    Image callback for ROS
+    """
     def __init__(self):
         super(ImageCallback, self).__init__()
         self.valid_img = None
@@ -112,20 +115,13 @@ if SECOND_CAM_TOPIC is not None:
 # Retrieve the different gazebo objects
 left_arm = baxter_interface.Limb('left')
 right_arm = baxter_interface.Limb('right')
-ee_orientation = baxter_utils.get_ee_orientation(left_arm)
-
-# baxter_position = arm_utils.point2array(baxter_pose.position)
-# baxter_orientation = arm_utils.quat2array(baxter_pose.orientation)
-
-# ===== Get list of allowed actions ====
-possible_actions = getActions(DELTA_POS, n_actions=6)
-rospy.sleep(1)
 
 print("Initializing robot...")
 # Init robot pose
 resetPose()
 print("Init Robot pose over")
 end_point_position = baxter_utils.get_ee_position(left_arm)
+ee_orientation = baxter_utils.get_ee_orientation(left_arm)
 
 print('Starting up on port number {}'.format(SERVER_PORT))
 context = zmq.Context()
@@ -146,6 +142,7 @@ episode_folder = None
 while not should_exit[0]:
     msg = socket.recv_json()
     command = msg.get('command', '')
+
     if command == 'reset':
         resetPose()
         end_point_position = baxter_utils.get_ee_position(left_arm)
@@ -153,6 +150,7 @@ while not should_exit[0]:
         action = [0, 0, 0]
         episode_idx += 1
         episode_step = 0
+
         if SECOND_CAM_TOPIC is not None:
             episode_folder = "record_{:03d}".format(episode_idx)
             try:
@@ -181,13 +179,13 @@ while not should_exit[0]:
         print(e)
 
     if joints:
-        # action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
         end_point_position = end_point_position_candidate
         left_arm.move_to_joint_positions(joints, timeout=3)
     else:
         print("No joints position, returning previous one")
 
     reward = 0
+    # Consider that we touched the button if we are close enough
     if np.linalg.norm(BUTTON_POS - end_point_position, 2) < DIST_TO_TARGET_THRESHOLD:
         reward = 1
         print("Button touched!")
@@ -202,7 +200,7 @@ while not should_exit[0]:
         },
         flags=zmq.SNDMORE
     )
-
+    # Retrieve last image from image topic
     img = image_cb_wrapper.valid_img
 
     if SECOND_CAM_TOPIC is not None:
@@ -212,6 +210,5 @@ while not should_exit[0]:
     img = np.ascontiguousarray(img, dtype=np.uint8)
     sendMatrix(socket, img)
 
-# TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
 print(" Exiting server - closing socket...")
 socket.close()
