@@ -79,7 +79,7 @@ def loadCsv(log_folder, is_es=False):
         datas.append(data)
 
     if is_es:
-        max_data_len = int(np.max([len(data) for data in datas]))
+        max_data_len = np.max([len(data) for data in datas])
 
         # get the reward for each file, and make sure they are all the same length
         r_list = []
@@ -87,7 +87,7 @@ def loadCsv(log_folder, is_es=False):
             if len(data) == max_data_len:
                 r_list.append([x[2] for x in data])
             else:
-                r_list.append([x[2] for x in data] + ((max_data_len - len(data)) * [float('-inf')]))
+                r_list.append([x[2] for x in data] + ((max_data_len - len(data)) * [-np.inf]))
         max_sess = np.argmax(r_list, axis=0)
 
         result = []
