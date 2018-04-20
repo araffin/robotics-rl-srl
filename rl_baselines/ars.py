@@ -33,6 +33,7 @@ class ARS:
         self.continuous_actions = continuous_actions
         self.max_step_amplitude = max_step_amplitude
 
+        # The linear policy, initialized to zero
         self.M = np.zeros((observation_space, action_space))
 
     def getAction(self, obs, delta=0):

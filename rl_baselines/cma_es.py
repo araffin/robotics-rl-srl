@@ -68,7 +68,7 @@ class PytorchPolicy(Policy):
         else:
             return np.argmax(F.softmax(self.model(self.make_var(obs)), dim=-1).data)
 
-    def make_var(self, arr):
+    def makeVar(self, arr):
         """
         Returns a pytorch Variable object from a numpy array
         :param arr: ([float])
@@ -209,6 +209,7 @@ class CMAES:
         while step < num_updates:
             obs = env.reset()
             r = np.zeros((self.n_population,))
+            # here, CMAEvolutionStrategy will return a list of param for each of the population
             population = self.es.ask()
             done = np.full((self.n_population,), False)
             while not done.all():

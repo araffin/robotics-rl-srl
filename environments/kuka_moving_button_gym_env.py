@@ -23,7 +23,8 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
                  is_discrete=True,
                  multi_view=False,
                  name="kuka_moving_button_gym"):
-        super(KukaMovingButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, multi_view=multi_view, name=name)
+        super(KukaMovingButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete,
+                                                     multi_view=multi_view, name=name)
 
     def reset(self):
         """
@@ -31,7 +32,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         :return: (numpy tensor) first observation of the env
         """
         # random initial direction
-        self.button_speed = BUTTON_SPEED * self.np_random.choice([-1,1])
+        self.button_speed = BUTTON_SPEED * self.np_random.choice([-1, 1])
         self.terminated = False
         self.n_contacts = 0
         self.n_steps_outside = 0
@@ -103,11 +104,14 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         """
         :param action: (int)
         """
+        # should the button hit the edge of the table, switch direction
         if (self.button_pos[1] > BUTTON_YMAX) or (self.button_pos[1] < BUTTON_YMIN):
             self.button_speed = -self.button_speed
 
+        # move the button pos
         self.button_pos[1] += self.button_speed
-        p.resetBasePositionAndOrientation(self.button_uid, self.button_pos - np.array([0,0,BUTTON_DISTANCE_HEIGHT]), [0,0,0,1])
+        p.resetBasePositionAndOrientation(self.button_uid, self.button_pos - np.array([0, 0, BUTTON_DISTANCE_HEIGHT]),
+                                          [0, 0, 0, 1])
 
         return super(KukaMovingButtonGymEnv, self).step(action)
 
