@@ -42,9 +42,11 @@ cv2.imshow("Image", np.zeros((10, 10, 3), dtype=np.uint8))
 
 should_exit = [False]
 
+
 # exit the script on ctrl+c
 def ctrl_c(signum, frame):
     should_exit[0] = True
+
 
 signal.signal(signal.SIGINT, ctrl_c)
 

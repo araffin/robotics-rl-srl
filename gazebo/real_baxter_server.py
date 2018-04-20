@@ -19,33 +19,27 @@ from geometry_msgs.msg import Point, Vector3, Vector3Stamped
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 
-from .constants import DELTA_POS, SERVER_PORT, IMAGE_TOPIC, \
-    ACTION_TOPIC, SECOND_CAM_TOPIC, DATA_FOLDER_SECOND_CAM
+from .constants import *
 from .utils import sendMatrix, getActions
 
-# Calibrated values for real baxter
-# Initial position of the arm
-LEFT_ARM_INIT_POS = [ 0.69850099,  0.14505832,  0.08032852]
-# Initial orientation
-LEFT_ARM_ORIENTATION = [ 0.99893116, -0.04207143, -0.00574656, -0.01826233]
-# Button position (target)
-BUTTON_POS = [ 0.7090276,   0.13833109, -0.11170768]
-# Distance below which the target is considered to be reached
-DIST_TO_TARGET_THRESHOLD = 0.035
-IK_SEED_POSITIONS = None
+assert USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to True in gazebo/constants.py"
 
 bridge = CvBridge()
-
 should_exit = [False]
+
 
 # exit the script on ctrl+c
 def ctrl_c(signum, frame):
     should_exit[0] = True
 
+
 signal.signal(signal.SIGINT, ctrl_c)
 
 
 def resetPose():
+    """
+    Enable Baxter robot (if necessary) and reset the lefy arm position
+    """
     rs = baxter_interface.RobotEnable(baxter_interface.CHECK_VERSION)
     if rs.state().enabled:
         print("Robot already enabled")
@@ -55,7 +49,8 @@ def resetPose():
         # Untuck arms
         subprocess.call(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
     print("Moving left arm to init")
-    move_left_arm_to_init()
+    moveLeftArmToInit()
+
 
 class ImageCallback(object):
     def __init__(self):
@@ -71,7 +66,7 @@ class ImageCallback(object):
             print("CvBridgeError:", e)
 
 
-def move_left_arm_to_init():
+def moveLeftArmToInit():
     """
     Initialize robot left arm to starting position (hardcoded)
     :return: ([float])
@@ -89,26 +84,30 @@ def move_left_arm_to_init():
     left_arm.move_to_joint_positions(joints)
     return position
 
+
 def saveSecondCamImage(im, episode_folder, episode_step, path="real_baxter_2nd_cam"):
     """
     Write an image to disk
     :param im: (numpy matrix) BGR image
+    :param episode_folder: (str)
+    :param episode_step: (int)
+    :param path: (str)
     """
     image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     cv2.imwrite("srl_priors/data/{}".format(image_path), im)
+
 
 rospy.init_node('real_baxter_server', anonymous=True)
 
 # Connect to ROS Topics
 image_cb_wrapper = ImageCallback()
 img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
-# action_pub = rospy.Publisher(ACTION_TOPIC, Vector3Stamped, queue_size=1)
+
 if SECOND_CAM_TOPIC is not None:
     DATA_FOLDER_SECOND_CAM = "real_baxter_2nd_cam"
     image_cb_wrapper_2 = ImageCallback()
     img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback)
-
 
 # Retrieve the different gazebo objects
 left_arm = baxter_interface.Limb('left')
@@ -212,7 +211,6 @@ while not should_exit[0]:
     # to contiguous, otherwise ZMQ will complain
     img = np.ascontiguousarray(img, dtype=np.uint8)
     sendMatrix(socket, img)
-
 
 # TODO:  avoid socket pid running and 'Address already in use' error relaunching, this is not enough
 print(" Exiting server - closing socket...")

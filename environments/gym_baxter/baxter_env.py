@@ -13,17 +13,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
-from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS
+from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
-
-MAX_STEPS = 100
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 2
-MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
 RELATIVE_POS = True
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
@@ -40,12 +37,11 @@ action_dict = {
 }
 N_DISCRETE_ACTIONS = len(action_dict)
 
-
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
-USE_SRL =  False
+USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
@@ -53,6 +49,7 @@ SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 
 # Init seaborn
 sns.set()
+
 
 def getGlobals():
     """
@@ -117,7 +114,6 @@ class BaxterEnv(gym.Env):
             self.dtype = np.uint8
             self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
                                                 dtype=self.dtype)
-
 
         if RECORD_DATA:
             print("Recording data...")

@@ -165,17 +165,18 @@ export ROS_HOSTNAME=192.168.0.211  # Your IP
 export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 ```
 
-2. Calibrate the different values using `gazebo/real_baxter_debug.py`:
-- Position of the target (BUTTON_POS) in `gazebo/real_baxter_server.py`
-- Init position and orientation (LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION) in `gazebo/real_baxter_server.py`
-- Position of the table (minimum z): Z_TABLE in `gazebo/constants.py`
-- Distance below which the target is considered to be reached: DIST_TO_TARGET_THRESHOLD in `gazebo/real_baxter_server.py`
-- Distance above which the agent will get a negative reward in `environments/gym_baxter/test_baxter_env.py`
-- Maximum number of steps per episode: MAX_STEPS in `environments/gym_baxter/baxter_env.py`
+2. Calibrate the different values in in `gazebo/constants.py` using `gazebo/real_baxter_debug.py`:
+- Set USING_REAL_BAXTER to True
+- Position of the target: BUTTON_POS
+- Init position and orientation: LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION
+- Position of the table (minimum z): Z_TABLE
+- Distance below which the target is considered to be reached: DIST_TO_TARGET_THRESHOLD
+- Distance above which the agent will get a negative reward: MAX_DISTANCE
+- Maximum number of steps per episode: MAX_STEPS
 
 3. Configure images topics in `gazebo/constants.py`:
 - IMAGE_TOPIC: main camera
-- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to record any data)
+- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
 - DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
 
 4. Launch ROS bridge server (python 2):

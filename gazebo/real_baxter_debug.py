@@ -17,20 +17,20 @@ from geometry_msgs.msg import Point, Vector3, Vector3Stamped
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 
-from .constants import IMAGE_TOPIC, ACTION_TOPIC
+from .constants import *
 
-# Calibrated values for real baxter
-# Button position (target)
-BUTTON_POS = [ 0.7090276,   0.13833109, -0.11170768]
-IK_SEED_POSITIONS = None
+assert USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to True in gazebo/constants.py"
 
 should_exit = [False]
+
 
 # exit the script on ctrl+c
 def ctrl_c(signum, frame):
     should_exit[0] = True
 
+
 signal.signal(signal.SIGINT, ctrl_c)
+
 
 def resetPose():
     rs = baxter_interface.RobotEnable(baxter_interface.CHECK_VERSION)
@@ -42,8 +42,8 @@ def resetPose():
         # Untuck arms
         subprocess.call(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
 
-rospy.init_node('real_baxter_server', anonymous=True)
 
+rospy.init_node('real_baxter_server', anonymous=True)
 
 # Retrieve the different gazebo objects
 left_arm = baxter_interface.Limb('left')
