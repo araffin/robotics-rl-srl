@@ -5,22 +5,17 @@ import os
 import subprocess
 import signal
 
-import arm_scenario_simulator as arm_sim
 import baxter_interface
 import numpy as np
 import rospy
 import zmq
 import cv2
-from baxter_interface import Limb, Head, Gripper, CHECK_VERSION
 from arm_scenario_experiments import baxter_utils
-from arm_scenario_experiments import utils as arm_utils
 from cv_bridge import CvBridge, CvBridgeError
-from geometry_msgs.msg import Point, Vector3, Vector3Stamped
 from sensor_msgs.msg import Image
-from std_msgs.msg import Header
 
 from .constants import *
-from .utils import sendMatrix, getActions
+from .utils import sendMatrix
 
 assert USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to True in gazebo/constants.py"
 
