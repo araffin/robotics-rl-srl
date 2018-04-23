@@ -10,6 +10,8 @@ from pprint import pprint
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
+import tensorflow as tf
+import gym.envs.registration
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
@@ -17,6 +19,8 @@ import rl_baselines.ddpg as ddpg
 import rl_baselines.deepq as deepq
 import rl_baselines.ppo2 as ppo2
 import rl_baselines.random_agent as random_agent
+import rl_baselines.ars as ars
+import rl_baselines.cma_es as cma_es
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
@@ -37,6 +41,8 @@ params_saved = False
 best_mean_reward = -10000
 
 win, win_smooth, win_episodes = None, None, None
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
@@ -63,6 +69,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     kuka_env.SHAPE_REWARD = args.shape_reward
     # Actions in joint space or relative position space
     kuka_env.ACTION_JOINTS = args.action_joints
+    args.log_dir += args.env + "/"
 
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -110,6 +117,8 @@ def callback(_locals, _globals):
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
+    is_es = ALGO in ['ars', 'cma-es']
+
     # Save RL agent parameters
     if not params_saved:
         # Filter locals
@@ -121,7 +130,7 @@ def callback(_locals, _globals):
     # Save the RL model if it has improved
     if (n_steps + 1) % SAVE_INTERVAL == 0:
         # Evaluate network performance
-        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL)
+        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es)
         if ok:
             print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
         else:
@@ -144,13 +153,16 @@ def callback(_locals, _globals):
                 _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
             elif ALGO in ["acer", "a2c", "ppo2"]:
                 _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
+            elif ALGO in ['ars', 'cma-es']:
+                _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
+
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed")
+        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed", is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
-                                   title=PLOT_TITLE + " [Episodes]")
+                                   title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
     return False
 
@@ -159,7 +171,7 @@ def main():
     global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
     parser.add_argument('--algo', default='ppo2',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg'],
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma-es'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
@@ -185,9 +197,20 @@ def main():
     parser.add_argument('-joints', '--action-joints',
                         help='set actions to the joints of the arm directly, instead of inverse kinematics',
                         action='store_true', default=False)
+    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
+
+    # Sanity check
+    assert args.env in gym.envs.registration.registry.env_specs, \
+        "Error: could not find the environment {}".format(args.env)
+    assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
+    assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
+    assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
+    assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
+    assert args.port >= 0 and args.port < 65535, \
+        "Error: invalid visdom port number {}, port number must be an unsigned 16bit number [0,65535].".format(args.port)
 
     ENV_NAME = args.env
     ALGO = args.algo
@@ -216,6 +239,10 @@ def main():
     elif args.algo == "ddpg":
         algo = ddpg
         assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
+    elif args.algo == "ars":
+        algo = ars
+    elif args.algo == "cma-es":
+        algo = cma_es
 
     if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
         raise ValueError(args.algo + " does not support continuous actions")
@@ -225,6 +252,10 @@ def main():
     printGreen("\nAgent = {} \n".format(args.algo))
 
     algo.kuka_env.ACTION_REPEAT = args.action_repeat
+    # Random init position for button
+    algo.kuka_env.BUTTON_RANDOM = args.relative
+    # Allow up action
+    # algo.kuka_env.FORCE_DOWN = False
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()

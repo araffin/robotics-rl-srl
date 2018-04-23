@@ -5,18 +5,21 @@ import os
 import argparse
 import subprocess
 
+import tensorflow as tf
+
 from srl_priors.utils import printGreen, printRed
 
 SEEDS = list(range(15))  # the seeds used in training the baseline.
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 
 def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines Benchmark")
     parser.add_argument('--algo', default='ppo2',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg'],
+                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars'],
                         help='OpenAI baseline to use', type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='all',
-                        choices=["all", "KukaButtonGymEnv-v0"])
+                        choices=["all", "KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
     parser.add_argument('--srl-model', type=str, default='all',
                         choices=['all', "autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae",
                                  "joints", "joints_position", "raw_pixels"],
@@ -28,6 +31,10 @@ def main():
     # returns the parsed arguments, and the rest are assumed to be arguments for rl_baselines.train
     args, train_args = parser.parse_known_args()
 
+    # Sanity check
+    assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
+
+
     if args.srl_model == "all":
         models = ["autoencoder", "ground_truth", "srl_priors", "supervised",
                   "pca", "vae", "raw_pixels", "joints", "joints_position"]
@@ -35,7 +42,7 @@ def main():
         models = [args.srl_model]
 
     if args.env == "all":
-        envs = ["KukaButtonGymEnv-v0"]
+        envs = ["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"]
     else:
         envs = [args.env]
 

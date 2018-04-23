@@ -28,7 +28,12 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
 
         with open(log_folder + 'exp_config.json', 'r') as f:
-            state_dim = json.load(f)['state_dim']
+            exp_config = json.load(f)
+        try:
+            state_dim = exp_config['state-dim']
+        except KeyError:
+            # Old format
+            state_dim = exp_config['state_dim']
     else:
         assert env_object is not None or state_dim > 0, \
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
@@ -211,12 +216,12 @@ class SRLNeuralNetwork(SRLBaseClass):
         """
         :param observation: (numpy tensor)
         :return: (numpy matrix)
-        """        
+        """
         if N_CHANNELS > 3:
             observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
         else:
             observation = preprocessImage(observation)
-                
+
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
         # Channel first
@@ -225,18 +230,10 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.cuda:
             observation = observation.cuda()
 
-        if self.model_type == "autoencoder":
-            state = self.model.encode(observation)            
-        elif self.model_type == "triplet_cnn":
-            state = self.model.encode(observation)
-        elif self.model_type == "vae":
-            state, _ = self.model.encode(observation)
-        else:
-            state = self.model(observation)
-
+        state = self.model.getStates(observation)[0]
         if self.cuda:
             state = state.cpu()
-        return state.data.numpy()[0]
+        return state.data.numpy()
 
 
 class SRLPCA(SRLBaseClass):

@@ -198,7 +198,7 @@ class BaxterEnv(gym.Env):
 
         contact_with_table = self.arm_pos[2] < Z_TABLE - 0.01
 
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION - 1 or contact_with_table:
+        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION or contact_with_table:
             self.episode_terminated = True
 
         # print("dist=", distance_to_goal)

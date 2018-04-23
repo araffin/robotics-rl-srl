@@ -229,8 +229,8 @@ def saveDDPG(self, save_path):
 
     # params
     data = {
-        "observation_shape": tuple(self.obs0.shape[1:]),
-        "action_shape": tuple(self.actions.shape[1:]),
+        "observation_shape": tuple([int(x) for x in self.obs0.shape[1:]]),
+        "action_shape": tuple([int(x) for x in self.actions.shape[1:]]),
         "param_noise": self.param_noise,
         "action_noise": self.action_noise,
         "gamma": self.gamma,
@@ -365,8 +365,6 @@ def main(args, callback):
                                                     sigma=args.noise_action_sigma * np.ones(n_actions))
 
     # Configure components.
-    memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape,
-                    observation_shape=env.observation_space.shape)
     if args.srl_model != "":
         critic = DDPGCriticMLP(layer_norm=layer_norm)
         actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
@@ -379,6 +377,9 @@ def main(args, callback):
     normalize = args.srl_model == ""
     # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
     env = WrapFrameStack(env, args.num_stack, normalize=normalize)
+
+    memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape,
+                    observation_shape=env.observation_space.shape)
 
     # add save and load functions to DDPG
     DDPG.save = saveDDPG

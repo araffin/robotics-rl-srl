@@ -7,7 +7,7 @@ from baselines.common.running_mean_std import RunningMeanStd
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack
+from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
 
 from environments.utils import makeEnv
 from rl_baselines.visualize import loadCsv
@@ -26,14 +26,15 @@ def createTensorflowSession():
     tf.Session(config=config).__enter__()
 
 
-def computeMeanReward(log_dir, last_n_episodes):
+def computeMeanReward(log_dir, last_n_episodes, is_es=False):
     """
     Compute the mean reward for the last n episodes
     :param log_dir: (str)
     :param last_n_episodes: (int)
+    :param is_es: (bool)
     :return: (bool, numpy array)
     """
-    result, _ = loadCsv(log_dir)
+    result, _ = loadCsv(log_dir, is_es=is_es)
     if len(result) == 0:
         return False, 0
     y = np.array(result)[:, 1]
@@ -152,13 +153,36 @@ class CustomVecNormalize(VecEnvWrapper):
             with open("{}/{}.pkl".format(path, name), 'rb') as f:
                 setattr(self, name, pickle.load(f))
 
+class VecFrameStack(OpenAIVecFrameStack):
+    """
+    Vectorized environment class, fixed from OpenAIVecFrameStack
+    :param venv: (Gym env)
+    :param nstack: (int)
+    """
+    def __init__(self, venv, nstack):
+        super(VecFrameStack, self).__init__(venv, nstack)
 
-def createEnvs(args):
+    def step_wait(self):
+        """
+        Step for each env
+        :return: ([float], [float], [bool], dict) obs, reward, done, info
+        """
+        obs, rews, news, infos = self.venv.step_wait()
+        self.stackedobs = np.roll(self.stackedobs, shift=-obs.shape[-1], axis=-1)
+        for (i, new) in enumerate(news):
+            if new:
+                self.stackedobs[i] = 0
+        self.stackedobs[..., -obs.shape[-1]:] = obs
+        return self.stackedobs, rews, news, infos
+
+
+def createEnvs(args, allow_early_resets=False):
     """
     :param args: (argparse.Namespace Object)
+    :param allow_early_resets: (bool)
     :return: (Gym VecEnv)
     """
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets)
             for i in range(args.num_cpu)]
 
     if len(envs) == 1:
