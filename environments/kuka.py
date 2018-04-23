@@ -9,14 +9,18 @@ import pybullet_data
 Represents the Kuka arm in the PyBullet environment.
 """
 
+
 class Kuka:
     """
     The Kuka pybullet enviroment
     :param urdf_root_path: (str) Path to pybullet urdf files
     :param timestep: (float) 
     :param use_inverse_kinematics: (bool) enable dx,dy,dz control rather than direct joint control
+    :param small_constraints: (bool) reduce the searchable space
     """
-    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True):
+
+    def __init__(self, urdf_root_path=pybullet_data.getDataPath(), timestep=0.01, use_inverse_kinematics=True,
+                 small_constraints=True):
         self.urdf_root_path = urdf_root_path
         self.timestep = timestep
         self.max_velocity = .35
@@ -42,6 +46,15 @@ class Kuka:
         self.jd = [0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001,
                    0.00001, 0.00001, 0.00001]
         self.kuka_uid = None
+        # affects the clipping of the end_effector_pos
+        if small_constraints:
+            self.min_x, self.max_x = 0.50, 0.65
+            self.min_y, self.max_y = -0.17, 0.22
+            self.min_z, self.max_z = 0, 0.5
+        else:
+            self.min_x, self.max_x = 0.35, 0.65
+            self.min_y, self.max_y = -0.30, 0.30
+            self.min_z, self.max_z = 0, 0.5
         self.reset()
 
     def reset(self):
@@ -122,10 +135,11 @@ class Kuka:
 
             # Constrain effector position
             self.end_effector_pos[0] += dx
-            self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], 0.50, 0.65)
+            self.end_effector_pos[0] = np.clip(self.end_effector_pos[0], self.min_x, self.max_x)
             self.end_effector_pos[1] += dy
-            self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], -0.17, 0.22)
+            self.end_effector_pos[1] = np.clip(self.end_effector_pos[1], self.min_y, self.max_y)
             self.end_effector_pos[2] += dz
+            self.end_effector_pos[2] = np.clip(self.end_effector_pos[2], self.min_z, self.max_z)
             self.end_effector_angle += da
 
             pos = self.end_effector_pos
@@ -151,7 +165,6 @@ class Kuka:
             self.end_effector_angle += motor_commands[7]
             finger_angle = motor_commands[8]
 
-
         if self.use_simulation:
             # using dynamic control
             for i in range(self.kuka_end_effector_index + 1):
@@ -160,9 +173,9 @@ class Kuka:
                                         maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
         else:
             # reset the joint state (ignoring all dynamics, not recommended to use during simulation)
-            for i in range(self.num_joints):
+            for i in range(self.kuka_end_effector_index + 1):
                 p.resetJointState(self.kuka_uid, i, joint_poses[i])
-                
+
         # Effectors grabbers angle 
         p.setJointMotorControl2(self.kuka_uid, 7, p.POSITION_CONTROL, targetPosition=self.end_effector_angle,
                                 force=self.max_force)

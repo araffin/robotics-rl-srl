@@ -31,6 +31,11 @@ python -m environments.test_env
 ```
 Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
+To record data from the environment for SRL training, using random actions:
+```bash
+python -m environments.test_env --record-data --num-cpu 4 --save-name folder_name
+```
+
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input, dividing it by 255.
@@ -41,13 +46,15 @@ About frame-stacking, action repeat (frameskipping) please read this blog post: 
 
 ### OpenAI Baselines
 
-Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with a random agent and random search:
+Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with some evolution strategies:
 
 - DQN and variants (Double, Dueling, prioritized experience replay)
 - ACER: Sample Efficient Actor-Critic with Experience Replay
 - A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
 - PPO2: Proximal Policy Optimization (GPU Implementation)
 - DDPG: Deep Deterministic Policy Gradients
+- ARS: Augmented Random Search
+- CMA-ES: Covariance Matrix Adaptation Evolution Strategy
 
 To train an agent:
 ```
@@ -56,10 +63,10 @@ python -m rl_baselines.train --algo ppo2 --log-dir logs/
 
 To load a trained agent and see the result:
 ```
-python -m replay.enjoy_baselines --log-dir path/to/trained/agent/
+python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
 ```
 
-Contiuous actions have been implemented for DDPG, PPO2 and random agent.
+Contiuous actions have been implemented for DDPG, PPO2, ARS, CMA-ES and random agent.
 To use continuous actions in the position space:
 ```
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c
@@ -79,7 +86,7 @@ python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/
 
 To plot a learning curve from logs in visdom, you have to pass path to the experiment log folder:
 ```
-python -m replay.plot --log-dir /logs/raw_pixels/ppo2/18-03-14_11h04_16/
+python -m replay.plots --log-dir /logs/raw_pixels/ppo2/18-03-14_11h04_16/
 ```
 
 To aggregate data from different experiments (different seeds) and plot them (mean + standard error).
@@ -94,6 +101,18 @@ To create a comparison plots from saved plots (.npz files), you need to pass a p
 python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timesteps
 ```
 
+## Environments
+
+When starting a baseline, you can choose from different environments:
+```bash
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --env env_name
+```
+
+the available environments are:
+- KukaButtonGymEnv-v0 (default): a single button in front of the arm
+- Kuka2ButtonGymEnv-v0: 2 buttons next to each others, they must be pressed in order
+- KukaRandButtonGymEnv-v0: a single button in front of the arm, with some randomly positioned objects
+- KukaMovingButtonGymEnv-v0: a single button in front of the arm, slowly moving left to right
 
 ## State Representation Learning Models
 

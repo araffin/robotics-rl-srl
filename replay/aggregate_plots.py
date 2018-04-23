@@ -24,7 +24,9 @@ darkcolors = colors[1::2]
 
 # y-limits for the plot
 Y_LIM_SPARSE_REWARD = [-3, 6]
-Y_LIM_SHAPED_REWARD = [-90, -35]
+# Relative: [-150, -50]
+# Normal: [-70, -35]
+Y_LIM_SHAPED_REWARD = [-150, -50]
 
 
 def loadEpisodesData(folder):
@@ -162,6 +164,10 @@ if __name__ == '__main__':
         train_args = json.load(open(path + "args.json", 'r'))
         if train_args["shape_reward"] == args.shape_reward:
             folders.append(path)
+
+    if len(folders) == 0:
+        printYellow("No experiment corresponding to the criterions")
+        exit()
 
     srl_model = train_args['srl_model'] if train_args['srl_model'] != "" else "raw pixels"
     if args.timesteps:

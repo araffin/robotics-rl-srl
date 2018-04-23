@@ -75,8 +75,8 @@
       <geometry>
         <mesh filename="meshes/button.dae" scale="1.0 1.0 1.0"/>
       </geometry>
-      <material name="yellow">
-        <color rgba="1 1 0 1"/>
+      <material name="blue">
+        <color rgba="0.2 0.6 0.38 1"/>
       </material>
     </visual>
   </link>
