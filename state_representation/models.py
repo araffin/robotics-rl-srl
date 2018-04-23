@@ -230,18 +230,10 @@ class SRLNeuralNetwork(SRLBaseClass):
         if self.cuda:
             observation = observation.cuda()
 
-        if self.model_type == "autoencoder":
-            state = self.model.encode(observation)
-        elif self.model_type == "triplet_cnn":
-            state = self.model.encode(observation)
-        elif self.model_type == "vae":
-            state, _ = self.model.encode(observation)
-        else:
-            state = self.model(observation)
-
+        state = self.model.getStates(observation)[0]
         if self.cuda:
             state = state.cpu()
-        return state.data.numpy()[0]
+        return state.data.numpy()
 
 
 class SRLPCA(SRLBaseClass):
