@@ -141,6 +141,10 @@ to perform the inference.
 ## Baxter Robot with Gazebo and ROS
 Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
 
+**Important Note**: ROS (and Gazebo + Baxter) only works with python2, whereas this repo (except the ROS scripts) works with python3.
+For Ros/Baxter installation, please look at the [Official Tutorial](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
+Also, ROS comes with its own version of OpenCV, so when running the python3 scripts, you need to deactivate ROS. In the same vein, if you use Anaconda, you need to disable it when you want to run ROS scripts (denoted as python 2 in the following instructions).
+
 1. Start ros nodes (Python 2):
 ```
 roslaunch arm_scenario_simulator baxter_world.launch
@@ -219,10 +223,14 @@ NB: If you want to save the image without resizing, you need to comment the line
 
 1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
 
-2. Uncomment the line in `rl_baselines/ppo2.py` (or in the agent you want to use):
+2. Make sure that USING_REAL_BAXTER is set to True in `gazebo/constants.py`.
+WARNING: you need to copy code from `rl_baselines/ppo2.py` if you want to use an algo different from PPO2:
 ```python
-# HACK: uncomment to use real baxter
-import environments.gym_baxter.baxter_env as kuka_env
+from gazebo.constants import USING_REAL_BAXTER
+if USING_REAL_BAXTER:
+    import environments.gym_baxter.baxter_env as kuka_env
+else:
+    import environments.kuka_button_gym_env as kuka_env
 ```
 
 3. Launch ROS bridge server (python 2):

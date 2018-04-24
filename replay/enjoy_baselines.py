@@ -22,9 +22,11 @@ from rl_baselines.utils import createTensorflowSession, computeMeanReward, Custo
 from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
 from srl_priors.utils import printYellow, printGreen
 from environments.utils import makeEnv
-# HACK: uncomment to use real baxter
-# import environments.gym_baxter.baxter_env as kuka_env
-import environments.kuka_button_gym_env as kuka_env
+from gazebo.constants import USING_REAL_BAXTER
+if USING_REAL_BAXTER:
+    import environments.gym_baxter.baxter_env as kuka_env
+else:
+    import environments.kuka_button_gym_env as kuka_env
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 
