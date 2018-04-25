@@ -3,7 +3,8 @@
 import os
 
 import gym
-from gym import registry, logger, patch_deprecated_methods, load
+from gym import logger
+from gym.envs.registration import registry, patch_deprecated_methods, load
 
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind

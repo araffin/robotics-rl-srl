@@ -6,12 +6,13 @@ import json
 import os
 from datetime import datetime
 from pprint import pprint
+import importlib
 
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 import tensorflow as tf
-import gym.envs.registration
+from gym.envs.registration import registry as gym_registry
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
@@ -104,7 +105,7 @@ def configureEnvAndLogFolder(args, env_kwargs):
     # TODO: wait one second if the folder exist to avoid overwritting logs
     os.makedirs(args.log_dir, exist_ok=True)
 
-    return args
+    return args, env_kwargs
 
 
 def callback(_locals, _globals):
@@ -205,14 +206,32 @@ def main():
     env_kwargs = {}
 
     # Sanity check
-    assert args.env in gym.envs.registration.registry.env_specs, \
-        "Error: could not find the environment {}".format(args.env)
+    assert args.env in gym_registry.env_specs, "Error: could not find the environment {}, ".format(args.env) + \
+        "here are the valid environments: {}".format(list(gym_registry.env_specs.keys()))
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
-    assert args.port >= 0 and args.port < 65535, \
-        "Error: invalid visdom port number {}, port number must be an unsigned 16bit number [0,65535].".format(args.port)
+    assert args.port >= 0 and args.port < 65535,  "Error: invalid visdom port number {}, ".format(args.port) + \
+        "port number must be an unsigned 16bit number [0,65535]."
+
+    # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
+    entry_point = gym_registry.spec(args.env)._entry_point
+    if callable(entry_point):
+        env_module_path = entry_point.__module__
+    else:
+        env_module_path = entry_point.split(':')[0]
+    # Lets try and dynamically load the kuka_env, in order to fetch the globals.
+    # If it fails, it means that it was unable to load the path from the entry_point
+    # should this occure, it will mean that some parameters will not be correctly saved. 
+    try:
+        kuka_env = importlib.import_module(env_module_path)
+    except:
+        printRed("Error: could not import module {}, ".format(env_module_path) + 
+            "defaulting to environments.kuka_button_gym_env. " + 
+            "This means the logging and saving will be corrupted to some degree")
+        kuka_env = importlib.import_module("environments.kuka_button_gym_env")
+
 
     ENV_NAME = args.env
     ALGO = args.algo
@@ -272,9 +291,9 @@ def main():
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects({**algo.kuka_env.getGlobals(), **env_kwargs}))
+    pprint(filterJSONSerializableObjects({**kuka_env.getGlobals(), **env_kwargs}))
     # Save kuka env params
-    saveEnvParams(algo.kuka_env, env_kwargs)
+    saveEnvParams(kuka_env, env_kwargs)
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)

@@ -319,7 +319,7 @@ class KukaButtonGymEnv(gym.Env):
                 finger_angle = 0.0  # Close the gripper
                 real_action = [dx, dy, dz, 0, finger_angle]
 
-        if verbose:
+        if self.verbose:
             print(np.array2string(np.array(real_action), precision=2))
 
         return self.step2(real_action)
