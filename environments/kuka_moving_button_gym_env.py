@@ -27,6 +27,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
     :param verbose: (bool) Whether to print some debug info
+    :param save_path: (str) location where the saved data should go
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
@@ -38,7 +39,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
             shape_reward=shape_reward, action_joints=action_joints, use_srl=use_srl, srl_model_path=srl_model_path,
             record_data=record_data, use_ground_truth=use_ground_truth, use_joints=use_joints, 
             button_random=button_random, force_down=force_down, state_dim=state_dim, learn_states=learn_states,
-            verbose=verbose)
+            verbose=verbose, save_path='srl_priors/data/')
 
         self.max_steps = MAX_STEPS
 

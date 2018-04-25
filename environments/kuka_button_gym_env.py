@@ -78,12 +78,14 @@ class KukaButtonGymEnv(gym.Env):
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
     :param verbose: (bool) Whether to print some debug info
+    :param save_path: (str) location where the saved data should go
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
                  name="kuka_button_gym", max_distance=0.4, action_repeat=1, shape_reward=False, action_joints=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
-                 button_random=False, force_down=True, state_dim=-1, learn_states=False, verbose=False):
+                 button_random=False, force_down=True, state_dim=-1, learn_states=False, verbose=False, 
+                 save_path='srl_priors/data/'):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat
@@ -120,7 +122,7 @@ class KukaButtonGymEnv(gym.Env):
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
-                                      learn_states=learn_states)
+                                      learn_states=learn_states, path=save_path)
         # SRL model
         if self.use_srl:
             env_object = self if use_ground_truth or use_joints else None

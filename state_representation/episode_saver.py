@@ -28,6 +28,7 @@ class EpisodeSaver(object):
         super(EpisodeSaver, self).__init__()
         self.name = name
         self.data_folder = path + name
+        self.path = path
         try:
             os.makedirs(self.data_folder)
         except OSError:
@@ -70,7 +71,7 @@ class EpisodeSaver(object):
         Write an image to disk
         :param observation: (numpy matrix) BGR image
         """
-        image_path = "{}/{}/frame{:06d}".format(self.name, self.episode_folder, self.episode_step) 
+        image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step) 
         self.images_path.append(image_path)
         
         # in the case of dual/multi-camera
@@ -78,11 +79,11 @@ class EpisodeSaver(object):
             observation1 = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_BGR2RGB)
             observation2 = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_BGR2RGB)
             
-            cv2.imwrite("srl_priors/data/{}".format(image_path+"_1.jpg"), observation1)
-            cv2.imwrite("srl_priors/data/{}".format(image_path+"_2.jpg"), observation2)
+            cv2.imwrite("{}_1.jpg".format(image_path), observation1)
+            cv2.imwrite("{}_2.jpg".format(image_path), observation2)
         else:
             observation = cv2.cvtColor(observation, cv2.COLOR_BGR2RGB)
-            cv2.imwrite("srl_priors/data/{}".format(image_path+".jpg"), observation)
+            cv2.imwrite("{}.jpg".format(image_path), observation)
 
     def reset(self, observation, button_pos, arm_state):
         """

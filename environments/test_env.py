@@ -48,6 +48,7 @@ def env_thread(args, thread_num, partition=True):
     env_kwargs["renders"] = (thread_num == 0 and not args.no_display)
     env_kwargs["record_data"] = args.record_data
     env_kwargs["multi_view"] = args.multi_view
+    env_kwargs["save_path"] = args.save_folder
     
     if args.env == "Kuka2ButtonGymEnv":
         env_kwargs["force_down"] = False
