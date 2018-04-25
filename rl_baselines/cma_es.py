@@ -266,13 +266,14 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback=None):
+def main(args, callback, env_kwargs={}):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
     args.num_cpu = args.num_population
-    envs = createEnvs(args, allow_early_resets=True)
+    envs = createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)

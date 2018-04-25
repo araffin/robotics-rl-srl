@@ -278,7 +278,7 @@ def main():
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback)
+    algo.main(args, callback, env_kwargs={}) #TODO: convert to dict so it can be parsed
 
 
 if __name__ == '__main__':

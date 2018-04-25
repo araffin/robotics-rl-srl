@@ -338,14 +338,15 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs={}):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
 
     logger.configure()
-    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir)])
+    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
     createTensorflowSession()
     layer_norm = not args.no_layer_norm

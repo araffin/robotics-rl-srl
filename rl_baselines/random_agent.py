@@ -16,12 +16,13 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback=None):
+def main(args, callback, env_kwargs={}):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
-    env = createEnvs(args)
+    env = createEnvs(args, env_kwargs=env_kwargs)
 
     obs = env.reset()
     num_updates = int(args.num_timesteps) // args.num_cpu

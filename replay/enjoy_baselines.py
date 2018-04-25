@@ -46,7 +46,7 @@ def parseArguments():
                         help='Render the environment (show the GUI)')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
-    parser.add_argument('--plotting', action='store_true', default=False, 
+    parser.add_argument('--plotting', action='store_true', default=False,
                         help='display in the latent space the current observation.')
     return parser.parse_args()
 
@@ -103,13 +103,14 @@ def loadConfigAndSetup(load_args):
     return train_args, load_path, algo, srl_models
 
 
-def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/"):
+def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/", env_kwargs={}):
     """
     Create the Gym environment
     :param load_args: (Arguments)
     :param train_args: (dict)
     :param algo: (str)
     :param log_dir: (str) Log dir for testing the agent
+    :param env_kwargs: (dict) The extra arguments for the environment
     :return: (str, SubprocVecEnv)
     """
     # Log dir for testing the agent
@@ -117,13 +118,13 @@ def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/"):
     os.makedirs(log_dir, exist_ok=True)
 
     if algo not in ["deepq", "ddpg"]:
-        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir)
+        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir, env_kwargs=env_kwargs)
                               for i in range(load_args.num_cpu)])
         envs = VecFrameStack(envs, train_args['num_stack'])
     else:
         if load_args.num_cpu > 1:
             printYellow(algo + " does not support multiprocessing, setting num-cpu=1")
-        envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir)])
+        envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir, env_kwargs=env_kwargs)])
 
     if train_args["srl_model"] != "":
         # special case where ars type v1 is not normalized
@@ -148,7 +149,8 @@ def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/"):
 def main():
     load_args = parseArguments()
     train_args, load_path, algo, srl_models = loadConfigAndSetup(load_args)
-    log_dir, envs = createEnv(load_args, train_args, algo)
+    env_kwargs = {}  # TODO: convert to dict so it can be parsed
+    log_dir, envs = createEnv(load_args, train_args, algo, env_kwargs=env_kwargs)
 
     ob_space = envs.observation_space
     ac_space = envs.action_space
@@ -207,27 +209,28 @@ def main():
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         old_obs = []
-        line, = ax.plot([],[],[], c=[1,0,0,1], label="episode 0")
-        point = ax.scatter([0], [0], [0], c=[1,0,0,1])
+        line, = ax.plot([], [], [], c=[1, 0, 0, 1], label="episode 0")
+        point = ax.scatter([0], [0], [0], c=[1, 0, 0, 1])
         fig.legend()
 
         if train_args["srl_model"] == "ground_truth":
-            ax.set_xlim([-4,4])
-            ax.set_ylim([-4,4])
-            ax.set_zlim([-2,2])
+            ax.set_xlim([-4, 4])
+            ax.set_ylim([-4, 4])
+            ax.set_zlim([-2, 2])
             delta_obs = [obs[0]]
         elif train_args["srl_model"] in ["vae", "srl_priors"]:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
-            path = srl_models['log_folder'] + "/".join(srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
+            path = srl_models['log_folder'] + "/".join(
+                srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
 
             # train the PCA and et the limits
             pca = PCA(n_components=3)
             X_new = pca.fit_transform(X)
-            ax.set_xlim([np.min(X_new[:,0])*1.2,np.max(X_new[:,0])*1.2])
-            ax.set_ylim([np.min(X_new[:,1])*1.2,np.max(X_new[:,1])*1.2])
-            ax.set_zlim([np.min(X_new[:,2])*1.2,np.max(X_new[:,2])*1.2])
+            ax.set_xlim([np.min(X_new[:, 0]) * 1.2, np.max(X_new[:, 0]) * 1.2])
+            ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
+            ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
             delta_obs = [pca.transform([obs[0]])[0]]
         else:
             assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
@@ -260,19 +263,19 @@ def main():
             # create a new line, if the episode is finished
             if sum(dones) > 0:
                 old_obs.append(np.array(delta_obs))
-                line.set_c(sns.color_palette()[episode%len(sns.color_palette())])
+                line.set_c(sns.color_palette()[episode % len(sns.color_palette())])
                 episode += 1
-                line, = ax.plot([],[],[], c=[1,0,0,1], label="episode "+str(episode))
+                line, = ax.plot([], [], [], c=[1, 0, 0, 1], label="episode " + str(episode))
                 fig.legend()
                 delta_obs = [ajusted_obs]
             else:
                 delta_obs.append(ajusted_obs)
 
             coor_plt = np.array(delta_obs)
-            line._verts3d = (coor_plt[:,0], coor_plt[:,1], coor_plt[:,2])
-            point._offsets3d = ([coor_plt[-1,0]], [coor_plt[-1,1]], [coor_plt[-1,2]])
+            line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
+            point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
 
-            if i%5 == 0:
+            if i % 5 == 0:
                 fig.canvas.draw()
                 plt.pause(0.000001)
 

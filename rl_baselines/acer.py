@@ -147,12 +147,13 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs={}):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
-    envs = createEnvs(args)
+    envs = createEnvs(args, env_kwargs=env_kwargs)
 
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
           lrschedule=args.lr_schedule, callback=callback)

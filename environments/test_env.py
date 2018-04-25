@@ -67,6 +67,7 @@ def env_thread(args, thread_num, partition=True):
     else:
         name = args.save_name
 
+    #TODO: everything should be moved to an argument here.
     env = env_class(renders=(thread_num == 0 and not args.no_display), is_discrete=(not args.continuous_actions),
                     multi_view=args.multi_view, name=name)
     env.seed(args.seed + thread_num)

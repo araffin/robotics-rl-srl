@@ -176,13 +176,14 @@ class VecFrameStack(OpenAIVecFrameStack):
         return self.stackedobs, rews, news, infos
 
 
-def createEnvs(args, allow_early_resets=False):
+def createEnvs(args, allow_early_resets=False, env_kwargs={}):
     """
     :param args: (argparse.Namespace Object)
     :param allow_early_resets: (bool)
+    :param env_kwargs: (dict) The extra arguments for the environment
     :return: (Gym VecEnv)
     """
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
             for i in range(args.num_cpu)]
 
     if len(envs) == 1:
