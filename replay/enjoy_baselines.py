@@ -70,8 +70,9 @@ def loadConfigAndSetup(load_args):
     env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
 
+    env_kwargs = {}
     env_kwargs["renders"] = load_args.render
-    env_kwargs["action_repeat"] = env_globals['action_repeat']
+    env_kwargs["action_repeat"] = env_globals.get('action_repeat', env_globals['ACTION_REPEAT'])
     # Reward sparse or shaped
     env_kwargs["shape_reward"] = load_args.shape_reward
 
@@ -79,7 +80,10 @@ def loadConfigAndSetup(load_args):
     env_kwargs["is_discrete"] = not train_args["continuous_actions"]
     env_kwargs["button_random"] = train_args.get('relative', False)
     # Remove up action
-    env_kwargs["force_down"] = env_globals.get('force_down', True)
+    if train_args["env"] == "Kuka2ButtonGymEnv-v0":
+        env_kwargs["force_down"] = env_globals.get('force_down', env_globals.get('FORCE_DOWN', True))
+    else:
+        env_kwargs["force_down"] = env_globals.get('force_down', env_globals.get('FORCE_DOWN', False))
 
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
