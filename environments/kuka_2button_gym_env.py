@@ -27,16 +27,8 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     :param save_path: (str) location where the saved data should go
     """
 
-    def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
-                 name="kuka_2button_gym", max_distance=2, action_repeat=1, shape_reward=False, action_joints=False,
-                 use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
-                 button_random=False, force_down=False, state_dim=-1, learn_states=False, verbose=False):
-        super(Kuka2ButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete, 
-            multi_view=multi_view, name=name, max_distance=max_distance, action_repeat=action_repeat, 
-            shape_reward=shape_reward, action_joints=action_joints, use_srl=use_srl, srl_model_path=srl_model_path,
-            record_data=record_data, use_ground_truth=use_ground_truth, use_joints=use_joints, 
-            button_random=button_random, force_down=force_down, state_dim=state_dim, learn_states=learn_states,
-            verbose=verbose, save_path='srl_priors/data/')
+    def __init__(self, name="kuka_2button_gym", max_distance=2, force_down=False, **kwargs):
+        super(Kuka2ButtonGymEnv, self).__init__(name=name, max_distance=max_distance, force_down=force_down, **kwargs)
 
         self.max_steps = MAX_STEPS
         self.n_contacts = [0,0]
