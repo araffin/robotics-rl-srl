@@ -1,7 +1,6 @@
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.utils import createTensorflowSession, createEnvs
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer

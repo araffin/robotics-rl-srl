@@ -4,7 +4,6 @@ import pickle
 import numpy as np
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
-import environments.kuka_button_gym_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize, VecFrameStack
 from srl_priors.utils import printYellow

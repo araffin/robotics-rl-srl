@@ -26,10 +26,8 @@ from rl_baselines.utils import createTensorflowSession, computeMeanReward, Custo
 from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
 from srl_priors.utils import printYellow, printGreen
 from environments.utils import makeEnv
-import environments.kuka_button_gym_env as kuka_env
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
-
 
 def parseArguments():
     """
@@ -55,7 +53,7 @@ def loadConfigAndSetup(load_args):
     """
     Get the training config and setup the parameters
     :param load_args: (Arguments)
-    :return: (dict, str, str, dict)
+    :return: (dict, str, str, dict, dict)
     """
     with open('config/srl_models.yaml', 'rb') as f:
         srl_models = yaml.load(f)
@@ -72,45 +70,45 @@ def loadConfigAndSetup(load_args):
     env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
 
-    kuka_env.FORCE_RENDER = load_args.render
-    kuka_env.ACTION_REPEAT = env_globals['ACTION_REPEAT']
+    env_kwargs["renders"] = load_args.render
+    env_kwargs["action_repeat"] = env_globals['action_repeat']
     # Reward sparse or shaped
-    kuka_env.SHAPE_REWARD = load_args.shape_reward
+    env_kwargs["shape_reward"] = load_args.shape_reward
 
-    kuka_env.ACTION_JOINTS = train_args["action_joints"]
-    kuka_env.IS_DISCRETE = not train_args["continuous_actions"]
-    kuka_env.BUTTON_RANDOM = train_args.get('relative', False)
+    env_kwargs["action_joints"] = train_args["action_joints"]
+    env_kwargs["is_discrete"] = not train_args["continuous_actions"]
+    env_kwargs["button_random"] = train_args.get('relative', False)
     # Remove up action
-    kuka_env.FORCE_DOWN = env_globals.get('FORCE_DOWN', True)
+    env_kwargs["force_down"] = env_globals.get('force_down', True)
 
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"
         path = srl_models.get(train_args["srl_model"])
 
         if train_args["srl_model"] == "ground_truth":
-            kuka_env.USE_GROUND_TRUTH = True
+            env_kwargs["use_ground_truth"] = True
         elif train_args["srl_model"] == "joints":
-            kuka_env.USE_JOINTS = True
+            env_kwargs["use_joints"] = True
         elif train_args["srl_model"] == "joints_position":
-            kuka_env.USE_GROUND_TRUTH = True
-            kuka_env.USE_JOINTS = True
+            env_kwargs["use_ground_truth"] = True
+            env_kwargs["use_joints"] = True
         elif path is not None:
-            kuka_env.USE_SRL = True
-            kuka_env.SRL_MODEL_PATH = srl_models['log_folder'] + path
+            env_kwargs["use_srl"] = True
+            env_kwargs["srl_model_path"] = srl_models['log_folder'] + path
         else:
             raise ValueError("Unsupported value for srl-model: {}".format(train_args["srl_model"]))
 
-    return train_args, load_path, algo, srl_models
+    return train_args, load_path, algo, srl_models, env_kwargs
 
 
-def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/", env_kwargs={}):
+def createEnv(load_args, train_args, algo, env_kwargs, log_dir="/tmp/gym/test/"):
     """
     Create the Gym environment
     :param load_args: (Arguments)
     :param train_args: (dict)
     :param algo: (str)
-    :param log_dir: (str) Log dir for testing the agent
     :param env_kwargs: (dict) The extra arguments for the environment
+    :param log_dir: (str) Log dir for testing the agent
     :return: (str, SubprocVecEnv)
     """
     # Log dir for testing the agent
@@ -148,9 +146,8 @@ def createEnv(load_args, train_args, algo, log_dir="/tmp/gym/test/", env_kwargs=
 
 def main():
     load_args = parseArguments()
-    train_args, load_path, algo, srl_models = loadConfigAndSetup(load_args)
-    env_kwargs = {}  # TODO: convert to dict so it can be parsed
-    log_dir, envs = createEnv(load_args, train_args, algo, env_kwargs=env_kwargs)
+    train_args, load_path, algo, srl_models, env_kwargs = loadConfigAndSetup(load_args)
+    log_dir, envs = createEnv(load_args, train_args, algo, env_kwargs)
 
     ob_space = envs.observation_space
     ac_space = envs.action_space

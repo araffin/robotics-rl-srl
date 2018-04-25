@@ -4,7 +4,6 @@ from baselines.ppo2.policies import MlpPolicy as MlpPolicyContinuous
 from baselines import logger
 import tensorflow as tf
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.policies import MlpPolicyDicrete, CNNPolicyContinuous
 from rl_baselines.utils import createEnvs
 

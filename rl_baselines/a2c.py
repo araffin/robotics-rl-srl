@@ -2,7 +2,6 @@ from baselines.a2c.a2c import *
 from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.policies import MlpPolicyDicrete
 from rl_baselines.utils import createTensorflowSession, createEnvs
 

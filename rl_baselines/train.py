@@ -49,26 +49,27 @@ with open('config/srl_models.yaml', 'rb') as f:
     models = yaml.load(f)
 
 
-def saveEnvParams(kuka_env):
+def saveEnvParams(kuka_env, env_kwargs):
     """
     :param kuka_env: (kuka_env module)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
-    params = filterJSONSerializableObjects(kuka_env.getGlobals())
+    params = filterJSONSerializableObjects({**kuka_env.getGlobals(), **env_kwargs})
     with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
         json.dump(params, f)
 
 
-def configureEnvAndLogFolder(args, kuka_env):
+def configureEnvAndLogFolder(args, env_kwargs):
     """
     :param args: (ArgumentParser object)
-    :param kuka_env: (kuka_env module)
-    :return: (ArgumentParser object)
+    :param env_kwargs: (dict) The extra arguments for the environment
+    :return: (ArgumentParser object, dict)
     """
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
-    kuka_env.SHAPE_REWARD = args.shape_reward
+    env_kwargs["shape_reward"] = args.shape_reward
     # Actions in joint space or relative position space
-    kuka_env.ACTION_JOINTS = args.action_joints
+    env_kwargs["action_joints"] = args.action_joints
     args.log_dir += args.env + "/"
 
     if args.srl_model != "":
@@ -77,20 +78,20 @@ def configureEnvAndLogFolder(args, kuka_env):
         args.log_dir += args.srl_model + "/"
 
         if args.srl_model == "ground_truth":
-            kuka_env.USE_GROUND_TRUTH = True
+            env_kwargs["use_ground_truth"] = True
             PLOT_TITLE = "Ground Truth"
         elif args.srl_model == "joints":
             # Observations in joint space
-            kuka_env.USE_JOINTS = True
+            env_kwargs["use_joints"] = True
             PLOT_TITLE = "Joints"
         elif args.srl_model == "joints_position":
             # Observations in joint and position space
-            kuka_env.USE_GROUND_TRUTH = True
-            kuka_env.USE_JOINTS = True
+            env_kwargs["use_ground_truth"] = True
+            env_kwargs["use_joints"] = True
             PLOT_TITLE = "Joints and position"
         elif path is not None:
-            kuka_env.USE_SRL = True
-            kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
+            env_kwargs["use_srl"] = True
+            env_kwargs["srl_model_path"] = models['log_folder'] + path
         else:
             raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
 
@@ -201,6 +202,7 @@ def main():
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
+    env_kwargs = {}
 
     # Sanity check
     assert args.env in gym.envs.registration.registry.env_specs, \
@@ -247,20 +249,20 @@ def main():
     if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
         raise ValueError(args.algo + " does not support continuous actions")
 
-    algo.kuka_env.IS_DISCRETE = not args.continuous_actions
+    env_kwargs["is_discrete"] = not args.continuous_actions
 
     printGreen("\nAgent = {} \n".format(args.algo))
 
-    algo.kuka_env.ACTION_REPEAT = args.action_repeat
+    env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
-    algo.kuka_env.BUTTON_RANDOM = args.relative
+    env_kwargs["button_random"] = args.relative
     # Allow up action
-    # algo.kuka_env.FORCE_DOWN = False
+    # env_kwargs["force_down"] = False
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()
 
-    args = configureEnvAndLogFolder(args, algo.kuka_env)
+    args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs)
     args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
     with open(LOG_DIR + "args.json", "w") as f:
@@ -270,15 +272,15 @@ def main():
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects(algo.kuka_env.getGlobals()))
+    pprint(filterJSONSerializableObjects({**algo.kuka_env.getGlobals(), **env_kwargs}))
     # Save kuka env params
-    saveEnvParams(algo.kuka_env)
+    saveEnvParams(algo.kuka_env, env_kwargs)
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback, env_kwargs={}) #TODO: convert to dict so it can be parsed
+    algo.main(args, callback, env_kwargs=env_kwargs) 
 
 
 if __name__ == '__main__':

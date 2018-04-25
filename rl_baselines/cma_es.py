@@ -8,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.utils import createEnvs
 from srl_priors.utils import printYellow
 

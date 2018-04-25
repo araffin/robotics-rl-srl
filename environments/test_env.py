@@ -38,38 +38,32 @@ def env_thread(args, thread_num, partition=True):
     :param thread_num: (int) The thread ID of the environment session
     :param partition: (bool) If the output should be in multiple parts (default=True)
     """
-    # As Kuka2ButtonGymEnv and KukaRandButtonGymEnv inherite from KukaButtonGymEnv, we need to define the parameter for
-    # both, as some functions are in KukaButtonGymEnv and the rest are in the target class
-    if args.env == "KukaButtonGymEnv":
-        env_class = kuka_env.KukaButtonGymEnv
-    elif args.env == "Kuka2ButtonGymEnv":
-        env_class = kuka_env_2.Kuka2ButtonGymEnv
-        kuka_env_2.MAX_DISTANCE = args.max_distance
-        kuka_env_2.BUTTON_RANDOM = args.relative
-        kuka_env_2.FORCE_DOWN = True
-    elif args.env == "KukaRandButtonGymEnv":
-        env_class = kuka_env_rand.KukaRandButtonGymEnv
-        kuka_env_rand.MAX_DISTANCE = args.max_distance
-        kuka_env_rand.BUTTON_RANDOM = args.relative
-        kuka_env_rand.FORCE_DOWN = True
-    elif args.env == "KukaMovingButtonGymEnv":
-        env_class = kuka_env_moving.KukaMovingButtonGymEnv
-        kuka_env_moving.MAX_DISTANCE = args.max_distance
-        kuka_env_moving.BUTTON_RANDOM = args.relative
-        kuka_env_moving.FORCE_DOWN = True
+    env_kwargs = {}
 
-    kuka_env.MAX_DISTANCE = args.max_distance
-    kuka_env.BUTTON_RANDOM = args.relative
-    kuka_env.FORCE_DOWN = True
+    env_kwargs["max_distance"] = args.max_distance
+    env_kwargs["button_random"] = args.relative
+    env_kwargs["force_down"] = True
+    env_kwargs["multi_view"] = args.multi_view
+    env_kwargs["is_discrete"] = (not args.continuous_actions)
+    env_kwargs["renders"] = (thread_num == 0 and not args.no_display)
+    env_kwargs["record_data"] = args.record_data
+    env_kwargs["multi_view"] = args.multi_view
+    
+    if args.env == "Kuka2ButtonGymEnv":
+        env_kwargs["force_down"] = False
+
+    env_class = {"KukaButtonGymEnv":kuka_env.KukaButtonGymEnv,
+                 "Kuka2ButtonGymEnv":kuka_env_2.Kuka2ButtonGymEnv,
+                 "KukaRandButtonGymEnv":kuka_env_rand.KukaRandButtonGymEnv,
+                 "KukaMovingButtonGymEnv":kuka_env_moving.KukaMovingButtonGymEnv
+                }[args.env]
 
     if partition:
-        name = args.save_name + "_part-" + str(thread_num)
+        env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
     else:
-        name = args.save_name
+        env_kwargs["name"] = args.save_name
 
-    #TODO: everything should be moved to an argument here.
-    env = env_class(renders=(thread_num == 0 and not args.no_display), is_discrete=(not args.continuous_actions),
-                    multi_view=args.multi_view, name=name)
+    env = env_class(**env_kwargs)
     env.seed(args.seed + thread_num)
 
     frames = 0
@@ -113,9 +107,6 @@ def main():
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
 
     args = parser.parse_args()
-
-    kuka_env.RECORD_DATA = args.record_data
-    kuka_env.MAX_DISTANCE = args.max_distance  # Reduce max distance to have more negative rewards for srl
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"

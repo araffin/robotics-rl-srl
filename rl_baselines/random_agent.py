@@ -3,7 +3,6 @@ Random agent: randomly sample actions from the action space
 """
 import time
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.utils import createEnvs
 
 

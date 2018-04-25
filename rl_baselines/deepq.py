@@ -2,7 +2,6 @@ from baselines import deepq
 from baselines import logger
 from baselines.common.vec_env import VecEnv
 
-import environments.kuka_button_gym_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, VecFrameStack
 
