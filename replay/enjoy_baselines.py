@@ -72,7 +72,9 @@ def loadConfigAndSetup(load_args):
 
     env_kwargs = {}
     env_kwargs["renders"] = load_args.render
-    env_kwargs["action_repeat"] = env_globals.get('action_repeat', env_globals['ACTION_REPEAT'])
+    # load it, if it was defined
+    if "action_repeat" in env_globals or "ACTION_REPEAT" in env_globals:
+        env_kwargs["action_repeat"] = env_globals.get('action_repeat', env_globals['ACTION_REPEAT'])
     # Reward sparse or shaped
     env_kwargs["shape_reward"] = load_args.shape_reward
 
