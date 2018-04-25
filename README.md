@@ -77,9 +77,9 @@ To use continuous actions in the joint space:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c -joints
 ```
 
-To run all the enviroments with all the SRL models for a given algorithm (you can use the same arguments as for training):
+To run multiple enviroments with multiple SRL models for a given algorithm (you can use the same arguments as for training):
 ```
-python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/
+python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --env env1 env2 [...] --srl-model model1 model2 [...]
 ```
 
 ### Plot Learning Curve
