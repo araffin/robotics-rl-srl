@@ -6,11 +6,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 from rl_baselines.utils import createEnvs
 from srl_priors.utils import printYellow
-
 
 class Policy(object):
     """
@@ -48,9 +46,21 @@ class PytorchPolicy(Policy):
         self.continuous_actions = continuous_actions
         self.srl_model = srl_model
         self.cuda = cuda
+        self.device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
+        
+        self.model.to(self.device)
 
-        if self.cuda:
-            self.model.cuda()
+    # used to prevent pickling of pytorch device object
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        if 'device' in d:
+            d['device'] = 'device'
+        return d
+
+    def __setstate__(self, d):
+        if 'device' in d:
+            d['device'] = torch.device("cuda" if torch.cuda.is_available() and d['cuda'] else "cpu")
+        self.__dict__.update(d)
 
     def getAction(self, obs):
         """
@@ -63,20 +73,17 @@ class PytorchPolicy(Policy):
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
-            return self.model(self.makeVar(obs)).data.numpy()
+            return self.model(self.makeVar(obs)).detach().numpy()
         else:
-            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).data)
+            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).detach())
 
     def makeVar(self, arr):
         """
-        Returns a pytorch Variable object from a numpy array
+        Returns a pytorch Tensor object from a numpy array
         :param arr: ([float])
-        :return: (Variable)
+        :return: (Tensor)
         """
-        if self.cuda:
-            return Variable(torch.from_numpy(arr)).float().cuda()
-        else:
-            return Variable(torch.from_numpy(arr)).float()
+        return torch.from_numpy(arr).to(torch.float).to(self.device)
 
     def getParamSpace(self):
         """
