@@ -53,10 +53,10 @@ def env_thread(args, thread_num, partition=True):
     if args.env == "Kuka2ButtonGymEnv":
         env_kwargs["force_down"] = False
 
-    env_class = {"KukaButtonGymEnv":kuka_env.KukaButtonGymEnv,
-                 "Kuka2ButtonGymEnv":kuka_env_2.Kuka2ButtonGymEnv,
-                 "KukaRandButtonGymEnv":kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv":kuka_env_moving.KukaMovingButtonGymEnv
+    env_class = {"KukaButtonGymEnv-v0":kuka_env.KukaButtonGymEnv,
+                 "Kuka2ButtonGymEnv-v0":kuka_env_2.Kuka2ButtonGymEnv,
+                 "KukaRandButtonGymEnv-v0":kuka_env_rand.KukaRandButtonGymEnv,
+                 "KukaMovingButtonGymEnv-v0":kuka_env_moving.KukaMovingButtonGymEnv
                 }[args.env]
 
     if partition:
@@ -95,7 +95,8 @@ def main():
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv', help='The environment wanted',
-                        choices=["KukaButtonGymEnv", "Kuka2ButtonGymEnv", "KukaRandButtonGymEnv", "KukaMovingButtonGymEnv"])
+                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", 
+                        "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,

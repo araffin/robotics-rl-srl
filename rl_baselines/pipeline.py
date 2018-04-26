@@ -37,8 +37,35 @@ def main():
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
 
     # Removing duplicates
-    args.srl_model = list(set(args.srl_model))
-    args.env = list(set(args.env))
+    srl_models = list(set(args.srl_model))
+    envs = list(set(args.env))
+
+    # Checking definition and presence of all requested models
+    with open('config/srl_models.yaml', 'rb') as f:
+        all_models = yaml.load(f)
+
+    valid = True
+    for env in envs:
+        if env not in all_models:
+            printRed("Error: 'srl_models.yaml' missing definition for environment {}".format(env))
+            valid = False
+        elif "log_folder" not in all_models:
+            printRed("Error: 'srl_models.yaml' missing definition for log_folder in environment {}".format(env))
+            valid = False
+        elif not os.path.exists(all_models[env]["log_folder"]):
+            printRed("Error: log_folder was defined for environment {}, however the folder does not exist.".format(env))
+            valid = False
+        else:
+            for model in srl_models:
+                if model not in all_models[env]:
+                    printRed("Error: 'srl_models.yaml' missing srl_model {} for environment {}".format(model,env))
+                    valid = False
+                elif not os.path.exists(all_models[env]["log_folder"] + all_models[env][model]):
+                    printRed("Error: srl_model {} for environment {} was defined in ".format(model,env) + \
+                            "'srl_models.yaml', however the file {} it was tagetting does not exist.".format(
+                                all_models[env]["log_folder"] + all_models[env][model]))
+                    valid = False
+    assert valid, "Errors occured due to malformed 'srl_models.yaml', cannot continue."
 
     # the seeds used in training the baseline.
     seeds = list(np.arange(args.num_iteration) + args.seed)
@@ -50,11 +77,11 @@ def main():
         stdout = open(os.devnull, 'w')
 
     printGreen("\nRunning {} benchmarks {} times...".format(args.algo, args.num_iteration))
-    print("\nSRL-Models:\t{}".format(models))
+    print("\nSRL-Models:\t{}".format(srl_models))
     print("environments:\t{}".format(envs))
     print("verbose:\t{}".format(args.verbose))
     print("timesteps:\t{}".format(args.num_timesteps))
-    for model in models:
+    for model in srl_models:
         for env in envs:
             for i in range(args.num_iteration):
 

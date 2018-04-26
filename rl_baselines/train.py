@@ -47,7 +47,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorf
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
-    models = yaml.load(f)
+    all_models = yaml.load(f)
 
 
 def saveEnvParams(kuka_env, env_kwargs):
@@ -73,6 +73,8 @@ def configureEnvAndLogFolder(args, env_kwargs):
     env_kwargs["action_joints"] = args.action_joints
     args.log_dir += args.env + "/"
 
+
+    models = all_models[args.env]
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
         path = models.get(args.srl_model)
@@ -214,6 +216,8 @@ def main():
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
     assert args.port >= 0 and args.port < 65535,  "Error: invalid visdom port number {}, ".format(args.port) + \
         "port number must be an unsigned 16bit number [0,65535]."
+    assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
+        "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
 
     # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
     entry_point = gym_registry.spec(args.env)._entry_point
