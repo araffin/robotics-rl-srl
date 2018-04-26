@@ -63,9 +63,9 @@ class PytorchPolicy(Policy):
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
-            return self.model(self.make_var(obs)).data.numpy()
+            return self.model(self.makeVar(obs)).data.numpy()
         else:
-            return np.argmax(F.softmax(self.model(self.make_var(obs)), dim=-1).data)
+            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).data)
 
     def makeVar(self, arr):
         """
@@ -90,7 +90,7 @@ class PytorchPolicy(Policy):
         Set the network bias and weights
         :param param: ([float])
         """
-        nn.utils.vector_to_parameters(self.make_var(param).contiguous(), self.model.parameters())
+        nn.utils.vector_to_parameters(self.makeVar(param).contiguous(), self.model.parameters())
 
 
 class CNNPolicyPytorch(nn.Module):
