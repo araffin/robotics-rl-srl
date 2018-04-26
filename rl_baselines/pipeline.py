@@ -5,6 +5,7 @@ import os
 import argparse
 import subprocess
 
+import yaml
 import tensorflow as tf
 import numpy as np
 
@@ -35,36 +36,45 @@ def main():
 
     # Sanity check
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
+    assert args.num_iteration >= 1, "Error: --num-iteration cannot be less than 1"
 
     # Removing duplicates
     srl_models = list(set(args.srl_model))
     envs = list(set(args.env))
 
-    # Checking definition and presence of all requested models
+    # loading the config file for the srl_models
     with open('config/srl_models.yaml', 'rb') as f:
         all_models = yaml.load(f)
 
+    # Checking definition and presence of all requested srl_models
     valid = True
     for env in envs:
+        # validated the env definition
         if env not in all_models:
             printRed("Error: 'srl_models.yaml' missing definition for environment {}".format(env))
             valid = False
-        elif "log_folder" not in all_models:
+            continue # skip to the next env, this one is not valid
+
+        # checking log_folder for current env
+        missing_log = "log_folder" not in all_models[env]
+        if missing_log:
             printRed("Error: 'srl_models.yaml' missing definition for log_folder in environment {}".format(env))
             valid = False
-        elif not os.path.exists(all_models[env]["log_folder"]):
-            printRed("Error: log_folder was defined for environment {}, however the folder does not exist.".format(env))
-            valid = False
-        else:
-            for model in srl_models:
-                if model not in all_models[env]:
-                    printRed("Error: 'srl_models.yaml' missing srl_model {} for environment {}".format(model,env))
-                    valid = False
-                elif not os.path.exists(all_models[env]["log_folder"] + all_models[env][model]):
-                    printRed("Error: srl_model {} for environment {} was defined in ".format(model,env) + \
-                            "'srl_models.yaml', however the file {} it was tagetting does not exist.".format(
-                                all_models[env]["log_folder"] + all_models[env][model]))
-                    valid = False
+
+        # validate each model for the current env definition
+        for model in srl_models:
+            if model in ["ground_truth", "joints", "joints_position", "raw_pixels"]:
+                continue # not an srl model, skip to the next model
+            elif model not in all_models[env]:
+                printRed("Error: 'srl_models.yaml' missing srl_model {} for environment {}".format(model,env))
+                valid = False
+            elif (not missing_log) and (not os.path.exists(all_models[env]["log_folder"] + all_models[env][model])):
+                # checking presence of srl_model path, if and only if log_folder exists
+                printRed("Error: srl_model {} for environment {} was defined in ".format(model,env) + \
+                        "'srl_models.yaml', however the file {} it was tagetting does not exist.".format(
+                            all_models[env]["log_folder"] + all_models[env][model]))
+                valid = False
+
     assert valid, "Errors occured due to malformed 'srl_models.yaml', cannot continue."
 
     # the seeds used in training the baseline.
