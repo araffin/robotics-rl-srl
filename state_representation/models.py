@@ -230,8 +230,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         observation.requires_grad_(False) # Volatile=True
 
         state = self.model.getStates(observation)[0]
-        state = state.cpu() #TODO remove when refactored srl_priors
-        return state.detach().numpy()
+        return state.to(th.device("cpu")).detach().numpy()
 
 
 class SRLPCA(SRLBaseClass):

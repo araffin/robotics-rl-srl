@@ -73,9 +73,9 @@ class PytorchPolicy(Policy):
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
-            return self.model(self.makeVar(obs)).detach().numpy()
+            return self.model(self.makeVar(obs)).to(torch.device("cpu")).detach().numpy()
         else:
-            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).detach())
+            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).to(torch.device("cpu")).detach())
 
     def makeVar(self, arr):
         """
