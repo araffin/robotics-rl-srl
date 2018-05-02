@@ -153,12 +153,14 @@ class CustomVecNormalize(VecEnvWrapper):
             with open("{}/{}.pkl".format(path, name), 'rb') as f:
                 setattr(self, name, pickle.load(f))
 
+
 class VecFrameStack(OpenAIVecFrameStack):
     """
     Vectorized environment class, fixed from OpenAIVecFrameStack
     :param venv: (Gym env)
     :param nstack: (int)
     """
+
     def __init__(self, venv, nstack):
         super(VecFrameStack, self).__init__(venv, nstack)
 

@@ -2,6 +2,7 @@ from .kuka_button_gym_env import *
 
 MAX_STEPS = 1500
 
+
 class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     """
     Gym wrapper for Kuka environment with 2 push buttons
@@ -31,8 +32,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         super(Kuka2ButtonGymEnv, self).__init__(name=name, max_distance=max_distance, force_down=force_down, **kwargs)
 
         self.max_steps = MAX_STEPS
-        self.n_contacts = [0,0]
-
+        self.n_contacts = [0, 0]
 
     def reset(self):
         """
@@ -40,10 +40,10 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         :return: (numpy tensor) first observation of the env
         """
         self.terminated = False
-        self.n_contacts = [0,0]
+        self.n_contacts = [0, 0]
         self.button_all_pos = []
         self.button_uid = []
-        self.goal_id = 0 # here, goal_id is used to know which button is the next one to press
+        self.goal_id = 0  # here, goal_id is used to know which button is the next one to press
         self.n_steps_outside = 0
         self.button_pressed = [False]
         p.resetSimulation()
@@ -124,7 +124,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         return np.array(self._observation)
 
-
     def step2(self, action):
         """
         :param action:([float])
@@ -163,7 +162,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         self.n_contacts[self.goal_id] += int(len(contact_points) > 0)
 
         # for the sparse reward
-        if self.goal_id == len(self.button_uid)-1:
+        if self.goal_id == len(self.button_uid) - 1:
             reward = int(len(contact_points) > 0)
 
         # next button

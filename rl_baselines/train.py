@@ -73,7 +73,6 @@ def configureEnvAndLogFolder(args, env_kwargs):
     env_kwargs["action_joints"] = args.action_joints
     args.log_dir += args.env + "/"
 
-
     models = all_models[args.env]
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
@@ -136,7 +135,8 @@ def callback(_locals, _globals):
         # Evaluate network performance
         ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es)
         if ok:
-            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
+            print(
+                "Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
         else:
             # Not enough episode
             mean_reward = -10000
@@ -160,11 +160,11 @@ def callback(_locals, _globals):
             elif ALGO in ['ars', 'cma-es']:
                 _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
 
-
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed", is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed",
+                                   is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
@@ -185,7 +185,8 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints",
+                                 "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=1,
                         help='number of frames to stack (default: 1)')
@@ -201,7 +202,8 @@ def main():
     parser.add_argument('-joints', '--action-joints',
                         help='set actions to the joints of the arm directly, instead of inverse kinematics',
                         action='store_true', default=False)
-    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
+    parser.add_argument('-r', '--relative', action='store_true', default=False,
+                        help='Set the button to a random position')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -209,13 +211,14 @@ def main():
 
     # Sanity check
     assert args.env in gym_registry.env_specs, "Error: could not find the environment {}, ".format(args.env) + \
-        "here are the valid environments: {}".format(list(gym_registry.env_specs.keys()))
+                                               "here are the valid environments: {}".format(
+                                                   list(gym_registry.env_specs.keys()))
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
-    assert args.port >= 0 and args.port < 65535,  "Error: invalid visdom port number {}, ".format(args.port) + \
-        "port number must be an unsigned 16bit number [0,65535]."
+    assert 0 <= args.port < 65535, "Error: invalid visdom port number {}, ".format(args.port) + \
+                                   "port number must be an unsigned 16bit number [0,65535]."
     assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
 
@@ -231,11 +234,10 @@ def main():
     try:
         kuka_env = importlib.import_module(env_module_path)
     except:
-        printRed("Error: could not import module {}, ".format(env_module_path) + 
-            "defaulting to environments.kuka_button_gym_env. " + 
-            "This means the logging and saving will be corrupted to some degree")
+        printRed("Error: could not import module {}, ".format(env_module_path) +
+                 "defaulting to environments.kuka_button_gym_env. " +
+                 "This means the logging and saving will be corrupted to some degree")
         kuka_env = importlib.import_module("environments.kuka_button_gym_env")
-
 
     ENV_NAME = args.env
     ALGO = args.algo
@@ -303,7 +305,7 @@ def main():
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback, env_kwargs=env_kwargs) 
+    algo.main(args, callback, env_kwargs=env_kwargs)
 
 
 if __name__ == '__main__':

@@ -49,15 +49,15 @@ def env_thread(args, thread_num, partition=True):
     env_kwargs["record_data"] = args.record_data
     env_kwargs["multi_view"] = args.multi_view
     env_kwargs["save_path"] = args.save_folder
-    
+
     if args.env == "Kuka2ButtonGymEnv":
         env_kwargs["force_down"] = False
 
-    env_class = {"KukaButtonGymEnv-v0":kuka_env.KukaButtonGymEnv,
-                 "Kuka2ButtonGymEnv-v0":kuka_env_2.Kuka2ButtonGymEnv,
-                 "KukaRandButtonGymEnv-v0":kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv-v0":kuka_env_moving.KukaMovingButtonGymEnv
-                }[args.env]
+    env_class = {"KukaButtonGymEnv-v0": kuka_env.KukaButtonGymEnv,
+                 "Kuka2ButtonGymEnv-v0": kuka_env_2.Kuka2ButtonGymEnv,
+                 "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
+                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv
+                 }[args.env]
 
     if partition:
         env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
@@ -95,8 +95,8 @@ def main():
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv', help='The environment wanted',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", 
-                        "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
+                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
+                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
@@ -105,7 +105,8 @@ def main():
     parser.add_argument('--seed', type=int, default=0, help='the seed')
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else (including partial parts if they exist)')
-    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
+    parser.add_argument('-r', '--relative', action='store_true', default=False,
+                        help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
 
     args = parser.parse_args()
@@ -212,6 +213,7 @@ def main():
         # save the fused outputs
         np.savez(args.save_folder + args.save_name + "/ground_truth.npz", **ground_truth)
         np.savez(args.save_folder + args.save_name + "/preprocessed_data.npz", **preprocessed_data)
+
 
 if __name__ == '__main__':
     main()

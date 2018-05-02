@@ -8,7 +8,6 @@ from rl_baselines.policies import MlpPolicyDicrete, CNNPolicyContinuous
 from rl_baselines.utils import createEnvs
 
 
-
 # Modified version of OpenAI to work with SRL models
 def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
           vf_coef=0.5, max_grad_norm=0.5, gamma=0.99, lam=0.95,

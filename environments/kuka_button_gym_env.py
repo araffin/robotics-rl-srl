@@ -39,6 +39,7 @@ BUTTON_DISTANCE_HEIGHT = 0.28  # Extra height added to the buttons position in t
 
 CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
 
+
 def getGlobals():
     """
     :return: (dict)
@@ -51,6 +52,8 @@ def getGlobals():
 """
 Gym wrapper for Kuka arm RL
 """
+
+
 class KukaButtonGymEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -84,7 +87,7 @@ class KukaButtonGymEnv(gym.Env):
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
                  name="kuka_button_gym", max_distance=0.4, action_repeat=1, shape_reward=False, action_joints=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
-                 button_random=False, force_down=True, state_dim=-1, learn_states=False, verbose=False, 
+                 button_random=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_priors/data/'):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
@@ -207,7 +210,8 @@ class KukaButtonGymEnv(gym.Env):
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
-                               use_inverse_kinematics=(not self.action_joints), small_constraints=(not self._button_random))
+                               use_inverse_kinematics=(not self.action_joints),
+                               small_constraints=(not self._button_random))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
@@ -401,7 +405,7 @@ class KukaButtonGymEnv(gym.Env):
                 projectionMatrix=proj_matrix2, renderer=self.renderer)
             rgb_array2 = np.array(px2)
             rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
-        else :
+        else:
             rgb_array_res = rgb_array1[:, :, :3]
         return rgb_array_res
 

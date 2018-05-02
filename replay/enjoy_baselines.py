@@ -29,6 +29,7 @@ from environments.utils import makeEnv
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 
+
 def parseArguments():
     """
 

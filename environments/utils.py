@@ -3,11 +3,9 @@
 import os
 
 import gym
-from gym import logger
-from gym.envs.registration import registry, patch_deprecated_methods, load
-
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
+from gym.envs.registration import registry, patch_deprecated_methods, load
 
 
 def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs={}):
@@ -47,9 +45,8 @@ def _make(id, env_kwargs={}):
     spec = registry.spec(id)
 
     # Keeping the checks and safe guards of the old code
-    if spec._entry_point is None:
-        raise error.Error('Attempting to make deprecated env {}. \
-            (HINT: is there a newer registered version of this env?)'.format(spec.id))
+    assert spec._entry_point is not None, 'Attempting to make deprecated env {}. \
+            (HINT: is there a newer registered version of this env?)'.format(spec.id)
 
     if callable(spec._entry_point):
         env = spec._entry_point(**env_kwargs)

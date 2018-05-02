@@ -5,6 +5,7 @@ BUTTON_SPEED = 0.001
 BUTTON_YMIN = -0.3
 BUTTON_YMAX = 0.3
 
+
 class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     """
     Gym wrapper for Kuka environment with a push button that is moving
@@ -65,7 +66,8 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
-                               use_inverse_kinematics=(not self.action_joints), small_constraints=(not self._button_random))
+                               use_inverse_kinematics=(not self.action_joints),
+                               small_constraints=(not self._button_random))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
