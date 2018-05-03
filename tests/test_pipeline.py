@@ -29,6 +29,10 @@ def testBaselineTrain():
         for baseline in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars']:
             args = ['--algo', baseline, '--env', DEFAULT_ENV, '--srl-model', model_type, 
                     '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION]
+            if baseline == "ddpg":
+                mem_limit = 100 if model_type == 'raw_pixels' else 100000
+                args.extend(['-c', '--memory-limit', mem_limit])
+
             args = list(map(str, args))
 
             ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)

@@ -110,10 +110,8 @@ def main():
                 ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args, stdout=stdout)
 
                 if ok != 0:
-                    printRed("An error occured, error code: {}".format(ok))
                     # throw the error down to the terminal
-                    return ok
-
+                    raise ChildProcessError("An error occured, error code: {}".format(ok))
 
 if __name__ == '__main__':
     main()
