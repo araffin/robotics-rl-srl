@@ -7,6 +7,7 @@ data/
 trained_models/
 logs/
 *.bak
+.pytest_cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
