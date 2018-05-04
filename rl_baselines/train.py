@@ -255,6 +255,7 @@ def main():
         # so we need to reduce log and save interval
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 20
+        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
     elif args.algo == "a2c":
         algo = a2c
     elif args.algo == "ppo2":
