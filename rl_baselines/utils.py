@@ -178,7 +178,7 @@ class VecFrameStack(OpenAIVecFrameStack):
         return self.stackedobs, rews, news, infos
 
 
-def createEnvs(args, allow_early_resets=False, env_kwargs={}):
+def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param allow_early_resets: (bool)

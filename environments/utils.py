@@ -8,7 +8,7 @@ from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from gym.envs.registration import registry, patch_deprecated_methods, load
 
 
-def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs={}):
+def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=None):
     """
     Instantiate gym env
     :param env_id: (str)
@@ -34,13 +34,16 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs={}
     return _thunk
 
 
-def _make(id, env_kwargs={}):
+def _make(id, env_kwargs=None):
     """
     Recreating the gym make function from gym/envs/registration.py
     as such as it can support extra arguments for the environment
     :param id: (str) The environment ID
     :param env_kwargs: (dict) The extra arguments for the environment
     """
+    if env_kwargs is None:
+        env_kwargs = {}
+
     # getting the spec from the ID we want
     spec = registry.spec(id)
 

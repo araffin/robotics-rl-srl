@@ -137,7 +137,7 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback=None, env_kwargs={}):
+def main(args, callback=None, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
