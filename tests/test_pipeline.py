@@ -46,7 +46,7 @@ def make_test_fun(algo):
     return testBaselineTrain
 
 for baseline in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars']:
-    globals()["test"+baseline+"Train"] = make_test_fun(baseline)
+    globals()["test{}Train".format(baseline)] = make_test_fun(baseline)
 
 
 def testEnvTrain():

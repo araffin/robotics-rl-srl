@@ -38,17 +38,17 @@ def env_thread(args, thread_num, partition=True):
     :param thread_num: (int) The thread ID of the environment session
     :param partition: (bool) If the output should be in multiple parts (default=True)
     """
-    env_kwargs = {}
-
-    env_kwargs["max_distance"] = args.max_distance
-    env_kwargs["button_random"] = args.relative
-    env_kwargs["force_down"] = True
-    env_kwargs["multi_view"] = args.multi_view
-    env_kwargs["is_discrete"] = (not args.continuous_actions)
-    env_kwargs["renders"] = (thread_num == 0 and not args.no_display)
-    env_kwargs["record_data"] = args.record_data
-    env_kwargs["multi_view"] = args.multi_view
-    env_kwargs["save_path"] = args.save_folder
+    env_kwargs = {
+        "max_distance":args.max_distance,
+        "button_random":args.relative,
+        "force_down":True,
+        "multi_view":args.multi_view,
+        "is_discrete":not args.continuous_actions,
+        "renders":thread_num == 0 and not args.no_display
+        "record_data":args.record_data,
+        "multi_view":args.multi_view,
+        "save_path":args.save_folder
+    }
 
     if args.env == "Kuka2ButtonGymEnv":
         env_kwargs["force_down"] = False

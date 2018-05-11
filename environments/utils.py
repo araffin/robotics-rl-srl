@@ -34,22 +34,22 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=No
     return _thunk
 
 
-def _make(id, env_kwargs=None):
+def _make(id_, env_kwargs=None):
     """
     Recreating the gym make function from gym/envs/registration.py
     as such as it can support extra arguments for the environment
-    :param id: (str) The environment ID
+    :param id_: (str) The environment ID
     :param env_kwargs: (dict) The extra arguments for the environment
     """
     if env_kwargs is None:
         env_kwargs = {}
 
     # getting the spec from the ID we want
-    spec = registry.spec(id)
+    spec = registry.spec(id_)
 
     # Keeping the checks and safe guards of the old code
-    assert spec._entry_point is not None, 'Attempting to make deprecated env {}. \
-            (HINT: is there a newer registered version of this env?)'.format(spec.id)
+    assert spec._entry_point is not None, 'Attempting to make deprecated env {}. '\
+            '(HINT: is there a newer registered version of this env?)'.format(spec.id_)
 
     if callable(spec._entry_point):
         env = spec._entry_point(**env_kwargs)

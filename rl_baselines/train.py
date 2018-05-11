@@ -233,11 +233,9 @@ def main():
     # should this occure, it will mean that some parameters will not be correctly saved. 
     try:
         kuka_env = importlib.import_module(env_module_path)
-    except:
-        printRed("Error: could not import module {}, ".format(env_module_path) +
-                 "defaulting to environments.kuka_button_gym_env. " +
-                 "This means the logging and saving will be corrupted to some degree")
-        kuka_env = importlib.import_module("environments.kuka_button_gym_env")
+    except ImportError:
+        raise AssertionError("Error: could not import module {}, ".format(env_module_path) +
+                 "Halting execution. Are you sure this is a valid environement?")
 
     ENV_NAME = args.env
     ALGO = args.algo
