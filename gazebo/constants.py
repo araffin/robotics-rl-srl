@@ -50,4 +50,4 @@ SPACE_KEY = 32
 EXIT_KEYS = [113, 27]  # Escape and q
 D_KEY = 100  # the letter "d"
 U_KEY = 117  # The letter "u"
-R_KEY = 114
+R_KEY = 114  # the letter "r"
