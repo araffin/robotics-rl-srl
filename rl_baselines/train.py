@@ -28,6 +28,7 @@ from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
 import environments.kuka_button_gym_env as kuka_inherited_env
+from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -227,8 +228,10 @@ def main():
     # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
     entry_point = gym_registry.spec(args.env)._entry_point
     if callable(entry_point):
+        class_name = entry_point.__name__
         env_module_path = entry_point.__module__
     else:
+        class_name = entry_point.split(':')[1]
         env_module_path = entry_point.split(':')[0]
     # Lets try and dynamically load the kuka_env, in order to fetch the globals.
     # If it fails, it means that it was unable to load the path from the entry_point
@@ -297,21 +300,21 @@ def main():
    
     # env default kwargs
     default_env_kwargs = {k:v.default 
-                          for k, v in inspect.signature(kuka_env.__init__).parameters.items() 
+                          for k, v in inspect.signature(kuka_env.__dict__[class_name].__init__).parameters.items() 
                           if v is not None}
 
     # here we need to get the defaut kwargs and globals from the kuka_button_gym_env, if we inherit from it
 
     # Sanity check to make sure we have implemented the environment correctly, 
     # as if it does not inherit KukaButtonGymEnv, then the inherited_env_kwargs will not be correct.
-    assert kuka_env.__class__.__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv", 
+    assert kuka_env.__dict__[class_name].__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv", 
                                  "KukaMovingButtonGymEnv", "KukaRandButtonGymEnv"], \
-           "Error: not implemented for the environment {}".format(kuka_env.__class__.__name__)
+           "Error: not implemented for the environment {}".format(kuka_env.__dict__[class_name].__name__)
     inherited_env_kwargs = {}
     inherited_globals = {}
     if kuka_inherited_env != kuka_env:
         inherited_env_kwargs = {k:v.default 
-                                for k, v in inspect.signature(kuka_inherited_env.__init__).parameters.items() 
+                                for k, v in inspect.signature(kuka_inherited_env_class.__init__).parameters.items() 
                                 if v is not None}
         inherited_globals = kuka_inherited_env.getGlobals()
 
