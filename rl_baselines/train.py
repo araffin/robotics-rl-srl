@@ -27,7 +27,7 @@ from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
-import environments.kuka_button_gym_env.py as kuka_inherited_env
+import environments.kuka_button_gym_env as kuka_inherited_env
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -304,9 +304,9 @@ def main():
 
     # Sanity check to make sure we have implemented the environment correctly, 
     # as if it does not inherit KukaButtonGymEnv, then the inherited_env_kwargs will not be correct.
-    assert kuka_env.__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv", 
+    assert kuka_env.__class__.__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv", 
                                  "KukaMovingButtonGymEnv", "KukaRandButtonGymEnv"], \
-           "Error: not implemented for the environment {}".format(kuka_env.__name__)
+           "Error: not implemented for the environment {}".format(kuka_env.__class__.__name__)
     inherited_env_kwargs = {}
     inherited_globals = {}
     if kuka_inherited_env != kuka_env:
