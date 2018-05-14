@@ -181,7 +181,7 @@ class VecFrameStack(OpenAIVecFrameStack):
 def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
-    :param allow_early_resets: (bool)
+    :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs
     :param env_kwargs: (dict) The extra arguments for the environment
     :return: (Gym VecEnv)
     """

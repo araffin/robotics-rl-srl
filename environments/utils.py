@@ -19,6 +19,7 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=No
     :param env_kwargs: (dict) The extra arguments for the environment
     """
 
+    # define a place holder function to be returned to the caller.
     def _thunk():
         env = _make(env_id, env_kwargs=env_kwargs)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)

@@ -4,7 +4,7 @@ from baselines.ppo2.policies import MlpPolicy as MlpPolicyContinuous
 from baselines import logger
 import tensorflow as tf
 
-from rl_baselines.policies import MlpPolicyDicrete, CNNPolicyContinuous
+from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous
 from rl_baselines.utils import createEnvs
 
 
@@ -41,7 +41,7 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
         policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
     else:
         # LN-LSTM: Layer Normalization LSTM
-        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDicrete}[args.policy]
+        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDiscrete}[args.policy]
 
     if policy is None:
         raise ValueError(args.policy + " not implemented for " + (

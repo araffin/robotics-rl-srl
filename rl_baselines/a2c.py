@@ -2,7 +2,7 @@ from baselines.a2c.a2c import *
 from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
-from rl_baselines.policies import MlpPolicyDicrete
+from rl_baselines.policies import MlpPolicyDiscrete
 from rl_baselines.utils import createTensorflowSession, createEnvs
 
 
@@ -85,7 +85,7 @@ def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, 
     elif policy == 'lnlstm':
         policy_fn = LnLstmPolicy
     elif policy == 'mlp':
-        policy_fn = MlpPolicyDicrete
+        policy_fn = MlpPolicyDiscrete
     else:
         raise ValueError("Policy {} not implemented".format(policy))
 

@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from pprint import pprint
 import importlib
+import inspect
 
 import yaml
 from baselines.common import set_global_seeds
@@ -26,6 +27,7 @@ from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
+import environments.kuka_button_gym_env.py as kuka_inherited_env
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -50,12 +52,12 @@ with open('config/srl_models.yaml', 'rb') as f:
     all_models = yaml.load(f)
 
 
-def saveEnvParams(kuka_env, env_kwargs):
+def saveEnvParams(kuka_env_globals, env_kwargs):
     """
-    :param kuka_env: (kuka_env module)
+    :param kuka_env_globals: (dict)
     :param env_kwargs: (dict) The extra arguments for the environment
     """
-    params = filterJSONSerializableObjects({**kuka_env.getGlobals(), **env_kwargs})
+    params = filterJSONSerializableObjects({**kuka_env_globals, **env_kwargs})
     with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
         json.dump(params, f)
 
@@ -292,13 +294,36 @@ def main():
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
+   
+    # env default kwargs
+    default_env_kwargs = {k:v.default 
+                          for k, v in inspect.signature(kuka_env.__init__).parameters.items() 
+                          if v is not None}
+
+    # here we need to get the defaut kwargs and globals from the kuka_button_gym_env, if we inherit from it
+
+    # Sanity check to make sure we have implemented the environment correctly, 
+    # as if it does not inherit KukaButtonGymEnv, then the inherited_env_kwargs will not be correct.
+    assert kuka_env.__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv", 
+                                 "KukaMovingButtonGymEnv", "KukaRandButtonGymEnv"], \
+           "Error: not implemented for the environment {}".format(kuka_env.__name__)
+    inherited_env_kwargs = {}
+    inherited_globals = {}
+    if kuka_inherited_env != kuka_env:
+        inherited_env_kwargs = {k:v.default 
+                                for k, v in inspect.signature(kuka_inherited_env.__init__).parameters.items() 
+                                if v is not None}
+        inherited_globals = kuka_inherited_env.getGlobals()
+
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects({**kuka_env.getGlobals(), **env_kwargs}))
+    pprint(filterJSONSerializableObjects(
+        {**inherited_globals, **kuka_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs,  **env_kwargs}))
     # Save kuka env params
-    saveEnvParams(kuka_env, env_kwargs)
+    saveEnvParams({**inherited_globals, **kuka_env.getGlobals()}, 
+                  {**inherited_env_kwargs, **default_env_kwargs,  **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
