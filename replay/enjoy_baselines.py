@@ -23,7 +23,7 @@ import rl_baselines.ars as ars
 import rl_baselines.cma_es as cma_es
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomVecNormalize, VecFrameStack
-from rl_baselines.policies import MlpPolicyDicrete, AcerMlpPolicy, CNNPolicyContinuous
+from rl_baselines.policies import MlpPolicyDiscrete, AcerMlpPolicy, CNNPolicyContinuous
 from srl_priors.utils import printYellow, printGreen
 from environments.utils import makeEnv
 
@@ -174,13 +174,13 @@ def main():
         # nstack is already handled in the VecFrameStack
         model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, nstack=1, reuse=False)
     elif algo == "a2c":
-        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
+        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[train_args["policy"]]
         model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
     elif algo == "ppo2":
         if train_args["continuous_actions"]:
             policy = {'cnn': CNNPolicyContinuous, 'mlp': MlpPolicy}[train_args["policy"]]
         else:
-            policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDicrete}[train_args["policy"]]
+            policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[train_args["policy"]]
         model = policy(sess, ob_space, ac_space, load_args.num_cpu, nsteps=1, reuse=False)
     elif algo == "ddpg":
         model = ddpg.load(load_path, sess)
@@ -211,7 +211,7 @@ def main():
     obs = envs.reset()
     # print(obs.shape)
 
-    # plotting init 
+    # plotting init
     if load_args.plotting:
         plt.pause(0.1)
         fig = plt.figure()
