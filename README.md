@@ -141,6 +141,10 @@ to perform the inference.
 ## Baxter Robot with Gazebo and ROS
 Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
 
+**Important Note**: ROS (and Gazebo + Baxter) only works with python2, whereas this repo (except the ROS scripts) works with python3.
+For Ros/Baxter installation, please look at the [Official Tutorial](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
+Also, ROS comes with its own version of OpenCV, so when running the python3 scripts, you need to deactivate ROS. In the same vein, if you use Anaconda, you need to disable it when you want to run ROS scripts (denoted as python 2 in the following instructions).
+
 1. Start ros nodes (Python 2):
 ```
 roslaunch arm_scenario_simulator baxter_world.launch
@@ -164,6 +168,85 @@ If the port is already used, you can see the program pid using the following com
 sudo netstat -lpn | grep :7777
 ```
 and then kill it (with `kill -9 program_pid`)
+
+or in one line:
+```
+kill -9 `sudo lsof -t -i:7777`
+```
+
+## Working With a Real Baxter Robot
+
+WARNING: Please read COMPLETELY the following instructions before running and experiment on a real baxter.
+
+### Recording Data With a Random Agent for SRL
+
+1. Change you environment to match baxter ROS settings (usually using the `baxter.sh` script from RethinkRobotics)
+or in your .bashrc:
+```
+# NB: This is only an example
+export ROS_HOSTNAME=192.168.0.211  # Your IP
+export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
+```
+
+2. Calibrate the different values in in `gazebo/constants.py` using `gazebo/real_baxter_debug.py`:
+- Set USING_REAL_BAXTER to True
+- Position of the target: BUTTON_POS
+- Init position and orientation: LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION
+- Position of the table (minimum z): Z_TABLE
+- Distance below which the target is considered to be reached: DIST_TO_TARGET_THRESHOLD
+- Distance above which the agent will get a negative reward: MAX_DISTANCE
+- Maximum number of steps per episode: MAX_STEPS
+
+3. Configure images topics in `gazebo/constants.py`:
+- IMAGE_TOPIC: main camera
+- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
+- DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
+
+4. Launch ROS bridge server (python 2):
+```
+python -m gazebo.real_baxter_server
+```
+
+5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
+
+6. Set the number of episodes you want to record, name of the experiment and random seed in `environments/gym_baxter/test_baxter_env.py`
+
+7. Record data using a random agent:
+```
+python -m environments.gym_baxter.test_baxter_env
+```
+8. Wait until the end... Note: the real robot runs at approximately 0.6 FPS.
+
+NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/gym_baxter/baxter_env.py`
+
+### RL on a Real Robot
+
+1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
+
+2. Make sure that USING_REAL_BAXTER is set to True in `gazebo/constants.py`.
+WARNING: you need to copy code from `rl_baselines/ppo2.py` if you want to use an algo different from PPO2:
+```python
+from gazebo.constants import USING_REAL_BAXTER
+if USING_REAL_BAXTER:
+    import environments.gym_baxter.baxter_env as kuka_env
+else:
+    import environments.kuka_button_gym_env as kuka_env
+```
+
+3. Launch ROS bridge server (python 2):
+```
+python -m gazebo.real_baxter_server
+```
+
+4. Start visdom for visualizing the training
+```
+python -m visdom.server
+```
+
+4. Train the agent (python 3)
+```
+python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --shape-reward --algo ppo2 --env Baxter-v0
+```
 
 ## Troubleshooting
 If a submodule is not downloaded:

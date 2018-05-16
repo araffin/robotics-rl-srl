@@ -6,6 +6,7 @@ Press esc or q to exit the client
 from __future__ import division, print_function, absolute_import
 
 import time
+import signal
 
 import cv2
 import numpy as np
@@ -39,7 +40,17 @@ action_dict = {
 }
 cv2.imshow("Image", np.zeros((10, 10, 3), dtype=np.uint8))
 
-while True:
+should_exit = [False]
+
+
+# exit the script on ctrl+c
+def ctrl_c(signum, frame):
+    should_exit[0] = True
+
+
+signal.signal(signal.SIGINT, ctrl_c)
+
+while not should_exit[0]:
     # Retrieve pressed key
     key = cv2.waitKey(0) & 0xff
 
@@ -47,17 +58,14 @@ while True:
         break
     elif key in action_dict.keys():
         action = action_dict[key]
+        socket.send_json({"command": "action", "action": action})
     elif key == R_KEY:
         socket.send_json({"command": "reset"})
-        # Wait for the env to be reset
-        msg = socket.recv_json()
-        continue
     else:
         print("Unknown key: {}".format(key))
         action = [0, 0, 0]
 
     start_time = time.time()
-    socket.send_json({"command": "action", "action": action})
     # Receive state data (position, etc)
     state_data = socket.recv_json()
     print('state data: {}'.format(state_data))
