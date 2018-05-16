@@ -3,12 +3,10 @@ import time
 import environments.gym_baxter.baxter_env as baxter_env
 
 baxter_env.RECORD_DATA = True
-# Reduce max distance to have more negative rewards for srl
-baxter_env.MAX_DISTANCE = 0.30
 
-env = baxter_env.BaxterEnv(renders=False, is_discrete=True, log_folder="baxter_test")
-timesteps = 500
-episodes = 400
+env = baxter_env.BaxterEnv(renders=False, is_discrete=True, log_folder="baxter_real_2")
+timesteps = 500  # must be greater than MAX_STEPS
+episodes = 100
 env.seed(1)
 i = 0
 

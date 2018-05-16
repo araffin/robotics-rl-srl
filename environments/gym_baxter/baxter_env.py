@@ -13,22 +13,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
-from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE
+from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
-
-MAX_STEPS = 50
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-N_CONTACTS_BEFORE_TERMINATION = 5
-MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
-THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
-RELATIVE_POS = False
+N_CONTACTS_BEFORE_TERMINATION = 2
+RELATIVE_POS = True
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
-DELTA_POS = 0.05
 # Each action array is [dx, dy, dz]: representing movements up, down, left, right,
 # backward and forward from Baxter coordinate system center
 action_dict = {
@@ -42,12 +37,11 @@ action_dict = {
 }
 N_DISCRETE_ACTIONS = len(action_dict)
 
-
 # Parameters defined outside init because gym.make() doesn't allow arguments
 FORCE_RENDER = False  # For enjoy script
 STATE_DIM = -1  # When learning states
 LEARN_STATES = False
-USE_SRL =  False
+USE_SRL = False
 SRL_MODEL_PATH = None
 RECORD_DATA = False
 USE_GROUND_TRUTH = False
@@ -55,6 +49,7 @@ SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
 
 # Init seaborn
 sns.set()
+
 
 def getGlobals():
     """
@@ -86,6 +81,9 @@ class BaxterEnv(gym.Env):
                  log_folder="baxter_log_folder"):
         self.n_contacts = 0
         self.use_srl = USE_SRL or USE_GROUND_TRUTH
+        self.use_ground_truth = USE_GROUND_TRUTH
+        self.use_joints = False
+        self.relative_pos = RELATIVE_POS
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
@@ -117,7 +115,6 @@ class BaxterEnv(gym.Env):
             self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
                                                 dtype=self.dtype)
 
-
         if RECORD_DATA:
             print("Recording data...")
             self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
@@ -137,6 +134,8 @@ class BaxterEnv(gym.Env):
         self.action = [0, 0, 0]
         self.reward = 0
         self.arm_pos = np.array([0, 0, 0])
+        # Create numpy random generator
+        # This seed can be changed later
         self.seed(0)
 
         # Initialize the state
