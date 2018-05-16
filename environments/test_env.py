@@ -39,15 +39,15 @@ def env_thread(args, thread_num, partition=True):
     :param partition: (bool) If the output should be in multiple parts (default=True)
     """
     env_kwargs = {
-        "max_distance":args.max_distance,
-        "button_random":args.relative,
-        "force_down":True,
-        "multi_view":args.multi_view,
-        "is_discrete":not args.continuous_actions,
-        "renders":thread_num == 0 and not args.no_display
-        "record_data":args.record_data,
-        "multi_view":args.multi_view,
-        "save_path":args.save_folder
+        "max_distance": args.max_distance,
+        "button_random": args.relative,
+        "force_down": True,
+        "is_discrete": not args.continuous_actions,
+        "renders": thread_num == 0 and not args.no_display,
+        "record_data": args.record_data,
+        "multi_view": args.multi_view,
+        "save_path": args.save_folder,
+        "shape_reward": args.shape_reward
     }
 
     if args.env == "Kuka2ButtonGymEnv":
@@ -94,7 +94,7 @@ def main():
     parser.add_argument('--save-folder', type=str, default='srl_priors/data/',
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
-    parser.add_argument('--env', type=str, default='KukaButtonGymEnv', help='The environment wanted',
+    parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
                                  "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
@@ -108,7 +108,8 @@ def main():
     parser.add_argument('-r', '--relative', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
-
+    parser.add_argument('--shape-reward', action='store_true', default=False,
+                        help='Shape the reward (reward = - distance) instead of a sparse reward')
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
@@ -152,7 +153,7 @@ def main():
 
     if args.record_data and args.num_cpu > 1:
 
-        # get all the parts 
+        # get all the parts
         file_parts = glob.glob(args.save_folder + args.save_name + "_part-[0-9]*")
 
         # move the config files from any as they are identical
