@@ -70,6 +70,10 @@ def loadConfigAndSetup(load_args):
 
     env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
+    # choose the right paths for the environment
+    assert train_args["env"] in srl_models, \
+        "Error: environment '{}', is not defined in 'config/srl_models.yaml'".format(train_args["env"])
+    srl_models = srl_models[train_args["env"]]
 
     env_kwargs = {}
     env_kwargs["renders"] = load_args.render
