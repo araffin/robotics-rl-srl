@@ -176,6 +176,19 @@ class KukaButtonGymEnv(gym.Env):
         # This seed can be changed later
         self.seed(0)
 
+    def getTargetPos(self):
+        """
+        :return (numpy array): Position of the target (button)
+        """
+        return self.button_pos
+
+    def getGroundTruth(self):
+        """
+        Alias for getArmPos for compatibility between envs
+        :return: (numpy array)
+        """
+        return np.array(self.getArmPos())
+
     def getArmPos(self):
         """
         :return: ([float]) Position (x, y, z) of kuka gripper

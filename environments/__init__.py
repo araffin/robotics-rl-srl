@@ -44,3 +44,10 @@ register(
     # Threshold at which the environment is considered as solved
     reward_threshold=5.0,
 )
+
+register(
+    _id='MobileRobotGymEnv-v0',
+    entry_point='environments.mobile_robot.mobile_robot_env:MobileRobotGymEnv',
+    timestep_limit=5000,  # This limit is changed in the file
+    reward_threshold=5.0,  # Threshold at which the environment is considered as solved
+)

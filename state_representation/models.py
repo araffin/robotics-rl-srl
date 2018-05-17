@@ -130,8 +130,8 @@ class SRLGroundTruth(SRLBaseClass):
         :return: (numpy array) 1D
         """
         if self.relative_pos:
-            return self.env_object.getArmPos() - self.env_object.button_pos
-        return np.array(self.env_object.getArmPos())
+            return self.env_object.getGroundTruth() - self.env_object.getTargetPos()
+        return self.env_object.getGroundTruth()
 
 
 class SRLJoints(SRLBaseClass):

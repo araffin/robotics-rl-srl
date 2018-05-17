@@ -223,6 +223,19 @@ class BaxterEnv(gym.Env):
         self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
+    def getTargetPos(self):
+        """
+        :return (numpy array): Position of the target (button)
+        """
+        return self.button_pos
+
+    def getGroundTruth(self):
+        """
+        Alias for getArmPos for compatibility between envs
+        :return: (numpy array)
+        """
+        return np.array(self.getArmPos())
+
     def getArmPos(self):
         """
         :return: ([float])->  np.ndarray Position (x, y, z) of Baxter left gripper
