@@ -1,6 +1,5 @@
 import os
 import pybullet as p
-import time
 
 import gym
 import numpy as np
@@ -12,7 +11,6 @@ from gym.utils import seeding
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
-
 #  Number of steps before termination
 MAX_STEPS = 500  # WARNING: should be also change in __init__.py (timestep_limit)
 # Terminate the episode if the arm is outside the safety sphere during too much time
@@ -21,7 +19,7 @@ RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 N_DISCRETE_ACTIONS = 4
 
-DELTA_POS = 0.05  # DELTA_POS
+DELTA_POS = 0.08  # DELTA_POS
 RELATIVE_POS = True  # Use relative position for ground truth
 NOISE_STD = 0.0
 
@@ -63,7 +61,7 @@ class MobileRobotGymEnv(gym.Env):
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
                  name="kuka_button_gym", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
-                 random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
+                 random_target=True, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_priors/data/', **kwargs):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
@@ -72,7 +70,7 @@ class MobileRobotGymEnv(gym.Env):
         self._renders = renders
         self._width = RENDER_WIDTH
         self._height = RENDER_HEIGHT
-        self._cam_dist = 3.7
+        self._cam_dist = 4.4
         self._cam_yaw = 90
         self._cam_pitch = -90
         self._cam_roll = 0
@@ -80,7 +78,7 @@ class MobileRobotGymEnv(gym.Env):
         self._shape_reward = shape_reward
         self._random_target = random_target
         self._force_down = force_down
-        self.camera_target_pos = (0.211, 0.947, -0.1)
+        self.camera_target_pos = (2, 2, 0)
         self._is_discrete = is_discrete
         self.terminated = False
         self.renderer = p.ER_TINY_RENDERER
@@ -99,6 +97,12 @@ class MobileRobotGymEnv(gym.Env):
         self.target_pos = np.zeros(3)
         self.target_uid = None
         self.np_random = None
+        # Boundaries of the square env
+        self._min_x, self._max_x = 0, 4
+        self._min_y, self._max_y = 0, 4
+        self.has_bumped = False  # Used for handling collisions
+        self.collision_margin = 0.1
+        self.walls = None
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -148,14 +152,16 @@ class MobileRobotGymEnv(gym.Env):
         """
         :return (numpy array): Position of the target (button)
         """
-        return self.target_pos
+        # Return only the [x, y] coordinates
+        return self.target_pos[:2]
 
     def getGroundTruth(self):
         """
         Alias for getArmPos for compatibility between envs
         :return: (numpy array)
         """
-        return np.array(self.robot_pos)
+        # Return only the [x, y] coordinates
+        return np.array(self.robot_pos)[:2]
 
     def reset(self):
         """
@@ -169,19 +175,41 @@ class MobileRobotGymEnv(gym.Env):
         p.loadURDF(os.path.join(self._urdf_root, "plane.urdf"), [0, 0, 0])
         p.setGravity(0, 0, -10)
 
-        x_start = 0.2 + self.np_random.uniform(0, 0.5)
-        y_start = 0.5 + self.np_random.uniform(0, 0.5)
+        # Init the robot randomly
+        x_start = self._max_x / 2 + self.np_random.uniform(- self._max_x / 3, self._max_x / 3)
+        y_start = self._max_y / 2 + self.np_random.uniform(- self._max_y / 3, self._max_y / 3)
         self.robot_pos = np.array([x_start, y_start, 0])
         # Initialize target position
-        x_pos = -.5
-        y_pos = 1
+        x_pos = 0.9 * self._max_x
+        y_pos = self._max_y * 3 / 4
         if self._random_target:
-            x_pos += 1 * self.np_random.uniform(-1, 1)
-            y_pos += 1 * self.np_random.uniform(-1, 1)
+            margin = 0.1 * self._max_x
+            x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
+            y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
 
         self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0])
         self.target_pos = np.array([x_pos, y_pos, 0])
 
+        # Add walls
+        # rgba colors
+        red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
+
+        wall_left = p.loadURDF("/urdf/wall.urdf", [self._max_x / 2, 0, 0])
+        p.changeVisualShape(wall_left, -1, rgbaColor=red)
+
+        wall_bottom = p.loadURDF("/urdf/wall.urdf", [self._max_x, self._max_y / 2, 0],
+                                 p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+
+        wall_right = p.loadURDF("/urdf/wall.urdf", [self._max_x / 2, self._max_y, 0])
+        p.changeVisualShape(wall_right, -1, rgbaColor=green)
+
+        wall_top = p.loadURDF("/urdf/wall.urdf", [self._min_x, self._max_y / 2, 0],
+                              p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+        p.changeVisualShape(wall_top, -1, rgbaColor=blue)
+
+        self.walls = [wall_left, wall_bottom, wall_right, wall_top]
+
+        # Add mobile robot
         self.robot_uid = p.loadURDF(os.path.join(self._urdf_root, "racecar/racecar.urdf"), self.robot_pos,
                                     useFixedBase=False)
 
@@ -222,7 +250,8 @@ class MobileRobotGymEnv(gym.Env):
         """
         :param action: (int)
         """
-
+        # True if it has bumped against a wall
+        self.has_bumped = False
         if self._is_discrete:
             dv = DELTA_POS
             # Add noise to action
@@ -237,15 +266,18 @@ class MobileRobotGymEnv(gym.Env):
             print(np.array2string(np.array(real_action), precision=2))
 
         self.robot_pos[:2] += real_action
+        # Handle collisions
+        for i, limit in enumerate([self._max_x, self._max_y]):
+            if self.robot_pos[i] < self.collision_margin or self.robot_pos[i] > limit - self.collision_margin:
+                self.has_bumped = True
+                self.robot_pos[i] = np.clip(self.robot_pos[i], self.collision_margin, limit - self.collision_margin)
+
         p.resetBasePositionAndOrientation(self.robot_uid, self.robot_pos, [0, 0, 0, 1])
 
         p.stepSimulation()
         self._env_step_counter += 1
 
         self._observation = self.getObservation()
-
-        # if self._renders:
-        #     time.sleep(self._timestep)
 
         reward = self._reward()
         done = self._termination()
@@ -303,15 +335,15 @@ class MobileRobotGymEnv(gym.Env):
         return False
 
     def _reward(self):
-        distance = np.linalg.norm(self.getTargetPos() - self.robot_pos, 2)
+        distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:2], 2)
         reward = 0
-
-        if distance > self._max_distance:
+        # Negative reward when it bumps into a wall
+        if self.has_bumped:
             reward = -1
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
-            self.terminated = True
+            # self.terminated = True
 
         if self._shape_reward:
             return -distance
