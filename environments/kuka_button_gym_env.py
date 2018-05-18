@@ -182,6 +182,12 @@ class KukaButtonGymEnv(gym.Env):
         """
         return self.button_pos
 
+    def getGroundTruthDim(self):
+        """
+        :return: (int)
+        """
+        return 3
+
     def getGroundTruth(self):
         """
         Alias for getArmPos for compatibility between envs

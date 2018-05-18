@@ -116,8 +116,8 @@ class SRLBaseClass(object):
 
 
 class SRLGroundTruth(SRLBaseClass):
-    def __init__(self, env_object, state_dim=3, relative_pos=True):
-        super(SRLGroundTruth, self).__init__(state_dim)
+    def __init__(self, env_object, relative_pos=True):
+        super(SRLGroundTruth, self).__init__(env_object.getGroundTruthDim())
         self.env_object = env_object
         self.relative_pos = relative_pos
 

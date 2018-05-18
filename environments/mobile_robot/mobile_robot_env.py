@@ -103,6 +103,7 @@ class MobileRobotGymEnv(gym.Env):
         self.has_bumped = False  # Used for handling collisions
         self.collision_margin = 0.1
         self.walls = None
+        self.use_joints = False  # For compatibility
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -154,6 +155,12 @@ class MobileRobotGymEnv(gym.Env):
         """
         # Return only the [x, y] coordinates
         return self.target_pos[:2]
+
+    def getGroundTruthDim(self):
+        """
+        :return: (int)
+        """
+        return 2
 
     def getGroundTruth(self):
         """
@@ -337,13 +344,14 @@ class MobileRobotGymEnv(gym.Env):
     def _reward(self):
         distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:2], 2)
         reward = 0
-        # Negative reward when it bumps into a wall
-        if self.has_bumped:
-            reward = -1
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
             # self.terminated = True
+
+        # Negative reward when it bumps into a wall
+        if self.has_bumped:
+            reward = -1
 
         if self._shape_reward:
             return -distance

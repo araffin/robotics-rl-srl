@@ -162,7 +162,7 @@ def main():
     train_args, load_path, algo, srl_models, env_kwargs = loadConfigAndSetup(load_args)
     log_dir, envs = createEnv(load_args, train_args, algo, env_kwargs)
 
-    assert load_args.plotting and load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
+    assert (not load_args.plotting) or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 
     ob_space = envs.observation_space
     ac_space = envs.action_space

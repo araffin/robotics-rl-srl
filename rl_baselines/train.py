@@ -235,7 +235,7 @@ def main():
         env_module_path = entry_point.split(':')[0]
     # Lets try and dynamically load the kuka_env, in order to fetch the globals.
     # If it fails, it means that it was unable to load the path from the entry_point
-    # should this occure, it will mean that some parameters will not be correctly saved. 
+    # should this occure, it will mean that some parameters will not be correctly saved.
     try:
         kuka_env = importlib.import_module(env_module_path)
     except ImportError:
@@ -297,24 +297,24 @@ def main():
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
-   
+
     # env default kwargs
-    default_env_kwargs = {k:v.default 
-                          for k, v in inspect.signature(kuka_env.__dict__[class_name].__init__).parameters.items() 
+    default_env_kwargs = {k:v.default
+                          for k, v in inspect.signature(kuka_env.__dict__[class_name].__init__).parameters.items()
                           if v is not None}
 
     # here we need to get the defaut kwargs and globals from the kuka_button_gym_env, if we inherit from it
 
-    # Sanity check to make sure we have implemented the environment correctly, 
+    # Sanity check to make sure we have implemented the environment correctly,
     # as if it does not inherit KukaButtonGymEnv, then the inherited_env_kwargs will not be correct.
-    assert kuka_env.__dict__[class_name].__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv", 
-                                 "KukaMovingButtonGymEnv", "KukaRandButtonGymEnv"], \
+    assert kuka_env.__dict__[class_name].__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv",
+                                 "KukaMovingButtonGymEnv", "KukaRandButtonGymEnv", "MobileRobotGymEnv"], \
            "Error: not implemented for the environment {}".format(kuka_env.__dict__[class_name].__name__)
     inherited_env_kwargs = {}
     inherited_globals = {}
     if kuka_inherited_env != kuka_env:
-        inherited_env_kwargs = {k:v.default 
-                                for k, v in inspect.signature(kuka_inherited_env_class.__init__).parameters.items() 
+        inherited_env_kwargs = {k:v.default
+                                for k, v in inspect.signature(kuka_inherited_env_class.__init__).parameters.items()
                                 if v is not None}
         inherited_globals = kuka_inherited_env.getGlobals()
 
@@ -325,7 +325,7 @@ def main():
     pprint(filterJSONSerializableObjects(
         {**inherited_globals, **kuka_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs,  **env_kwargs}))
     # Save kuka env params
-    saveEnvParams({**inherited_globals, **kuka_env.getGlobals()}, 
+    saveEnvParams({**inherited_globals, **kuka_env.getGlobals()},
                   {**inherited_env_kwargs, **default_env_kwargs,  **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)

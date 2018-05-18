@@ -37,3 +37,13 @@ KukaMovingButtonGymEnv-v0:
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
   srl_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
+
+MobileRobotGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_priors/logs/mobile_robot_walls/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM32/pca.pkl
+  srl_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
