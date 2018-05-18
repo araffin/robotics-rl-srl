@@ -61,7 +61,7 @@ class MobileRobotGymEnv(gym.Env):
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
                  name="kuka_button_gym", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
-                 random_target=True, force_down=True, state_dim=-1, learn_states=False, verbose=False,
+                 random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_priors/data/', **kwargs):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
