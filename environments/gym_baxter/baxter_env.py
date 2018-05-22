@@ -37,16 +37,6 @@ action_dict = {
 }
 N_DISCRETE_ACTIONS = len(action_dict)
 
-# Parameters defined outside init because gym.make() doesn't allow arguments
-FORCE_RENDER = False  # For enjoy script
-STATE_DIM = -1  # When learning states
-LEARN_STATES = False
-USE_SRL = False
-SRL_MODEL_PATH = None
-RECORD_DATA = False
-USE_GROUND_TRUTH = False
-SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
-
 # Init seaborn
 sns.set()
 
@@ -68,20 +58,27 @@ def bgr2rgb(bgr_img):
 
 
 class BaxterEnv(gym.Env):
-    """ Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
-        The goal of the robotic arm is to push the button on the table
-        :param renders: (bool) Whether to display the GUI or not
-        :param is_discrete: (bool) true if action space is discrete vs continuous
-        :param log_folder: (str) name of the folder where recorded data will be stored
+    """ 
+    Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
+    The goal of the robotic arm is to push the button on the table
+    :param renders: (bool) Whether to display the GUI or not
+    :param is_discrete: (bool) true if action space is discrete vs continuous
+    :param log_folder: (str) name of the folder where recorded data will be stored
+    :param state_dim: (int) When learning states
+    :param learn_states: (bool)
+    :param use_srl: (bool) Set to true, use srl_models
+    :param srl_model_path: (str) Path to the srl model
+    :param record_data: (bool) Set to true, record frames with the rewards.
+    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
+    :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     """
 
-    def __init__(self,
-                 renders=False,
-                 is_discrete=True,
-                 log_folder="baxter_log_folder"):
+    def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
+                 learn_states=False, use_srl=False, srl_model_path=none, record_data=False, use_ground_truth=False,
+                 shape_reward=False):
         self.n_contacts = 0
-        self.use_srl = USE_SRL or USE_GROUND_TRUTH
-        self.use_ground_truth = USE_GROUND_TRUTH
+        self.use_srl = use_srl or use_ground_truth
+        self.use_ground_truth = use_ground_truth
         self.use_joints = False
         self.relative_pos = RELATIVE_POS
         self._is_discrete = is_discrete
@@ -90,7 +87,8 @@ class BaxterEnv(gym.Env):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = STATE_DIM
-        self._renders = renders or FORCE_RENDER
+        self._renders = renders
+        self._shape_reward = shape_reward
         self.np_random = None
         self.cuda = th.cuda.is_available()
         self.button_pos = None
@@ -105,8 +103,8 @@ class BaxterEnv(gym.Env):
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
         if self.use_srl:
-            env_object = self if USE_GROUND_TRUTH else None
-            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, self.state_dim, env_object)
+            env_object = self if use_ground_truth else None
+            self.srl_model = loadSRLModel(srl_model_path, self.cuda, self.state_dim, env_object)
             self.state_dim = self.srl_model.state_dim
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
@@ -115,11 +113,11 @@ class BaxterEnv(gym.Env):
             self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
                                                 dtype=self.dtype)
 
-        if RECORD_DATA:
+        if record_data:
             print("Recording data...")
             self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
-                                      learn_states=LEARN_STATES)
+                                      learn_states=learn_states)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
         self.context = zmq.Context()
@@ -208,7 +206,7 @@ class BaxterEnv(gym.Env):
 
         # print('state_data: {}'.format(state_data))
 
-        if SHAPE_REWARD:
+        if self._shape_reward:
             self.reward = -distance_to_goal
         return state_data
 
