@@ -12,19 +12,23 @@ from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
 #  Number of steps before termination
-MAX_STEPS = 500  # WARNING: should be also change in __init__.py (timestep_limit)
+MAX_STEPS = 250  # WARNING: should be also change in __init__.py (timestep_limit)
 # Terminate the episode if the arm is outside the safety sphere during too much time
 REWARD_DIST_THRESHOLD = 0.4  # Min distance to target before finishing an episode
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 N_DISCRETE_ACTIONS = 4
 
-DELTA_POS = 0.08  # DELTA_POS
+DELTA_POS = 0.1  # DELTA_POS
 RELATIVE_POS = True  # Use relative position for ground truth
 NOISE_STD = 0.0
 
-CONNECTED_TO_SIMULATOR = False  # To avoid calling disconnect in the __del__ method when not needed
-
+# To avoid calling disconnect in the __del__ method when not needed
+CONNECTED_TO_SIMULATOR = False
+# From urdf file, to create bounding box
+ROBOT_WIDTH = 0.2
+ROBOT_LENGTH = 0.325 * 2
+# 0.1477
 
 def getGlobals():
     """
@@ -272,12 +276,15 @@ class MobileRobotGymEnv(gym.Env):
         if self.verbose:
             print(np.array2string(np.array(real_action), precision=2))
 
+        previous_pos = self.robot_pos.copy()
         self.robot_pos[:2] += real_action
         # Handle collisions
-        for i, limit in enumerate([self._max_x, self._max_y]):
-            if self.robot_pos[i] < self.collision_margin or self.robot_pos[i] > limit - self.collision_margin:
+        for i, (limit, robot_dim) in enumerate(zip([self._max_x, self._max_y], [ROBOT_LENGTH, ROBOT_WIDTH])):
+            margin = self.collision_margin + robot_dim / 2
+            if self.robot_pos[i] < margin or self.robot_pos[i] > limit - margin:
                 self.has_bumped = True
-                self.robot_pos[i] = np.clip(self.robot_pos[i], self.collision_margin, limit - self.collision_margin)
+                self.robot_pos = previous_pos
+                break
 
         p.resetBasePositionAndOrientation(self.robot_uid, self.robot_pos, [0, 0, 0, 1])
 
