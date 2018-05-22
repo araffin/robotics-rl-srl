@@ -74,7 +74,7 @@ class BaxterEnv(gym.Env):
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
-                 learn_states=False, use_srl=False, srl_model_path=none, record_data=False, use_ground_truth=False,
+                 learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  shape_reward=False):
         self.n_contacts = 0
         self.use_srl = use_srl or use_ground_truth
@@ -86,7 +86,7 @@ class BaxterEnv(gym.Env):
         # Start simulation with first observation
         self._env_step_counter = 0
         self.episode_terminated = False
-        self.state_dim = STATE_DIM
+        self.state_dim = state_dim
         self._renders = renders
         self._shape_reward = shape_reward
         self.np_random = None
