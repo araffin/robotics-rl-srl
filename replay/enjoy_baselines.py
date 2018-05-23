@@ -36,7 +36,6 @@ def parseArguments():
     :return: (Arguments)
     """
     parser = argparse.ArgumentParser(description="Load trained RL model")
-    parser.add_argument('--env', help='environment ID', type=str, default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--log-dir', help='folder with the saved agent model', type=str, required=True)
