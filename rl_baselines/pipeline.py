@@ -21,7 +21,7 @@ def main():
                         choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars'])
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
+                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised",
                                  "pca", "vae", "joints", "joints_position", "raw_pixels"])
@@ -40,9 +40,11 @@ def main():
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_iteration >= 1, "Error: --num-iteration cannot be less than 1"
 
-    # Removing duplicates
+    # Removing duplicates and sort
     srl_models = list(set(args.srl_model))
     envs = list(set(args.env))
+    srl_models.sort()
+    envs.sort()
 
     # loading the config file for the srl_models
     with open('config/srl_models.yaml', 'rb') as f:
