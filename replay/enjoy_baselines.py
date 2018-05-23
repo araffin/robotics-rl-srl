@@ -29,6 +29,19 @@ from environments.utils import makeEnv
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 
+def fixStateStateDim(states):
+    """
+    Fix for plotting when state_dim < 3
+    :param states: (numpy array)
+    :return: (numpy array)
+    """
+    state_dim = states.shape[1]
+    if state_dim < 3:
+        tmp = np.zeros((states.shape[0], 3))
+        tmp[:, :state_dim] = states
+        return tmp
+    return states
+
 
 def parseArguments():
     """
@@ -236,6 +249,8 @@ def main():
                 srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
 
+            X = fixStateStateDim(X)
+
             # train the PCA and et the limits
             pca = PCA(n_components=3)
             X_new = pca.fit_transform(X)
@@ -282,7 +297,8 @@ def main():
             else:
                 delta_obs.append(ajusted_obs)
 
-            coor_plt = np.array(delta_obs)
+            coor_plt = fixStateStateDim(np.array(delta_obs))
+
             line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
             point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
 
