@@ -103,13 +103,17 @@ def main():
                     "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}'".format(i, seeds[i], env, model))
 
                 # redefine the parsed args for rl_baselines.train
+                loop_args = []
                 if model != "raw_pixels":
                     # raw_pixels is when --srl-model is left as default
-                    train_args.extend(['--srl-model', model])
-                train_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
+                    loop_args.extend(['--srl-model', model])
+                loop_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
                                    str(int(args.num_timesteps))])
 
-                ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args, stdout=stdout)
+                print(loop_args)
+                print(train_args)
+
+                ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 
                 if ok != 0:
                     # throw the error down to the terminal
