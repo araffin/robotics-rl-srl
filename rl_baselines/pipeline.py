@@ -110,9 +110,6 @@ def main():
                 loop_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
                                    str(int(args.num_timesteps))])
 
-                print(loop_args)
-                print(train_args)
-
                 ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 
                 if ok != 0:
