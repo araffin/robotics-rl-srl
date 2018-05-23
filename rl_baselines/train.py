@@ -31,6 +31,8 @@ import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env
 from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
+import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env
+from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobile_robot_inherited_env_class
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -311,9 +313,9 @@ def main():
     elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
         inherited_env = baxter_inherited_env
         inherited_env_class = baxter_inherited_env_class
-    elif issubclass(module_env.__dict__[class_name, "MobileRobotGymEnv"]):
-        inherited_env = baxter_inherited_env
-        inherited_env_class = baxter_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], mobile_robot_inherited_env_class):
+        inherited_env = mobile_robot_inherited_env
+        inherited_env_class = mobile_robot_inherited_env_class
     else:
         # Sanity check to make sure we have implemented the environment correctly, 
         raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
@@ -334,7 +336,7 @@ def main():
     pprint(filterJSONSerializableObjects(
         {**inherited_globals, **module_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs, **env_kwargs}))
     # Save kuka env params
-    saveEnvParams({**inherited_globals, **kuka_env.getGlobals()},
+    saveEnvParams({**inherited_globals, **module_env.getGlobals()},
                   {**inherited_env_kwargs, **default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
