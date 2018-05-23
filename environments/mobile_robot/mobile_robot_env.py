@@ -28,7 +28,6 @@ CONNECTED_TO_SIMULATOR = False
 # From urdf file, to create bounding box
 ROBOT_WIDTH = 0.2
 ROBOT_LENGTH = 0.325 * 2
-# 0.1477
 
 def getGlobals():
     """
@@ -281,11 +280,12 @@ class MobileRobotGymEnv(gym.Env):
         # Handle collisions
         for i, (limit, robot_dim) in enumerate(zip([self._max_x, self._max_y], [ROBOT_LENGTH, ROBOT_WIDTH])):
             margin = self.collision_margin + robot_dim / 2
+            # If it has bumped against a wall, stay at the previous position
             if self.robot_pos[i] < margin or self.robot_pos[i] > limit - margin:
                 self.has_bumped = True
                 self.robot_pos = previous_pos
                 break
-
+        # Update mobile robot position
         p.resetBasePositionAndOrientation(self.robot_uid, self.robot_pos, [0, 0, 0, 1])
 
         p.stepSimulation()
