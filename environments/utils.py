@@ -49,8 +49,8 @@ def _make(id_, env_kwargs=None):
     spec = registry.spec(id_)
 
     # Keeping the checks and safe guards of the old code
-    assert spec._entry_point is not None, 'Attempting to make deprecated env {}. '\
-            '(HINT: is there a newer registered version of this env?)'.format(spec.id_)
+    assert spec._entry_point is not None, 'Attempting to make deprecated env {}. ' \
+                                          '(HINT: is there a newer registered version of this env?)'.format(spec.id_)
 
     if callable(spec._entry_point):
         env = spec._entry_point(**env_kwargs)
@@ -71,4 +71,3 @@ def _make(id_, env_kwargs=None):
                         max_episode_steps=env.spec.max_episode_steps,
                         max_episode_seconds=env.spec.max_episode_seconds)
     return env
-

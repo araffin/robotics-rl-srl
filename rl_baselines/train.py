@@ -29,6 +29,8 @@ from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
 import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
+import environments.gym_baxter.baxter_env as baxter_inherited_env
+from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -233,14 +235,14 @@ def main():
     else:
         class_name = entry_point.split(':')[1]
         env_module_path = entry_point.split(':')[0]
-    # Lets try and dynamically load the kuka_env, in order to fetch the globals.
+    # Lets try and dynamically load the module_env, in order to fetch the globals.
     # If it fails, it means that it was unable to load the path from the entry_point
     # should this occure, it will mean that some parameters will not be correctly saved.
     try:
-        kuka_env = importlib.import_module(env_module_path)
+        module_env = importlib.import_module(env_module_path)
     except ImportError:
         raise AssertionError("Error: could not import module {}, ".format(env_module_path) +
-                 "Halting execution. Are you sure this is a valid environement?")
+                             "Halting execution. Are you sure this is a valid environement?")
 
     ENV_NAME = args.env
     ALGO = args.algo
@@ -297,36 +299,43 @@ def main():
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
-
     # env default kwargs
-    default_env_kwargs = {k:v.default
-                          for k, v in inspect.signature(kuka_env.__dict__[class_name].__init__).parameters.items()
+    default_env_kwargs = {k: v.default
+                          for k, v in inspect.signature(module_env.__dict__[class_name].__init__).parameters.items()
                           if v is not None}
 
-    # here we need to get the defaut kwargs and globals from the kuka_button_gym_env, if we inherit from it
+    # here we need to get the defaut kwargs and globals from the the correct env, if we inherit from it
+    if issubclass(module_env.__dict__[class_name], kuka_inherited_env_class):
+        inherited_env = kuka_inherited_env
+        inherited_env_class = kuka_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
+        inherited_env = baxter_inherited_env
+        inherited_env_class = baxter_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name, "MobileRobotGymEnv"]):
+        inherited_env = baxter_inherited_env
+        inherited_env_class = baxter_inherited_env_class
+    else:
+        # Sanity check to make sure we have implemented the environment correctly, 
+        raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
 
-    # Sanity check to make sure we have implemented the environment correctly,
-    # as if it does not inherit KukaButtonGymEnv, then the inherited_env_kwargs will not be correct.
-    assert kuka_env.__dict__[class_name].__name__ in ["KukaButtonGymEnv", "Kuka2ButtonGymEnv",
-                                 "KukaMovingButtonGymEnv", "KukaRandButtonGymEnv", "MobileRobotGymEnv"], \
-           "Error: not implemented for the environment {}".format(kuka_env.__dict__[class_name].__name__)
-    inherited_env_kwargs = {}
-    inherited_globals = {}
-    if kuka_inherited_env != kuka_env:
-        inherited_env_kwargs = {k:v.default
-                                for k, v in inspect.signature(kuka_inherited_env_class.__init__).parameters.items()
+    if inherited_env != module_env:
+        inherited_env_kwargs = {k: v.default
+                                for k, v in inspect.signature(inherited_env_class.__init__).parameters.items()
                                 if v is not None}
-        inherited_globals = kuka_inherited_env.getGlobals()
+        inherited_globals = inherited_env.getGlobals()
+    else:
+        inherited_env_kwargs = {}
+        inherited_globals = {}
 
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
     pprint(filterJSONSerializableObjects(
-        {**inherited_globals, **kuka_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs,  **env_kwargs}))
+        {**inherited_globals, **module_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs, **env_kwargs}))
     # Save kuka env params
     saveEnvParams({**inherited_globals, **kuka_env.getGlobals()},
-                  {**inherited_env_kwargs, **default_env_kwargs,  **env_kwargs})
+                  {**inherited_env_kwargs, **default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
