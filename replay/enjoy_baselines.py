@@ -32,9 +32,10 @@ supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 def fixStateStateDim(states):
     """
     Fix for plotting when state_dim < 3
-    :param states: (numpy array)
+    :param states: (numpy array or [float])
     :return: (numpy array)
     """
+    states = np.array(states)
     state_dim = states.shape[1]
     if state_dim < 3:
         tmp = np.zeros((states.shape[0], 3))
@@ -242,7 +243,7 @@ def main():
             ax.set_ylim([-4, 4])
             ax.set_zlim([-2, 2])
             delta_obs = [obs[0]]
-        elif train_args["srl_model"] in ["vae", "srl_priors"]:
+        elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
             path = srl_models['log_folder'] + "/".join(
@@ -257,7 +258,7 @@ def main():
             ax.set_xlim([np.min(X_new[:, 0]) * 1.2, np.max(X_new[:, 0]) * 1.2])
             ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
             ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
-            delta_obs = [pca.transform([obs[0]])[0]]
+            delta_obs = [pca.transform(fixStateStateDim([obs[0]]))[0]]
         else:
             assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
 
@@ -283,8 +284,8 @@ def main():
         if load_args.plotting:
             if train_args["srl_model"] == "ground_truth":
                 ajusted_obs = obs[0]
-            elif train_args["srl_model"] in ["vae", "srl_priors"]:
-                ajusted_obs = pca.transform([obs[0]])[0]
+            elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
+                ajusted_obs = pca.transform(fixStateStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished
             if sum(dones) > 0:
