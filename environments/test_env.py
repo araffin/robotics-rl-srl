@@ -39,10 +39,9 @@ def env_thread(args, thread_num, partition=True):
     :param thread_num: (int) The thread ID of the environment session
     :param partition: (bool) If the output should be in multiple parts (default=True)
     """
-    # TODO: rename button_random to random_target
     env_kwargs = {
         "max_distance": args.max_distance,
-        "button_random": args.relative,
+        "random_target": args.relative,
         "force_down": True,
         "is_discrete": not args.continuous_actions,
         "renders": thread_num == 0 and not args.no_display,

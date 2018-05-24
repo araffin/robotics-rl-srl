@@ -288,7 +288,7 @@ def main():
 
     env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
-    env_kwargs["button_random"] = args.relative
+    env_kwargs["random_target"] = args.relative
     # Allow up action
     # env_kwargs["force_down"] = False
 
@@ -317,7 +317,7 @@ def main():
         inherited_env = mobile_robot_inherited_env
         inherited_env_class = mobile_robot_inherited_env_class
     else:
-        # Sanity check to make sure we have implemented the environment correctly, 
+        # Sanity check to make sure we have implemented the environment correctly,
         raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
 
     if inherited_env != module_env:

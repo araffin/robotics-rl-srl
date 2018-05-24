@@ -76,7 +76,7 @@ class KukaButtonGymEnv(gym.Env):
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
-    :param button_random: (bool) Set the button position to a random position on the table
+    :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
@@ -87,7 +87,7 @@ class KukaButtonGymEnv(gym.Env):
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
                  name="kuka_button_gym", max_distance=0.4, action_repeat=1, shape_reward=False, action_joints=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
-                 button_random=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
+                 random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_zoo/data/'):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
@@ -103,7 +103,7 @@ class KukaButtonGymEnv(gym.Env):
         self._cam_roll = 0
         self._max_distance = max_distance
         self._shape_reward = shape_reward
-        self._button_random = button_random
+        self._random_target = random_target
         self._force_down = force_down
         self.camera_target_pos = (0.316, -0.2, -0.1)
         self._is_discrete = is_discrete
@@ -220,7 +220,7 @@ class KukaButtonGymEnv(gym.Env):
         # Initialize button position
         x_pos = 0.5
         y_pos = 0
-        if self._button_random:
+        if self._random_target:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.3 * self.np_random.uniform(-1, 1)
 
@@ -230,7 +230,7 @@ class KukaButtonGymEnv(gym.Env):
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
                                use_inverse_kinematics=(not self.action_joints),
-                               small_constraints=(not self._button_random))
+                               small_constraints=(not self._random_target))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):

@@ -100,7 +100,7 @@ def loadConfigAndSetup(load_args):
 
     env_kwargs["action_joints"] = train_args["action_joints"]
     env_kwargs["is_discrete"] = not train_args["continuous_actions"]
-    env_kwargs["button_random"] = train_args.get('relative', False)
+    env_kwargs["random_target"] = train_args.get('relative', False)
     # Remove up action
     if train_args["env"] == "Kuka2ButtonGymEnv-v0":
         env_kwargs["force_down"] = env_globals.get('force_down', env_globals.get('FORCE_DOWN', True))
