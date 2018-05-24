@@ -120,7 +120,7 @@ the available environments are:
 
 ## State Representation Learning Models
 
-Please look the [SRL Repo](https://github.com/araffin/srl-robotic-priors-pytorch) to learn how to train a state representation model.
+Please look the [SRL Repo](https://github.com/araffin/srl-zoo) to learn how to train a state representation model.
 Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
 
 To train the Reinforcement learning baselines on a specific SRL model:

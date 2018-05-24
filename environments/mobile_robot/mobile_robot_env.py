@@ -198,31 +198,33 @@ class MobileRobotGymEnv(gym.Env):
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
             y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
 
-        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0])
+        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0], useFixedBase=True)
         self.target_pos = np.array([x_pos, y_pos, 0])
 
         # Add walls
-        # rgba colors
+        # Path to the urdf file
+        wall_urdf = "/urdf/wall.urdf"
+        # Rgba colors
         red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
 
-        wall_left = p.loadURDF("/urdf/wall.urdf", [self._max_x / 2, 0, 0])
+        wall_left = p.loadURDF(wall_urdf, [self._max_x / 2, 0, 0], useFixedBase=True)
         p.changeVisualShape(wall_left, -1, rgbaColor=red)
 
-        wall_bottom = p.loadURDF("/urdf/wall.urdf", [self._max_x, self._max_y / 2, 0],
-                                 p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+        wall_bottom = p.loadURDF(wall_urdf, [self._max_x, self._max_y / 2, 0],
+                                 p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
 
-        wall_right = p.loadURDF("/urdf/wall.urdf", [self._max_x / 2, self._max_y, 0])
+        wall_right = p.loadURDF(wall_urdf, [self._max_x / 2, self._max_y, 0], useFixedBase=True)
         p.changeVisualShape(wall_right, -1, rgbaColor=green)
 
-        wall_top = p.loadURDF("/urdf/wall.urdf", [self._min_x, self._max_y / 2, 0],
-                              p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+        wall_top = p.loadURDF(wall_urdf, [self._min_x, self._max_y / 2, 0],
+                              p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
         p.changeVisualShape(wall_top, -1, rgbaColor=blue)
 
         self.walls = [wall_left, wall_bottom, wall_right, wall_top]
 
         # Add mobile robot
         self.robot_uid = p.loadURDF(os.path.join(self._urdf_root, "racecar/racecar.urdf"), self.robot_pos,
-                                    useFixedBase=False)
+                                    useFixedBase=True)
 
         self._env_step_counter = 0
         for _ in range(50):
@@ -234,8 +236,6 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.use_srl:
-            # if len(self.saver.srl_model_path) > 0:
-            # self.srl_model.load(self.saver.srl_model_path))
             return self.srl_model.getState(self._observation)
 
         return np.array(self._observation)
@@ -254,6 +254,9 @@ class MobileRobotGymEnv(gym.Env):
         return [seed]
 
     def getObservation(self):
+        """
+        :return: (numpy array)
+        """
         self._observation = self.render("rgb_array")
         return self._observation
 
@@ -305,6 +308,11 @@ class MobileRobotGymEnv(gym.Env):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
+        """
+        :param mode: (str)
+        :param close: (bool)
+        :return: (numpy array)
+        """
 
         if mode != "rgb_array":
             return np.array([])
@@ -318,7 +326,6 @@ class MobileRobotGymEnv(gym.Env):
             y = p.readUserDebugParameter(self.y_slider)
             z = p.readUserDebugParameter(self.z_slider)
             camera_target_pos = (x, y, z)
-            # self._cam_roll = p.readUserDebugParameter(self.roll_slider)
 
         # TODO: recompute view_matrix and proj_matrix only in debug mode
         view_matrix = p.computeViewMatrixFromYawPitchRoll(
@@ -344,12 +351,19 @@ class MobileRobotGymEnv(gym.Env):
         pass
 
     def _termination(self):
+        """
+        :return: (bool)
+        """
         if self.terminated or self._env_step_counter > self.max_steps:
             self._observation = self.getObservation()
             return True
         return False
 
     def _reward(self):
+        """
+        :return: (float)
+        """
+        # Distance to target
         distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:2], 2)
         reward = 0
 
