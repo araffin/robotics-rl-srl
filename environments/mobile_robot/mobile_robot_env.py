@@ -65,7 +65,7 @@ class MobileRobotGymEnv(gym.Env):
                  name="kuka_button_gym", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_priors/data/', **kwargs):
+                 save_path='srl_zoo/data/', **kwargs):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
@@ -189,6 +189,7 @@ class MobileRobotGymEnv(gym.Env):
         x_start = self._max_x / 2 + self.np_random.uniform(- self._max_x / 3, self._max_x / 3)
         y_start = self._max_y / 2 + self.np_random.uniform(- self._max_y / 3, self._max_y / 3)
         self.robot_pos = np.array([x_start, y_start, 0])
+
         # Initialize target position
         x_pos = 0.9 * self._max_x
         y_pos = self._max_y * 3 / 4

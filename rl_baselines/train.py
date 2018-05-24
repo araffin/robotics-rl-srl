@@ -26,7 +26,7 @@ import rl_baselines.cma_es as cma_es
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
-from srl_priors.utils import printGreen, printYellow
+from srl_zoo.utils import printGreen, printYellow
 import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env

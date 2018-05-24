@@ -14,7 +14,7 @@ import environments.kuka_button_gym_env as kuka_env
 import environments.kuka_rand_button_gym_env as kuka_env_rand
 import environments.kuka_moving_button_gym_env as kuka_env_moving
 import environments.mobile_robot.mobile_robot_env as mobile_robot
-from srl_priors.utils import printRed
+from srl_zoo.utils import printRed
 
 
 def convertImagePath(args, path, record_id_start):
@@ -94,7 +94,7 @@ def main():
     parser = argparse.ArgumentParser(description='Environment tester (can be used to record datasets for SRL training)')
     parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to run on')
     parser.add_argument('--num-episode', type=int, default=50, help='number of episode to run')
-    parser.add_argument('--save-folder', type=str, default='srl_priors/data/',
+    parser.add_argument('--save-folder', type=str, default='srl_zoo/data/',
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',

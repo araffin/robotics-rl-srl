@@ -24,7 +24,7 @@ import rl_baselines.cma_es as cma_es
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomVecNormalize, VecFrameStack
 from rl_baselines.policies import MlpPolicyDiscrete, AcerMlpPolicy, CNNPolicyContinuous
-from srl_priors.utils import printYellow, printGreen
+from srl_zoo.utils import printYellow, printGreen
 from environments.utils import makeEnv
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
@@ -303,6 +303,7 @@ def main():
             line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
             point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
 
+            # Draw every 5 frames to avoid UI freezing
             if i % 5 == 0:
                 fig.canvas.draw()
                 plt.pause(0.000001)

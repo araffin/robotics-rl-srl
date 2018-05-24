@@ -6,7 +6,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize, VecFrameStack
-from srl_priors.utils import printYellow
+from srl_zoo.utils import printYellow
 
 
 class ARS:

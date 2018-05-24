@@ -11,7 +11,7 @@ from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecF
 
 from environments.utils import makeEnv
 from rl_baselines.visualize import loadCsv
-from srl_priors.utils import printYellow
+from srl_zoo.utils import printYellow
 
 
 def createTensorflowSession():

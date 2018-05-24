@@ -7,7 +7,7 @@ import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 
 from replay.aggregate_plots import lightcolors, darkcolors, Y_LIM_SHAPED_REWARD, Y_LIM_SPARSE_REWARD, millions
-from srl_priors.utils import printGreen
+from srl_zoo.utils import printGreen
 
 # Init seaborn
 sns.set()

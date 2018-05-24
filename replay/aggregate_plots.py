@@ -8,7 +8,7 @@ import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 
 from rl_baselines.visualize import loadCsv, movingAverage, loadData
-from srl_priors.utils import printGreen, printYellow
+from srl_zoo.utils import printGreen, printYellow
 
 # Init seaborn
 sns.set()

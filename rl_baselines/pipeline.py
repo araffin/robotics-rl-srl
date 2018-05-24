@@ -9,7 +9,7 @@ import yaml
 import tensorflow as tf
 import numpy as np
 
-from srl_priors.utils import printGreen, printRed
+from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 

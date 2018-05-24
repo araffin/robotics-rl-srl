@@ -11,7 +11,7 @@ from gym.utils import seeding
 
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
-from srl_priors.preprocessing import N_CHANNELS
+from srl_zoo.preprocessing import N_CHANNELS
 
 from . import kuka
 
@@ -88,7 +88,7 @@ class KukaButtonGymEnv(gym.Env):
                  name="kuka_button_gym", max_distance=0.4, action_repeat=1, shape_reward=False, action_joints=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
                  button_random=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_priors/data/'):
+                 save_path='srl_zoo/data/'):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat

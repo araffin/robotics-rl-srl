@@ -1,6 +1,6 @@
 KukaButtonGymEnv-v0:
   # Base path to SRL log folder
-  log_folder: srl_priors/logs/kuka_test/
+  log_folder: srl_zoo/logs/kuka_test/
   # Path to the different trained SRL models
   autoencoder: baselines/autoencoder_cnn_ST_DIM6_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
   vae: baselines/vae_cnn_ST_DIM6_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
@@ -10,7 +10,7 @@ KukaButtonGymEnv-v0:
 
 Kuka2ButtonGymEnv-v0:
   # Base path to SRL log folder
-  log_folder: srl_priors/logs/kuka_2_button/
+  log_folder: srl_zoo/logs/kuka_2_button/
   # Path to the different trained SRL models
   autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
@@ -20,7 +20,7 @@ Kuka2ButtonGymEnv-v0:
 
 KukaRandButtonGymEnv-v0:
   # Base path to SRL log folder
-  log_folder: srl_priors/logs/kuka_rand_button/
+  log_folder: srl_zoo/logs/kuka_rand_button/
   # Path to the different trained SRL models
   autoencoder: baselines/autoencoder_cnn_ST_DIM32_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
@@ -30,7 +30,7 @@ KukaRandButtonGymEnv-v0:
 
 KukaMovingButtonGymEnv-v0:
   # Base path to SRL log folder
-  log_folder: srl_priors/logs/kuka_moving_button_big/
+  log_folder: srl_zoo/logs/kuka_moving_button_big/
   # Path to the different trained SRL models
   autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
@@ -40,10 +40,10 @@ KukaMovingButtonGymEnv-v0:
 
 MobileRobotGymEnv-v0:
   # Base path to SRL log folder
-  log_folder: srl_priors/logs/mobile_robot_walls/
+  log_folder: srl_zoo/logs/mobile_robot_walls/
   # Path to the different trained SRL models
   autoencoder: baselines/autoencoder_cnn_ST_DIM32_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  srl_priors: 18-05-22_15h56_15_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/srl_model.pth
+  srl_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
