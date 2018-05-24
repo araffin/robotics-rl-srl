@@ -7,7 +7,7 @@ from baselines.ddpg.models import Model
 from baselines.ppo2.policies import nature_cnn
 
 
-class MlpPolicyDicrete(object):
+class MlpPolicyDiscrete(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
         """
         Modified version of OpenAI PPO2 MLP so it can support discrete actions

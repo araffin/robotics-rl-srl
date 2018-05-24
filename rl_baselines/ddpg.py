@@ -12,7 +12,6 @@ from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from mpi4py import MPI
 
-import environments.kuka_button_gym_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
@@ -338,14 +337,15 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
 
     logger.configure()
-    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir)])
+    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
     createTensorflowSession()
     layer_norm = not args.no_layer_norm

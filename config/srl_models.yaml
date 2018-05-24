@@ -1,8 +1,39 @@
-# Base path to SRL log folder
-log_folder: srl_priors/logs/kuka_test/
-# Path to the different trained SRL models
-autoencoder: baselines/autoencoder_cnn_ST_DIM6_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
-vae: baselines/vae_cnn_ST_DIM6_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
-supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
-pca: baselines/pca_ST_DIM5/pca.pkl
-srl_priors: 07-03-18_13h55_31_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/srl_model.pth
+KukaButtonGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_priors/logs/kuka_test/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM6_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM6_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM5/pca.pkl
+  srl_priors: 07-03-18_13h55_31_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/srl_model.pth
+
+Kuka2ButtonGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_priors/logs/kuka_2_button/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM32/pca.pkl
+  srl_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
+
+KukaRandButtonGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_priors/logs/kuka_rand_button/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM32_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM10/pca.pkl
+  srl_priors: 18-04-11_13h03_10_custom_cnn_ProTemCauRep_ST_DIM4_SEED0_priors/srl_model.pth
+
+KukaMovingButtonGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_priors/logs/kuka_moving_button_big/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM32/pca.pkl
+  srl_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth

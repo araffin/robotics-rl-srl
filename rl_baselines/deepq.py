@@ -2,7 +2,6 @@ from baselines import deepq
 from baselines import logger
 from baselines.common.vec_env import VecEnv
 
-import environments.kuka_button_gym_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, VecFrameStack
 
@@ -88,14 +87,15 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
     logger.configure()
 
-    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir)])
+    env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir,  env_kwargs=env_kwargs)])
 
     createTensorflowSession()
 

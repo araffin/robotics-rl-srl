@@ -1,7 +1,6 @@
 from baselines.acer.acer_simple import *
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.utils import createTensorflowSession, createEnvs
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer
@@ -147,12 +146,13 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
-    envs = createEnvs(args)
+    envs = createEnvs(args, env_kwargs=env_kwargs)
 
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
           lrschedule=args.lr_schedule, callback=callback)

@@ -1,11 +1,9 @@
-from . import kuka_button_gym_env as kuka_env
+from .kuka_button_gym_env import *
 
-kuka_env.MAX_STEPS = 1500
+MAX_STEPS = 1500
 BUTTON_SPEED = 0.001
 BUTTON_YMIN = -0.3
 BUTTON_YMAX = 0.3
-
-from .kuka_button_gym_env import *
 
 
 class KukaMovingButtonGymEnv(KukaButtonGymEnv):
@@ -13,18 +11,30 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     Gym wrapper for Kuka environment with a push button that is moving
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
-    :param is_discrete: (bool)
+    :param is_discrete: (bool) Whether to use discrete or continuous actions
+    :param multi_view :(bool) if TRUE -> returns stacked images of the scene on 6 channels (two cameras)
     :param name: (str) name of the folder where recorded data will be stored
+    :param max_distance: (float) Max distance between end effector and the button (for negative reward)
+    :param action_repeat: (int) Number of timesteps an action is repeated (here it is equivalent to frameskip)
+    :param shape_reward: (bool) Set to true, reward = -distance_to_goal
+    :param action_joints: (bool) Set actions to apply to the joint space
+    :param use_srl: (bool) Set to true, use srl_models
+    :param srl_model_path: (str) Path to the srl model
+    :param record_data: (bool) Set to true, record frames with the rewards.
+    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
+    :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
+    :param button_random: (bool) Set the button position to a random position on the table
+    :param force_down: (bool) Set Down as the only vertical action allowed
+    :param state_dim: (int) When learning states
+    :param learn_states: (bool)
+    :param verbose: (bool) Whether to print some debug info
+    :param save_path: (str) location where the saved data should go
     """
 
-    def __init__(self,
-                 urdf_root=pybullet_data.getDataPath(),
-                 renders=False,
-                 is_discrete=True,
-                 multi_view=False,
-                 name="kuka_moving_button_gym"):
-        super(KukaMovingButtonGymEnv, self).__init__(urdf_root=urdf_root, renders=renders, is_discrete=is_discrete,
-                                                     multi_view=multi_view, name=name)
+    def __init__(self, name="kuka_moving_button_gym", **kwargs):
+        super(KukaMovingButtonGymEnv, self).__init__(name=name, **kwargs)
+
+        self.max_steps = MAX_STEPS
 
     def reset(self):
         """
@@ -47,7 +57,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         # Initialize button position
         x_pos = 0.5
         y_pos = 0
-        if BUTTON_RANDOM:
+        if self._button_random:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.3 * self.np_random.uniform(-1, 1)
 
@@ -56,7 +66,8 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
-                               use_inverse_kinematics=(not self.action_joints), small_constraints=(not BUTTON_RANDOM))
+                               use_inverse_kinematics=(not self.action_joints),
+                               small_constraints=(not self._button_random))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
@@ -126,7 +137,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
 
         contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
 
-        if distance > MAX_DISTANCE or contact_with_table:
+        if distance > self._max_distance or contact_with_table:
             reward = -1
             self.n_steps_outside += 1
         else:
@@ -136,7 +147,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
                 or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE:
             self.terminated = True
 
-        if SHAPE_REWARD:
+        if self._shape_reward:
             # Button pushed
             if self.terminated and reward > 0:
                 return 50

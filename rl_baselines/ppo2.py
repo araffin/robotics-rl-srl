@@ -4,14 +4,8 @@ from baselines.ppo2.policies import MlpPolicy as MlpPolicyContinuous
 from baselines import logger
 import tensorflow as tf
 
-from gazebo.constants import USING_REAL_BAXTER
-if USING_REAL_BAXTER:
-    import environments.gym_baxter.baxter_env as kuka_env
-else:
-    import environments.kuka_button_gym_env as kuka_env
-from rl_baselines.policies import MlpPolicyDicrete, CNNPolicyContinuous
+from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous
 from rl_baselines.utils import createEnvs
-
 
 
 # Modified version of OpenAI to work with SRL models
@@ -47,7 +41,7 @@ def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
         policy = {'cnn': CNNPolicyContinuous, 'lstm': None, 'lnlstm': None, 'mlp': MlpPolicyContinuous}[args.policy]
     else:
         # LN-LSTM: Layer Normalization LSTM
-        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDicrete}[args.policy]
+        policy = {'cnn': CnnPolicy, 'lstm': LstmPolicy, 'lnlstm': LnLstmPolicy, 'mlp': MlpPolicyDiscrete}[args.policy]
 
     if policy is None:
         raise ValueError(args.policy + " not implemented for " + (
@@ -153,13 +147,14 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
 
-    envs = createEnvs(args)
+    envs = createEnvs(args, env_kwargs=env_kwargs)
 
     logger.configure()
     learn(args, envs, nsteps=128,

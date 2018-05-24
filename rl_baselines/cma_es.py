@@ -8,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-import environments.kuka_button_gym_env as kuka_env
 from rl_baselines.utils import createEnvs
 from srl_priors.utils import printYellow
 
@@ -64,9 +63,9 @@ class PytorchPolicy(Policy):
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
-            return self.model(self.make_var(obs)).data.numpy()
+            return self.model(self.makeVar(obs)).data.numpy()
         else:
-            return np.argmax(F.softmax(self.model(self.make_var(obs)), dim=-1).data)
+            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).data)
 
     def makeVar(self, arr):
         """
@@ -91,7 +90,7 @@ class PytorchPolicy(Policy):
         Set the network bias and weights
         :param param: ([float])
         """
-        nn.utils.vector_to_parameters(self.make_var(param).contiguous(), self.model.parameters())
+        nn.utils.vector_to_parameters(self.makeVar(param).contiguous(), self.model.parameters())
 
 
 class CNNPolicyPytorch(nn.Module):
@@ -266,13 +265,14 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback=None):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
     args.num_cpu = args.num_population
-    envs = createEnvs(args, allow_early_resets=True)
+    envs = createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs)
 
     if args.continuous_actions:
         action_space = np.prod(envs.action_space.shape)

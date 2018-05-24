@@ -4,7 +4,6 @@ import pickle
 import numpy as np
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
-import environments.kuka_button_gym_env as kuka_env
 from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize, VecFrameStack
 from srl_priors.utils import printYellow
@@ -138,17 +137,18 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback=None):
+def main(args, callback=None, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
 
     assert args.top_population <= args.num_population, \
         "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
     assert args.num_population > 1, "The population cannot be less than 2."
 
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True, env_kwargs=env_kwargs)
             for i in range(args.num_population * 2)]
     envs = SubprocVecEnv(envs)
     envs = VecFrameStack(envs, args.num_stack)

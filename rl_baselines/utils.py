@@ -153,12 +153,14 @@ class CustomVecNormalize(VecEnvWrapper):
             with open("{}/{}.pkl".format(path, name), 'rb') as f:
                 setattr(self, name, pickle.load(f))
 
+
 class VecFrameStack(OpenAIVecFrameStack):
     """
     Vectorized environment class, fixed from OpenAIVecFrameStack
     :param venv: (Gym env)
     :param nstack: (int)
     """
+
     def __init__(self, venv, nstack):
         super(VecFrameStack, self).__init__(venv, nstack)
 
@@ -176,13 +178,14 @@ class VecFrameStack(OpenAIVecFrameStack):
         return self.stackedobs, rews, news, infos
 
 
-def createEnvs(args, allow_early_resets=False):
+def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
-    :param allow_early_resets: (bool)
+    :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs
+    :param env_kwargs: (dict) The extra arguments for the environment
     :return: (Gym VecEnv)
     """
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets)
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
             for i in range(args.num_cpu)]
 
     if len(envs) == 1:

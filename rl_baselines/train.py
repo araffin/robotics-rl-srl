@@ -6,12 +6,14 @@ import json
 import os
 from datetime import datetime
 from pprint import pprint
+import importlib
+import inspect
 
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 import tensorflow as tf
-import gym.envs.registration
+from gym.envs.registration import registry as gym_registry
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
@@ -25,6 +27,10 @@ from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_priors.utils import printGreen, printYellow
+import environments.kuka_button_gym_env as kuka_inherited_env
+from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
+import environments.gym_baxter.baxter_env as baxter_inherited_env
+from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -46,51 +52,53 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorf
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
-    models = yaml.load(f)
+    all_models = yaml.load(f)
 
 
-def saveEnvParams(kuka_env):
+def saveEnvParams(kuka_env_globals, env_kwargs):
     """
-    :param kuka_env: (kuka_env module)
+    :param kuka_env_globals: (dict)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
-    params = filterJSONSerializableObjects(kuka_env.getGlobals())
+    params = filterJSONSerializableObjects({**kuka_env_globals, **env_kwargs})
     with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
         json.dump(params, f)
 
 
-def configureEnvAndLogFolder(args, kuka_env):
+def configureEnvAndLogFolder(args, env_kwargs):
     """
     :param args: (ArgumentParser object)
-    :param kuka_env: (kuka_env module)
-    :return: (ArgumentParser object)
+    :param env_kwargs: (dict) The extra arguments for the environment
+    :return: (ArgumentParser object, dict)
     """
     global PLOT_TITLE, LOG_DIR
     # Reward sparse or shaped
-    kuka_env.SHAPE_REWARD = args.shape_reward
+    env_kwargs["shape_reward"] = args.shape_reward
     # Actions in joint space or relative position space
-    kuka_env.ACTION_JOINTS = args.action_joints
+    env_kwargs["action_joints"] = args.action_joints
     args.log_dir += args.env + "/"
 
+    models = all_models[args.env]
     if args.srl_model != "":
         PLOT_TITLE = args.srl_model
         path = models.get(args.srl_model)
         args.log_dir += args.srl_model + "/"
 
         if args.srl_model == "ground_truth":
-            kuka_env.USE_GROUND_TRUTH = True
+            env_kwargs["use_ground_truth"] = True
             PLOT_TITLE = "Ground Truth"
         elif args.srl_model == "joints":
             # Observations in joint space
-            kuka_env.USE_JOINTS = True
+            env_kwargs["use_joints"] = True
             PLOT_TITLE = "Joints"
         elif args.srl_model == "joints_position":
             # Observations in joint and position space
-            kuka_env.USE_GROUND_TRUTH = True
-            kuka_env.USE_JOINTS = True
+            env_kwargs["use_ground_truth"] = True
+            env_kwargs["use_joints"] = True
             PLOT_TITLE = "Joints and position"
         elif path is not None:
-            kuka_env.USE_SRL = True
-            kuka_env.SRL_MODEL_PATH = models['log_folder'] + path
+            env_kwargs["use_srl"] = True
+            env_kwargs["srl_model_path"] = models['log_folder'] + path
         else:
             raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
 
@@ -103,7 +111,7 @@ def configureEnvAndLogFolder(args, kuka_env):
     # TODO: wait one second if the folder exist to avoid overwritting logs
     os.makedirs(args.log_dir, exist_ok=True)
 
-    return args
+    return args, env_kwargs
 
 
 def callback(_locals, _globals):
@@ -132,7 +140,8 @@ def callback(_locals, _globals):
         # Evaluate network performance
         ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es)
         if ok:
-            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
+            print(
+                "Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
         else:
             # Not enough episode
             mean_reward = -10000
@@ -156,11 +165,11 @@ def callback(_locals, _globals):
             elif ALGO in ['ars', 'cma-es']:
                 _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
 
-
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed", is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed",
+                                   is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
@@ -181,7 +190,8 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints",
+                                 "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=1,
                         help='number of frames to stack (default: 1)')
@@ -197,20 +207,42 @@ def main():
     parser.add_argument('-joints', '--action-joints',
                         help='set actions to the joints of the arm directly, instead of inverse kinematics',
                         action='store_true', default=False)
-    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
+    parser.add_argument('-r', '--relative', action='store_true', default=False,
+                        help='Set the button to a random position')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
+    env_kwargs = {}
 
     # Sanity check
-    assert args.env in gym.envs.registration.registry.env_specs, \
-        "Error: could not find the environment {}".format(args.env)
+    assert args.env in gym_registry.env_specs, "Error: could not find the environment {}, ".format(args.env) + \
+                                               "here are the valid environments: {}".format(
+                                                   list(gym_registry.env_specs.keys()))
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
-    assert args.port >= 0 and args.port < 65535, \
-        "Error: invalid visdom port number {}, port number must be an unsigned 16bit number [0,65535].".format(args.port)
+    assert 0 <= args.port < 65535, "Error: invalid visdom port number {}, ".format(args.port) + \
+                                   "port number must be an unsigned 16bit number [0,65535]."
+    assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
+        "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
+
+    # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
+    entry_point = gym_registry.spec(args.env)._entry_point
+    if callable(entry_point):
+        class_name = entry_point.__name__
+        env_module_path = entry_point.__module__
+    else:
+        class_name = entry_point.split(':')[1]
+        env_module_path = entry_point.split(':')[0]
+    # Lets try and dynamically load the module_env, in order to fetch the globals.
+    # If it fails, it means that it was unable to load the path from the entry_point
+    # should this occure, it will mean that some parameters will not be correctly saved. 
+    try:
+        module_env = importlib.import_module(env_module_path)
+    except ImportError:
+        raise AssertionError("Error: could not import module {}, ".format(env_module_path) +
+                             "Halting execution. Are you sure this is a valid environement?")
 
     ENV_NAME = args.env
     ALGO = args.algo
@@ -228,6 +260,7 @@ def main():
         # so we need to reduce log and save interval
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 20
+        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
     elif args.algo == "a2c":
         algo = a2c
     elif args.algo == "ppo2":
@@ -247,38 +280,65 @@ def main():
     if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
         raise ValueError(args.algo + " does not support continuous actions")
 
-    algo.kuka_env.IS_DISCRETE = not args.continuous_actions
+    env_kwargs["is_discrete"] = not args.continuous_actions
 
     printGreen("\nAgent = {} \n".format(args.algo))
 
-    algo.kuka_env.ACTION_REPEAT = args.action_repeat
+    env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
-    algo.kuka_env.BUTTON_RANDOM = args.relative
+    env_kwargs["button_random"] = args.relative
     # Allow up action
-    # algo.kuka_env.FORCE_DOWN = False
+    # env_kwargs["force_down"] = False
 
     parser = algo.customArguments(parser)
     args = parser.parse_args()
 
-    args = configureEnvAndLogFolder(args, algo.kuka_env)
+    args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs)
     args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
+    # env default kwargs
+    default_env_kwargs = {k: v.default
+                          for k, v in inspect.signature(module_env.__dict__[class_name].__init__).parameters.items()
+                          if v is not None}
+
+    # here we need to get the defaut kwargs and globals from the the correct env, if we inherit from it
+    if issubclass(module_env.__dict__[class_name], kuka_inherited_env_class):
+        inherited_env = kuka_inherited_env
+        inherited_env_class = kuka_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
+        inherited_env = baxter_inherited_env
+        inherited_env_class = baxter_inherited_env_class
+    else:
+        # Sanity check to make sure we have implemented the environment correctly, 
+        raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
+
+    if inherited_env != module_env:
+        inherited_env_kwargs = {k: v.default
+                                for k, v in inspect.signature(inherited_env_class.__init__).parameters.items()
+                                if v is not None}
+        inherited_globals = inherited_env.getGlobals()
+    else:
+        inherited_env_kwargs = {}
+        inherited_globals = {}
+
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects(algo.kuka_env.getGlobals()))
+    pprint(filterJSONSerializableObjects(
+        {**inherited_globals, **module_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs, **env_kwargs}))
     # Save kuka env params
-    saveEnvParams(algo.kuka_env)
+    saveEnvParams({**inherited_globals, **module_env.getGlobals()},
+                  {**inherited_env_kwargs, **default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback)
+    algo.main(args, callback, env_kwargs=env_kwargs)
 
 
 if __name__ == '__main__':

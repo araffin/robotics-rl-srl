@@ -2,8 +2,7 @@ from baselines.a2c.a2c import *
 from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
-import environments.kuka_button_gym_env as kuka_env
-from rl_baselines.policies import MlpPolicyDicrete
+from rl_baselines.policies import MlpPolicyDiscrete
 from rl_baselines.utils import createTensorflowSession, createEnvs
 
 
@@ -86,7 +85,7 @@ def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, 
     elif policy == 'lnlstm':
         policy_fn = LnLstmPolicy
     elif policy == 'mlp':
-        policy_fn = MlpPolicyDicrete
+        policy_fn = MlpPolicyDiscrete
     else:
         raise ValueError("Policy {} not implemented".format(policy))
 
@@ -133,13 +132,14 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)
+    :param env_kwargs: (dict) The extra arguments for the environment
     """
 
-    envs = createEnvs(args)
+    envs = createEnvs(args, env_kwargs=env_kwargs)
 
     logger.configure()
     learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
