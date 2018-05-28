@@ -1,5 +1,23 @@
 # Reinforcement Learning (RL) and State Representation Learning (SRL) with robotic arms (Baxter and Kuka)
 
+Table of Contents
+=================
+
+  * [Requirements:](#requirements)
+  * [Kuka Arm \w PyBullet](#kuka-arm-w-pybullet)
+  * [Reinforcement Learning](#reinforcement-learning)
+    * [OpenAI Baselines](#openai-baselines)
+    * [Plot Learning Curve](#plot-learning-curve)
+  * [Environments](#environments)
+  * [State Representation Learning Models](#state-representation-learning-models)
+  * [Baxter Robot with Gazebo and ROS](#baxter-robot-with-gazebo-and-ros)
+  * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
+    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
+    * [RL on a Real Robot](#rl-on-a-real-robot)
+  * [Troubleshooting](#troubleshooting)
+  * [Known issues](#known-issues)
+
+
 ## Requirements:
 
 - Python 3 (python 2 not supported because of OpenAI baselines)
@@ -31,7 +49,7 @@ python -m environments.test_env
 ```
 Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
-To record data from the environment for SRL training, using random actions:
+To **record data** (i.e. generate a dataset) from the environment for **SRL training**, using random actions:
 ```bash
 python -m environments.test_env --record-data --num-cpu 4 --save-name folder_name
 ```
