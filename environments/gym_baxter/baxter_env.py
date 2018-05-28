@@ -58,7 +58,7 @@ def bgr2rgb(bgr_img):
 
 
 class BaxterEnv(gym.Env):
-    """ 
+    """
     Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
     The goal of the robotic arm is to push the button on the table
     :param renders: (bool) Whether to display the GUI or not
@@ -226,6 +226,12 @@ class BaxterEnv(gym.Env):
         :return (numpy array): Position of the target (button)
         """
         return self.button_pos
+
+    def getGroundTruthDim(self):
+        """
+        :return: (int)
+        """
+        return 3
 
     def getGroundTruth(self):
         """
