@@ -59,13 +59,15 @@ class MobileRobotGymEnv(gym.Env):
     :param learn_states: (bool)
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
+    :param env_rank: (int) the number ID of the environment
+    :param pipe: (tuple) contains the input and output of the SRL model
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
                  name="kuka_button_gym", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_zoo/data/', **kwargs):
+                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **kwargs):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
@@ -107,15 +109,17 @@ class MobileRobotGymEnv(gym.Env):
         self.collision_margin = 0.1
         self.walls = None
         self.use_joints = False  # For compatibility
+        self.env_rank = env_rank
+        self.srl_pipe = srl_pipe
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=learn_states, path=save_path)
         # SRL model
-        if self.use_srl:
-            env_object = self if use_ground_truth else None
-            self.srl_model = loadSRLModel(srl_model_path, self.cuda, state_dim, env_object)
-            self.state_dim = self.srl_model.state_dim
+        # if self.use_srl:
+        #     env_object = self if use_ground_truth else None
+        #     self.srl_model = loadSRLModel(srl_model_path, self.cuda, state_dim, env_object)
+        #     self.state_dim = self.srl_model.state_dim
 
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
@@ -147,6 +151,8 @@ class MobileRobotGymEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
 
         if self.use_srl:
+            if self.use_ground_truth:
+                self.state_dim = self.getGroundTruthDim()
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         # Create numpy random generator
         # This seed can be changed later
@@ -236,7 +242,11 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            if self.use_ground_truth:
+                return self.getGroundTruth()
+            else:
+                self.srl_pipe[0].put(self.env_rank, self._observation)
+                return self.srl_pipe[1][self.env_rank].get()
 
         return np.array(self._observation)
 
@@ -303,7 +313,11 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation), reward, done, {}
+            if self.use_ground_truth:
+                return self.getGroundTruth(), reward, done, {}
+            else:
+                self.srl_pipe[0].put(self.env_rank, self._observation)
+                return self.srl_pipe[1][self.env_rank].get(), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 

@@ -3,6 +3,7 @@ from collections import OrderedDict
 
 import numpy as np
 import tensorflow as tf
+import torch as th
 from baselines.common.running_mean_std import RunningMeanStd
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -12,6 +13,7 @@ from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecF
 from environments.utils import makeEnv
 from rl_baselines.visualize import loadCsv
 from srl_zoo.utils import printYellow
+from state_representation.models import loadSRLModel, getSRLDim
 
 
 def createTensorflowSession():
@@ -177,6 +179,25 @@ class VecFrameStack(OpenAIVecFrameStack):
         self.stackedobs[..., -obs.shape[-1]:] = obs
         return self.stackedobs, rews, news, infos
 
+class MultithreadSRLModel:
+    """
+    Allows multiple environments to use a single SRL model
+    :param num_cpu: (int) the number of environments that will spawn
+    :param env_kwars: (dict)
+    """
+    def __init__(self, num_cpu, env_kwargs):
+        self.pipe = (Queue(), [Queue() for _ in range(num_cpu)])
+        module_env, class_name, _ = dynamicEnvLoad(args.env)
+        self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
+        self.p = Process(target=self._run, args=(env_kwargs,))
+        self.p.daemon = True
+        self.p.start()
+
+    def _run(self, env_kwargs):
+        self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
+        while True:
+            env_id, var = self.pipe[0].get()
+            self.pipe[1][env_id].put(self.model.getState(var))
 
 def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     """
@@ -185,6 +206,10 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     :param env_kwargs: (dict) The extra arguments for the environment
     :return: (Gym VecEnv)
     """
+    if env_kwargs is not None and env_kwargs["use_srl"]: # TODO: fix this for ground truth
+        srl_model = MultithreadSRLModel(args.num_cpu, env_kwargs)
+        env_kwargs["state_dim"] = srl_model.state_dim
+        env_kwargs["srl_pipe"] = srl_model.pipe
     envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
             for i in range(args.num_cpu)]
 

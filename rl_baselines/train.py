@@ -13,7 +13,6 @@ import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 import tensorflow as tf
-from gym.envs.registration import registry as gym_registry
 
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
@@ -27,6 +26,7 @@ from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
+from environments.utils import dynamicEnvLoad
 import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env
@@ -229,22 +229,7 @@ def main():
     assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
 
-    # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
-    entry_point = gym_registry.spec(args.env)._entry_point
-    if callable(entry_point):
-        class_name = entry_point.__name__
-        env_module_path = entry_point.__module__
-    else:
-        class_name = entry_point.split(':')[1]
-        env_module_path = entry_point.split(':')[0]
-    # Lets try and dynamically load the module_env, in order to fetch the globals.
-    # If it fails, it means that it was unable to load the path from the entry_point
-    # should this occure, it will mean that some parameters will not be correctly saved.
-    try:
-        module_env = importlib.import_module(env_module_path)
-    except ImportError:
-        raise AssertionError("Error: could not import module {}, ".format(env_module_path) +
-                             "Halting execution. Are you sure this is a valid environement?")
+    module_env, class_name, env_module_path = dynamicEnvLoad(args.env)
 
     ENV_NAME = args.env
     ALGO = args.algo

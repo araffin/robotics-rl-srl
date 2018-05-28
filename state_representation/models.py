@@ -11,6 +11,26 @@ from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
 
+def getSRLDim(path=None, env_object=None):
+    """
+    Get the dim of SRL model
+    :param path: (str) Path to a srl model
+    :param env_object: (gym env object)
+    :return: (int)
+    """
+    if path is not None:
+        # Get path to the log folder
+        log_folder = '/'.join(path.split('/')[:-1]) + '/'
+
+        with open(log_folder + 'exp_config.json', 'r') as f:
+            exp_config = json.load(f)
+        try:
+            return exp_config['state-dim']
+        except KeyError:
+            # Old format
+            return exp_config['state_dim']
+    else:
+        return env_object.getGroundTruthDim()
 
 def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     """
