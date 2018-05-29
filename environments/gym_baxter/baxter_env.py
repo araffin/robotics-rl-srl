@@ -227,7 +227,8 @@ class BaxterEnv(gym.Env):
         """
         return self.button_pos
 
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         """
         :return: (int)
         """

@@ -29,6 +29,7 @@ CONNECTED_TO_SIMULATOR = False
 ROBOT_WIDTH = 0.2
 ROBOT_LENGTH = 0.325 * 2
 
+
 def getGlobals():
     """
     :return: (dict)
@@ -159,7 +160,8 @@ class MobileRobotGymEnv(gym.Env):
         # Return only the [x, y] coordinates
         return self.target_pos[:2]
 
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         """
         :return: (int)
         """

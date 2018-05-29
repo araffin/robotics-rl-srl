@@ -122,6 +122,13 @@ class KukaButtonGymEnv(gym.Env):
         self.multi_view = multi_view
         self.verbose = verbose
         self.max_steps = MAX_STEPS
+        self.n_steps_outside = 0
+        self.table_uid = None
+        self.np_random = None
+        self.button_pos = None
+        self.button_uid = None
+        self._kuka = None
+        self.action = None
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -182,7 +189,8 @@ class KukaButtonGymEnv(gym.Env):
         """
         return self.button_pos
 
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         """
         :return: (int)
         """
