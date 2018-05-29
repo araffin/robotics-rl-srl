@@ -267,7 +267,7 @@ class KukaButtonGymEnv(gym.Env):
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
         self.button_pos[2] += BUTTON_DISTANCE_HEIGHT  # Set the target position on the top of the button
         if self.saver is not None:
-            self.saver.reset(self._observation, self.button_pos, self.getArmPos())
+            self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.use_srl:
             # if len(self.saver.srl_model_path) > 0:
@@ -368,7 +368,7 @@ class KukaButtonGymEnv(gym.Env):
         reward = self._reward()
         done = self._termination()
         if self.saver is not None:
-            self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
+            self.saver.step(self._observation, self.action, reward, done, self.getGroundTruth())
 
         if self.use_srl:
             return self.srl_model.getState(self._observation), reward, done, {}
