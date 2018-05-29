@@ -158,6 +158,20 @@ class MobileRobotGymEnv(gym.Env):
         # This seed can be changed later
         self.seed(0)
 
+    def getSRLState(self, observation):
+        """
+        get the SRL state for this environement with a given observation
+        :param observation: ([float]) image
+        :return: ([float])
+        """
+        if self.use_ground_truth:
+            if self.relative_pos:
+                return self.getGroundTruth() - self.getTargetPos()
+            return self.getGroundTruth()
+        else:
+            self.srl_pipe[0].put(self.env_rank, observation)
+            return self.srl_pipe[1][self.env_rank].get()
+
     def getTargetPos(self):
         """
         :return (numpy array): Position of the target (button)
@@ -242,11 +256,7 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.use_srl:
-            if self.use_ground_truth:
-                return self.getGroundTruth()
-            else:
-                self.srl_pipe[0].put(self.env_rank, self._observation)
-                return self.srl_pipe[1][self.env_rank].get()
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 
@@ -313,11 +323,7 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
 
         if self.use_srl:
-            if self.use_ground_truth:
-                return self.getGroundTruth(), reward, done, {}
-            else:
-                self.srl_pipe[0].put(self.env_rank, self._observation)
-                return self.srl_pipe[1][self.env_rank].get(), reward, done, {}
+            return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 

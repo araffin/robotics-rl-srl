@@ -120,7 +120,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             self.saver.reset(self._observation, self.button_all_pos[self.goal_id], self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 
@@ -149,7 +149,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation), reward, done, {}
+            return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 

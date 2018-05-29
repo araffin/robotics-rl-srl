@@ -107,7 +107,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 
