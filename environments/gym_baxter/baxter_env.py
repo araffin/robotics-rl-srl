@@ -71,11 +71,13 @@ class BaxterEnv(gym.Env):
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
+    :param env_rank: (int) the number ID of the environment
+    :param pipe: (tuple) contains the input and output of the SRL model
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
                  learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
-                 shape_reward=False):
+                 shape_reward=False, env_rank=0, srl_pipe=None):
         self.n_contacts = 0
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
@@ -93,6 +95,8 @@ class BaxterEnv(gym.Env):
         self.cuda = th.cuda.is_available()
         self.button_pos = None
         self.saver = None
+        self.env_rank = env_rank
+        self.srl_pipe = srl_pipe
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -103,9 +107,11 @@ class BaxterEnv(gym.Env):
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
         if self.use_srl:
-            env_object = self if use_ground_truth else None
-            self.srl_model = loadSRLModel(srl_model_path, self.cuda, self.state_dim, env_object)
-            self.state_dim = self.srl_model.state_dim
+            #env_object = self if use_ground_truth else None
+            #self.srl_model = loadSRLModel(srl_model_path, self.cuda, self.state_dim, env_object)
+            #self.state_dim = self.srl_model.state_dim
+            if use_ground_truth:
+                self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
@@ -140,6 +146,20 @@ class BaxterEnv(gym.Env):
         if self._renders:
             self.image_plot = None
 
+    def getSRLState(self, observation):
+        """
+        get the SRL state for this environement with a given observation
+        :param observation: ([float]) image
+        :return: ([float])
+        """
+        if self.use_ground_truth:
+            if self.relative_pos:
+                return self.getGroundTruth() - self.getTargetPos()
+            return self.getGroundTruth()
+        else:
+            self.srl_pipe[0].put(self.env_rank, observation)
+            return self.srl_pipe[1][self.env_rank].get()
+
     def seed(self, seed=None):
         """
         :seed: (int)
@@ -170,7 +190,7 @@ class BaxterEnv(gym.Env):
         if self.saver is not None:
             self.saver.step(self.observation, action, self.reward, done, self.arm_pos)
         if self.use_srl:
-            return self.srl_model.getState(self.observation), self.reward, done, {}
+            return self.getSRLState(self.observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -257,7 +277,7 @@ class BaxterEnv(gym.Env):
         if self.saver is not None:
             self.saver.reset(self.observation, self.button_pos, self.arm_pos)
         if self.use_srl:
-            return self.srl_model.getState(self.observation)
+            return self.getSRLState(self.observation)
         else:
             return self.observation
 

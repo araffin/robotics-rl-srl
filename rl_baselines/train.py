@@ -14,6 +14,7 @@ from baselines.common import set_global_seeds
 from visdom import Visdom
 import tensorflow as tf
 
+from gym.envs.registration import registry as gym_registry
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
 import rl_baselines.ddpg as ddpg

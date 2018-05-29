@@ -1,6 +1,7 @@
 # Modified version of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/envs.py
 
 import os
+import importlib
 
 import gym
 from baselines import bench

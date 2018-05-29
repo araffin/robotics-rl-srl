@@ -206,7 +206,7 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     :param env_kwargs: (dict) The extra arguments for the environment
     :return: (Gym VecEnv)
     """
-    if env_kwargs is not None and env_kwargs["use_srl"]: # TODO: fix this for ground truth
+    if env_kwargs is not None and env_kwargs.get("use_srl", False):
         srl_model = MultithreadSRLModel(args.num_cpu, env_kwargs)
         env_kwargs["state_dim"] = srl_model.state_dim
         env_kwargs["srl_pipe"] = srl_model.pipe
