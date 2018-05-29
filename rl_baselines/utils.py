@@ -1,5 +1,6 @@
 import pickle
 from collections import OrderedDict
+from multiprocessing import Queue, Process
 
 import numpy as np
 import tensorflow as tf
@@ -10,7 +11,7 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
 
-from environments.utils import makeEnv
+from environments.utils import makeEnv, dynamicEnvLoad
 from rl_baselines.visualize import loadCsv
 from srl_zoo.utils import printYellow
 from state_representation.models import loadSRLModel, getSRLDim
@@ -185,9 +186,9 @@ class MultithreadSRLModel:
     :param num_cpu: (int) the number of environments that will spawn
     :param env_kwars: (dict)
     """
-    def __init__(self, num_cpu, env_kwargs):
+    def __init__(self, num_cpu, env_id, env_kwargs):
         self.pipe = (Queue(), [Queue() for _ in range(num_cpu)])
-        module_env, class_name, _ = dynamicEnvLoad(args.env)
+        module_env, class_name, _ = dynamicEnvLoad(env_id)
         self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
         self.p = Process(target=self._run, args=(env_kwargs,))
         self.p.daemon = True
@@ -207,7 +208,7 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     :return: (Gym VecEnv)
     """
     if env_kwargs is not None and env_kwargs.get("use_srl", False):
-        srl_model = MultithreadSRLModel(args.num_cpu, env_kwargs)
+        srl_model = MultithreadSRLModel(args.num_cpu, args.env, env_kwargs)
         env_kwargs["state_dim"] = srl_model.state_dim
         env_kwargs["srl_pipe"] = srl_model.pipe
     envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)

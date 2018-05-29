@@ -157,7 +157,7 @@ class BaxterEnv(gym.Env):
                 return self.getGroundTruth() - self.getTargetPos()
             return self.getGroundTruth()
         else:
-            self.srl_pipe[0].put(self.env_rank, observation)
+            self.srl_pipe[0].put((self.env_rank, observation))
             return self.srl_pipe[1][self.env_rank].get()
 
     def seed(self, seed=None):
