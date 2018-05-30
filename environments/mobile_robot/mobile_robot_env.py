@@ -45,6 +45,7 @@ class MobileRobotGymEnv(gym.Env):
 
     """
     Gym wrapper for Mobile Robot environment
+    WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) Whether to use discrete or continuous actions
@@ -66,7 +67,7 @@ class MobileRobotGymEnv(gym.Env):
                  name="mobile_robot", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_zoo/data/', **kwargs):
+                 save_path='srl_zoo/data/', **_):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
