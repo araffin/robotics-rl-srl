@@ -9,10 +9,10 @@ import time
 
 import numpy as np
 
-import environments.kuka_2button_gym_env as kuka_env_2
-import environments.kuka_button_gym_env as kuka_env
-import environments.kuka_rand_button_gym_env as kuka_env_rand
-import environments.kuka_moving_button_gym_env as kuka_env_moving
+import environments.kuka_gym.kuka_2button_gym_env as kuka_env_2
+import environments.kuka_gym.kuka_button_gym_env as kuka_env
+import environments.kuka_gym.kuka_rand_button_gym_env as kuka_env_rand
+import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
 import environments.mobile_robot.mobile_robot_env as mobile_robot
 from srl_zoo.utils import printRed
 
