@@ -120,8 +120,8 @@ class MobileRobotGymEnv(gym.Env):
             self.state_dim = self.srl_model.state_dim
 
         if self._renders:
-            cid = p.connect(p.SHARED_MEMORY)
-            if cid < 0:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
@@ -211,8 +211,10 @@ class MobileRobotGymEnv(gym.Env):
         red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
 
         wall_left = p.loadURDF(wall_urdf, [self._max_x / 2, 0, 0], useFixedBase=True)
+        # Change color
         p.changeVisualShape(wall_left, -1, rgbaColor=red)
 
+        # getQuaternionFromEuler -> define orientation
         wall_bottom = p.loadURDF(wall_urdf, [self._max_x, self._max_y / 2, 0],
                                  p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
 

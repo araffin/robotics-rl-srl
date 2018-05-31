@@ -140,8 +140,8 @@ class KukaButtonGymEnv(gym.Env):
             self.state_dim = self.srl_model.state_dim
 
         if self._renders:
-            cid = p.connect(p.SHARED_MEMORY)
-            if cid < 0:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
