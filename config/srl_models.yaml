@@ -47,3 +47,13 @@ MobileRobotGymEnv-v0:
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
   srl_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
+
+MobileRobot2TargetGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_zoo/logs/mobile_robot_2target/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM32_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM32/pca.pkl
+  srl_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
