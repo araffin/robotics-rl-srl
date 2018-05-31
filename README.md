@@ -1,8 +1,26 @@
-# Reinforcement Learning (RL) and State Representation Learning (SRL) with robotic arms (Baxter and Kuka)
+# Reinforcement Learning (RL) and State Representation Learning (SRL) for Robotics
 
-## Requirements:
+Table of Contents
+=================
 
-- Python 3 (python 2 not supported because of OpenAI baselines)
+  * [Installation](#installation)
+  * [Kuka Arm \w PyBullet](#kuka-arm-w-pybullet)
+  * [Reinforcement Learning](#reinforcement-learning)
+    * [OpenAI Baselines](#openai-baselines)
+    * [Plot Learning Curve](#plot-learning-curve)
+  * [Environments](#environments)
+  * [State Representation Learning Models](#state-representation-learning-models)
+  * [Baxter Robot with Gazebo and ROS](#baxter-robot-with-gazebo-and-ros)
+  * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
+    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
+    * [RL on a Real Robot](#rl-on-a-real-robot)
+  * [Troubleshooting](#troubleshooting)
+  * [Known issues](#known-issues)
+
+
+## Installation
+
+- Python 3 is required (python 2 is not supported because of OpenAI baselines)
 - [OpenAI Baselines](https://github.com/openai/baselines) (latest version, install from source (at least commit 3cc7df0))
 - [OpenAI Gym](https://github.com/openai/gym/) (version >= 0.10.3)
 - Install the dependencies using `environment.yml` file (for conda users)
@@ -11,6 +29,7 @@ Note: The save method of ACER of baselines is currently buggy, you need to manua
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
+How to download the project (note the `--recursive` argument because we are using git submodules):
 ```
 git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
@@ -31,7 +50,7 @@ python -m environments.test_env
 ```
 Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
-To record data from the environment for SRL training, using random actions:
+To **record data** (i.e. generate a dataset) from the environment for **SRL training**, using random actions:
 ```bash
 python -m environments.test_env --record-data --num-cpu 4 --save-name folder_name
 ```
@@ -120,7 +139,7 @@ the available environments are:
 
 ## State Representation Learning Models
 
-Please look the [SRL Repo](https://github.com/araffin/srl-robotic-priors-pytorch) to learn how to train a state representation model.
+Please look the [SRL Repo](https://github.com/araffin/srl-zoo) to learn how to train a state representation model.
 Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
 
 To train the Reinforcement learning baselines on a specific SRL model:
@@ -128,7 +147,7 @@ To train the Reinforcement learning baselines on a specific SRL model:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ --srl-model model_name
 ```
 
-the available state representation model are:
+The available state representation models are:
 - autoencoder: an autoencoder from the raw pixels
 - ground_truth: the arm's x,y,z position
 - srl_priors: SRL priors model
@@ -139,7 +158,7 @@ the available state representation model are:
 - joints_position: the arm's x,y,z position and joints angles
 
 In the case of a custom_cnn (SRL priors model) trained with views of two cameras,
-set the global variable N_CHANNELS to 6 in srl_priors/preprocessing/preprocess.py
+set the global variable N_CHANNELS to 6 in srl_zoo/preprocessing/preprocess.py
 to perform the inference.
 
 ## Baxter Robot with Gazebo and ROS

@@ -93,7 +93,7 @@ def saveSecondCamImage(im, episode_folder, episode_step, path="real_baxter_2nd_c
     """
     image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    cv2.imwrite("srl_priors/data/{}".format(image_path), im)
+    cv2.imwrite("srl_zoo/data/{}".format(image_path), im)
 
 
 rospy.init_node('real_baxter_server', anonymous=True)
@@ -149,7 +149,7 @@ while not should_exit[0]:
         if SECOND_CAM_TOPIC is not None:
             episode_folder = "record_{:03d}".format(episode_idx)
             try:
-                os.makedirs("srl_priors/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
+                os.makedirs("srl_zoo/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
             except OSError:
                 pass
 

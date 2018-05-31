@@ -24,10 +24,24 @@ import rl_baselines.cma_es as cma_es
 from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomVecNormalize, VecFrameStack
 from rl_baselines.policies import MlpPolicyDiscrete, AcerMlpPolicy, CNNPolicyContinuous
-from srl_priors.utils import printYellow, printGreen
+from srl_zoo.utils import printYellow, printGreen
 from environments.utils import makeEnv
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
+
+def fixStateDim(states):
+    """
+    Fix for plotting when state_dim < 3
+    :param states: (numpy array or [float])
+    :return: (numpy array)
+    """
+    states = np.array(states)
+    state_dim = states.shape[1]
+    if state_dim < 3:
+        tmp = np.zeros((states.shape[0], 3))
+        tmp[:, :state_dim] = states
+        return tmp
+    return states
 
 
 def parseArguments():
@@ -36,7 +50,6 @@ def parseArguments():
     :return: (Arguments)
     """
     parser = argparse.ArgumentParser(description="Load trained RL model")
-    parser.add_argument('--env', help='environment ID', type=str, default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
     parser.add_argument('--log-dir', help='folder with the saved agent model', type=str, required=True)
@@ -87,7 +100,7 @@ def loadConfigAndSetup(load_args):
 
     env_kwargs["action_joints"] = train_args["action_joints"]
     env_kwargs["is_discrete"] = not train_args["continuous_actions"]
-    env_kwargs["button_random"] = train_args.get('relative', False)
+    env_kwargs["random_target"] = train_args.get('relative', False)
     # Remove up action
     if train_args["env"] == "Kuka2ButtonGymEnv-v0":
         env_kwargs["force_down"] = env_globals.get('force_down', env_globals.get('FORCE_DOWN', True))
@@ -162,7 +175,7 @@ def main():
     train_args, load_path, algo, srl_models, env_kwargs = loadConfigAndSetup(load_args)
     log_dir, envs = createEnv(load_args, train_args, algo, env_kwargs)
 
-    assert not (load_args.plotting and load_args.num_cpu != 1), "Error: cannot run plotting with more than 1 CPU"
+    assert (not load_args.plotting) or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 
     ob_space = envs.observation_space
     ac_space = envs.action_space
@@ -230,12 +243,14 @@ def main():
             ax.set_ylim([-4, 4])
             ax.set_zlim([-2, 2])
             delta_obs = [obs[0]]
-        elif train_args["srl_model"] in ["vae", "srl_priors"]:
+        elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
             path = srl_models['log_folder'] + "/".join(
                 srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
+
+            X = fixStateDim(X)
 
             # train the PCA and et the limits
             pca = PCA(n_components=3)
@@ -243,7 +258,7 @@ def main():
             ax.set_xlim([np.min(X_new[:, 0]) * 1.2, np.max(X_new[:, 0]) * 1.2])
             ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
             ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
-            delta_obs = [pca.transform([obs[0]])[0]]
+            delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
         else:
             assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
 
@@ -269,8 +284,8 @@ def main():
         if load_args.plotting:
             if train_args["srl_model"] == "ground_truth":
                 ajusted_obs = obs[0]
-            elif train_args["srl_model"] in ["vae", "srl_priors"]:
-                ajusted_obs = pca.transform([obs[0]])[0]
+            elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
+                ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished
             if sum(dones) > 0:
@@ -283,10 +298,13 @@ def main():
             else:
                 delta_obs.append(ajusted_obs)
 
-            coor_plt = np.array(delta_obs)
+            coor_plt = fixStateDim(np.array(delta_obs))
+
+            # updating the 3d vertices for the line and the dot drawing, to avoid redrawing the entire image
             line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
             point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
 
+            # Draw every 5 frames to avoid UI freezing
             if i % 5 == 0:
                 fig.canvas.draw()
                 plt.pause(0.000001)

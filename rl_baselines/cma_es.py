@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from rl_baselines.utils import createEnvs
-from srl_priors.utils import printYellow
+from srl_zoo.utils import printYellow
 
 
 class Policy(object):

@@ -26,11 +26,14 @@ import rl_baselines.cma_es as cma_es
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
-from srl_priors.utils import printGreen, printYellow
+from srl_zoo.utils import printGreen, printYellow
+# Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
 import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env
 from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
+import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env
+from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobile_robot_inherited_env_class
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -237,7 +240,7 @@ def main():
         env_module_path = entry_point.split(':')[0]
     # Lets try and dynamically load the module_env, in order to fetch the globals.
     # If it fails, it means that it was unable to load the path from the entry_point
-    # should this occure, it will mean that some parameters will not be correctly saved. 
+    # should this occure, it will mean that some parameters will not be correctly saved.
     try:
         module_env = importlib.import_module(env_module_path)
     except ImportError:
@@ -286,7 +289,7 @@ def main():
 
     env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
-    env_kwargs["button_random"] = args.relative
+    env_kwargs["random_target"] = args.relative
     # Allow up action
     # env_kwargs["force_down"] = False
 
@@ -311,8 +314,11 @@ def main():
     elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
         inherited_env = baxter_inherited_env
         inherited_env_class = baxter_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], mobile_robot_inherited_env_class):
+        inherited_env = mobile_robot_inherited_env
+        inherited_env_class = mobile_robot_inherited_env_class
     else:
-        # Sanity check to make sure we have implemented the environment correctly, 
+        # Sanity check to make sure we have implemented the environment correctly,
         raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
 
     if inherited_env != module_env:

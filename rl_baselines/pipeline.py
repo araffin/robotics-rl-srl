@@ -9,7 +9,7 @@ import yaml
 import tensorflow as tf
 import numpy as np
 
-from srl_priors.utils import printGreen, printRed
+from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
@@ -21,7 +21,7 @@ def main():
                         choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars'])
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
+                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised",
                                  "pca", "vae", "joints", "joints_position", "raw_pixels"])
@@ -40,9 +40,11 @@ def main():
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_iteration >= 1, "Error: --num-iteration cannot be less than 1"
 
-    # Removing duplicates
+    # Removing duplicates and sort
     srl_models = list(set(args.srl_model))
     envs = list(set(args.env))
+    srl_models.sort()
+    envs.sort()
 
     # loading the config file for the srl_models
     with open('config/srl_models.yaml', 'rb') as f:
@@ -101,13 +103,14 @@ def main():
                     "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}'".format(i, seeds[i], env, model))
 
                 # redefine the parsed args for rl_baselines.train
+                loop_args = []
                 if model != "raw_pixels":
                     # raw_pixels is when --srl-model is left as default
-                    train_args.extend(['--srl-model', model])
-                train_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
+                    loop_args.extend(['--srl-model', model])
+                loop_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
                                    str(int(args.num_timesteps))])
 
-                ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args, stdout=stdout)
+                ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 
                 if ok != 0:
                     # throw the error down to the terminal

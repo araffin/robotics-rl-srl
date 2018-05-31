@@ -20,7 +20,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
-    :param button_random: (bool) Set the button position to a random position on the table
+    :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
@@ -57,7 +57,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         # Initialize button position
         x_pos = 0.5
         y_pos = 0.125
-        if self._button_random:
+        if self._random_target:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.175 * self.np_random.uniform(0, 1)
 
@@ -68,7 +68,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         x_pos = 0.5
         y_pos = -0.125
-        if self._button_random:
+        if self._random_target:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.175 * self.np_random.uniform(-1, 0)
 

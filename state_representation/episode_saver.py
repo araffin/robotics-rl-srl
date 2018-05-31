@@ -5,7 +5,7 @@ import time
 import cv2
 import numpy as np
 
-from srl_priors.utils import printYellow
+from srl_zoo.utils import printYellow
 from rl_baselines.utils import filterJSONSerializableObjects
 from state_representation.client import SRLClient
 
@@ -24,7 +24,7 @@ class EpisodeSaver(object):
     """
 
     def __init__(self, name, max_dist, state_dim=-1, globals_=None, learn_every=3, learn_states=False,
-                 path='srl_priors/data/', relative_pos=False):
+                 path='srl_zoo/data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name
         self.data_folder = path + name
@@ -37,9 +37,9 @@ class EpisodeSaver(object):
         self.actions = []
         self.rewards = []
         self.images = []
-        self.button_positions = []
+        self.target_positions = []
         self.episode_starts = []
-        self.arm_states = []
+        self.ground_truth_states = []
         self.images_path = []
         self.episode_step = 0
         self.episode_idx = -1
@@ -71,26 +71,26 @@ class EpisodeSaver(object):
         Write an image to disk
         :param observation: (numpy matrix) BGR image
         """
-        image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step) 
+        image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step)
         self.images_path.append(image_path)
-        
+
         # in the case of dual/multi-camera
         if observation.shape[2] > 3:
             observation1 = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_BGR2RGB)
             observation2 = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_BGR2RGB)
-            
+
             cv2.imwrite("{}_1.jpg".format(image_path), observation1)
             cv2.imwrite("{}_2.jpg".format(image_path), observation2)
         else:
             observation = cv2.cvtColor(observation, cv2.COLOR_BGR2RGB)
             cv2.imwrite("{}.jpg".format(image_path), observation)
 
-    def reset(self, observation, button_pos, arm_state):
+    def reset(self, observation, target_pos, ground_truth):
         """
         Called when starting a new episode
         :param observation: (numpy matrix) BGR Image
-        :param button_pos: ([float])
-        :param arm_state: ([float])
+        :param target_pos: (numpy array)
+        :param ground_truth: (numpy array)
         """
         self.episode_idx += 1
 
@@ -106,17 +106,17 @@ class EpisodeSaver(object):
         os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
 
         self.episode_starts.append(True)
-        self.button_positions.append(button_pos)
-        self.arm_states.append(arm_state)
+        self.target_positions.append(target_pos)
+        self.ground_truth_states.append(ground_truth)
         self.saveImage(observation)
 
-    def step(self, observation, action, reward, done, arm_state):
+    def step(self, observation, action, reward, done, ground_truth_state):
         """
         :param observation: (numpy matrix) BGR Image
         :param action: (int)
         :param reward: (float)
         :param done: (bool) whether the episode is done or not
-        :param arm_state: ([float])
+        :param ground_truth_state: (numpy array)
         """
         self.episode_step += 1
         self.n_steps += 1
@@ -127,7 +127,7 @@ class EpisodeSaver(object):
 
         if not done:
             self.episode_starts.append(False)
-            self.arm_states.append(arm_state)
+            self.ground_truth_states.append(ground_truth_state)
             self.saveImage(observation)
         else:
             # Save the gathered data at the end of each episode
@@ -141,8 +141,8 @@ class EpisodeSaver(object):
         assert len(self.actions) == len(self.rewards)
         assert len(self.actions) == len(self.episode_starts)
         assert len(self.actions) == len(self.images_path)
-        assert len(self.actions) == len(self.arm_states)
-        assert len(self.button_positions) == self.episode_idx + 1
+        assert len(self.actions) == len(self.ground_truth_states)
+        assert len(self.target_positions) == self.episode_idx + 1
 
         data = {
             'rewards': np.array(self.rewards),
@@ -151,8 +151,8 @@ class EpisodeSaver(object):
         }
 
         ground_truth = {
-            'button_positions': np.array(self.button_positions),
-            'arm_states': np.array(self.arm_states),
+            'target_positions': np.array(self.target_positions),
+            'ground_truth_states': np.array(self.ground_truth_states),
             'images_path': np.array(self.images_path)
         }
         print("Saving preprocessed data...")

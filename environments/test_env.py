@@ -13,7 +13,8 @@ import environments.kuka_2button_gym_env as kuka_env_2
 import environments.kuka_button_gym_env as kuka_env
 import environments.kuka_rand_button_gym_env as kuka_env_rand
 import environments.kuka_moving_button_gym_env as kuka_env_moving
-from srl_priors.utils import printRed
+import environments.mobile_robot.mobile_robot_env as mobile_robot
+from srl_zoo.utils import printRed
 
 
 def convertImagePath(args, path, record_id_start):
@@ -40,7 +41,7 @@ def env_thread(args, thread_num, partition=True):
     """
     env_kwargs = {
         "max_distance": args.max_distance,
-        "button_random": args.relative,
+        "random_target": args.relative,
         "force_down": True,
         "is_discrete": not args.continuous_actions,
         "renders": thread_num == 0 and not args.no_display,
@@ -56,7 +57,8 @@ def env_thread(args, thread_num, partition=True):
     env_class = {"KukaButtonGymEnv-v0": kuka_env.KukaButtonGymEnv,
                  "Kuka2ButtonGymEnv-v0": kuka_env_2.Kuka2ButtonGymEnv,
                  "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv
+                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
+                 "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv
                  }[args.env]
 
     if partition:
@@ -91,12 +93,12 @@ def main():
     parser = argparse.ArgumentParser(description='Environment tester (can be used to record datasets for SRL training)')
     parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to run on')
     parser.add_argument('--num-episode', type=int, default=50, help='number of episode to run')
-    parser.add_argument('--save-folder', type=str, default='srl_priors/data/',
+    parser.add_argument('--save-folder', type=str, default='srl_zoo/data/',
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
+                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
