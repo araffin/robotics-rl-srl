@@ -195,6 +195,7 @@ class MultithreadSRLModel:
         self.p.start()
 
     def _run(self, env_kwargs):
+        th.set_num_threads(1)
         self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
         while True:
             env_id, var = self.pipe[0].get()
