@@ -107,9 +107,6 @@ class BaxterEnv(gym.Env):
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
         if self.use_srl:
-            #env_object = self if use_ground_truth else None
-            #self.srl_model = loadSRLModel(srl_model_path, self.cuda, self.state_dim, env_object)
-            #self.state_dim = self.srl_model.state_dim
             if use_ground_truth:
                 self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32

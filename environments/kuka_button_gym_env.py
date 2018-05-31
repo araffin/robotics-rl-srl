@@ -137,11 +137,6 @@ class KukaButtonGymEnv(gym.Env):
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=learn_states, path=save_path)
-        # SRL model
-        # if self.use_srl:
-        #     env_object = self if use_ground_truth or use_joints else None
-        #     self.srl_model = loadSRLModel(srl_model_path, self.cuda, state_dim, env_object)
-        #     self.state_dim = self.srl_model.state_dim
 
         if self._renders:
             client_id = p.connect(p.SHARED_MEMORY)
