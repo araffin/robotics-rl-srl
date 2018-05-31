@@ -26,6 +26,8 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     :param learn_states: (bool)
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
+    :param env_rank: (int) the number ID of the environment
+    :param pipe: (tuple) contains the input and output of the SRL model
     """
 
     def __init__(self, name="kuka_2button_gym", max_distance=2, force_down=False, **kwargs):

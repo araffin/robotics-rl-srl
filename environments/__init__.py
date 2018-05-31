@@ -49,3 +49,10 @@ register(
     timestep_limit=None,
     reward_threshold=None
 )
+
+register(
+    _id='MobileRobot2TargetGymEnv-v0',
+    entry_point='environments.mobile_robot.mobile_robot_2target_env:MobileRobot2TargetGymEnv',
+    timestep_limit=None,
+    reward_threshold=None
+)
