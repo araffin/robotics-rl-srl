@@ -188,8 +188,8 @@ class KukaButtonGymEnv(SRLGymEnv):
     def getSRLState(self, observation):
         """
         get the SRL state for this environement with a given observation
-        :param observation: ([float]) image
-        :return: ([float])
+        :param observation: (numpy float) image
+        :return: (numpy float)
         """
         state = []
         if self.use_ground_truth:
