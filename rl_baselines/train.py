@@ -27,6 +27,7 @@ from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
+# Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
 import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env
@@ -50,7 +51,7 @@ best_mean_reward = -10000
 
 win, win_smooth, win_episodes = None, None, None
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflowg
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
