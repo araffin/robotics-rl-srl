@@ -2,7 +2,6 @@ import os
 import pybullet as p
 import time
 
-import gym
 import numpy as np
 import torch as th
 import pybullet_data
@@ -11,7 +10,6 @@ from gym.utils import seeding
 
 from .srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
-from state_representation.models import loadSRLModel
 from srl_zoo.preprocessing import N_CHANNELS
 
 from . import kuka
@@ -79,7 +77,7 @@ class KukaButtonGymEnv(SRLGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,

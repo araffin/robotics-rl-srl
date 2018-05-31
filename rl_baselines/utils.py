@@ -180,13 +180,15 @@ class VecFrameStack(OpenAIVecFrameStack):
         self.stackedobs[..., -obs.shape[-1]:] = obs
         return self.stackedobs, rews, news, infos
 
+
 class MultithreadSRLModel:
     """
     Allows multiple environments to use a single SRL model
     :param num_cpu: (int) the number of environments that will spawn
     :param env_id: (str) the environment id string
-    :param env_kwars: (dict)
+    :param env_kwargs: (dict)
     """
+
     def __init__(self, num_cpu, env_id, env_kwargs):
         # Create a duplex pipe between env and srl model, where all the inputs are unified and the origin
         # marked with a index number
@@ -205,6 +207,7 @@ class MultithreadSRLModel:
             # pop an item, get state, and return to sender.
             env_id, var = self.pipe[0].get()
             self.pipe[1][env_id].put(self.model.getState(var))
+
 
 def createEnvs(args, allow_early_resets=False, env_kwargs=None):
     """

@@ -5,7 +5,6 @@ This program allows to run Baxter Gym Environment as a module
 import numpy as np
 import cv2
 import zmq
-import gym
 from gym import spaces
 from gym.utils import seeding
 import torch as th
@@ -13,11 +12,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
-from .srl_env import SRLGymEnv
+from ..srl_env import SRLGymEnv
 from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
-from state_representation.models import loadSRLModel
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
@@ -73,7 +71,7 @@ class BaxterEnv(SRLGymEnv):
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,

@@ -1,16 +1,14 @@
 import os
 import pybullet as p
 
-import gym
 import numpy as np
 import torch as th
 import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
-from .srl_env import SRLGymEnv
+from ..srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
-from state_representation.models import loadSRLModel
 
 #  Number of steps before termination
 MAX_STEPS = 250  # WARNING: should be also change in __init__.py (timestep_limit)

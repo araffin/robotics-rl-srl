@@ -1,5 +1,6 @@
 import gym
 
+
 class SRLGymEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -22,7 +23,6 @@ class SRLGymEnv(gym.Env):
         self.srl_pipe = srl_pipe
         self.use_ground_truth = use_ground_truth
         self.relative_pos = relative_pos
-
 
     def getSRLState(self, observation):
         """
@@ -61,4 +61,13 @@ class SRLGymEnv(gym.Env):
         :return: (numpy array)
         """
         # Return only the [x, y] coordinates
+        raise NotImplementedError()
+
+    def step(self, action):
+        raise NotImplementedError()
+
+    def reset(self):
+        raise NotImplementedError()
+
+    def render(self, mode='human'):
         raise NotImplementedError()
