@@ -13,22 +13,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
-from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE
+from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
-
-MAX_STEPS = 50
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-N_CONTACTS_BEFORE_TERMINATION = 5
-MAX_DISTANCE = 0.35  # Max distance between end effector and the button (for negative reward)
-THRESHOLD_DIST_TO_CONSIDER_BUTTON_TOUCHED = 0.01  # Min distance between effector and button
-RELATIVE_POS = False
+N_CONTACTS_BEFORE_TERMINATION = 2
+RELATIVE_POS = True
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
-DELTA_POS = 0.05
 # Each action array is [dx, dy, dz]: representing movements up, down, left, right,
 # backward and forward from Baxter coordinate system center
 action_dict = {
@@ -42,19 +37,9 @@ action_dict = {
 }
 N_DISCRETE_ACTIONS = len(action_dict)
 
-
-# Parameters defined outside init because gym.make() doesn't allow arguments
-FORCE_RENDER = False  # For enjoy script
-STATE_DIM = -1  # When learning states
-LEARN_STATES = False
-USE_SRL =  False
-SRL_MODEL_PATH = None
-RECORD_DATA = False
-USE_GROUND_TRUTH = False
-SHAPE_REWARD = False  # Set to true, reward = -distance_to_goal
-
 # Init seaborn
 sns.set()
+
 
 def getGlobals():
     """
@@ -73,30 +58,45 @@ def bgr2rgb(bgr_img):
 
 
 class BaxterEnv(gym.Env):
-    """ Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
-        The goal of the robotic arm is to push the button on the table
-        :param renders: (bool) Whether to display the GUI or not
-        :param is_discrete: (bool) true if action space is discrete vs continuous
-        :param log_folder: (str) name of the folder where recorded data will be stored
+    """
+    Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
+    The goal of the robotic arm is to push the button on the table
+    :param renders: (bool) Whether to display the GUI or not
+    :param is_discrete: (bool) true if action space is discrete vs continuous
+    :param log_folder: (str) name of the folder where recorded data will be stored
+    :param state_dim: (int) When learning states
+    :param learn_states: (bool)
+    :param use_srl: (bool) Set to true, use srl_models
+    :param srl_model_path: (str) Path to the srl model
+    :param record_data: (bool) Set to true, record frames with the rewards.
+    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
+    :param shape_reward: (bool) Set to true, reward = -distance_to_goal
+    :param env_rank: (int) the number ID of the environment
+    :param pipe: (tuple) contains the input and output of the SRL model
     """
 
-    def __init__(self,
-                 renders=False,
-                 is_discrete=True,
-                 log_folder="baxter_log_folder"):
+    def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
+                 learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
+                 shape_reward=False, env_rank=0, srl_pipe=None):
         self.n_contacts = 0
-        self.use_srl = USE_SRL or USE_GROUND_TRUTH
+        self.use_srl = use_srl or use_ground_truth
+        self.use_ground_truth = use_ground_truth
+        self.use_joints = False
+        self.relative_pos = RELATIVE_POS
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
         self._env_step_counter = 0
         self.episode_terminated = False
-        self.state_dim = STATE_DIM
-        self._renders = renders or FORCE_RENDER
+        self.state_dim = state_dim
+        self._renders = renders
+        self._shape_reward = shape_reward
         self.np_random = None
         self.cuda = th.cuda.is_available()
         self.button_pos = None
         self.saver = None
+        self.env_rank = env_rank
+        self.srl_pipe = srl_pipe
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -107,9 +107,8 @@ class BaxterEnv(gym.Env):
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
         if self.use_srl:
-            env_object = self if USE_GROUND_TRUTH else None
-            self.srl_model = loadSRLModel(SRL_MODEL_PATH, self.cuda, self.state_dim, env_object)
-            self.state_dim = self.srl_model.state_dim
+            if use_ground_truth:
+                self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
@@ -117,12 +116,11 @@ class BaxterEnv(gym.Env):
             self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
                                                 dtype=self.dtype)
 
-
-        if RECORD_DATA:
+        if record_data:
             print("Recording data...")
             self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
-                                      learn_states=LEARN_STATES)
+                                      learn_states=learn_states)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
         self.context = zmq.Context()
@@ -137,11 +135,27 @@ class BaxterEnv(gym.Env):
         self.action = [0, 0, 0]
         self.reward = 0
         self.arm_pos = np.array([0, 0, 0])
+        # Create numpy random generator
+        # This seed can be changed later
         self.seed(0)
 
         # Initialize the state
         if self._renders:
             self.image_plot = None
+
+    def getSRLState(self, observation):
+        """
+        get the SRL state for this environement with a given observation
+        :param observation: ([float]) image
+        :return: ([float])
+        """
+        if self.use_ground_truth:
+            if self.relative_pos:
+                return self.getGroundTruth() - self.getTargetPos()
+            return self.getGroundTruth()
+        else:
+            self.srl_pipe[0].put((self.env_rank, observation))
+            return self.srl_pipe[1][self.env_rank].get()
 
     def seed(self, seed=None):
         """
@@ -171,9 +185,9 @@ class BaxterEnv(gym.Env):
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
         if self.saver is not None:
-            self.saver.step(self.observation, action, self.reward, done, self.arm_pos)
+            self.saver.step(self.observation, action, self.reward, done, self.getGroundTruth())
         if self.use_srl:
-            return self.srl_model.getState(self.observation), self.reward, done, {}
+            return self.getSRLState(self.observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -209,7 +223,7 @@ class BaxterEnv(gym.Env):
 
         # print('state_data: {}'.format(state_data))
 
-        if SHAPE_REWARD:
+        if self._shape_reward:
             self.reward = -distance_to_goal
         return state_data
 
@@ -223,6 +237,26 @@ class BaxterEnv(gym.Env):
         # Resize it:
         self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
+
+    def getTargetPos(self):
+        """
+        :return (numpy array): Position of the target (button)
+        """
+        return self.button_pos
+
+    @staticmethod
+    def getGroundTruthDim():
+        """
+        :return: (int)
+        """
+        return 3
+
+    def getGroundTruth(self):
+        """
+        Alias for getArmPos for compatibility between envs
+        :return: (numpy array)
+        """
+        return np.array(self.getArmPos())
 
     def getArmPos(self):
         """
@@ -245,9 +279,9 @@ class BaxterEnv(gym.Env):
         self.getEnvState()
         self.observation = self.getObservation()
         if self.saver is not None:
-            self.saver.reset(self.observation, self.button_pos, self.arm_pos)
+            self.saver.reset(self.observation, self.getTargetPos(), self.getGroundTruth())
         if self.use_srl:
-            return self.srl_model.getState(self.observation)
+            return self.getSRLState(self.observation)
         else:
             return self.observation
 

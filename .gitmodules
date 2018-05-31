@@ -1,4 +1,4 @@
-[submodule "srl_priors"]
-	path = srl_priors
-	url = https://github.com/araffin/srl-robotic-priors-pytorch
+[submodule "srl_zoo"]
+	path = srl_zoo
 	branch = master
+	url = https://github.com/araffin/srl-zoo.git

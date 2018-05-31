@@ -2,6 +2,7 @@ from .kuka_button_gym_env import *
 
 MAX_STEPS = 1500
 
+
 class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     """
     Gym wrapper for Kuka environment with 2 push buttons
@@ -19,7 +20,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
-    :param button_random: (bool) Set the button position to a random position on the table
+    :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
@@ -31,8 +32,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         super(Kuka2ButtonGymEnv, self).__init__(name=name, max_distance=max_distance, force_down=force_down, **kwargs)
 
         self.max_steps = MAX_STEPS
-        self.n_contacts = [0,0]
-
+        self.n_contacts = [0, 0]
 
     def reset(self):
         """
@@ -40,10 +40,10 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         :return: (numpy tensor) first observation of the env
         """
         self.terminated = False
-        self.n_contacts = [0,0]
+        self.n_contacts = [0, 0]
         self.button_all_pos = []
         self.button_uid = []
-        self.goal_id = 0 # here, goal_id is used to know which button is the next one to press
+        self.goal_id = 0  # here, goal_id is used to know which button is the next one to press
         self.n_steps_outside = 0
         self.button_pressed = [False]
         p.resetSimulation()
@@ -57,7 +57,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         # Initialize button position
         x_pos = 0.5
         y_pos = 0.125
-        if self._button_random:
+        if self._random_target:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.175 * self.np_random.uniform(0, 1)
 
@@ -68,7 +68,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
 
         x_pos = 0.5
         y_pos = -0.125
-        if self._button_random:
+        if self._random_target:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.175 * self.np_random.uniform(-1, 0)
 
@@ -120,10 +120,9 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             self.saver.reset(self._observation, self.button_all_pos[self.goal_id], self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
-
 
     def step2(self, action):
         """
@@ -150,7 +149,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
             self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation), reward, done, {}
+            return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 
@@ -163,7 +162,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         self.n_contacts[self.goal_id] += int(len(contact_points) > 0)
 
         # for the sparse reward
-        if self.goal_id == len(self.button_uid)-1:
+        if self.goal_id == len(self.button_uid) - 1:
             reward = int(len(contact_points) > 0)
 
         # next button

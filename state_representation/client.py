@@ -84,10 +84,10 @@ class SRLClient(object):
 
 if __name__ == '__main__':
     data_folder = 'test_server'
-    os.makedirs('srl_priors/data/' + data_folder, exist_ok=True)
+    os.makedirs('srl_zoo/data/' + data_folder, exist_ok=True)
 
     dataset_config = {'relative_pos': False}
-    with open("srl_priors/data/{}/dataset_config.json".format(data_folder), "w") as f:
+    with open("srl_zoo/data/{}/dataset_config.json".format(data_folder), "w") as f:
         json.dump(dataset_config, f)
 
     socket_client = SRLClient(data_folder)

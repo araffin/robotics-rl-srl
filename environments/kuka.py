@@ -5,16 +5,12 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
-"""
-Represents the Kuka arm in the PyBullet environment.
-"""
-
 
 class Kuka:
     """
-    The Kuka pybullet enviroment
+    Represents the Kuka arm in the PyBullet simulator
     :param urdf_root_path: (str) Path to pybullet urdf files
-    :param timestep: (float) 
+    :param timestep: (float)
     :param use_inverse_kinematics: (bool) enable dx,dy,dz control rather than direct joint control
     :param small_constraints: (bool) reduce the searchable space
     """
@@ -176,7 +172,7 @@ class Kuka:
             for i in range(self.kuka_end_effector_index + 1):
                 p.resetJointState(self.kuka_uid, i, joint_poses[i])
 
-        # Effectors grabbers angle 
+        # Effectors grabbers angle
         p.setJointMotorControl2(self.kuka_uid, 7, p.POSITION_CONTROL, targetPosition=self.end_effector_angle,
                                 force=self.max_force)
         p.setJointMotorControl2(self.kuka_uid, 8, p.POSITION_CONTROL, targetPosition=-finger_angle,

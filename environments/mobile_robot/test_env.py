@@ -1,11 +1,9 @@
 import time
 
-import environments.gym_baxter.baxter_env as baxter_env
+import environments.mobile_robot.mobile_robot_env as mobile_env
 
-baxter_env.RECORD_DATA = True
-
-env = baxter_env.BaxterEnv(renders=False, is_discrete=True, log_folder="baxter_real_2")
-timesteps = 500  # must be greater than MAX_STEPS
+env = mobile_env.MobileRobotGymEnv(renders=True, is_discrete=True, log_folder="mobile_robot", record_data=False, random_target=False)
+timesteps = 1000  # must be greater than MAX_STEPS
 episodes = 100
 env.seed(1)
 i = 0

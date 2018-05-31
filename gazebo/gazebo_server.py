@@ -15,9 +15,10 @@ from geometry_msgs.msg import Point, Vector3, Vector3Stamped
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 
-from .constants import DELTA_POS, SERVER_PORT, IK_SEED_POSITIONS, REF_POINT, IMAGE_TOPIC, \
-    ACTION_TOPIC, BUTTON_POS_TOPIC
+from .constants import *
 from .utils import sendMatrix, getActions
+
+assert not USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to False in gazebo/constants.py"
 
 bridge = CvBridge()
 
@@ -42,7 +43,7 @@ def move_left_arm_to_init():
     :return: ([float])
     """
     joints = None
-    position = REF_POINT
+    position = LEFT_ARM_INIT_POS
     while not joints:
         try:
             joints = baxter_utils.IK(left_arm, position, ee_orientation, IK_SEED_POSITIONS)
@@ -60,8 +61,6 @@ rospy.init_node('gym_gazebo_server', anonymous=True)
 # Connect to ROS Topics
 image_cb_wrapper = ImageCallback()
 img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
-action_pub = rospy.Publisher(ACTION_TOPIC, Vector3Stamped, queue_size=1)
-button_pos_pub = rospy.Publisher(BUTTON_POS_TOPIC, Point, queue_size=1)
 
 # Retrieve the different gazebo objects
 left_arm = baxter_interface.Limb('left')
@@ -134,7 +133,6 @@ try:
             print(e)
 
         if joints:
-            action_pub.publish(Vector3Stamped(Header(stamp=rospy.Time.now()), Vector3(*action)))
             end_point_position = end_point_position_candidate
             left_arm.move_to_joint_positions(joints, timeout=3)
         else:

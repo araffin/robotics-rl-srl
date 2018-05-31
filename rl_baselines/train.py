@@ -7,13 +7,14 @@ import os
 from datetime import datetime
 from pprint import pprint
 import importlib
+import inspect
 
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 import tensorflow as tf
-from gym.envs.registration import registry as gym_registry
 
+from gym.envs.registration import registry as gym_registry
 import rl_baselines.a2c as a2c
 import rl_baselines.acer as acer
 import rl_baselines.ddpg as ddpg
@@ -25,7 +26,15 @@ import rl_baselines.cma_es as cma_es
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
-from srl_priors.utils import printGreen, printYellow
+from srl_zoo.utils import printGreen, printYellow
+from environments.utils import dynamicEnvLoad
+# Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
+import environments.kuka_button_gym_env as kuka_inherited_env
+from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
+import environments.gym_baxter.baxter_env as baxter_inherited_env
+from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
+import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env
+from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobile_robot_inherited_env_class
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -50,12 +59,12 @@ with open('config/srl_models.yaml', 'rb') as f:
     all_models = yaml.load(f)
 
 
-def saveEnvParams(kuka_env, env_kwargs):
+def saveEnvParams(kuka_env_globals, env_kwargs):
     """
-    :param kuka_env: (kuka_env module)
+    :param kuka_env_globals: (dict)
     :param env_kwargs: (dict) The extra arguments for the environment
     """
-    params = filterJSONSerializableObjects({**kuka_env.getGlobals(), **env_kwargs})
+    params = filterJSONSerializableObjects({**kuka_env_globals, **env_kwargs})
     with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
         json.dump(params, f)
 
@@ -72,7 +81,6 @@ def configureEnvAndLogFolder(args, env_kwargs):
     # Actions in joint space or relative position space
     env_kwargs["action_joints"] = args.action_joints
     args.log_dir += args.env + "/"
-
 
     models = all_models[args.env]
     if args.srl_model != "":
@@ -136,7 +144,8 @@ def callback(_locals, _globals):
         # Evaluate network performance
         ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es)
         if ok:
-            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
+            print(
+                "Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
         else:
             # Not enough episode
             mean_reward = -10000
@@ -160,11 +169,11 @@ def callback(_locals, _globals):
             elif ALGO in ['ars', 'cma-es']:
                 _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
 
-
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed", is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed",
+                                   is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
@@ -185,7 +194,8 @@ def main():
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints", "joints_position"],
+                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints",
+                                 "joints_position"],
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=1,
                         help='number of frames to stack (default: 1)')
@@ -201,7 +211,8 @@ def main():
     parser.add_argument('-joints', '--action-joints',
                         help='set actions to the joints of the arm directly, instead of inverse kinematics',
                         action='store_true', default=False)
-    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
+    parser.add_argument('-r', '--relative', action='store_true', default=False,
+                        help='Set the button to a random position')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -209,33 +220,18 @@ def main():
 
     # Sanity check
     assert args.env in gym_registry.env_specs, "Error: could not find the environment {}, ".format(args.env) + \
-        "here are the valid environments: {}".format(list(gym_registry.env_specs.keys()))
+                                               "here are the valid environments: {}".format(
+                                                   list(gym_registry.env_specs.keys()))
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
-    assert args.port >= 0 and args.port < 65535,  "Error: invalid visdom port number {}, ".format(args.port) + \
-        "port number must be an unsigned 16bit number [0,65535]."
+    assert 0 <= args.port < 65535, "Error: invalid visdom port number {}, ".format(args.port) + \
+                                   "port number must be an unsigned 16bit number [0,65535]."
     assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
 
-    # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
-    entry_point = gym_registry.spec(args.env)._entry_point
-    if callable(entry_point):
-        env_module_path = entry_point.__module__
-    else:
-        env_module_path = entry_point.split(':')[0]
-    # Lets try and dynamically load the kuka_env, in order to fetch the globals.
-    # If it fails, it means that it was unable to load the path from the entry_point
-    # should this occure, it will mean that some parameters will not be correctly saved. 
-    try:
-        kuka_env = importlib.import_module(env_module_path)
-    except:
-        printRed("Error: could not import module {}, ".format(env_module_path) + 
-            "defaulting to environments.kuka_button_gym_env. " + 
-            "This means the logging and saving will be corrupted to some degree")
-        kuka_env = importlib.import_module("environments.kuka_button_gym_env")
-
+    module_env, class_name, env_module_path = dynamicEnvLoad(args.env)
 
     ENV_NAME = args.env
     ALGO = args.algo
@@ -253,6 +249,7 @@ def main():
         # so we need to reduce log and save interval
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 20
+        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
     elif args.algo == "a2c":
         algo = a2c
     elif args.algo == "ppo2":
@@ -278,7 +275,7 @@ def main():
 
     env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
-    env_kwargs["button_random"] = args.relative
+    env_kwargs["random_target"] = args.relative
     # Allow up action
     # env_kwargs["force_down"] = False
 
@@ -291,19 +288,49 @@ def main():
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
+    # env default kwargs
+    default_env_kwargs = {k: v.default
+                          for k, v in inspect.signature(module_env.__dict__[class_name].__init__).parameters.items()
+                          if v is not None}
+
+    # here we need to get the defaut kwargs and globals from the the correct env, if we inherit from it
+    if issubclass(module_env.__dict__[class_name], kuka_inherited_env_class):
+        inherited_env = kuka_inherited_env
+        inherited_env_class = kuka_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
+        inherited_env = baxter_inherited_env
+        inherited_env_class = baxter_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], mobile_robot_inherited_env_class):
+        inherited_env = mobile_robot_inherited_env
+        inherited_env_class = mobile_robot_inherited_env_class
+    else:
+        # Sanity check to make sure we have implemented the environment correctly,
+        raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
+
+    if inherited_env != module_env:
+        inherited_env_kwargs = {k: v.default
+                                for k, v in inspect.signature(inherited_env_class.__init__).parameters.items()
+                                if v is not None}
+        inherited_globals = inherited_env.getGlobals()
+    else:
+        inherited_env_kwargs = {}
+        inherited_globals = {}
+
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects({**kuka_env.getGlobals(), **env_kwargs}))
+    pprint(filterJSONSerializableObjects(
+        {**inherited_globals, **module_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs, **env_kwargs}))
     # Save kuka env params
-    saveEnvParams(kuka_env, env_kwargs)
+    saveEnvParams({**inherited_globals, **module_env.getGlobals()},
+                  {**inherited_env_kwargs, **default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback, env_kwargs=env_kwargs) 
+    algo.main(args, callback, env_kwargs=env_kwargs)
 
 
 if __name__ == '__main__':

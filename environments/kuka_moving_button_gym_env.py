@@ -5,6 +5,7 @@ BUTTON_SPEED = 0.001
 BUTTON_YMIN = -0.3
 BUTTON_YMAX = 0.3
 
+
 class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     """
     Gym wrapper for Kuka environment with a push button that is moving
@@ -22,7 +23,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
-    :param button_random: (bool) Set the button position to a random position on the table
+    :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
@@ -56,7 +57,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         # Initialize button position
         x_pos = 0.5
         y_pos = 0
-        if self._button_random:
+        if self._random_target:
             x_pos += 0.15 * self.np_random.uniform(-1, 1)
             y_pos += 0.3 * self.np_random.uniform(-1, 1)
 
@@ -65,7 +66,8 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
-                               use_inverse_kinematics=(not self.action_joints), small_constraints=(not self._button_random))
+                               use_inverse_kinematics=(not self.action_joints),
+                               small_constraints=(not self._random_target))
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
@@ -105,7 +107,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 

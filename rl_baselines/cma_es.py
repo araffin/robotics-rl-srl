@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_baselines.utils import createEnvs
-from srl_priors.utils import printYellow
+from srl_zoo.utils import printYellow
 
 class Policy(object):
     """
@@ -272,7 +272,7 @@ def customArguments(parser):
     return parser
 
 
-def main(args, callback, env_kwargs={}):
+def main(args, callback, env_kwargs=None):
     """
     :param args: (argparse.Namespace Object)
     :param callback: (function)

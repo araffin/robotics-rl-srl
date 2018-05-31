@@ -13,7 +13,8 @@ import environments.kuka_2button_gym_env as kuka_env_2
 import environments.kuka_button_gym_env as kuka_env
 import environments.kuka_rand_button_gym_env as kuka_env_rand
 import environments.kuka_moving_button_gym_env as kuka_env_moving
-from srl_priors.utils import printRed
+import environments.mobile_robot.mobile_robot_env as mobile_robot
+from srl_zoo.utils import printRed
 
 
 def convertImagePath(args, path, record_id_start):
@@ -38,26 +39,27 @@ def env_thread(args, thread_num, partition=True):
     :param thread_num: (int) The thread ID of the environment session
     :param partition: (bool) If the output should be in multiple parts (default=True)
     """
-    env_kwargs = {}
+    env_kwargs = {
+        "max_distance": args.max_distance,
+        "random_target": args.relative,
+        "force_down": True,
+        "is_discrete": not args.continuous_actions,
+        "renders": thread_num == 0 and not args.no_display,
+        "record_data": args.record_data,
+        "multi_view": args.multi_view,
+        "save_path": args.save_folder,
+        "shape_reward": args.shape_reward
+    }
 
-    env_kwargs["max_distance"] = args.max_distance
-    env_kwargs["button_random"] = args.relative
-    env_kwargs["force_down"] = True
-    env_kwargs["multi_view"] = args.multi_view
-    env_kwargs["is_discrete"] = (not args.continuous_actions)
-    env_kwargs["renders"] = (thread_num == 0 and not args.no_display)
-    env_kwargs["record_data"] = args.record_data
-    env_kwargs["multi_view"] = args.multi_view
-    env_kwargs["save_path"] = args.save_folder
-    
     if args.env == "Kuka2ButtonGymEnv":
         env_kwargs["force_down"] = False
 
-    env_class = {"KukaButtonGymEnv-v0":kuka_env.KukaButtonGymEnv,
-                 "Kuka2ButtonGymEnv-v0":kuka_env_2.Kuka2ButtonGymEnv,
-                 "KukaRandButtonGymEnv-v0":kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv-v0":kuka_env_moving.KukaMovingButtonGymEnv
-                }[args.env]
+    env_class = {"KukaButtonGymEnv-v0": kuka_env.KukaButtonGymEnv,
+                 "Kuka2ButtonGymEnv-v0": kuka_env_2.Kuka2ButtonGymEnv,
+                 "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
+                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
+                 "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv
+                 }[args.env]
 
     if partition:
         env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
@@ -91,12 +93,12 @@ def main():
     parser = argparse.ArgumentParser(description='Environment tester (can be used to record datasets for SRL training)')
     parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to run on')
     parser.add_argument('--num-episode', type=int, default=50, help='number of episode to run')
-    parser.add_argument('--save-folder', type=str, default='srl_priors/data/',
+    parser.add_argument('--save-folder', type=str, default='srl_zoo/data/',
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
-    parser.add_argument('--env', type=str, default='KukaButtonGymEnv', help='The environment wanted',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", 
-                        "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0"])
+    parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
+                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
+                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
@@ -105,9 +107,11 @@ def main():
     parser.add_argument('--seed', type=int, default=0, help='the seed')
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else (including partial parts if they exist)')
-    parser.add_argument('-r', '--relative', action='store_true', default=False, help='Set the button to a random position')
+    parser.add_argument('-r', '--relative', action='store_true', default=False,
+                        help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
-
+    parser.add_argument('--shape-reward', action='store_true', default=False,
+                        help='Shape the reward (reward = - distance) instead of a sparse reward')
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
@@ -151,7 +155,7 @@ def main():
 
     if args.record_data and args.num_cpu > 1:
 
-        # get all the parts 
+        # get all the parts
         file_parts = glob.glob(args.save_folder + args.save_name + "_part-[0-9]*")
 
         # move the config files from any as they are identical
@@ -212,6 +216,7 @@ def main():
         # save the fused outputs
         np.savez(args.save_folder + args.save_name + "/ground_truth.npz", **ground_truth)
         np.savez(args.save_folder + args.save_name + "/preprocessed_data.npz", **preprocessed_data)
+
 
 if __name__ == '__main__':
     main()

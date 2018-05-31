@@ -8,7 +8,7 @@ import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 
 from rl_baselines.visualize import loadCsv, movingAverage, loadData
-from srl_priors.utils import printGreen, printYellow
+from srl_zoo.utils import printGreen, printYellow
 
 # Init seaborn
 sns.set()
@@ -23,7 +23,10 @@ lightcolors = colors[0::2]
 darkcolors = colors[1::2]
 
 # y-limits for the plot
-Y_LIM_SPARSE_REWARD = [-3, 6]
+# Kuka Arm
+# Y_LIM_SPARSE_REWARD = [-3, 6]
+# Mobile robot
+Y_LIM_SPARSE_REWARD = [-3, 250]
 # Relative: [-150, -50]
 # Normal: [-70, -35]
 Y_LIM_SHAPED_REWARD = [-150, -50]
