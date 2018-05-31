@@ -15,6 +15,9 @@ class SRLGymEnv(gym.Env):
     """
 
     def __init__(self, *, use_ground_truth, relative_pos, env_rank, srl_pipe):
+        # the * here, means that the rest of the args need to be called as kwargs.
+        # This is done to avoid unwanted situations where we might add a parameter
+        #  later and not realise that srl_pipe was not set by an unchanged subclass.
         self.env_rank = env_rank
         self.srl_pipe = srl_pipe
         self.use_ground_truth = use_ground_truth
@@ -32,6 +35,9 @@ class SRLGymEnv(gym.Env):
                 return self.getGroundTruth() - self.getTargetPos()
             return self.getGroundTruth()
         else:
+            # srl_pipe is a tuple that containes:
+            #  Queue: input to the SRL model, send origin and observation
+            #  [Queue]: input for all the envs, send observation
             self.srl_pipe[0].put((self.env_rank, observation))
             return self.srl_pipe[1][self.env_rank].get()
 

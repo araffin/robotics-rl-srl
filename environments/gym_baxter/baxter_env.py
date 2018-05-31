@@ -73,7 +73,7 @@ class BaxterEnv(SRLGymEnv):
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,

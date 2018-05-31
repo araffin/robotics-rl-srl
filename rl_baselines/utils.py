@@ -184,11 +184,15 @@ class MultithreadSRLModel:
     """
     Allows multiple environments to use a single SRL model
     :param num_cpu: (int) the number of environments that will spawn
+    :param env_id: (str) the environment id string
     :param env_kwars: (dict)
     """
     def __init__(self, num_cpu, env_id, env_kwargs):
+        # Create a duplex pipe between env and srl model, where all the inputs are unified and the origin
+        # marked with a index number
         self.pipe = (Queue(), [Queue() for _ in range(num_cpu)])
         module_env, class_name, _ = dynamicEnvLoad(env_id)
+        # we need to know the expected dim output of the SRL model, before it is created
         self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
         self.p = Process(target=self._run, args=(env_kwargs,))
         self.p.daemon = True
@@ -196,7 +200,9 @@ class MultithreadSRLModel:
 
     def _run(self, env_kwargs):
         self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
+        # run until the end of the caller thread
         while True:
+            # pop an item, get state, and return to sender.
             env_id, var = self.pipe[0].get()
             self.pipe[1][env_id].put(self.model.getState(var))
 
