@@ -29,7 +29,7 @@ from environments.utils import makeEnv
 
 supported_models = ['acer', 'ppo2', 'a2c', 'deepq', 'ddpg', 'ars', 'cma-es']
 
-def fixStateStateDim(states):
+def fixStateDim(states):
     """
     Fix for plotting when state_dim < 3
     :param states: (numpy array or [float])
@@ -250,7 +250,7 @@ def main():
                 srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
 
-            X = fixStateStateDim(X)
+            X = fixStateDim(X)
 
             # train the PCA and et the limits
             pca = PCA(n_components=3)
@@ -258,7 +258,7 @@ def main():
             ax.set_xlim([np.min(X_new[:, 0]) * 1.2, np.max(X_new[:, 0]) * 1.2])
             ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
             ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
-            delta_obs = [pca.transform(fixStateStateDim([obs[0]]))[0]]
+            delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
         else:
             assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
 
@@ -285,7 +285,7 @@ def main():
             if train_args["srl_model"] == "ground_truth":
                 ajusted_obs = obs[0]
             elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
-                ajusted_obs = pca.transform(fixStateStateDim([obs[0]]))[0]
+                ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished
             if sum(dones) > 0:
@@ -298,8 +298,9 @@ def main():
             else:
                 delta_obs.append(ajusted_obs)
 
-            coor_plt = fixStateStateDim(np.array(delta_obs))
+            coor_plt = fixStateDim(np.array(delta_obs))
 
+            # updating the 3d vertices for the line and the dot drawing, to avoid redrawing the entire image
             line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
             point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
 

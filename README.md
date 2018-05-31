@@ -1,9 +1,9 @@
-# Reinforcement Learning (RL) and State Representation Learning (SRL) with robotic arms (Baxter and Kuka)
+# Reinforcement Learning (RL) and State Representation Learning (SRL) for Robotics
 
 Table of Contents
 =================
 
-  * [Requirements:](#requirements)
+  * [Installation](#installation)
   * [Kuka Arm \w PyBullet](#kuka-arm-w-pybullet)
   * [Reinforcement Learning](#reinforcement-learning)
     * [OpenAI Baselines](#openai-baselines)
@@ -18,9 +18,9 @@ Table of Contents
   * [Known issues](#known-issues)
 
 
-## Requirements:
+## Installation
 
-- Python 3 (python 2 not supported because of OpenAI baselines)
+- Python 3 is required (python 2 is not supported because of OpenAI baselines)
 - [OpenAI Baselines](https://github.com/openai/baselines) (latest version, install from source (at least commit 3cc7df0))
 - [OpenAI Gym](https://github.com/openai/gym/) (version >= 0.10.3)
 - Install the dependencies using `environment.yml` file (for conda users)
@@ -29,6 +29,7 @@ Note: The save method of ACER of baselines is currently buggy, you need to manua
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
+How to download the project (note the `--recursive` argument because we are using git submodules):
 ```
 git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
@@ -146,7 +147,7 @@ To train the Reinforcement learning baselines on a specific SRL model:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ --srl-model model_name
 ```
 
-the available state representation model are:
+The available state representation models are:
 - autoencoder: an autoencoder from the raw pixels
 - ground_truth: the arm's x,y,z position
 - srl_priors: SRL priors model

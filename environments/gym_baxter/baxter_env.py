@@ -58,7 +58,7 @@ def bgr2rgb(bgr_img):
 
 
 class BaxterEnv(gym.Env):
-    """ 
+    """
     Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
     The goal of the robotic arm is to push the button on the table
     :param renders: (bool) Whether to display the GUI or not
@@ -188,7 +188,7 @@ class BaxterEnv(gym.Env):
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
         if self.saver is not None:
-            self.saver.step(self.observation, action, self.reward, done, self.arm_pos)
+            self.saver.step(self.observation, action, self.reward, done, self.getGroundTruth())
         if self.use_srl:
             return self.getSRLState(self.observation), self.reward, done, {}
         else:
@@ -247,6 +247,13 @@ class BaxterEnv(gym.Env):
         """
         return self.button_pos
 
+    @staticmethod
+    def getGroundTruthDim():
+        """
+        :return: (int)
+        """
+        return 3
+
     def getGroundTruth(self):
         """
         Alias for getArmPos for compatibility between envs
@@ -275,7 +282,7 @@ class BaxterEnv(gym.Env):
         self.getEnvState()
         self.observation = self.getObservation()
         if self.saver is not None:
-            self.saver.reset(self.observation, self.button_pos, self.arm_pos)
+            self.saver.reset(self.observation, self.getTargetPos(), self.getGroundTruth())
         if self.use_srl:
             return self.getSRLState(self.observation)
         else:

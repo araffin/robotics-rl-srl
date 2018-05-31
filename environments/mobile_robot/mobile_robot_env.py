@@ -29,6 +29,7 @@ CONNECTED_TO_SIMULATOR = False
 ROBOT_WIDTH = 0.2
 ROBOT_LENGTH = 0.325 * 2
 
+
 def getGlobals():
     """
     :return: (dict)
@@ -44,6 +45,7 @@ class MobileRobotGymEnv(gym.Env):
 
     """
     Gym wrapper for Mobile Robot environment
+    WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) Whether to use discrete or continuous actions
@@ -64,10 +66,10 @@ class MobileRobotGymEnv(gym.Env):
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
-                 name="kuka_button_gym", max_distance=1.6, shape_reward=False,
+                 name="mobile_robot", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **kwargs):
+                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **_):
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
@@ -122,8 +124,8 @@ class MobileRobotGymEnv(gym.Env):
         #     self.state_dim = self.srl_model.state_dim
 
         if self._renders:
-            cid = p.connect(p.SHARED_MEMORY)
-            if cid < 0:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
@@ -179,7 +181,8 @@ class MobileRobotGymEnv(gym.Env):
         # Return only the [x, y] coordinates
         return self.target_pos[:2]
 
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         """
         :return: (int)
         """
@@ -228,8 +231,10 @@ class MobileRobotGymEnv(gym.Env):
         red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
 
         wall_left = p.loadURDF(wall_urdf, [self._max_x / 2, 0, 0], useFixedBase=True)
+        # Change color
         p.changeVisualShape(wall_left, -1, rgbaColor=red)
 
+        # getQuaternionFromEuler -> define orientation
         wall_bottom = p.loadURDF(wall_urdf, [self._max_x, self._max_y / 2, 0],
                                  p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
 

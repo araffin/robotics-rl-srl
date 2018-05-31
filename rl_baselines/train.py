@@ -28,6 +28,7 @@ from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
 from environments.utils import dynamicEnvLoad
+# Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
 import environments.kuka_button_gym_env as kuka_inherited_env
 from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env

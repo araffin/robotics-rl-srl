@@ -126,6 +126,13 @@ class KukaButtonGymEnv(gym.Env):
         self.max_steps = MAX_STEPS
         self.env_rank = env_rank
         self.srl_pipe = srl_pipe
+        self.n_steps_outside = 0
+        self.table_uid = None
+        self.np_random = None
+        self.button_pos = None
+        self.button_uid = None
+        self._kuka = None
+        self.action = None
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -137,8 +144,8 @@ class KukaButtonGymEnv(gym.Env):
         #     self.state_dim = self.srl_model.state_dim
 
         if self._renders:
-            cid = p.connect(p.SHARED_MEMORY)
-            if cid < 0:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
@@ -214,7 +221,8 @@ class KukaButtonGymEnv(gym.Env):
         """
         return self.button_pos
 
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         """
         :return: (int)
         """
@@ -299,7 +307,7 @@ class KukaButtonGymEnv(gym.Env):
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
         self.button_pos[2] += BUTTON_DISTANCE_HEIGHT  # Set the target position on the top of the button
         if self.saver is not None:
-            self.saver.reset(self._observation, self.button_pos, self.getArmPos())
+            self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.use_srl:
             # if len(self.saver.srl_model_path) > 0:
@@ -400,7 +408,7 @@ class KukaButtonGymEnv(gym.Env):
         reward = self._reward()
         done = self._termination()
         if self.saver is not None:
-            self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
+            self.saver.step(self._observation, self.action, reward, done, self.getGroundTruth())
 
         if self.use_srl:
             return self.getSRLState(self._observation), reward, done, {}
