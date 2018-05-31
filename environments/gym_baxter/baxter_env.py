@@ -98,8 +98,6 @@ class BaxterEnv(SRLGymEnv):
         self.cuda = th.cuda.is_available()
         self.button_pos = None
         self.saver = None
-        self.env_rank = env_rank
-        self.srl_pipe = srl_pipe
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)

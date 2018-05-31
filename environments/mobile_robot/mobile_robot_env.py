@@ -109,8 +109,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         self.collision_margin = 0.1
         self.walls = None
         self.use_joints = False  # For compatibility
-        self.env_rank = env_rank
-        self.srl_pipe = srl_pipe
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,

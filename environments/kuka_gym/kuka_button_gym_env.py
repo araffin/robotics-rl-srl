@@ -122,8 +122,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         self.multi_view = multi_view
         self.verbose = verbose
         self.max_steps = MAX_STEPS
-        self.env_rank = env_rank
-        self.srl_pipe = srl_pipe
         self.n_steps_outside = 0
         self.table_uid = None
         self.np_random = None
