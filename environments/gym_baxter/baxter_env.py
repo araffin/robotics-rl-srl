@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
+from .srl_env import SRLGymEnv
 from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
@@ -57,7 +58,7 @@ def bgr2rgb(bgr_img):
     return cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
 
 
-class BaxterEnv(gym.Env):
+class BaxterEnv(SRLGymEnv):
     """
     Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
     The goal of the robotic arm is to push the button on the table
@@ -78,6 +79,10 @@ class BaxterEnv(gym.Env):
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
                  learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  shape_reward=False, env_rank=0, srl_pipe=None):
+        super(BaxterEnv, self).__init__(use_ground_truth=use_ground_truth,
+                                        relative_pos=RELATIVE_POS,
+                                        env_rank=env_rank,
+                                        srl_pipe=srl_pipe)
         self.n_contacts = 0
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
@@ -142,20 +147,6 @@ class BaxterEnv(gym.Env):
         # Initialize the state
         if self._renders:
             self.image_plot = None
-
-    def getSRLState(self, observation):
-        """
-        get the SRL state for this environement with a given observation
-        :param observation: ([float]) image
-        :return: ([float])
-        """
-        if self.use_ground_truth:
-            if self.relative_pos:
-                return self.getGroundTruth() - self.getTargetPos()
-            return self.getGroundTruth()
-        else:
-            self.srl_pipe[0].put((self.env_rank, observation))
-            return self.srl_pipe[1][self.env_rank].get()
 
     def seed(self, seed=None):
         """

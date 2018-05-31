@@ -9,6 +9,7 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
+from .srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 from srl_zoo.preprocessing import N_CHANNELS
@@ -54,12 +55,7 @@ Gym wrapper for Kuka arm RL
 """
 
 
-class KukaButtonGymEnv(gym.Env):
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 50
-    }
-
+class KukaButtonGymEnv(SRLGymEnv):
     """
     Gym wrapper for Kuka environment with a push button
     :param urdf_root: (str) Path to pybullet urdf files
@@ -91,6 +87,10 @@ class KukaButtonGymEnv(gym.Env):
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_zoo/data/', env_rank=0, srl_pipe=None):
+        super(KukaButtonGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+                                               relative_pos=RELATIVE_POS,
+                                               env_rank=env_rank,
+                                               srl_pipe=srl_pipe)
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._action_repeat = action_repeat
@@ -178,9 +178,9 @@ class KukaButtonGymEnv(gym.Env):
 
         if self.use_srl:
             if self.use_ground_truth and self.use_joints:
-                self.state_dim = self.getGroundTruthDim() + 14
+                self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
             elif self.use_joints:
-                self.state_dim = 14
+                self.state_dim = self.getJointsDim()
             elif self.use_ground_truth:
                 self.state_dim = self.getGroundTruthDim()
                 
@@ -215,6 +215,13 @@ class KukaButtonGymEnv(gym.Env):
         :return (numpy array): Position of the target (button)
         """
         return self.button_pos
+
+    @staticmethod
+    def getJointsDim():
+        """
+        :return: (int)
+        """
+        return 14
 
     @staticmethod
     def getGroundTruthDim():

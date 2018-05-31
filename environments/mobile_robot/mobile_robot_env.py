@@ -8,6 +8,7 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
+from .srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
 from state_representation.models import loadSRLModel
 
@@ -37,12 +38,7 @@ def getGlobals():
     return globals()
 
 
-class MobileRobotGymEnv(gym.Env):
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 50
-    }
-
+class MobileRobotGymEnv(SRLGymEnv):
     """
     Gym wrapper for Mobile Robot environment
     WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
@@ -70,6 +66,10 @@ class MobileRobotGymEnv(gym.Env):
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **_):
+        super(MobileRobotGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+                                                relative_pos=RELATIVE_POS,
+                                                env_rank=env_rank,
+                                                srl_pipe=srl_pipe)
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
@@ -154,20 +154,6 @@ class MobileRobotGymEnv(gym.Env):
         # Create numpy random generator
         # This seed can be changed later
         self.seed(0)
-
-    def getSRLState(self, observation):
-        """
-        get the SRL state for this environement with a given observation
-        :param observation: ([float]) image
-        :return: ([float])
-        """
-        if self.use_ground_truth:
-            if self.relative_pos:
-                return self.getGroundTruth() - self.getTargetPos()
-            return self.getGroundTruth()
-        else:
-            self.srl_pipe[0].put((self.env_rank, observation))
-            return self.srl_pipe[1][self.env_rank].get()
 
     def getTargetPos(self):
         """
