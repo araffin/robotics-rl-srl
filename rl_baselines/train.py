@@ -51,7 +51,7 @@ best_mean_reward = -10000
 
 win, win_smooth, win_episodes = None, None, None
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflowg
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 # LOAD SRL models list
 with open('config/srl_models.yaml', 'rb') as f:
