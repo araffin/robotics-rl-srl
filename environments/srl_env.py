@@ -12,7 +12,7 @@ class SRLGymEnv(gym.Env):
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param relative_pos: (bool) position for ground truth
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, *, use_ground_truth, relative_pos, env_rank, srl_pipe):

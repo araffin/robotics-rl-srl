@@ -7,7 +7,7 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
-from ..srl_env import SRLGymEnv
+from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
 
 #  Number of steps before termination
