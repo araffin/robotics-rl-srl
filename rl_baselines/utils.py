@@ -113,6 +113,7 @@ class CustomVecNormalize(VecEnvWrapper):
         """
         obs, rews, news, infos = self.venv.step_wait()
         self.ret = self.ret * self.gamma + rews
+        self.old_obs = obs
         obs = self._normalizeObservation(obs)
         if self.norm_rewards:
             if self.training:
@@ -133,11 +134,19 @@ class CustomVecNormalize(VecEnvWrapper):
         else:
             return obs
 
+    def getOriginalObs(self):
+        """
+        retrun original observation
+        :return: (numpy float) 
+        """
+        return self.old_obs
+
     def reset(self):
         """
         Reset all environments
         """
         obs = self.venv.reset()
+        self.old_obs = obs
         return self._normalizeObservation(obs)
 
     def saveRunningAverage(self, path):
