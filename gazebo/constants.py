@@ -39,6 +39,7 @@ elif USING_ROBOBO:
     SECOND_CAM_TOPIC = None
     DELTA_POS = 0.1
     DELTA_ANGLE = math.radians(90.0)
+    DELTA_TICS = 10
 # Gazebo
 else:
     LEFT_ARM_INIT_POS = [0.6, 0.30, 0.20]

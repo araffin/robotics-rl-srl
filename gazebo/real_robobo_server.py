@@ -103,54 +103,67 @@ episode_folder = None
 robot_position = np.array([0, 0])
 
 
-
 class Robobo(object):
-	def __init__(self):
+    def __init__(self):
         super(Robobo, self).__init__()
-		self.size_value = 0
         self.Kp = 1
         self.Kp_angle = 1
         self.max_speed = 20
         self.max_angular_speed = 10
-		try:
-			self.robobo_command = rospy.ServiceProxy('/command', Command)
-		except rospy.ServiceException, e:
-			print "Service exception", str(e)
-			exit(1)
+        self.error_threshold = 2
+        self.left_encoder_pos, self.right_encoder_pos = 0, 0
+        self.yaw = 0
+        try:
+            self.robobo_command = rospy.ServiceProxy('/command', Command)
+        except rospy.ServiceException, e:
+            print("Service exception", str(e))
+            exit(1)
 
-		self.rob_loc_sb = rospy.Subscriber("/status", Status, self.status_cb)
+        self.status_sub = rospy.Subscriber("/status", Status, self.statusCallback)
 
-	def moveForever(self, lspeed, rspeed, speed):
-		command_name = 'MOVE-FOREVER'
-		command_parameters = []
-		command_parameters.append(KeyValue('lspeed', lspeed))
-		command_parameters.append(KeyValue('rspeed', rspeed))
-		command_parameters.append(KeyValue('speed', str(speed)))
-		self.robobo_command(command_name, 0, command_parameters)
+    def moveForever(self, lspeed, rspeed, speed):
+        command_name = 'MOVE-FOREVER'
+        command_parameters = []
+        command_parameters.append(KeyValue('lspeed', lspeed))
+        command_parameters.append(KeyValue('rspeed', rspeed))
+        command_parameters.append(KeyValue('speed', str(speed)))
+        self.robobo_command(command_name, 0, command_parameters)
 
 
-	def status_cb(self):
-		if stat.name == 'ORIENTATION':
+    def statusCallback(self):
+        if status.name == 'ORIENTATION':
             print(status.value)
-			# self.orientation = status.value
+            self.yaw = 0
+        if status.name == 'WHEELS':
+            print(status.value)
+            # encoderPosR
+            self.left_encoder = 0
+            self.right_encoder = 0
+
 
     def stop(self):
         self.moveForever('forward', 'forward', 0)
 
     def rotate(self):
-        d_angle = 0
-        while angle < DELTA_ANGLE:
-            error = DELTA_ANGLE - d_angle
-            speed = np.clip(self.Kp_angle * error, -self.max_angular_speed, self.max_angular_speed)
-            self.moveForever('forward', 'backward', speed)
+        left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
+        while (error_left + error_right) < self.error_threshold:
+            error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
+            error_right = -1 * (DELTA_TICS - (self.right_encoder_pos - right_start))
+            speed_left = np.clip(self.Kp_angle * error_left, -self.max_angular_speed, self.max_angular_speed)
+            speed_right = np.clip(self.Kp_angle * error_right, -self.max_angular_speed, self.max_angular_speed)
+            self.moveForever('forward', 'off', speed_left)
+            self.moveForever('off', 'forward', speed_right)
         self.stop()
 
     def forward(self):
-        dist = 0
-        while dist < DELTA_POS:
-            error = DELTA_POS - dist
-            speed = np.clip(self.Kp * error, -self.max_speed, self.max_speed)
-            self.moveForever('forward', 'forward', speed)
+        left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
+        while (error_left + error_right) < self.error_threshold:
+            error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
+            error_right = DELTA_TICS - (self.right_encoder_pos - right_start)
+            speed_left = np.clip(self.Kp * error_left, -self.max_speed, self.max_speed)
+            speed_right = np.clip(self.Kp * error_right, -self.max_speed, self.max_speed)
+            self.moveForever('forward', 'off', speed_left)
+            self.moveForever('off', 'forward', speed_right)
         self.stop()
 
 robobo = Robobo()
