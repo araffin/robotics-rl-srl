@@ -1,11 +1,13 @@
 from __future__ import print_function, absolute_import, division
 
+import math
+
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
-USING_REAL_BAXTER = True
-
+USING_REAL_BAXTER = False
+USING_ROBOBO = True
 # Calibrated values for Real Baxter
 if USING_REAL_BAXTER:
     # Initial position of the arm
@@ -30,6 +32,13 @@ if USING_REAL_BAXTER:
     # Set the second cam topic to None if there is only one camera
     SECOND_CAM_TOPIC = "/camera/rgb/image_raw"
     DATA_FOLDER_SECOND_CAM = "real_baxter_second_cam"
+elif USING_ROBOBO:
+    DIST_TO_TARGET_THRESHOLD = 0.1
+    # ROS Topics
+    IMAGE_TOPIC = "/kinect2/qhd/image_color"
+    SECOND_CAM_TOPIC = None
+    DELTA_POS = 0.1
+    DELTA_ANGLE = math.radians(90.0)
 # Gazebo
 else:
     LEFT_ARM_INIT_POS = [0.6, 0.30, 0.20]
