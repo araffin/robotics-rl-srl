@@ -84,7 +84,7 @@ class RoboboEnv(SRLGymEnv):
         self._shape_reward = shape_reward
         self.np_random = None
         self.cuda = th.cuda.is_available()
-        self.button_pos = None
+        self.target_pos = None
         self.saver = None
 
         if self._is_discrete:
@@ -172,16 +172,16 @@ class RoboboEnv(SRLGymEnv):
         It also sets the reward: the agent is rewarded for pushing the button
         and the reward value is negative if the arm goes outside the bounding sphere
         surrounding the button.
-        :return: (dict) state_data containing data related to the state: button_pos,
+        :return: (dict) state_data containing data related to the state: target_pos,
         robobo_pos and reward.
         """
         state_data = self.socket.recv_json()
         self.reward = state_data["reward"]
-        self.button_pos = np.array(state_data["button_pos"])
+        self.target_pos = np.array(state_data["target_pos"])
         self.robobo_pos = np.array(state_data["position"]) 
 
-        # Compute distance from Baxter left arm to goal (the button_pos)
-        distance_to_goal = np.linalg.norm(self.button_pos - self.robobo_pos, 2)
+        # Compute distance from Baxter left arm to goal (the target_pos)
+        distance_to_goal = np.linalg.norm(self.target_pos - self.robobo_pos, 2)
 
         # TODO: tune max distance
         self.n_contacts += self.reward
@@ -217,7 +217,7 @@ class RoboboEnv(SRLGymEnv):
         """
         :return (numpy array): Position of the target (button)
         """
-        return self.button_pos
+        return self.target_pos
 
     @staticmethod
     def getGroundTruthDim():
