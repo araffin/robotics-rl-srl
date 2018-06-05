@@ -146,22 +146,24 @@ class Robobo(object):
 
     def rotate(self):
         left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
-        while (error_left + error_right) < self.error_threshold:
+        error_left, error_right = np.inf, np.inf
+        while error_left > self.error_threshold and error_right > self.error_threshold:
             error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
             error_right = -1 * (DELTA_TICS - (self.right_encoder_pos - right_start))
-            speed_left = np.clip(self.Kp_angle * error_left, -self.max_angular_speed, self.max_angular_speed)
-            speed_right = np.clip(self.Kp_angle * error_right, -self.max_angular_speed, self.max_angular_speed)
+            speed_left = np.clip(-self.Kp_angle * error_left, -self.max_angular_speed, self.max_angular_speed)
+            speed_right = np.clip(-self.Kp_angle * error_right, -self.max_angular_speed, self.max_angular_speed)
             self.moveForever('forward', 'off', speed_left)
             self.moveForever('off', 'forward', speed_right)
         self.stop()
 
     def forward(self):
         left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
-        while (error_left + error_right) < self.error_threshold:
+        error_left, error_right = np.inf, np.inf
+        while error_left > self.error_threshold and error_right > self.error_threshold:
             error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
             error_right = DELTA_TICS - (self.right_encoder_pos - right_start)
-            speed_left = np.clip(self.Kp * error_left, -self.max_speed, self.max_speed)
-            speed_right = np.clip(self.Kp * error_right, -self.max_speed, self.max_speed)
+            speed_left = np.clip(-self.Kp * error_left, -self.max_speed, self.max_speed)
+            speed_right = np.clip(-self.Kp * error_right, -self.max_speed, self.max_speed)
             self.moveForever('forward', 'off', speed_left)
             self.moveForever('off', 'forward', speed_right)
         self.stop()
