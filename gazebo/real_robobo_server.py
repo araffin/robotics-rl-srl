@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 import os
 import subprocess
 import signal
-from enum import Enum
+import time
 
 import numpy as np
 import rospy
@@ -21,16 +21,10 @@ from .utils import sendMatrix
 
 assert USING_ROBOBO, "Please set USING_ROBOBO to True in gazebo/constants.py"
 
+#  rosrun image_transport republish compressed in:=/camera/image raw out:=/camera/image_repub
+
 bridge = CvBridge()
 should_exit = [False]
-
-class Move(Enum):
-    STOP = 0
-    FORWARD = 1
-    BACKWARD = 2
-    LEFT = 3
-    RIGHT = 4
-
 
 # exit the script on ctrl+c
 def ctrl_c(signum, frame):
@@ -74,17 +68,15 @@ def saveSecondCamImage(im, episode_folder, episode_step, path="robobo_2nd_cam"):
 rospy.init_node('robobo_server', anonymous=True)
 
 # Connect to ROS Topics
-image_cb_wrapper = ImageCallback()
-img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
+if IMAGE_TOPIC is not None:
+    image_cb_wrapper = ImageCallback()
+    img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
 
 if SECOND_CAM_TOPIC is not None:
     DATA_FOLDER_SECOND_CAM = "real_baxter_2nd_cam"
     image_cb_wrapper_2 = ImageCallback()
     img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback)
 
-
-print("Initializing robot...")
-# Init robot pose
 
 print('Starting up on port number {}'.format(SERVER_PORT))
 context = zmq.Context()
@@ -107,10 +99,11 @@ class Robobo(object):
     def __init__(self):
         super(Robobo, self).__init__()
         self.Kp = 1
+        self.Ki = 0.0
         self.Kp_angle = 1
-        self.max_speed = 20
-        self.max_angular_speed = 10
-        self.error_threshold = 2
+        self.max_speed = 10
+        self.max_angular_speed = 15
+        self.error_threshold = 5
         self.left_encoder_pos, self.right_encoder_pos = 0, 0
         self.yaw = 0
         try:
@@ -129,46 +122,92 @@ class Robobo(object):
         command_parameters.append(KeyValue('speed', str(speed)))
         self.robobo_command(command_name, 0, command_parameters)
 
-
-    def statusCallback(self):
+    def statusCallback(self, status):
         if status.name == 'ORIENTATION':
-            print(status.value)
-            self.yaw = 0
+            for KeyV in status.value:
+                if KeyV.key == 'yaw':
+                    self.yaw = float(KeyV.value)
         if status.name == 'WHEELS':
-            print(status.value)
-            # encoderPosR
-            self.left_encoder = 0
-            self.right_encoder = 0
-
+            for KeyV in status.value:
+                if KeyV.key == 'wheelPosL':
+                    self.left_encoder_pos = float(KeyV.value)
+                elif KeyV.key == 'wheelPosR':
+                    self.right_encoder_pos = float(KeyV.value)
 
     def stop(self):
         self.moveForever('forward', 'forward', 0)
 
-    def rotate(self):
-        left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
-        error_left, error_right = np.inf, np.inf
-        while error_left > self.error_threshold and error_right > self.error_threshold:
-            error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
-            error_right = -1 * (DELTA_TICS - (self.right_encoder_pos - right_start))
-            speed_left = np.clip(-self.Kp_angle * error_left, -self.max_angular_speed, self.max_angular_speed)
-            speed_right = np.clip(-self.Kp_angle * error_right, -self.max_angular_speed, self.max_angular_speed)
-            self.moveForever('forward', 'off', speed_left)
-            self.moveForever('off', 'forward', speed_right)
+    def move(self, speed):
+        speed = int(speed)
+        command_parameters = []
+        command_parameters.append(KeyValue('wheel', "both"))
+        command_parameters.append(KeyValue('speed', str(speed)))
+        command_parameters.append(KeyValue('time', str(2)))
+        self.robobo_command("MOVEBY-TIME", 0, command_parameters)
+
+    @staticmethod
+    def normalizeAngle(angle):
+        while angle > 180:
+            angle -= 2 * 180
+        while angle < -180:
+            angle += 2 * 180
+        return angle
+
+    def turn(self, speed):
+        speed = 1
+        speed = int(speed)
+        command_parameters = []
+        command_parameters.append(KeyValue('lspeed', str(speed)))
+        command_parameters.append(KeyValue('rspeed', str(-speed)))
+        command_parameters.append(KeyValue('time', str(10)))
+        self.robobo_command("MOVE", 0, command_parameters)
+        yaw_target = self.normalizeAngle(self.yaw - 45)
+        start_time = time.time()
+        while abs(self.normalizeAngle(self.yaw - yaw_target)) > 4:
+            if time.time() - start_time > TIMEOUT:
+                print("TIMEOUT")
+                break
+        print(self.normalizeAngle(self.yaw - yaw_target))
         self.stop()
+
+
+        # command_parameters = []
+        # command_parameters.append(KeyValue('lspeed', str(speed)))
+        # command_parameters.append(KeyValue('rspeed', str(-speed)))
+        # command_parameters.append(KeyValue('time', str(2)))
+        # command_parameters.append(KeyValue('blockid', str(1)))
+        # self.robobo_command("MOVE-BLOCKING", 0, command_parameters)
 
     def forward(self):
         left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
         error_left, error_right = np.inf, np.inf
-        while error_left > self.error_threshold and error_right > self.error_threshold:
+        start_time = time.time()
+        error_i_left, error_i_right = 0, 0
+        while abs(error_left) > self.error_threshold and abs(error_right) > self.error_threshold:
             error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
             error_right = DELTA_TICS - (self.right_encoder_pos - right_start)
-            speed_left = np.clip(-self.Kp * error_left, -self.max_speed, self.max_speed)
-            speed_right = np.clip(-self.Kp * error_right, -self.max_speed, self.max_speed)
+
+            print("Error forward", error_left, error_right)
+
+            u_left = self.Kp * error_left + self.Ki * error_i_left
+            u_right = self.Kp * error_right + self.Ki * error_i_right
+
+            speed_left = np.clip(u_left, -self.max_speed, self.max_speed).astype(np.int32)
+            speed_right = np.clip(u_right, -self.max_speed, self.max_speed).astype(np.int32)
+
             self.moveForever('forward', 'off', speed_left)
             self.moveForever('off', 'forward', speed_right)
+
+            error_i_left += error_left
+            error_i_right += error_right
+            if time.time() - start_time > TIMEOUT:
+                print("TIMEOUT")
+                break
         self.stop()
 
 robobo = Robobo()
+# Initialize encoders
+robobo.stop()
 
 while not should_exit[0]:
     msg = socket.recv_json()
@@ -201,29 +240,36 @@ while not should_exit[0]:
     # dy = [0, 0, -dv, dv][action]
     # real_action = np.array([dx, dy])
     # TODO: update robot position
-    if action == FORWARD:
-        robobo.forward()
-    elif action == BACKWARD:
-        robobo.backward()        #
-    elif action == LEFT:
-        robobo.turnLeft()
-        robobo.forward()
-        robobo.turnRight()
-    elif action == RIGHT:
-        robobo.turnRight()
-        robobo.forward()
-        robobo.turnLeft()
-    elif action == STOP:
-        pass
+    if action == Move.FORWARD:
+        # robobo.forward()
+        robobo.move(10)
+    elif action == Move.STOP:
+        robobo.stop()
+    elif action == Move.RIGHT:
+        # robobo.rotate()
+        robobo.turn(10)
+    elif action == Move.LEFT:
+        # robobo.rotate()
+        robobo.turn(-10)
+    elif action == Move.BACKWARD:
+        robobo.move(-10)
+    # elif action == LEFT:
+    #     robobo.turnLeft()
+    #     robobo.forward()
+    #     robobo.turnRight()
+    # elif action == RIGHT:
+    #     robobo.turnRight()
+    #     robobo.forward()
+    #     robobo.turnLeft()
     else:
         print("Unsupported action")
+    # print(robobo.yaw)
 
     reward = 0
     # Consider that we touched the button if we are close enough
     # if np.linalg.norm(target_pos - robot_position, 2) < DIST_TO_TARGET_THRESHOLD:
     #     reward = 1
     #     print("Target reached!")
-
     # Send arm position, button position, ...
     socket.send_json(
         {
@@ -232,17 +278,19 @@ while not should_exit[0]:
             "reward": reward,
             "target_pos": list([0, 0])
         },
-        flags=zmq.SNDMORE
+        flags=zmq.SNDMORE if IMAGE_TOPIC is not None else 0
     )
-    # Retrieve last image from image topic
-    img = image_cb_wrapper.valid_img
 
     if SECOND_CAM_TOPIC is not None:
         saveSecondCamImage(image_cb_wrapper_2.valid_img, episode_folder, episode_step, DATA_FOLDER_SECOND_CAM)
         episode_step += 1
-    # to contiguous, otherwise ZMQ will complain
-    img = np.ascontiguousarray(img, dtype=np.uint8)
-    sendMatrix(socket, img)
+
+    if IMAGE_TOPIC is not None:
+        # Retrieve last image from image topic
+        img = image_cb_wrapper.valid_img
+        # to contiguous, otherwise ZMQ will complain
+        img = np.ascontiguousarray(img, dtype=np.uint8)
+        sendMatrix(socket, img)
 
 print(" Exiting server - closing socket...")
 socket.close()

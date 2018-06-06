@@ -1,6 +1,8 @@
 from __future__ import print_function, absolute_import, division
 
 import math
+from enum import Enum
+
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
@@ -35,11 +37,23 @@ if USING_REAL_BAXTER:
 elif USING_ROBOBO:
     DIST_TO_TARGET_THRESHOLD = 0.1
     # ROS Topics
-    IMAGE_TOPIC = "/kinect2/qhd/image_color"
+    IMAGE_TOPIC = "/camera/image_repub"
+    IMAGE_TOPIC = None
     SECOND_CAM_TOPIC = None
     DELTA_POS = 0.1
     DELTA_ANGLE = math.radians(90.0)
-    DELTA_TICS = 10
+
+    DELTA_TICS = 20
+    DELTA_TICS_ANGLE = 30
+    TIMEOUT = 5  # 5s timeout
+
+    class Move(Enum):
+        STOP = 0
+        FORWARD = 1
+        BACKWARD = 2
+        LEFT = 3
+        RIGHT = 4
+
 # Gazebo
 else:
     LEFT_ARM_INIT_POS = [0.6, 0.30, 0.20]
