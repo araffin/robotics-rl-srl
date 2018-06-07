@@ -47,7 +47,7 @@ elif USING_ROBOBO:
     DELTA_AREA = 500
     # Boundaries
     MIN_X, MAX_X = -3, 3
-    MIN_Y, MAX_Y = -4, 4
+    MIN_Y, MAX_Y = -4, 3
 
     class Move(Enum):
         FORWARD = 0
