@@ -6,13 +6,11 @@ import json
 import os
 from datetime import datetime
 from pprint import pprint
-import importlib
 import inspect
 
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
-import tensorflow as tf
 
 from gym.envs.registration import registry as gym_registry
 import rl_baselines.a2c as a2c
@@ -29,8 +27,8 @@ from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
 from environments.utils import dynamicEnvLoad
 # Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
-import environments.kuka_button_gym_env as kuka_inherited_env
-from environments.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
+import environments.kuka_gym.kuka_button_gym_env as kuka_inherited_env
+from environments.kuka_gym.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
 import environments.gym_baxter.baxter_env as baxter_inherited_env
 from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
 import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env

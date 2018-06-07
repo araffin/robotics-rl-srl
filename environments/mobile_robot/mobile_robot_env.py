@@ -1,15 +1,14 @@
 import os
 import pybullet as p
 
-import gym
 import numpy as np
 import torch as th
 import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
+from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
-from state_representation.models import loadSRLModel
 
 #  Number of steps before termination
 MAX_STEPS = 250  # WARNING: should be also change in __init__.py (timestep_limit)
@@ -37,12 +36,7 @@ def getGlobals():
     return globals()
 
 
-class MobileRobotGymEnv(gym.Env):
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 50
-    }
-
+class MobileRobotGymEnv(SRLGymEnv):
     """
     Gym wrapper for Mobile Robot environment
     WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
@@ -62,7 +56,7 @@ class MobileRobotGymEnv(gym.Env):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
@@ -70,6 +64,10 @@ class MobileRobotGymEnv(gym.Env):
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **_):
+        super(MobileRobotGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+                                                relative_pos=RELATIVE_POS,
+                                                env_rank=env_rank,
+                                                srl_pipe=srl_pipe)
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
@@ -111,8 +109,6 @@ class MobileRobotGymEnv(gym.Env):
         self.collision_margin = 0.1
         self.walls = None
         self.use_joints = False  # For compatibility
-        self.env_rank = env_rank
-        self.srl_pipe = srl_pipe
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -154,20 +150,6 @@ class MobileRobotGymEnv(gym.Env):
         # Create numpy random generator
         # This seed can be changed later
         self.seed(0)
-
-    def getSRLState(self, observation):
-        """
-        get the SRL state for this environement with a given observation
-        :param observation: ([float]) image
-        :return: ([float])
-        """
-        if self.use_ground_truth:
-            if self.relative_pos:
-                return self.getGroundTruth() - self.getTargetPos()
-            return self.getGroundTruth()
-        else:
-            self.srl_pipe[0].put((self.env_rank, observation))
-            return self.srl_pipe[1][self.env_rank].get()
 
     def getTargetPos(self):
         """
