@@ -94,6 +94,9 @@ episode_idx = -1
 episode_folder = None
 robot_position = np.array([0, 0])
 
+t_turn = 2.04 # 90 degrees
+t_forward = 1.7
+
 
 class Robobo(object):
     def __init__(self):
@@ -101,10 +104,21 @@ class Robobo(object):
         self.Kp = 1
         self.Ki = 0.0
         self.Kp_angle = 1
-        self.max_speed = 10
-        self.max_angular_speed = 15
-        self.error_threshold = 5
-        self.left_encoder_pos, self.right_encoder_pos = 0, 0
+        self.time_forward = 1.7
+
+        self.speed = 10
+        self.alpha_init = 0
+        self.alpha_target = 0
+        self.angle_offset = 38
+        self.angle_coeff = 50
+
+        self.directions = {'left': 90, 'right': -90}
+        self.faces = ['west', 'north', 'east']
+        self.yaw_error = 0
+        self.current_face_idx = 1
+        self.yaw_target = 0
+        self.yaw_north = 0
+
         self.yaw = 0
         try:
             self.robobo_command = rospy.ServiceProxy('/command', Command)
@@ -137,13 +151,74 @@ class Robobo(object):
     def stop(self):
         self.moveForever('forward', 'forward', 0)
 
-    def move(self, speed):
-        speed = int(speed)
+    def initYawNorth(self):
+        self.yaw_north = self.yaw
+        self.angles = {
+            'north': self.yaw_north,
+            'east': self.normalizeAngle(self.yaw_north - 90),
+            'west':  self.normalizeAngle(self.yaw_north + 90)
+            }
+        self.current_face_idx = 1
+        self.yaw_target = self.yaw_north
+        self.yaw_error = 0
+
+    def forward(self):
+        self.move(self.time_forward, self.speed)
+        time.sleep(1.1 * self.time_forward)
+
+    def backward(self):
+        self.move(self.time_forward, -self.speed)
+
+    def turnLeft(self):
+        turn_time = self.computeTime('left')
+        assert self.current_face_idx > 0
+        self.current_face_idx -= 1
+        self.updateTarget()
+        self.turn(turn_time, -self.speed)
+        self.updateError()
+
+    def turnRight(self):
+        turn_time = self.computeTime('right')
+        assert self.current_face_idx < len(self.faces)
+        self.current_face_idx += 1
+        self.updateTarget()
+        self.turn(turn_time, self.speed)
+        self.updateError()
+
+    def updateError(self):
+        self.yaw_error = self.normalizeAngle(self.yaw_target - self.yaw)
+        print("yaw_error", self.yaw_error)
+
+    def updateTarget(self):
+        print("face_idx", self.current_face_idx, self.faces[self.current_face_idx])
+        self.yaw_target = self.angles[self.faces[self.current_face_idx]]
+        print("yaw_target", self.yaw_target)
+
+    def computeTime(self, direction):
+        """
+        :param direction: (str) "left" or "right"
+        :return: (float)
+        """
+        print("yaw", self.yaw, "current_face", self.faces[self.current_face_idx])
+        print("yaw_north", self.yaw_north, 'direction', direction)
+        time = (abs(self.directions[direction] + self.yaw_error) - self.angle_offset) / self.angle_coeff + 1
+        return time
+
+    def move(self, t, speed):
         command_parameters = []
-        command_parameters.append(KeyValue('wheel', "both"))
-        command_parameters.append(KeyValue('speed', str(speed)))
-        command_parameters.append(KeyValue('time', str(2)))
-        self.robobo_command("MOVEBY-TIME", 0, command_parameters)
+       	command_parameters.append(KeyValue('lspeed', str(speed)))
+        command_parameters.append(KeyValue('rspeed', str(speed)))
+        command_parameters.append(KeyValue('time', str(t)))
+        self.robobo_command("MOVE", 0, command_parameters)
+
+    def turn(self, t, speed):
+        command_parameters = []
+        command_parameters.append(KeyValue('lspeed', str(speed)))
+        command_parameters.append(KeyValue('rspeed', str(-speed)))
+        command_parameters.append(KeyValue('time', str(t)))
+        self.robobo_command("MOVE", 0, command_parameters)
+        time.sleep(1.1 * t + 2)
+        print("MOVED")
 
     @staticmethod
     def normalizeAngle(angle):
@@ -153,61 +228,14 @@ class Robobo(object):
             angle += 2 * 180
         return angle
 
-    def turn(self, speed):
-        speed = 1
-        speed = int(speed)
-        command_parameters = []
-        command_parameters.append(KeyValue('lspeed', str(speed)))
-        command_parameters.append(KeyValue('rspeed', str(-speed)))
-        command_parameters.append(KeyValue('time', str(10)))
-        self.robobo_command("MOVE", 0, command_parameters)
-        yaw_target = self.normalizeAngle(self.yaw - 45)
-        start_time = time.time()
-        while abs(self.normalizeAngle(self.yaw - yaw_target)) > 4:
-            if time.time() - start_time > TIMEOUT:
-                print("TIMEOUT")
-                break
-        print(self.normalizeAngle(self.yaw - yaw_target))
-        self.stop()
-
-
-        # command_parameters = []
-        # command_parameters.append(KeyValue('lspeed', str(speed)))
-        # command_parameters.append(KeyValue('rspeed', str(-speed)))
-        # command_parameters.append(KeyValue('time', str(2)))
-        # command_parameters.append(KeyValue('blockid', str(1)))
-        # self.robobo_command("MOVE-BLOCKING", 0, command_parameters)
-
-    def forward(self):
-        left_start, right_start = self.left_encoder_pos, self.right_encoder_pos
-        error_left, error_right = np.inf, np.inf
-        start_time = time.time()
-        error_i_left, error_i_right = 0, 0
-        while abs(error_left) > self.error_threshold and abs(error_right) > self.error_threshold:
-            error_left = DELTA_TICS - (self.left_encoder_pos - left_start)
-            error_right = DELTA_TICS - (self.right_encoder_pos - right_start)
-
-            print("Error forward", error_left, error_right)
-
-            u_left = self.Kp * error_left + self.Ki * error_i_left
-            u_right = self.Kp * error_right + self.Ki * error_i_right
-
-            speed_left = np.clip(u_left, -self.max_speed, self.max_speed).astype(np.int32)
-            speed_right = np.clip(u_right, -self.max_speed, self.max_speed).astype(np.int32)
-
-            self.moveForever('forward', 'off', speed_left)
-            self.moveForever('off', 'forward', speed_right)
-
-            error_i_left += error_left
-            error_i_right += error_right
-            if time.time() - start_time > TIMEOUT:
-                print("TIMEOUT")
-                break
-        self.stop()
 
 robobo = Robobo()
 # Initialize encoders
 robobo.stop()
+
+robobo.turn(robobo.computeTime('left'), -robobo.speed)
+robobo.turn(robobo.computeTime('right'), robobo.speed)
+robobo.initYawNorth()
 
 while not should_exit[0]:
     msg = socket.recv_json()
@@ -241,26 +269,19 @@ while not should_exit[0]:
     # real_action = np.array([dx, dy])
     # TODO: update robot position
     if action == Move.FORWARD:
-        # robobo.forward()
-        robobo.move(10)
+        robobo.forward()
     elif action == Move.STOP:
         robobo.stop()
     elif action == Move.RIGHT:
-        # robobo.rotate()
-        robobo.turn(10)
+        robobo.turnRight()
+        robobo.forward()
+        robobo.turnLeft()
     elif action == Move.LEFT:
-        # robobo.rotate()
-        robobo.turn(-10)
+        robobo.turnLeft()
+        robobo.forward()
+        robobo.turnRight()
     elif action == Move.BACKWARD:
-        robobo.move(-10)
-    # elif action == LEFT:
-    #     robobo.turnLeft()
-    #     robobo.forward()
-    #     robobo.turnRight()
-    # elif action == RIGHT:
-    #     robobo.turnRight()
-    #     robobo.forward()
-    #     robobo.turnLeft()
+        robobo.backward()
     else:
         print("Unsupported action")
     # print(robobo.yaw)
