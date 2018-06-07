@@ -13,7 +13,7 @@ import numpy as np
 import zmq
 
 from .constants import SERVER_PORT, HOSTNAME, UP_KEY, DOWN_KEY, LEFT_KEY, \
-    RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, DELTA_POS, R_KEY, Move, IMAGE_TOPIC
+    RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, R_KEY, Move, IMAGE_TOPIC, DELTA_POS
 from .utils import recvMatrix
 
 np.set_printoptions(precision=4)

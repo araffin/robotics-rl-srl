@@ -33,6 +33,73 @@ def ctrl_c(signum, frame):
 
 signal.signal(signal.SIGINT, ctrl_c)
 
+def processImageWithColorMask(image, debug=False):
+    """
+    :param image: (bgr image)
+    :param debug: (bool)
+    :return: (int, int)
+    """
+    error = False
+    r = [0, 0, image.shape[1], image.shape[0]]
+    margin_left, margin_top, _, _ = r
+
+    im_cropped = image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+    image = im_cropped
+    # if debug:
+    #     cv2.imshow('crop', im_cropped)
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # define range of blue color in HSV
+    lower_red = np.array([120, 130, 0])
+    upper_red = np.array([135, 255, 255])
+
+    # lower_red = np.array([148, 137, 0])
+    # upper_red = np.array([176, 255, 255])
+
+    # Threshold the HSV image
+    mask = cv2.inRange(hsv, lower_red, upper_red)
+
+    kernel_erode = np.ones((4, 4), np.uint8)
+    eroded_mask = cv2.erode(mask, kernel_erode, iterations=2)
+
+    kernel_dilate = np.ones((6, 6), np.uint8)
+    dilated_mask = cv2.dilate(eroded_mask, kernel_dilate, iterations=2)
+
+    if debug:
+        cv2.imshow('mask', mask)
+        cv2.imshow('eroded', eroded_mask)
+        cv2.imshow('dilated', dilated_mask)
+
+    # cv2.RETR_CCOMP  instead of cv2.RETR_TREE
+    im2, contours, hierarchy = cv2.findContours(dilated_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Sort by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:10]
+    if debug:
+        # Draw biggest
+        # cv2.drawContours(image, contours, 0, (0,255,0), 3)
+        cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
+
+    if len(contours) > 0:
+        M = cv2.moments(contours[0])
+        # Centroid
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+        area = cv2.contourArea(contours[0])
+    else:
+        cx, cy = 0, 0
+        area = 0
+        error = True
+
+    if debug:
+        if error:
+            print("No centroid found")
+        else:
+            print("Found centroid at ({}, {})".format(cx, cy))
+        cv2.circle(image, (cx, cy), radius=10, color=(0, 0, 255),
+                   thickness=1, lineType=8, shift=0)
+        cv2.imshow('result', image)
+    return cx, cy, area, error
 
 class ImageCallback(object):
     """
@@ -49,7 +116,6 @@ class ImageCallback(object):
             self.valid_img = cv2_img
         except CvBridgeError as e:
             print("CvBridgeError:", e)
-
 
 
 def saveSecondCamImage(im, episode_folder, episode_step, path="robobo_2nd_cam"):
@@ -73,7 +139,7 @@ if IMAGE_TOPIC is not None:
     img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
 
 if SECOND_CAM_TOPIC is not None:
-    DATA_FOLDER_SECOND_CAM = "real_baxter_2nd_cam"
+    DATA_FOLDER_SECOND_CAM = "real_robobo_2nd_cam"
     image_cb_wrapper_2 = ImageCallback()
     img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback)
 
@@ -101,9 +167,6 @@ t_forward = 1.7
 class Robobo(object):
     def __init__(self):
         super(Robobo, self).__init__()
-        self.Kp = 1
-        self.Ki = 0.0
-        self.Kp_angle = 1
         self.time_forward = 1.7
 
         self.speed = 10
@@ -118,8 +181,9 @@ class Robobo(object):
         self.current_face_idx = 1
         self.yaw_target = 0
         self.yaw_north = 0
-
+        self.position = [0, 0]
         self.yaw = 0
+
         try:
             self.robobo_command = rospy.ServiceProxy('/command', Command)
         except rospy.ServiceException, e:
@@ -199,10 +263,12 @@ class Robobo(object):
         :param direction: (str) "left" or "right"
         :return: (float)
         """
+        self.yaw_error = 0
+        t = (abs(self.directions[direction] + self.yaw_error) - self.angle_offset) / self.angle_coeff + 1
         print("yaw", self.yaw, "current_face", self.faces[self.current_face_idx])
         print("yaw_north", self.yaw_north, 'direction', direction)
-        time = (abs(self.directions[direction] + self.yaw_error) - self.angle_offset) / self.angle_coeff + 1
-        return time
+        print("time:", t)
+        return t
 
     def move(self, t, speed):
         command_parameters = []
@@ -230,12 +296,14 @@ class Robobo(object):
 
 
 robobo = Robobo()
-# Initialize encoders
 robobo.stop()
 
+# Init robot yaw angle
 robobo.turn(robobo.computeTime('left'), -robobo.speed)
 robobo.turn(robobo.computeTime('right'), robobo.speed)
 robobo.initYawNorth()
+
+last_area = 0
 
 while not should_exit[0]:
     msg = socket.recv_json()
@@ -264,40 +332,48 @@ while not should_exit[0]:
     else:
         raise ValueError("Unknown command: {}".format(msg))
 
-    # dx = [-dv, dv, 0, 0][action]
-    # dy = [0, 0, -dv, dv][action]
-    # real_action = np.array([dx, dy])
-    # TODO: update robot position
+
     if action == Move.FORWARD:
         robobo.forward()
+        robobo.position[1] += 1
     elif action == Move.STOP:
         robobo.stop()
     elif action == Move.RIGHT:
         robobo.turnRight()
         robobo.forward()
         robobo.turnLeft()
+        robobo.position[0] += 1
     elif action == Move.LEFT:
         robobo.turnLeft()
         robobo.forward()
         robobo.turnRight()
+        robobo.position[0] -= 1
     elif action == Move.BACKWARD:
         robobo.backward()
+        robobo.position[1] -= 1
+    elif action == None:
+        # Env reset
+        pass
     else:
         print("Unsupported action")
-    # print(robobo.yaw)
 
+
+    cx, cy, area, error = processImageWithColorMask(image_cb_wrapper.valid_img, debug=False)
+
+    print("Image processing", cx, cy, area, error)
     reward = 0
-    # Consider that we touched the button if we are close enough
-    # if np.linalg.norm(target_pos - robot_position, 2) < DIST_TO_TARGET_THRESHOLD:
-    #     reward = 1
-    #     print("Target reached!")
-    # Send arm position, button position, ...
+    # Consider that we reached the target if we are close enough
+    if not error and last_area - area > DELTA_AREA:
+        reward = 1
+        print("Target reached!")
+    last_area = area
+
     socket.send_json(
         {
             # XYZ position
-            "position": list(robot_position),
+            "position": list(robobo.position),
             "reward": reward,
-            "target_pos": list([0, 0])
+            "target_pos": list([cx, cy])
         },
         flags=zmq.SNDMORE if IMAGE_TOPIC is not None else 0
     )

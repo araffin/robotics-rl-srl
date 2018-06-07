@@ -36,16 +36,15 @@ if USING_REAL_BAXTER:
     DATA_FOLDER_SECOND_CAM = "real_baxter_second_cam"
 elif USING_ROBOBO:
     DIST_TO_TARGET_THRESHOLD = 0.1
+    DELTA_POS = 0
     # ROS Topics
-    IMAGE_TOPIC = "/camera/image_repub"
-    IMAGE_TOPIC = None
+    # IMAGE_TOPIC = "/camera/image_repub"
+    IMAGE_TOPIC = "/camera/rgb/image_raw"
     SECOND_CAM_TOPIC = None
-    DELTA_POS = 0.1
-    DELTA_ANGLE = math.radians(90.0)
-
-    DELTA_TICS = 20
-    DELTA_TICS_ANGLE = 30
     TIMEOUT = 5  # 5s timeout
+    # Max number of steps per episode
+    MAX_STEPS = 50
+    DELTA_AREA = 500
 
     class Move(Enum):
         STOP = 0

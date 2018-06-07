@@ -13,7 +13,7 @@ import seaborn as sns
 
 # Baxter-Gazebo bridge specific
 from environments.srl_env import SRLGymEnv
-from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
+from gazebo.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
@@ -107,7 +107,7 @@ class RoboboEnv(SRLGymEnv):
 
         if record_data:
             print("Recording data...")
-            self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
+            self.saver = EpisodeSaver(log_folder, 0, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
                                       learn_states=learn_states)
 
@@ -178,28 +178,8 @@ class RoboboEnv(SRLGymEnv):
         state_data = self.socket.recv_json()
         self.reward = state_data["reward"]
         self.target_pos = np.array(state_data["target_pos"])
-        self.robobo_pos = np.array(state_data["position"]) 
+        self.robobo_pos = np.array(state_data["position"])
 
-        # Compute distance from Baxter left arm to goal (the target_pos)
-        distance_to_goal = np.linalg.norm(self.target_pos - self.robobo_pos, 2)
-
-        # TODO: tune max distance
-        self.n_contacts += self.reward
-
-        contact_with_table = self.robobo_pos[2] < Z_TABLE - 0.01
-
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION or contact_with_table:
-            self.episode_terminated = True
-
-        # print("dist=", distance_to_goal)
-
-        if distance_to_goal > MAX_DISTANCE or contact_with_table:  # outside sphere of proximity
-            self.reward = -1
-
-        # print('state_data: {}'.format(state_data))
-
-        if self._shape_reward:
-            self.reward = -distance_to_goal
         return state_data
 
     def getObservation(self):
@@ -245,7 +225,6 @@ class RoboboEnv(SRLGymEnv):
         :return: (numpy ndarray) first observation of the env
         """
         self.episode_terminated = False
-        self.n_contacts = 0
         # Step count since episode start
         self._env_step_counter = 0
         self.socket.send_json({"command": "reset"})
@@ -287,7 +266,7 @@ class RoboboEnv(SRLGymEnv):
         if self._renders:
             plt.ion()  # needed for interactive update
             if self.image_plot is None:
-                plt.figure('Baxter RL')
+                plt.figure('Robobo RL')
                 self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
                 self.image_plot.axes.grid(False)
             else:
