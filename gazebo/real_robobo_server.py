@@ -136,12 +136,12 @@ rospy.init_node('robobo_server', anonymous=True)
 # Connect to ROS Topics
 if IMAGE_TOPIC is not None:
     image_cb_wrapper = ImageCallback()
-    img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
+    img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback, queue_size=1)
 
 if SECOND_CAM_TOPIC is not None:
     DATA_FOLDER_SECOND_CAM = "real_robobo_2nd_cam"
     image_cb_wrapper_2 = ImageCallback()
-    img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback)
+    img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
 
 
 print('Starting up on port number {}'.format(SERVER_PORT))
@@ -232,6 +232,7 @@ class Robobo(object):
 
     def backward(self):
         self.move(self.time_forward, -self.speed)
+        time.sleep(1.1 * self.time_forward)
 
     def turnLeft(self):
         turn_time = self.computeTime('left')
@@ -254,9 +255,9 @@ class Robobo(object):
         print("yaw_error", self.yaw_error)
 
     def updateTarget(self):
-        print("face_idx", self.current_face_idx, self.faces[self.current_face_idx])
+        # print("face_idx", self.current_face_idx, self.faces[self.current_face_idx])
         self.yaw_target = self.angles[self.faces[self.current_face_idx]]
-        print("yaw_target", self.yaw_target)
+        # print("yaw_target", self.yaw_target)
 
     def computeTime(self, direction):
         """
@@ -265,9 +266,10 @@ class Robobo(object):
         """
         self.yaw_error = 0
         t = (abs(self.directions[direction] + self.yaw_error) - self.angle_offset) / self.angle_coeff + 1
-        print("yaw", self.yaw, "current_face", self.faces[self.current_face_idx])
-        print("yaw_north", self.yaw_north, 'direction', direction)
-        print("time:", t)
+        # print("yaw", self.yaw, "current_face", self.faces[self.current_face_idx])
+        # print("yaw_north", self.yaw_north, 'direction', direction)
+        # print("time:", t)
+        print("yaw", self.yaw, "yaw_north", self.yaw_north)
         return t
 
     def move(self, t, speed):
@@ -303,7 +305,7 @@ robobo.turn(robobo.computeTime('left'), -robobo.speed)
 robobo.turn(robobo.computeTime('right'), robobo.speed)
 robobo.initYawNorth()
 
-last_area = 0
+initial_area = 3700
 
 while not should_exit[0]:
     msg = socket.recv_json()
@@ -332,42 +334,65 @@ while not should_exit[0]:
     else:
         raise ValueError("Unknown command: {}".format(msg))
 
-
+    has_bumped = False
     if action == Move.FORWARD:
-        robobo.forward()
-        robobo.position[1] += 1
+        if robobo.position[1] < MAX_Y:
+            robobo.forward()
+            robobo.position[1] += 1
+        else:
+            has_bumped = True
     elif action == Move.STOP:
         robobo.stop()
     elif action == Move.RIGHT:
-        robobo.turnRight()
-        robobo.forward()
-        robobo.turnLeft()
-        robobo.position[0] += 1
+        if robobo.position[0] < MAX_X:
+            robobo.turnRight()
+            robobo.forward()
+            robobo.turnLeft()
+            robobo.position[0] += 1
+        else:
+            has_bumped = True
     elif action == Move.LEFT:
-        robobo.turnLeft()
-        robobo.forward()
-        robobo.turnRight()
-        robobo.position[0] -= 1
+        if robobo.position[0] > MIN_X:
+            robobo.turnLeft()
+            robobo.forward()
+            robobo.turnRight()
+            robobo.position[0] -= 1
+        else:
+            has_bumped = True
     elif action == Move.BACKWARD:
-        robobo.backward()
-        robobo.position[1] -= 1
+        if robobo.position[1] > MIN_Y:
+            robobo.backward()
+            robobo.position[1] -= 1
+        else:
+            has_bumped = True
     elif action == None:
         # Env reset
         pass
     else:
         print("Unsupported action")
 
+    print("Updating image")
+    original_image = np.copy(image_cb_wrapper.valid_img)
+    cx, cy, area, error = processImageWithColorMask(original_image.copy(), debug=False)
 
-    cx, cy, area, error = processImageWithColorMask(image_cb_wrapper.valid_img, debug=False)
+    # cv2.imshow('image', original_image)
+    # cv2.waitKey(1000)
+
+    delta_area_rate = (initial_area - area) / initial_area
 
     print("Image processing", cx, cy, area, error)
     reward = 0
     # Consider that we reached the target if we are close enough
-    if not error and last_area - area > DELTA_AREA:
+    if delta_area_rate > 0.2:
         reward = 1
         print("Target reached!")
-    last_area = area
 
+    if has_bumped:
+        reward = -1
+        print("Bumped into wall")
+        print()
+
+    print("Robobo position", robobo.position)
     socket.send_json(
         {
             # XYZ position
@@ -383,10 +408,10 @@ while not should_exit[0]:
         episode_step += 1
 
     if IMAGE_TOPIC is not None:
-        # Retrieve last image from image topic
-        img = image_cb_wrapper.valid_img
+        # # Retrieve last image from image topic
+        # img = image_cb_wrapper.valid_img
         # to contiguous, otherwise ZMQ will complain
-        img = np.ascontiguousarray(img, dtype=np.uint8)
+        img = np.ascontiguousarray(original_image, dtype=np.uint8)
         sendMatrix(socket, img)
 
 print(" Exiting server - closing socket...")

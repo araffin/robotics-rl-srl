@@ -20,7 +20,7 @@ from state_representation.episode_saver import EpisodeSaver
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 N_CONTACTS_BEFORE_TERMINATION = 2
-RELATIVE_POS = True
+RELATIVE_POS = False
 
 N_DISCRETE_ACTIONS = 4
 

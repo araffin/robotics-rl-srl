@@ -43,15 +43,18 @@ elif USING_ROBOBO:
     SECOND_CAM_TOPIC = None
     TIMEOUT = 5  # 5s timeout
     # Max number of steps per episode
-    MAX_STEPS = 50
+    MAX_STEPS = 20
     DELTA_AREA = 500
+    # Boundaries
+    MIN_X, MAX_X = -3, 3
+    MIN_Y, MAX_Y = -4, 4
 
     class Move(Enum):
-        STOP = 0
-        FORWARD = 1
-        BACKWARD = 2
-        LEFT = 3
-        RIGHT = 4
+        FORWARD = 0
+        BACKWARD = 1
+        LEFT = 2
+        RIGHT = 3
+        STOP = 4
 
 # Gazebo
 else:

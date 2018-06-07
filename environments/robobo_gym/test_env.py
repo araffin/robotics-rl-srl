@@ -2,9 +2,9 @@ import time
 
 import environments.robobo_gym.robobo_env as robobo_env
 
-env = robobo_env.RoboboEnv(renders=False, is_discrete=True, log_folder="robobo_real", record_data=True)
+env = robobo_env.RoboboEnv(renders=False, is_discrete=True, log_folder="robobo_real_2", record_data=True)
 timesteps = 500  # must be greater than MAX_STEPS
-episodes = 4
+episodes = 20
 env.seed(1)
 i = 0
 
