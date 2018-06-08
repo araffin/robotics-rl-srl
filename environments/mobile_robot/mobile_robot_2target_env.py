@@ -1,5 +1,7 @@
 from .mobile_robot_env import *
 
+MAX_STEPS = 1500
+
 class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot environment with 2 targets
@@ -25,11 +27,14 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     def __init__(self, name="mobile_robot_2target", **kwargs):
         super(MobileRobot2TargetGymEnv, self).__init__(name=name, **kwargs)
 
+        self.current_target = 0
+
     def reset(self):
         """
         Reset the environment
         :return: (numpy tensor) first observation of the env
         """
+        self.current_target = 0
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -43,15 +48,26 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         self.robot_pos = np.array([x_start, y_start, 0])
 
         # Initialize target position
+        self.button_uid = []
+        self.button_pos = []
+
         x_pos = 0.9 * self._max_x
         y_pos = self._max_y * 3 / 4
         if self._random_target:
             margin = 0.1 * self._max_x
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
             y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
+        self.button_uid.append(p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0], useFixedBase=True))
+        self.button_pos.append(np.array([x_pos, y_pos, 0]))
 
-        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0], useFixedBase=True)
-        self.target_pos = np.array([x_pos, y_pos, 0])
+        x_pos = 0.1 * self._max_x
+        y_pos = self._max_y * 3 / 4
+        if self._random_target:
+            margin = 0.1 * self._max_x
+            x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
+            y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
+        self.button_uid.append(p.loadURDF("/urdf/simple_button_2.urdf", [x_pos, y_pos, 0], useFixedBase=True))
+        self.button_pos.append(np.array([x_pos, y_pos, 0]))
 
         # Add walls
         # Path to the urdf file
@@ -93,6 +109,13 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
+
+    def getTargetPos(self):
+        """
+        :return (numpy array): Position of the target (button)
+        """
+        # Return only the [x, y] coordinates
+        return self.button_pos[self.current_target][:2]
 
     def step(self, action):
         """
@@ -151,6 +174,8 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
+            if self.current_target < len(self.button_pos) - 1:
+                self.current_target += 1
             # self.terminated = True
 
         # Negative reward when it bumps into a wall

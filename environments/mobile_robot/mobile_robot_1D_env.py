@@ -31,18 +31,9 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
         self.camera_target_pos = (2, 0, 0)
 
         if self._renders:
-            p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
-
-            # self.renderer = p.ER_BULLET_HARDWARE_OPENGL
-            self.debug = True
-            # Debug sliders for moving the camera
             self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
             self.y_slider = p.addUserDebugParameter("y_slider", -10, 10, self.camera_target_pos[1])
             self.z_slider = p.addUserDebugParameter("z_slider", -10, 10, self.camera_target_pos[2])
-            self.dist_slider = p.addUserDebugParameter("cam_dist", 0, 10, self._cam_dist)
-            self.yaw_slider = p.addUserDebugParameter("cam_yaw", -180, 180, self._cam_yaw)
-            self.pitch_slider = p.addUserDebugParameter("cam_pitch", -180, 180, self._cam_pitch)
-
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
