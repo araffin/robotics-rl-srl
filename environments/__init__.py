@@ -56,3 +56,10 @@ register(
     timestep_limit=None,
     reward_threshold=None
 )
+
+register(
+    _id='MobileRobot1DGymEnv-v0',
+    entry_point='environments.mobile_robot.mobile_robot_1D_env:MobileRobot1DGymEnv',
+    timestep_limit=None,
+    reward_threshold=None
+)

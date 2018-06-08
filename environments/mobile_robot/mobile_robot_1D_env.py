@@ -1,8 +1,10 @@
 from .mobile_robot_env import *
 
-class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
+N_DISCRETE_ACTIONS = 2
+
+class MobileRobot1DGymEnv(MobileRobotGymEnv):
     """
-    Gym wrapper for Mobile Robot environment with 2 targets
+    Gym wrapper for Mobile Robot environment
     WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
@@ -20,10 +22,54 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param fpv: (bool) enable first personne vue camera
     """
-    def __init__(self, name="mobile_robot_2target", **kwargs):
-        super(MobileRobot2TargetGymEnv, self).__init__(name=name, **kwargs)
+    def __init__(self, name="mobile_robot_1D", **kwargs):
+        super(MobileRobot1DGymEnv, self).__init__(name=name, **kwargs)
+
+        self.camera_target_pos = (2, 0, 0)
+
+        if self._renders:
+            p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
+
+            # self.renderer = p.ER_BULLET_HARDWARE_OPENGL
+            self.debug = True
+            # Debug sliders for moving the camera
+            self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
+            self.y_slider = p.addUserDebugParameter("y_slider", -10, 10, self.camera_target_pos[1])
+            self.z_slider = p.addUserDebugParameter("z_slider", -10, 10, self.camera_target_pos[2])
+            self.dist_slider = p.addUserDebugParameter("cam_dist", 0, 10, self._cam_dist)
+            self.yaw_slider = p.addUserDebugParameter("cam_yaw", -180, 180, self._cam_yaw)
+            self.pitch_slider = p.addUserDebugParameter("cam_pitch", -180, 180, self._cam_pitch)
+
+
+        if self._is_discrete:
+            self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
+        else:
+            raise ValueError("Only discrete actions is supported")
+
+    def getTargetPos(self):
+        """
+        :return (numpy array): Position of the target (button)
+        """
+        # Return only the [x, y] coordinates
+        return self.target_pos[:1]
+
+    @staticmethod
+    def getGroundTruthDim():
+        """
+        :return: (int)
+        """
+        return 1
+
+    def getGroundTruth(self):
+        """
+        Alias for getArmPos for compatibility between envs
+        :return: (numpy array)
+        """
+        # Return only the [x, y] coordinates
+        return np.array(self.robot_pos)[:1]
 
     def reset(self):
         """
@@ -39,42 +85,28 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
 
         # Init the robot randomly
         x_start = self._max_x / 2 + self.np_random.uniform(- self._max_x / 3, self._max_x / 3)
-        y_start = self._max_y / 2 + self.np_random.uniform(- self._max_y / 3, self._max_y / 3)
-        self.robot_pos = np.array([x_start, y_start, 0])
+        self.robot_pos = np.array([x_start, 0, 0])
 
         # Initialize target position
         x_pos = 0.9 * self._max_x
-        y_pos = self._max_y * 3 / 4
         if self._random_target:
             margin = 0.1 * self._max_x
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
-            y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
 
-        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0], useFixedBase=True)
-        self.target_pos = np.array([x_pos, y_pos, 0])
+        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, 0, 0], useFixedBase=True)
+        self.target_pos = np.array([x_pos, 0, 0])
 
         # Add walls
         # Path to the urdf file
         wall_urdf = "/urdf/wall.urdf"
-        # Rgba colors
-        red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
+        # Rgba color
+        red = [0.8, 0, 0, 1]
 
         wall_left = p.loadURDF(wall_urdf, [self._max_x / 2, 0, 0], useFixedBase=True)
         # Change color
         p.changeVisualShape(wall_left, -1, rgbaColor=red)
 
-        # getQuaternionFromEuler -> define orientation
-        wall_bottom = p.loadURDF(wall_urdf, [self._max_x, self._max_y / 2, 0],
-                                 p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
-
-        wall_right = p.loadURDF(wall_urdf, [self._max_x / 2, self._max_y, 0], useFixedBase=True)
-        p.changeVisualShape(wall_right, -1, rgbaColor=green)
-
-        wall_top = p.loadURDF(wall_urdf, [self._min_x, self._max_y / 2, 0],
-                              p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
-        p.changeVisualShape(wall_top, -1, rgbaColor=blue)
-
-        self.walls = [wall_left, wall_bottom, wall_right, wall_top]
+        self.walls = [wall_left]
 
         # Add mobile robot
         self.robot_uid = p.loadURDF(os.path.join(self._urdf_root, "racecar/racecar.urdf"), self.robot_pos,
@@ -104,9 +136,8 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             dv = DELTA_POS
             # Add noise to action
             dv += self.np_random.normal(0.0, scale=NOISE_STD)
-            dx = [-dv, dv, 0, 0][action]
-            dy = [0, 0, -dv, dv][action]
-            real_action = np.array([dx, dy])
+            dx = [-dv, dv][action]
+            real_action = np.array([dx])
         else:
             raise ValueError("Only discrete actions is supported")
 
@@ -114,9 +145,9 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             print(np.array2string(np.array(real_action), precision=2))
 
         previous_pos = self.robot_pos.copy()
-        self.robot_pos[:2] += real_action
+        self.robot_pos[:1] += real_action
         # Handle collisions
-        for i, (limit, robot_dim) in enumerate(zip([self._max_x, self._max_y], [ROBOT_LENGTH, ROBOT_WIDTH])):
+        for i, (limit, robot_dim) in enumerate(zip([self._max_x], [ROBOT_LENGTH])):
             margin = self.collision_margin + robot_dim / 2
             # If it has bumped against a wall, stay at the previous position
             if self.robot_pos[i] < margin or self.robot_pos[i] > limit - margin:
@@ -146,7 +177,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         :return: (float)
         """
         # Distance to target
-        distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:2], 2)
+        distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:1], 2)
         reward = 0
 
         if distance <= REWARD_DIST_THRESHOLD:
@@ -160,4 +191,3 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         if self._shape_reward:
             return -distance
         return reward
-

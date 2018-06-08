@@ -14,7 +14,8 @@ import environments.kuka_gym.kuka_button_gym_env as kuka_env
 import environments.kuka_gym.kuka_rand_button_gym_env as kuka_env_rand
 import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
 import environments.mobile_robot.mobile_robot_env as mobile_robot
-import environments.mobile_robot_2target_env as mobile_robot_2target
+import environments.mobile_robot.mobile_robot_2target_env as mobile_robot_2target
+import environments.mobile_robot.mobile_robot_1D_env as mobile_robot_1D
 from srl_zoo.utils import printRed
 
 
@@ -60,7 +61,8 @@ def env_thread(args, thread_num, partition=True):
                  "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
                  "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
                  "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv,
-                 "MobileRobot2TargetGymEnv-v0": mobile_robot_2target.MobileRobot2TargetGymEnv
+                 "MobileRobot2TargetGymEnv-v0": mobile_robot_2target.MobileRobot2TargetGymEnv,
+                 "MobileRobot1DGymEnv-v0": mobile_robot_1D.MobileRobot1DGymEnv
                  }[args.env]
 
     if partition:
@@ -100,7 +102,8 @@ def main():
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0",
-                                 "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0", "MobileRobot2TargetGymEnv-v0"])
+                                 "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0", "MobileRobot2TargetGymEnv-v0",
+                                 "MobileRobot1DGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,

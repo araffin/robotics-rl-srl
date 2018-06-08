@@ -186,7 +186,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         p.setTimeStep(self._timestep)
         p.loadURDF(os.path.join(self._urdf_root, "plane.urdf"), [0, 0, 0])
         p.setGravity(0, 0, -10)
-        p.createVisualShape(0)
 
         # Init the robot randomly
         x_start = self._max_x / 2 + self.np_random.uniform(- self._max_x / 3, self._max_x / 3)
