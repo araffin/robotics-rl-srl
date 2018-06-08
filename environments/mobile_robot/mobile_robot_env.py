@@ -57,13 +57,14 @@ class MobileRobotGymEnv(SRLGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param fpv: (bool) enable first personne vue camera
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
                  name="mobile_robot", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **_):
+                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None, fpv=False,  **_):
         super(MobileRobotGymEnv, self).__init__(use_ground_truth=use_ground_truth,
                                                 relative_pos=RELATIVE_POS,
                                                 env_rank=env_rank,
@@ -109,6 +110,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         self.collision_margin = 0.1
         self.walls = None
         self.use_joints = False  # For compatibility
+        self.fpv = fpv
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -184,6 +186,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         p.setTimeStep(self._timestep)
         p.loadURDF(os.path.join(self._urdf_root, "plane.urdf"), [0, 0, 0])
         p.setGravity(0, 0, -10)
+        p.createVisualShape(0)
 
         # Init the robot randomly
         x_start = self._max_x / 2 + self.np_random.uniform(- self._max_x / 3, self._max_x / 3)
@@ -346,6 +349,24 @@ class MobileRobotGymEnv(SRLGymEnv):
         rgb_array = np.array(px1)
 
         rgb_array_res = rgb_array[:, :, :3]
+
+        if self.fpv:
+            view_matrix = p.computeViewMatrixFromYawPitchRoll(
+                cameraTargetPosition=(self.robot_pos[0]-0.25, self.robot_pos[1], 0.15),
+                distance=0.3,
+                yaw=self._cam_yaw,
+                pitch=-17,
+                roll=self._cam_roll,
+                upAxisIndex=2)
+            proj_matrix = p.computeProjectionMatrixFOV(
+                fov=90, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                nearVal=0.1, farVal=100.0)
+            (_, _, px1, _, _) = p.getCameraImage(
+                width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
+                projectionMatrix=proj_matrix, renderer=self.renderer)
+            rgb_array = np.array(px1)
+            rgb_array_res = np.dstack([rgb_array_res, rgb_array[:, :, :3]])
+
         return rgb_array_res
 
     def close(self):

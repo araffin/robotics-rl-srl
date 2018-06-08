@@ -14,6 +14,7 @@ import environments.kuka_gym.kuka_button_gym_env as kuka_env
 import environments.kuka_gym.kuka_rand_button_gym_env as kuka_env_rand
 import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
 import environments.mobile_robot.mobile_robot_env as mobile_robot
+import environments.mobile_robot_2target_env as mobile_robot_2target
 from srl_zoo.utils import printRed
 
 
@@ -59,7 +60,7 @@ def env_thread(args, thread_num, partition=True):
                  "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
                  "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
                  "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv,
-                 "MobileRobot2TargetGymEnv-v0"
+                 "MobileRobot2TargetGymEnv-v0": mobile_robot_2target.MobileRobot2TargetGymEnv
                  }[args.env]
 
     if partition:
