@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0",
                                  "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0", "MobileRobot2TargetGymEnv-v0",
-                                 "MobileRobot1DGymEnv-v0"])
+                                 "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"])
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised",
                                  "pca", "vae", "joints", "joints_position", "raw_pixels"])

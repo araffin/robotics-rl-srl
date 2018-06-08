@@ -16,6 +16,7 @@ import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
 import environments.mobile_robot.mobile_robot_env as mobile_robot
 import environments.mobile_robot.mobile_robot_2target_env as mobile_robot_2target
 import environments.mobile_robot.mobile_robot_1D_env as mobile_robot_1D
+import environments.mobile_robot.mobile_robot_line_target_env as mobile_robot_line_target
 from srl_zoo.utils import printRed
 
 
@@ -62,7 +63,8 @@ def env_thread(args, thread_num, partition=True):
                  "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
                  "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv,
                  "MobileRobot2TargetGymEnv-v0": mobile_robot_2target.MobileRobot2TargetGymEnv,
-                 "MobileRobot1DGymEnv-v0": mobile_robot_1D.MobileRobot1DGymEnv
+                 "MobileRobot1DGymEnv-v0": mobile_robot_1D.MobileRobot1DGymEnv,
+                 "MobileRobotLineTargetGymEnv-v0": mobile_robot_line_target.MobileRobotLineTargetGymEnv
                  }[args.env]
 
     if partition:
@@ -103,7 +105,7 @@ def main():
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0",
                                  "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0", "MobileRobot2TargetGymEnv-v0",
-                                 "MobileRobot1DGymEnv-v0"])
+                                 "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"])
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,

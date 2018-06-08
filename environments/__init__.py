@@ -63,3 +63,10 @@ register(
     timestep_limit=None,
     reward_threshold=None
 )
+
+register(
+    _id='MobileRobotLineTargetGymEnv-v0',
+    entry_point='environments.mobile_robot.mobile_robot_line_target_env:MobileRobotLineTargetGymEnv',
+    timestep_limit=None,
+    reward_threshold=None
+)
