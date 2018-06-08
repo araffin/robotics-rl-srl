@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 from datetime import datetime
+import time
 
 import yaml
 from baselines.acer.acer_simple import *
@@ -60,6 +61,8 @@ def parseArguments():
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('--plotting', action='store_true', default=False,
                         help='display in the latent space the current observation.')
+    parser.add_argument('--action-proba', action='store_true', default=False,
+                        help='display the probability of actions')
     return parser.parse_args()
 
 
@@ -169,13 +172,18 @@ def createEnv(load_args, train_args, algo, env_kwargs, log_dir="/tmp/gym/test/")
 
     return log_dir, envs
 
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
 
 def main():
     load_args = parseArguments()
     train_args, load_path, algo, srl_models, env_kwargs = loadConfigAndSetup(load_args)
     log_dir, envs = createEnv(load_args, train_args, algo, env_kwargs)
 
-    assert (not load_args.plotting) or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
+    assert (not load_args.plotting and not load_args.action_proba)\
+           or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 
     ob_space = envs.observation_space
     ac_space = envs.action_space
@@ -261,6 +269,17 @@ def main():
             delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
         else:
             assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
+        plt.pause(0.00001)
+
+    if load_args.action_proba:
+        fig_prob = plt.figure()
+        ax_prob = fig_prob.add_subplot(111)
+        ax_prob.set_ylim([0,1])
+        old_obs = []
+        bar = ax_prob.bar(np.arange(ac_space.n), np.array([0] * ac_space.n))
+        plt.pause(1)
+        background_prob = fig_prob.canvas.copy_from_bbox(ax_prob.bbox)
+
 
     n_done = 0
     last_n_done = 0
@@ -269,7 +288,7 @@ def main():
         if algo == "acer":
             actions, state, _ = model.step(obs, state=None, mask=dones)
         elif algo in ["a2c", "ppo2"]:
-            actions, _, states, _ = model.step(obs, None, dones)
+            actions, _, states, _, pi = model.step(obs, None, dones)
         elif algo == "deepq":
             actions = model(obs[None])[0]
         elif algo == "ddpg":
@@ -308,6 +327,16 @@ def main():
             if i % 5 == 0:
                 fig.canvas.draw()
                 plt.pause(0.000001)
+
+        if load_args.action_proba:
+            fig_prob.canvas.restore_region(background_prob)
+            for act, rect in enumerate(bar):
+                rect.set_height(softmax(pi[0])[act])
+                ax_prob.draw_artist(rect)
+            fig_prob.canvas.blit(ax_prob.bbox)
+
+            # if i % 5 == 0:
+            #     plt.pause(0.000001)
 
         if algo in ["deepq", "ddpg"]:
             if dones:

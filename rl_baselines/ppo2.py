@@ -1,12 +1,10 @@
 from baselines.ppo2.ppo2 import *
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
-from baselines.ppo2.policies import MlpPolicy as MlpPolicyContinuous
 from baselines import logger
 import tensorflow as tf
 
-from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous
+from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous, MlpPolicyContinuous
 from rl_baselines.utils import createEnvs
-
 
 # Modified version of OpenAI to work with SRL models
 def learn(args, env, nsteps, total_timesteps, ent_coef, lr,
