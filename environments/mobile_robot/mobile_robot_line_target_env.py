@@ -1,5 +1,7 @@
 from .mobile_robot_env import *
 
+REWARD_DIST_THRESHOLD = 0.1
+
 class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot with a line target environment
@@ -31,7 +33,7 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
         :return (numpy array): Position of the target (button)
         """
         # Return only the [x, y] coordinates
-        return self.target_pos[:2]
+        return self.target_pos[:1]
 
     def reset(self):
         """
@@ -52,14 +54,15 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
 
         # Initialize target position
         x_pos = 0.9 * self._max_x
-        y_pos = self._max_y * 3 / 4
+        y_pos = self._max_x
         if self._random_target:
             margin = 0.1 * self._max_x
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
-            y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
 
-        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0], useFixedBase=True)
+        self.target_uid = p.loadURDF("/urdf/wall_target.urdf", [x_pos, y_pos / 2, -0.045],
+                              p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
         self.target_pos = np.array([x_pos, y_pos, 0])
+        p.changeVisualShape(self.target_uid, -1, rgbaColor=[1, 1, 0, 1]) # yellow
 
         # Add walls
         # Path to the urdf file
@@ -107,7 +110,7 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
         :return: (float)
         """
         # Distance to target
-        distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:2], 2)
+        distance = np.abs(self.getTargetPos()[0] - self.robot_pos[0])
         reward = 0
 
         if distance <= REWARD_DIST_THRESHOLD:
