@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """
-Control the baxter robot with arrows keys + D and U keys (for moving along the z-axis)
+Teleoperation client:
+- control the robobo with arrows keys + U for stopping the robot
+- control the baxter robot with arrows keys + D and U keys (for moving along the z-axis)
 Press esc or q to exit the client
 """
 from __future__ import division, print_function, absolute_import
@@ -13,7 +15,7 @@ import numpy as np
 import zmq
 
 from .constants import SERVER_PORT, HOSTNAME, UP_KEY, DOWN_KEY, LEFT_KEY, \
-    RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, R_KEY, Move, IMAGE_TOPIC, DELTA_POS
+    RIGHT_KEY, D_KEY, U_KEY, EXIT_KEYS, R_KEY, Move, IMAGE_TOPIC, DELTA_POS, USING_ROBOBO
 from .utils import recvMatrix
 
 np.set_printoptions(precision=4)
@@ -29,23 +31,27 @@ print("Connected to server")
 
 times = []
 action = [0, 0, 0]
-action_dict = {
-    UP_KEY: Move.FORWARD.value,
-    DOWN_KEY: Move.BACKWARD.value,
-    LEFT_KEY: Move.LEFT.value,
-    RIGHT_KEY: Move.RIGHT.value,
-    D_KEY: Move.STOP.value,
-    U_KEY: Move.STOP.value
-}
-# action_dict = {
-#     UP_KEY: [- DELTA_POS, 0, 0],
-#     DOWN_KEY: [DELTA_POS, 0, 0],
-#     LEFT_KEY: [0, - DELTA_POS, 0],
-#     RIGHT_KEY: [0, DELTA_POS, 0],
-#     D_KEY: [0, 0, - DELTA_POS],
-#     U_KEY: [0, 0, DELTA_POS]
-#
-# }
+if USING_ROBOBO:
+    action_dict = {
+        UP_KEY: Move.FORWARD.value,
+        DOWN_KEY: Move.BACKWARD.value,
+        LEFT_KEY: Move.LEFT.value,
+        RIGHT_KEY: Move.RIGHT.value,
+        D_KEY: Move.STOP.value,
+        U_KEY: Move.STOP.value
+    }
+else:
+    action_dict = {
+        UP_KEY: [- DELTA_POS, 0, 0],
+        DOWN_KEY: [DELTA_POS, 0, 0],
+        LEFT_KEY: [0, - DELTA_POS, 0],
+        RIGHT_KEY: [0, DELTA_POS, 0],
+        D_KEY: [0, 0, - DELTA_POS],
+        U_KEY: [0, 0, DELTA_POS]
+
+    }
+
+# Create dark image to listen to keyboard events
 cv2.imshow("Image", np.zeros((100, 100, 3), dtype=np.uint8))
 
 should_exit = [False]

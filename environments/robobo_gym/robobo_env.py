@@ -19,7 +19,6 @@ from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-N_CONTACTS_BEFORE_TERMINATION = 2
 RELATIVE_POS = False
 
 N_DISCRETE_ACTIONS = 4
@@ -82,7 +81,6 @@ class RoboboEnv(SRLGymEnv):
         self.state_dim = state_dim
         self._renders = renders
         self._shape_reward = shape_reward
-        self.np_random = None
         self.cuda = th.cuda.is_available()
         self.target_pos = None
         self.saver = None
@@ -137,7 +135,7 @@ class RoboboEnv(SRLGymEnv):
         :seed: (int)
         :return: (int array)
         """
-        self.np_random, seed = seeding.np_random(seed)
+        _, seed = seeding.np_random(seed)
         return [seed]
 
     def step(self, action):
@@ -169,9 +167,6 @@ class RoboboEnv(SRLGymEnv):
     def getEnvState(self):
         """
         Returns a dictionary containing info about the environment state.
-        It also sets the reward: the agent is rewarded for pushing the button
-        and the reward value is negative if the arm goes outside the bounding sphere
-        surrounding the button.
         :return: (dict) state_data containing data related to the state: target_pos,
         robobo_pos and reward.
         """
@@ -184,13 +179,13 @@ class RoboboEnv(SRLGymEnv):
 
     def getObservation(self):
         """
-        Receive the observation image using a socket (required method by gazebo)
-        :return: np.ndarray (tensor) observation
+        Receive the observation image using a socket
+        :return: (numpy ndarray) observation
         """
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
         # Resize it:
-        #self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        # self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getTargetPos(self):
@@ -257,6 +252,7 @@ class RoboboEnv(SRLGymEnv):
 
     def render(self, mode='rgb_array'):
         """
+        :param mode: (str)
         :return: (numpy array) BGR image
         """
         if mode != "rgb_array":

@@ -1,8 +1,6 @@
 from __future__ import print_function, absolute_import, division
 
-import math
 from enum import Enum
-
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
@@ -10,6 +8,10 @@ SERVER_PORT = 7777
 HOSTNAME = 'localhost'
 USING_REAL_BAXTER = False
 USING_ROBOBO = True
+# For compatibility with teleop_client
+Move = None
+DELTA_POS = 0
+
 # Calibrated values for Real Baxter
 if USING_REAL_BAXTER:
     # Initial position of the arm
@@ -35,20 +37,21 @@ if USING_REAL_BAXTER:
     SECOND_CAM_TOPIC = "/camera/rgb/image_raw"
     DATA_FOLDER_SECOND_CAM = "real_baxter_second_cam"
 elif USING_ROBOBO:
-    DIST_TO_TARGET_THRESHOLD = 0.1
-    DELTA_POS = 0
     # ROS Topics
-    # IMAGE_TOPIC = "/camera/image_repub"
     IMAGE_TOPIC = "/camera/rgb/image_raw"
+    # SECOND_CAM_TOPIC = "/camera/image_repub"
     SECOND_CAM_TOPIC = None
-    TIMEOUT = 5  # 5s timeout
     # Max number of steps per episode
     MAX_STEPS = 20
-    DELTA_AREA = 500
+    # Initial area in the image of the target
+    # It must be calibrated after changing the target position
+    TARGET_INITIAL_AREA = 3700
     # Boundaries
     MIN_X, MAX_X = -3, 3
     MIN_Y, MAX_Y = -4, 3
 
+
+    # Define the possible Moves
     class Move(Enum):
         FORWARD = 0
         BACKWARD = 1

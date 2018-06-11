@@ -2,7 +2,6 @@
 from __future__ import division, print_function, absolute_import
 
 import os
-import subprocess
 import signal
 import time
 
@@ -26,6 +25,7 @@ assert USING_ROBOBO, "Please set USING_ROBOBO to True in gazebo/constants.py"
 bridge = CvBridge()
 should_exit = [False]
 
+
 # exit the script on ctrl+c
 def ctrl_c(signum, frame):
     should_exit[0] = True
@@ -33,32 +33,25 @@ def ctrl_c(signum, frame):
 
 signal.signal(signal.SIGINT, ctrl_c)
 
-def processImageWithColorMask(image, debug=False):
+
+def findTarget(image, debug=False):
     """
+    Find the target in the image using color thresholds
     :param image: (bgr image)
-    :param debug: (bool)
-    :return: (int, int)
+    :param debug: (bool) Whether to display the image or not
+    :return: (int, int, float, bool)
     """
     error = False
-    r = [0, 0, image.shape[1], image.shape[0]]
-    margin_left, margin_top, _, _ = r
-
-    im_cropped = image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
-    image = im_cropped
-    # if debug:
-    #     cv2.imshow('crop', im_cropped)
 
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     # define range of blue color in HSV
     lower_red = np.array([120, 130, 0])
     upper_red = np.array([135, 255, 255])
 
-    # lower_red = np.array([148, 137, 0])
-    # upper_red = np.array([176, 255, 255])
-
     # Threshold the HSV image
     mask = cv2.inRange(hsv, lower_red, upper_red)
 
+    # Remove noise
     kernel_erode = np.ones((4, 4), np.uint8)
     eroded_mask = cv2.erode(mask, kernel_erode, iterations=2)
 
@@ -70,7 +63,7 @@ def processImageWithColorMask(image, debug=False):
         cv2.imshow('eroded', eroded_mask)
         cv2.imshow('dilated', dilated_mask)
 
-    # cv2.RETR_CCOMP  instead of cv2.RETR_TREE
+    # Retrieve contours
     im2, contours, hierarchy = cv2.findContours(dilated_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # Sort by area
@@ -101,10 +94,12 @@ def processImageWithColorMask(image, debug=False):
         cv2.imshow('result', image)
     return cx, cy, area, error
 
+
 class ImageCallback(object):
     """
     Image callback for ROS
     """
+
     def __init__(self):
         super(ImageCallback, self).__init__()
         self.valid_img = None
@@ -143,7 +138,6 @@ if SECOND_CAM_TOPIC is not None:
     image_cb_wrapper_2 = ImageCallback()
     img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
 
-
 print('Starting up on port number {}'.format(SERVER_PORT))
 context = zmq.Context()
 socket = context.socket(zmq.PAIR)
@@ -158,53 +152,71 @@ action = 0
 episode_step = 0
 episode_idx = -1
 episode_folder = None
-robot_position = np.array([0, 0])
-
-t_turn = 2.04 # 90 degrees
-t_forward = 1.7
 
 
 class Robobo(object):
+    """
+    Class for controlling Robobo
+    """
+
     def __init__(self):
         super(Robobo, self).__init__()
+        # Duration of the "FORWARD" action
         self.time_forward = 1.7
 
         self.speed = 10
-        self.alpha_init = 0
-        self.alpha_target = 0
+        # Angle that robobo achieve in one second
+        # at a given speed
         self.angle_offset = 38
+        # Degree per s when turning after the 1st second
+        # at a given speed
+        # From calibration
         self.angle_coeff = 50
+        # Robobo's position on the grid
+        self.position = [0, 0]
 
         self.directions = {'left': 90, 'right': -90}
         self.faces = ['west', 'north', 'east']
-        self.yaw_error = 0
         self.current_face_idx = 1
+        self.yaw_error = 0
         self.yaw_target = 0
         self.yaw_north = 0
-        self.position = [0, 0]
         self.yaw = 0
+        self.left_encoder_pos = 0
+        self.right_encoder_pos = 0
+        self.angles = {}
 
+        # Attempt connection to Robobo's service
         try:
             self.robobo_command = rospy.ServiceProxy('/command', Command)
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             print("Service exception", str(e))
             exit(1)
 
         self.status_sub = rospy.Subscriber("/status", Status, self.statusCallback)
 
     def moveForever(self, lspeed, rspeed, speed):
+        """
+        :param lspeed: (str) "forward" or "backward"
+        :param rspeed: (str)
+        :param speed: (int)
+        """
         command_name = 'MOVE-FOREVER'
-        command_parameters = []
-        command_parameters.append(KeyValue('lspeed', lspeed))
-        command_parameters.append(KeyValue('rspeed', rspeed))
-        command_parameters.append(KeyValue('speed', str(speed)))
+        command_parameters = [KeyValue('lspeed', lspeed), KeyValue('rspeed', rspeed), KeyValue('speed', str(speed))]
         self.robobo_command(command_name, 0, command_parameters)
 
     def statusCallback(self, status):
+        """
+        Callback for ROS topic
+        :param status: (Status ROS message)
+        """
+        # Update the current yaw using phone gyroscope
+        # NOTE: this may not work depending on the phone
         if status.name == 'ORIENTATION':
             for KeyV in status.value:
                 if KeyV.key == 'yaw':
                     self.yaw = float(KeyV.value)
+        # Update position of the two encoders
         if status.name == 'WHEELS':
             for KeyV in status.value:
                 if KeyV.key == 'wheelPosL':
@@ -213,24 +225,36 @@ class Robobo(object):
                     self.right_encoder_pos = float(KeyV.value)
 
     def stop(self):
+        """
+        Stop robobo
+        """
         self.moveForever('forward', 'forward', 0)
 
     def initYawNorth(self):
+        """
+        Initialize the reference yaw that represents the North
+        """
         self.yaw_north = self.yaw
         self.angles = {
             'north': self.yaw_north,
             'east': self.normalizeAngle(self.yaw_north - 90),
-            'west':  self.normalizeAngle(self.yaw_north + 90)
-            }
+            'west': self.normalizeAngle(self.yaw_north + 90)
+        }
         self.current_face_idx = 1
         self.yaw_target = self.yaw_north
         self.yaw_error = 0
 
     def forward(self):
+        """
+        Move one step forward (Translation)
+        """
         self.move(self.time_forward, self.speed)
         time.sleep(1.1 * self.time_forward)
 
     def backward(self):
+        """
+        Move one step backward
+        """
         self.move(self.time_forward, -self.speed)
         time.sleep(1.1 * self.time_forward)
 
@@ -251,19 +275,29 @@ class Robobo(object):
         self.updateError()
 
     def updateError(self):
+        """
+        Update the error between desired yaw and current one
+        """
         self.yaw_error = self.normalizeAngle(self.yaw_target - self.yaw)
         print("yaw_error", self.yaw_error)
 
     def updateTarget(self):
-        # print("face_idx", self.current_face_idx, self.faces[self.current_face_idx])
+        """
+        Update the target angle
+        """
         self.yaw_target = self.angles[self.faces[self.current_face_idx]]
+        # print("face_idx", self.current_face_idx, self.faces[self.current_face_idx])
         # print("yaw_target", self.yaw_target)
 
     def computeTime(self, direction):
         """
+        Compute the time needed for a rotation to face a given direction
+        It is meant to correct the previous error
+        however this does not seems to work for now
         :param direction: (str) "left" or "right"
         :return: (float)
         """
+        # Cancel the error, gives better performance (less drift)
         self.yaw_error = 0
         t = (abs(self.directions[direction] + self.yaw_error) - self.angle_offset) / self.angle_coeff + 1
         # print("yaw", self.yaw, "current_face", self.faces[self.current_face_idx])
@@ -273,17 +307,21 @@ class Robobo(object):
         return t
 
     def move(self, t, speed):
-        command_parameters = []
-       	command_parameters.append(KeyValue('lspeed', str(speed)))
-        command_parameters.append(KeyValue('rspeed', str(speed)))
-        command_parameters.append(KeyValue('time', str(t)))
+        """
+        Translation move
+        :param t: (float) duration of Translation
+        :param speed: (int)
+        """
+        command_parameters = [KeyValue('lspeed', str(speed)), KeyValue('rspeed', str(speed)), KeyValue('time', str(t))]
         self.robobo_command("MOVE", 0, command_parameters)
 
     def turn(self, t, speed):
-        command_parameters = []
-        command_parameters.append(KeyValue('lspeed', str(speed)))
-        command_parameters.append(KeyValue('rspeed', str(-speed)))
-        command_parameters.append(KeyValue('time', str(t)))
+        """
+        Rotation move
+        :param t: (float) duration of Rotation
+        :param speed: (int)
+        """
+        command_parameters = [KeyValue('lspeed', str(speed)), KeyValue('rspeed', str(-speed)), KeyValue('time', str(t))]
         self.robobo_command("MOVE", 0, command_parameters)
         time.sleep(1.1 * t + 2)
         print("MOVED")
@@ -304,8 +342,6 @@ robobo.stop()
 robobo.turn(robobo.computeTime('left'), -robobo.speed)
 robobo.turn(robobo.computeTime('right'), robobo.speed)
 robobo.initYawNorth()
-
-initial_area = 3700
 
 while not should_exit[0]:
     msg = socket.recv_json()
@@ -335,6 +371,7 @@ while not should_exit[0]:
         raise ValueError("Unknown command: {}".format(msg))
 
     has_bumped = False
+    # We are always facing North
     if action == Move.FORWARD:
         if robobo.position[1] < MAX_Y:
             robobo.forward()
@@ -365,24 +402,23 @@ while not should_exit[0]:
             robobo.position[1] -= 1
         else:
             has_bumped = True
-    elif action == None:
+    elif action is None:
         # Env reset
         pass
     else:
         print("Unsupported action")
 
-    print("Updating image")
     original_image = np.copy(image_cb_wrapper.valid_img)
-    cx, cy, area, error = processImageWithColorMask(original_image.copy(), debug=False)
+    # Find the target in the image using color thresholds
+    cx, cy, area, error = findTarget(original_image.copy(), debug=False)
 
-    # cv2.imshow('image', original_image)
-    # cv2.waitKey(1000)
+    delta_area_rate = (TARGET_INITIAL_AREA - area) / TARGET_INITIAL_AREA
 
-    delta_area_rate = (initial_area - area) / initial_area
-
-    print("Image processing", cx, cy, area, error)
+    print("Image processing:", cx, cy, area, error)
     reward = 0
     # Consider that we reached the target if we are close enough
+    # we detect that computing the difference in area between TARGET_INITIAL_AREA
+    # current detected area of the target
     if delta_area_rate > 0.2:
         reward = 1
         print("Target reached!")
@@ -414,5 +450,5 @@ while not should_exit[0]:
         img = np.ascontiguousarray(original_image, dtype=np.uint8)
         sendMatrix(socket, img)
 
-print(" Exiting server - closing socket...")
+print("Exiting server - closing socket...")
 socket.close()
