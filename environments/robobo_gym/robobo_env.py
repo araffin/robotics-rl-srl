@@ -13,8 +13,8 @@ import seaborn as sns
 
 # Baxter-Gazebo bridge specific
 from environments.srl_env import SRLGymEnv
-from gazebo.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
-from gazebo.utils import recvMatrix
+from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
+from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224

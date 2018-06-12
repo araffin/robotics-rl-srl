@@ -18,7 +18,7 @@ from com_mytechia_robobo_ros_msgs.msg import KeyValue, Status
 from .constants import *
 from .utils import sendMatrix
 
-assert USING_ROBOBO, "Please set USING_ROBOBO to True in gazebo/constants.py"
+assert USING_ROBOBO, "Please set USING_ROBOBO to True in real_robots/constants.py"
 
 bridge = CvBridge()
 should_exit = [False]

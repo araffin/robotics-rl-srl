@@ -18,7 +18,7 @@ from std_msgs.msg import Header
 from .constants import *
 from .utils import sendMatrix, getActions
 
-assert not USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to False in gazebo/constants.py"
+assert not USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to False in real_robots/constants.py"
 
 bridge = CvBridge()
 

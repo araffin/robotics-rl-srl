@@ -222,7 +222,7 @@ export ROS_HOSTNAME=192.168.0.211  # Your IP
 export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 ```
 
-2. Calibrate the different values in in `gazebo/constants.py` using `gazebo/real_baxter_debug.py`:
+2. Calibrate the different values in in `real_robots/constants.py` using `real_robots/real_baxter_debug.py`:
 - Set USING_REAL_BAXTER to True
 - Position of the target: BUTTON_POS
 - Init position and orientation: LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION
@@ -231,7 +231,7 @@ export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 - Distance above which the agent will get a negative reward: MAX_DISTANCE
 - Maximum number of steps per episode: MAX_STEPS
 
-3. Configure images topics in `gazebo/constants.py`:
+3. Configure images topics in `real_robots/constants.py`:
 - IMAGE_TOPIC: main camera
 - SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
 - DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
@@ -257,7 +257,7 @@ NB: If you want to save the image without resizing, you need to comment the line
 
 1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
 
-2. Make sure that USING_REAL_BAXTER is set to True in `gazebo/constants.py`.
+2. Make sure that USING_REAL_BAXTER is set to True in `real_robots/constants.py`.
 
 3. Launch ROS bridge server (python 2):
 ```
@@ -291,13 +291,13 @@ export ROS_HOSTNAME=192.168.0.211  # Your IP
 export ROS_MASTER_URI=http://robobo.local:11311 # Robobo IP
 ```
 
-2. Calibrate the different values in in `gazebo/constants.py` using `gazebo/real_robobo_server.py` and `gazebo/teleop_client.py` (Client for teleoperation):
+2. Calibrate the different values in in `real_robots/constants.py` using `real_robots/real_robobo_server.py` and `real_robots/teleop_client.py` (Client for teleoperation):
 - Set USING_ROBOBO to True
 - Area of the target: TARGET_INITIAL_AREA
 - Boundaries of the enviroment: (MIN_X, MAX_X, MIN_Y, MAX_Y)
 - Maximum number of steps per episode: MAX_STEPS
 
-3. Configure images topics in `gazebo/constants.py`:
+3. Configure images topics in `real_robots/constants.py`:
 - IMAGE_TOPIC: main camera
 - SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
 - DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
@@ -329,7 +329,7 @@ NB: If you want to save the image without resizing, you need to comment the line
 
 1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
 
-2. Make sure that USING_ROBOBO is set to True in `gazebo/constants.py`.
+2. Make sure that USING_ROBOBO is set to True in `real_robots/constants.py`.
 
 3. Launch ROS bridge server (python 2):
 ```
