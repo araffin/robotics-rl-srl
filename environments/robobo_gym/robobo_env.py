@@ -185,7 +185,7 @@ class RoboboEnv(SRLGymEnv):
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
         # Resize it:
-        # self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getTargetPos(self):
