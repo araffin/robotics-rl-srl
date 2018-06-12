@@ -1,5 +1,10 @@
 # Reinforcement Learning (RL) and State Representation Learning (SRL) for Robotics
 
+This repository was made to evaluate State Representation Learning methods using Reinforcement Learning. It integrates (automatic logging, plotting, saving, loading of trained agent) various RL algorithms (PPO, A2C, ARS, DDPG, DQN, ACER, CMA-ES) along with different SRL methods (see [SRL Repo](https://github.com/araffin/srl-zoo)) in an efficient way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
+
+We also release customizable Gym environments for working with simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
+
+
 Table of Contents
 =================
 
@@ -139,6 +144,9 @@ the available environments are:
 - Kuka2ButtonGymEnv-v0: 2 buttons next to each others, they must be pressed in order
 - KukaRandButtonGymEnv-v0: a single button in front of the arm, with some randomly positioned objects
 - KukaMovingButtonGymEnv-v0: a single button in front of the arm, slowly moving left to right
+- MobileRobotGymEnv-v0:
+- Baxter-v0: real baxter robot (see [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)), can be also used to work with gazebo
+- RoboboGymEnv-v0: real robobo (see [Working With a Real Robobo](#working-with-a-real-robobo))
 
 ## State Representation Learning Models
 
