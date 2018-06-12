@@ -8,6 +8,8 @@ SERVER_PORT = 7777
 HOSTNAME = 'localhost'
 USING_REAL_BAXTER = False
 USING_ROBOBO = True
+
+assert not (USING_ROBOBO and USING_REAL_BAXTER), "You can only use one real robot at a time"
 # For compatibility with teleop_client
 Move = None
 DELTA_POS = 0
@@ -41,15 +43,18 @@ elif USING_ROBOBO:
     IMAGE_TOPIC = "/camera/rgb/image_raw"
     # SECOND_CAM_TOPIC = "/camera/image_repub"
     SECOND_CAM_TOPIC = None
+    DATA_FOLDER_SECOND_CAM = "real_robobo_second_cam"
     # Max number of steps per episode
     MAX_STEPS = 20
     # Initial area in the image of the target
     # It must be calibrated after changing the target position
     TARGET_INITIAL_AREA = 3700
+    # Change in percent of the target area to consider
+    # that the target was reached
+    MIN_DELTA_AREA = 0.2  # 20% covered to considered it reached
     # Boundaries
     MIN_X, MAX_X = -3, 3
     MIN_Y, MAX_Y = -4, 3
-
 
     # Define the possible Moves
     class Move(Enum):

@@ -103,7 +103,6 @@ image_cb_wrapper = ImageCallback()
 img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback)
 
 if SECOND_CAM_TOPIC is not None:
-    DATA_FOLDER_SECOND_CAM = "real_baxter_2nd_cam"
     image_cb_wrapper_2 = ImageCallback()
     img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback)
 

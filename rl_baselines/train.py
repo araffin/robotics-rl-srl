@@ -33,6 +33,9 @@ import environments.gym_baxter.baxter_env as baxter_inherited_env
 from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
 import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env
 from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobile_robot_inherited_env_class
+import environments.robobo_gym.robobo_env as robobo_inherited_env
+from environments.robobo_gym.robobo_env import RoboboEnv as robobo_inherited_env_class
+
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -301,6 +304,9 @@ def main():
     elif issubclass(module_env.__dict__[class_name], mobile_robot_inherited_env_class):
         inherited_env = mobile_robot_inherited_env
         inherited_env_class = mobile_robot_inherited_env_class
+    elif issubclass(module_env.__dict__[class_name], robobo_inherited_env_class):
+        inherited_env = robobo_inherited_env
+        inherited_env_class = robobo_inherited_env_class
     else:
         # Sanity check to make sure we have implemented the environment correctly,
         raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))

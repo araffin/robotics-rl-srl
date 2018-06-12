@@ -49,3 +49,10 @@ register(
     timestep_limit=None,
     reward_threshold=None
 )
+
+register(
+    _id='RoboboGymEnv-v0',
+    entry_point='environments.robobo_gym.mobile_robot_env:RoboboGymEnv',
+    timestep_limit=None,
+    reward_threshold=None
+)

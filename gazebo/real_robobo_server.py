@@ -20,8 +20,6 @@ from .utils import sendMatrix
 
 assert USING_ROBOBO, "Please set USING_ROBOBO to True in gazebo/constants.py"
 
-#  rosrun image_transport republish compressed in:=/camera/image raw out:=/camera/image_repub
-
 bridge = CvBridge()
 should_exit = [False]
 
@@ -32,126 +30,6 @@ def ctrl_c(signum, frame):
 
 
 signal.signal(signal.SIGINT, ctrl_c)
-
-
-def findTarget(image, debug=False):
-    """
-    Find the target in the image using color thresholds
-    :param image: (bgr image)
-    :param debug: (bool) Whether to display the image or not
-    :return: (int, int, float, bool)
-    """
-    error = False
-
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # define range of blue color in HSV
-    lower_red = np.array([120, 130, 0])
-    upper_red = np.array([135, 255, 255])
-
-    # Threshold the HSV image
-    mask = cv2.inRange(hsv, lower_red, upper_red)
-
-    # Remove noise
-    kernel_erode = np.ones((4, 4), np.uint8)
-    eroded_mask = cv2.erode(mask, kernel_erode, iterations=2)
-
-    kernel_dilate = np.ones((6, 6), np.uint8)
-    dilated_mask = cv2.dilate(eroded_mask, kernel_dilate, iterations=2)
-
-    if debug:
-        cv2.imshow('mask', mask)
-        cv2.imshow('eroded', eroded_mask)
-        cv2.imshow('dilated', dilated_mask)
-
-    # Retrieve contours
-    im2, contours, hierarchy = cv2.findContours(dilated_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Sort by area
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:10]
-    if debug:
-        # Draw biggest
-        # cv2.drawContours(image, contours, 0, (0,255,0), 3)
-        cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
-
-    if len(contours) > 0:
-        M = cv2.moments(contours[0])
-        # Centroid
-        cx = int(M['m10'] / M['m00'])
-        cy = int(M['m01'] / M['m00'])
-        area = cv2.contourArea(contours[0])
-    else:
-        cx, cy = 0, 0
-        area = 0
-        error = True
-
-    if debug:
-        if error:
-            print("No centroid found")
-        else:
-            print("Found centroid at ({}, {})".format(cx, cy))
-        cv2.circle(image, (cx, cy), radius=10, color=(0, 0, 255),
-                   thickness=1, lineType=8, shift=0)
-        cv2.imshow('result', image)
-    return cx, cy, area, error
-
-
-class ImageCallback(object):
-    """
-    Image callback for ROS
-    """
-
-    def __init__(self):
-        super(ImageCallback, self).__init__()
-        self.valid_img = None
-
-    def imageCallback(self, msg):
-        try:
-            # Convert your ROS Image message to OpenCV
-            cv2_img = bridge.imgmsg_to_cv2(msg, "rgb8")
-            self.valid_img = cv2_img
-        except CvBridgeError as e:
-            print("CvBridgeError:", e)
-
-
-def saveSecondCamImage(im, episode_folder, episode_step, path="robobo_2nd_cam"):
-    """
-    Write an image to disk
-    :param im: (numpy matrix) BGR image
-    :param episode_folder: (str)
-    :param episode_step: (int)
-    :param path: (str)
-    """
-    image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
-    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    cv2.imwrite("srl_zoo/data/{}".format(image_path), im)
-
-
-rospy.init_node('robobo_server', anonymous=True)
-
-# Connect to ROS Topics
-if IMAGE_TOPIC is not None:
-    image_cb_wrapper = ImageCallback()
-    img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback, queue_size=1)
-
-if SECOND_CAM_TOPIC is not None:
-    DATA_FOLDER_SECOND_CAM = "real_robobo_2nd_cam"
-    image_cb_wrapper_2 = ImageCallback()
-    img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
-
-print('Starting up on port number {}'.format(SERVER_PORT))
-context = zmq.Context()
-socket = context.socket(zmq.PAIR)
-
-socket.bind("tcp://*:{}".format(SERVER_PORT))
-
-print("Waiting for client...")
-socket.send_json({'msg': 'hello'})
-print("Connected to client")
-
-action = 0
-episode_step = 0
-episode_idx = -1
-episode_folder = None
 
 
 class Robobo(object):
@@ -175,6 +53,7 @@ class Robobo(object):
         # Robobo's position on the grid
         self.position = [0, 0]
 
+        # Initialize the different for moving the robot
         self.directions = {'left': 90, 'right': -90}
         self.faces = ['west', 'north', 'east']
         self.current_face_idx = 1
@@ -328,12 +207,132 @@ class Robobo(object):
 
     @staticmethod
     def normalizeAngle(angle):
+        """
+        :param angle: (float)
+        :return: (float) the angle in [-pi, pi]
+        """
         while angle > 180:
             angle -= 2 * 180
         while angle < -180:
             angle += 2 * 180
         return angle
 
+
+def findTarget(image, debug=False):
+    """
+    Find the target in the image using color thresholds
+    :param image: (bgr image)
+    :param debug: (bool) Whether to display the image or not
+    :return: (int, int, float, bool)
+    """
+    error = False
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # define range of blue color in HSV
+    lower_red = np.array([120, 130, 0])
+    upper_red = np.array([135, 255, 255])
+
+    # Threshold the HSV image
+    mask = cv2.inRange(hsv, lower_red, upper_red)
+
+    # Remove noise
+    kernel_erode = np.ones((4, 4), np.uint8)
+    eroded_mask = cv2.erode(mask, kernel_erode, iterations=2)
+
+    kernel_dilate = np.ones((6, 6), np.uint8)
+    dilated_mask = cv2.dilate(eroded_mask, kernel_dilate, iterations=2)
+
+    if debug:
+        cv2.imshow('mask', mask)
+        cv2.imshow('eroded', eroded_mask)
+        cv2.imshow('dilated', dilated_mask)
+
+    # Retrieve contours
+    _, contours, _ = cv2.findContours(dilated_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Sort by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:10]
+    if debug:
+        cv2.drawContours(image, contours, 0, (0, 255, 0), 3)
+
+    if len(contours) > 0:
+        M = cv2.moments(contours[0])
+        # Centroid
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+        area = cv2.contourArea(contours[0])
+    else:
+        cx, cy = 0, 0
+        area = 0
+        error = True
+
+    if debug:
+        if error:
+            print("No centroid found")
+        else:
+            print("Found centroid at ({}, {})".format(cx, cy))
+        cv2.circle(image, (cx, cy), radius=10, color=(0, 0, 255),
+                   thickness=1, lineType=8, shift=0)
+        cv2.imshow('result', image)
+    return cx, cy, area, error
+
+
+class ImageCallback(object):
+    """
+    Image callback for ROS
+    """
+
+    def __init__(self):
+        super(ImageCallback, self).__init__()
+        self.valid_img = None
+
+    def imageCallback(self, msg):
+        try:
+            # Convert your ROS Image message to OpenCV
+            cv2_img = bridge.imgmsg_to_cv2(msg, "rgb8")
+            self.valid_img = cv2_img
+        except CvBridgeError as e:
+            print("CvBridgeError:", e)
+
+
+def saveSecondCamImage(im, episode_folder, episode_step, path="robobo_2nd_cam"):
+    """
+    Write an image to disk
+    :param im: (numpy matrix) BGR image
+    :param episode_folder: (str)
+    :param episode_step: (int)
+    :param path: (str)
+    """
+    image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    cv2.imwrite("srl_zoo/data/{}".format(image_path), im)
+
+
+rospy.init_node('robobo_server', anonymous=True)
+
+# Connect to ROS Topics
+if IMAGE_TOPIC is not None:
+    image_cb_wrapper = ImageCallback()
+    img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback, queue_size=1)
+
+if SECOND_CAM_TOPIC is not None:
+    image_cb_wrapper_2 = ImageCallback()
+    img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
+
+print('Starting up on port number {}'.format(SERVER_PORT))
+context = zmq.Context()
+socket = context.socket(zmq.PAIR)
+
+socket.bind("tcp://*:{}".format(SERVER_PORT))
+
+print("Waiting for client...")
+socket.send_json({'msg': 'hello'})
+print("Connected to client")
+
+action = 0
+episode_step = 0
+episode_idx = -1
+episode_folder = None
 
 robobo = Robobo()
 robobo.stop()
@@ -408,18 +407,23 @@ while not should_exit[0]:
     else:
         print("Unsupported action")
 
-    original_image = np.copy(image_cb_wrapper.valid_img)
-    # Find the target in the image using color thresholds
-    cx, cy, area, error = findTarget(original_image.copy(), debug=False)
+    if IMAGE_TOPIC is not None:
+        # Retrieve last image from image topic
+        original_image = np.copy(image_cb_wrapper.valid_img)
+        # Find the target in the image using color thresholds
+        cx, cy, area, error = findTarget(original_image.copy(), debug=False)
+        # Compute the change in the target area compared to initial detected area
+        delta_area_rate = (TARGET_INITIAL_AREA - area) / TARGET_INITIAL_AREA
 
-    delta_area_rate = (TARGET_INITIAL_AREA - area) / TARGET_INITIAL_AREA
+        print("Image processing:", cx, cy, area, error, delta_area_rate)
+    else:
+        delta_area_rate = 0
 
-    print("Image processing:", cx, cy, area, error)
     reward = 0
     # Consider that we reached the target if we are close enough
     # we detect that computing the difference in area between TARGET_INITIAL_AREA
     # current detected area of the target
-    if delta_area_rate > 0.2:
+    if delta_area_rate > MIN_DELTA_AREA:
         reward = 1
         print("Target reached!")
 
@@ -444,8 +448,6 @@ while not should_exit[0]:
         episode_step += 1
 
     if IMAGE_TOPIC is not None:
-        # # Retrieve last image from image topic
-        # img = image_cb_wrapper.valid_img
         # to contiguous, otherwise ZMQ will complain
         img = np.ascontiguousarray(original_image, dtype=np.uint8)
         sendMatrix(socket, img)

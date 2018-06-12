@@ -14,6 +14,9 @@ Table of Contents
   * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
     * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
     * [RL on a Real Robot](#rl-on-a-real-robot)
+  * [Working With a Real Robobo](#working-with-a-real-robobo)
+    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl-1)
+    * [RL on a Real Robobo](#rl-on-a-real-robobo)
   * [Troubleshooting](#troubleshooting)
   * [Known issues](#known-issues)
 
@@ -242,19 +245,11 @@ python -m environments.gym_baxter.test_baxter_env
 
 NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/gym_baxter/baxter_env.py`
 
-### RL on a Real Robot
+### RL on a Real Baxter Robot
 
 1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
 
 2. Make sure that USING_REAL_BAXTER is set to True in `gazebo/constants.py`.
-WARNING: you need to copy code from `rl_baselines/ppo2.py` if you want to use an algo different from PPO2:
-```python
-from gazebo.constants import USING_REAL_BAXTER
-if USING_REAL_BAXTER:
-    import environments.gym_baxter.baxter_env as kuka_env
-else:
-    import environments.kuka_button_gym_env as kuka_env
-```
 
 3. Launch ROS bridge server (python 2):
 ```
@@ -270,6 +265,79 @@ python -m visdom.server
 ```
 python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --shape-reward --algo ppo2 --env Baxter-v0
 ```
+
+## Working With a Real Robobo
+
+[Robobo Documentation](https://bitbucket.org/mytechia/robobo-programming/wiki/Home)
+
+Note: the Robobo is controlled using time (the feedback frequency is to low to do closed-loop control)
+The robot was calibrated for a constant speed of 10.
+
+### Recording Data With a Random Agent for SRL
+
+1. Change you environment to match Robobo ROS settings or in your .bashrc:
+NOTE: Robobo is using ROS Java, if you encounter any problem with the cameras (e.g. with a xtion), you should create the master node on your computer and change the settings in the robobo dev app.
+```
+# NB: This is only an example
+export ROS_HOSTNAME=192.168.0.211  # Your IP
+export ROS_MASTER_URI=http://robobo.local:11311 # Robobo IP
+```
+
+2. Calibrate the different values in in `gazebo/constants.py` using `gazebo/real_robobo_server.py` and `gazebo/teleop_client.py` (Client for teleoperation):
+- Set USING_ROBOBO to True
+- Area of the target: TARGET_INITIAL_AREA
+- Boundaries of the enviroment: (MIN_X, MAX_X, MIN_Y, MAX_Y)
+- Maximum number of steps per episode: MAX_STEPS
+
+3. Configure images topics in `gazebo/constants.py`:
+- IMAGE_TOPIC: main camera
+- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
+- DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
+
+NOTE: If you want to use robobo's camera (phone camera), you need to republish the image to the raw format:
+```
+rosrun image_transport republish compressed in:=/camera/image raw out:=/camera/image_repub
+```
+
+4. Launch ROS bridge server (python 2):
+```
+python -m gazebo.real_robobo_server
+```
+
+5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
+
+6. Set the number of episodes you want to record, name of the experiment and random seed in `environments/robobo_gym/test_robobo_env.py`
+
+7. Record data using a random agent:
+```
+python -m environments.robobo_gym.test_robobo_env
+```
+
+8. Wait until the end... Note: the real robobo runs at approximately 0.1 FPS.
+
+NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/robobo_gym/robobo_env.py`
+
+### RL on a Real Robobo
+
+1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
+
+2. Make sure that USING_ROBOBO is set to True in `gazebo/constants.py`.
+
+3. Launch ROS bridge server (python 2):
+```
+python -m gazebo.real_robobo_server
+```
+
+4. Start visdom for visualizing the training
+```
+python -m visdom.server
+```
+
+4. Train the agent (python 3)
+```
+python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --algo ppo2 --env RoboboGymEnv-v0
+```
+
 
 ## Troubleshooting
 If a submodule is not downloaded:
