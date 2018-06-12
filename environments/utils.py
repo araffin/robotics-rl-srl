@@ -1,11 +1,38 @@
 # Modified version of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/envs.py
 
 import os
+import importlib
 
 import gym
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from gym.envs.registration import registry, patch_deprecated_methods, load
+
+
+def dynamicEnvLoad(env_id):
+    """
+    Get from Gym, the module where the environment is stored
+    :param env_id: (str)
+    :return: (module, str, str) module_env, class_name, env_module_path
+    """
+    # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
+    entry_point = registry.spec(env_id)._entry_point
+    if callable(entry_point):
+        class_name = entry_point.__name__
+        env_module_path = entry_point.__module__
+    else:
+        class_name = entry_point.split(':')[1]
+        env_module_path = entry_point.split(':')[0]
+    # Lets try and dynamically load the module_env, in order to fetch the globals.
+    # If it fails, it means that it was unable to load the path from the entry_point
+    # should this occure, it will mean that some parameters will not be correctly saved.
+    try:
+        module_env = importlib.import_module(env_module_path)
+    except ImportError:
+        raise AssertionError("Error: could not import module {}, ".format(env_module_path) +
+                             "Halting execution. Are you sure this is a valid environement?")
+
+    return module_env, class_name, env_module_path
 
 
 def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=None):
@@ -21,7 +48,9 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=No
 
     # define a place holder function to be returned to the caller.
     def _thunk():
-        env = _make(env_id, env_kwargs=env_kwargs)
+        local_env_kwargs = dict(env_kwargs)  # copy this to avoid altering the others
+        local_env_kwargs["env_rank"] = rank
+        env = _make(env_id, env_kwargs=local_env_kwargs)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
             env = make_atari(env_id)

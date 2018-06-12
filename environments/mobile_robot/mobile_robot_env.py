@@ -1,15 +1,14 @@
 import os
 import pybullet as p
 
-import gym
 import numpy as np
 import torch as th
 import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 
+from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
-from state_representation.models import loadSRLModel
 
 #  Number of steps before termination
 MAX_STEPS = 250  # WARNING: should be also change in __init__.py (timestep_limit)
@@ -37,12 +36,7 @@ def getGlobals():
     return globals()
 
 
-class MobileRobotGymEnv(gym.Env):
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 50
-    }
-
+class MobileRobotGymEnv(SRLGymEnv):
     """
     Gym wrapper for Mobile Robot environment
     WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
@@ -61,13 +55,19 @@ class MobileRobotGymEnv(gym.Env):
     :param learn_states: (bool)
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
+    :param env_rank: (int) the number ID of the environment
+    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
                  name="mobile_robot", max_distance=1.6, shape_reward=False,
                  use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_zoo/data/', **_):
+                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **_):
+        super(MobileRobotGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+                                                relative_pos=RELATIVE_POS,
+                                                env_rank=env_rank,
+                                                srl_pipe=srl_pipe)
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
@@ -113,11 +113,6 @@ class MobileRobotGymEnv(gym.Env):
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=learn_states, path=save_path)
-        # SRL model
-        if self.use_srl:
-            env_object = self if use_ground_truth else None
-            self.srl_model = loadSRLModel(srl_model_path, self.cuda, state_dim, env_object)
-            self.state_dim = self.srl_model.state_dim
 
         if self._renders:
             client_id = p.connect(p.SHARED_MEMORY)
@@ -149,6 +144,8 @@ class MobileRobotGymEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
 
         if self.use_srl:
+            if self.use_ground_truth:
+                self.state_dim = self.getGroundTruthDim()
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         # Create numpy random generator
         # This seed can be changed later
@@ -241,7 +238,7 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 
@@ -308,7 +305,7 @@ class MobileRobotGymEnv(gym.Env):
             self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation), reward, done, {}
+            return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
 

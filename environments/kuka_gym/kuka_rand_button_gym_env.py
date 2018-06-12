@@ -1,14 +1,13 @@
 from .kuka_button_gym_env import *
 
-MAX_STEPS = 1500
-BUTTON_SPEED = 0.001
-BUTTON_YMIN = -0.3
-BUTTON_YMAX = 0.3
+MAX_STEPS = 1000
+BALL_FORCE = 10
 
 
-class KukaMovingButtonGymEnv(KukaButtonGymEnv):
+class KukaRandButtonGymEnv(KukaButtonGymEnv):
     """
-    Gym wrapper for Kuka environment with a push button that is moving
+    Gym wrapper for Kuka environment with a push button in a random position
+        and some random objects
     :param urdf_root: (str) Path to pybullet urdf files
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) Whether to use discrete or continuous actions
@@ -30,9 +29,9 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     """
-
-    def __init__(self, name="kuka_moving_button_gym", **kwargs):
-        super(KukaMovingButtonGymEnv, self).__init__(name=name, **kwargs)
+    
+    def __init__(self, name="kuka_rand_button_gym", **kwargs):
+        super(KukaRandButtonGymEnv, self).__init__(name=name, **kwargs)
 
         self.max_steps = MAX_STEPS
 
@@ -41,8 +40,6 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         Reset the environment
         :return: (numpy tensor) first observation of the env
         """
-        # random initial direction
-        self.button_speed = BUTTON_SPEED * self.np_random.choice([-1, 1])
         self.terminated = False
         self.n_contacts = 0
         self.n_steps_outside = 0
@@ -63,6 +60,17 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
 
         self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
+
+        rand_objects = ["duck_vhacd.urdf", "lego/lego.urdf", "cube_small.urdf"]
+        for _ in range(10):
+            obj = rand_objects[np.random.randint(len(rand_objects))]
+            x_pos = 0.5 + 0.15 * self.np_random.uniform(-1, 1)
+            y_pos = 0 + 0.3 * self.np_random.uniform(-1, 1)
+            if (x_pos < self.button_pos[0] - 0.1) or (x_pos > self.button_pos[0] + 0.1) or (
+                    y_pos < self.button_pos[1] - 0.1) or (y_pos > self.button_pos[1] + 0.1):
+                p.loadURDF(os.path.join(self._urdf_root, obj), [x_pos, y_pos, Z_TABLE + 0.1])
+
+        self.sphere = p.loadURDF(os.path.join(self._urdf_root, "sphere_small.urdf"), [0.25, -0.2, Z_TABLE + 0.3])
 
         p.setGravity(0, 0, -10)
         self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
@@ -107,7 +115,7 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
         if self.use_srl:
-            return self.srl_model.getState(self._observation)
+            return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 
@@ -115,47 +123,13 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         """
         :param action: (int)
         """
-        # should the button hit the edge of the table, switch direction
-        if (self.button_pos[1] > BUTTON_YMAX) or (self.button_pos[1] < BUTTON_YMIN):
-            self.button_speed = -self.button_speed
+        # force applied to the ball
+        if self._env_step_counter == 10:
+            force = np.random.normal(size=(3,))
+            force[2] = 0  # set up force to 0, so that our amplitude is correct
+            force = force / np.linalg.norm(force, 2) * BALL_FORCE  # set force amplitude
+            force[2] = 1  # up force to reduce friction
+            force = np.abs(force)  #  go towards the center of the table
+            p.applyExternalForce(self.sphere, -1, force, [0, 0, 0], p.WORLD_FRAME)
 
-        # move the button pos
-        self.button_pos[1] += self.button_speed
-        p.resetBasePositionAndOrientation(self.button_uid, self.button_pos - np.array([0, 0, BUTTON_DISTANCE_HEIGHT]),
-                                          [0, 0, 0, 1])
-
-        return super(KukaMovingButtonGymEnv, self).step(action)
-
-    def _reward(self):
-        gripper_pos = self.getArmPos()
-        distance = np.linalg.norm(self.button_pos - gripper_pos, 2)
-        # print(distance)
-
-        contact_points = p.getContactPoints(self.button_uid, self._kuka.kuka_uid, BUTTON_LINK_IDX)
-        reward = int(len(contact_points) > 0)
-        self.n_contacts += reward
-
-        contact_with_table = len(p.getContactPoints(self.table_uid, self._kuka.kuka_uid)) > 0
-
-        if distance > self._max_distance or contact_with_table:
-            reward = -1
-            self.n_steps_outside += 1
-        else:
-            self.n_steps_outside = 0
-
-        if contact_with_table or self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION \
-                or self.n_steps_outside >= N_STEPS_OUTSIDE_SAFETY_SPHERE:
-            self.terminated = True
-
-        if self._shape_reward:
-            # Button pushed
-            if self.terminated and reward > 0:
-                return 50
-            # out of bounds
-            elif self.terminated and reward < 0:
-                return -250
-            # anything else
-            else:
-                return -distance
-
-        return reward
+        return super(KukaRandButtonGymEnv, self).step(action)

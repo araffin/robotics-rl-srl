@@ -238,12 +238,12 @@ def main():
         point = ax.scatter([0], [0], [0], c=[1, 0, 0, 1])
         fig.legend()
 
-        if train_args["srl_model"] == "ground_truth":
-            ax.set_xlim([-4, 4])
-            ax.set_ylim([-4, 4])
-            ax.set_zlim([-2, 2])
-            delta_obs = [obs[0]]
-        elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
+        if train_args["srl_model"] in ["ground_truth", "supervised"]:
+            ax.set_xlim([-0.4, 0.4])
+            ax.set_ylim([-0.4, 0.4])
+            ax.set_zlim([-0.2, 0.2])
+            delta_obs = [envs.getOriginalObs()[0]]
+        elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors"]:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
             path = srl_models['log_folder'] + "/".join(
@@ -282,9 +282,9 @@ def main():
 
         # plotting
         if load_args.plotting:
-            if train_args["srl_model"] == "ground_truth":
-                ajusted_obs = obs[0]
-            elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors", "supervised"]:
+            if train_args["srl_model"] in ["ground_truth", "supervised"]:
+                ajusted_obs = envs.getOriginalObs()[0]
+            elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors"]:
                 ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished

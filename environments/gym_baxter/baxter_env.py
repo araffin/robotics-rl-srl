@@ -5,7 +5,6 @@ This program allows to run Baxter Gym Environment as a module
 import numpy as np
 import cv2
 import zmq
-import gym
 from gym import spaces
 from gym.utils import seeding
 import torch as th
@@ -13,10 +12,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Baxter-Gazebo bridge specific
+from environments.srl_env import SRLGymEnv
 from gazebo.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
 from gazebo.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
-from state_representation.models import loadSRLModel
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
@@ -57,7 +56,7 @@ def bgr2rgb(bgr_img):
     return cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
 
 
-class BaxterEnv(gym.Env):
+class BaxterEnv(SRLGymEnv):
     """
     Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
     The goal of the robotic arm is to push the button on the table
@@ -71,11 +70,17 @@ class BaxterEnv(gym.Env):
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
+    :param env_rank: (int) the number ID of the environment
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
                  learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
-                 shape_reward=False):
+                 shape_reward=False, env_rank=0, srl_pipe=None):
+        super(BaxterEnv, self).__init__(use_ground_truth=use_ground_truth,
+                                        relative_pos=RELATIVE_POS,
+                                        env_rank=env_rank,
+                                        srl_pipe=srl_pipe)
         self.n_contacts = 0
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
@@ -103,9 +108,8 @@ class BaxterEnv(gym.Env):
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
         if self.use_srl:
-            env_object = self if use_ground_truth else None
-            self.srl_model = loadSRLModel(srl_model_path, self.cuda, self.state_dim, env_object)
-            self.state_dim = self.srl_model.state_dim
+            if use_ground_truth:
+                self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
@@ -170,7 +174,7 @@ class BaxterEnv(gym.Env):
         if self.saver is not None:
             self.saver.step(self.observation, action, self.reward, done, self.getGroundTruth())
         if self.use_srl:
-            return self.srl_model.getState(self.observation), self.reward, done, {}
+            return self.getSRLState(self.observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -264,7 +268,7 @@ class BaxterEnv(gym.Env):
         if self.saver is not None:
             self.saver.reset(self.observation, self.getTargetPos(), self.getGroundTruth())
         if self.use_srl:
-            return self.srl_model.getState(self.observation)
+            return self.getSRLState(self.observation)
         else:
             return self.observation
 
