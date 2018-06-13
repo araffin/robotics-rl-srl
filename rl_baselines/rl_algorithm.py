@@ -13,12 +13,11 @@ class BaseRLObject:
         raise NotImplementedError()
 
     @classmethod
-    def load(cls, save_path, args=None, tf_sess=None):
+    def load(cls, load_path, args=None):
         """
         Load the model from a path
-        :param save_path: (str)
+        :param load_path: (str)
         :param args: (dict) the arguments used
-        :param tf_sess: (Tensorflow session)
         :return: (BaseRLObject)
         """
         raise NotImplementedError()

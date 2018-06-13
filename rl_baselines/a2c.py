@@ -5,6 +5,7 @@ import time
 import numpy as np
 import tensorflow as tf
 from baselines.acer.acer_simple import find_trainable_variables, joblib
+from baselines.common import tf_util
 from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
 from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
@@ -32,21 +33,24 @@ class A2CModel(BaseRLObject):
             pickle.dump(save_param, f)
 
     @classmethod
-    def load(cls, load_path, args=None, tf_sess=None):
+    def load(cls, load_path, args=None):
+        sess = tf_util.make_session()
+
         with open(load_path, "rb") as f:
             save_param = pickle.load(f)
         loaded_model = A2CModel()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
         policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[loaded_model.policy]
-        loaded_model.model = policy(tf_sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1, reuse=False)
+        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1, reuse=False)
 
-        tf.global_variables_initializer().run(session=tf_sess)
+        tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "a2c_weights")
         restores = []
         for p, loaded_p in zip(find_trainable_variables("model"), loaded_params):
             restores.append(p.assign(loaded_p))
-        tf_sess.run(restores)
+        sess.run(restores)
+
         return loaded_model
 
     def customArguments(self, parser):
