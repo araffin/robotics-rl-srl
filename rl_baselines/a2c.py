@@ -21,8 +21,10 @@ class A2CModel(BaseRLObject):
         self.ob_space = None
         self.ac_space = None
         self.policy = None
+        self.model = None
 
     def save(self, save_path):
+        assert self.model is not None, "Error: must train or load model before use"
         self.model.save(os.path.dirname(save_path) + "a2c_weights")
         save_param = {
             "ob_space": self.ob_space,
@@ -63,6 +65,7 @@ class A2CModel(BaseRLObject):
         return parser
 
     def getAction(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
         actions, _, _, _ = self.model.step(observation, None, dones)
         return actions
 

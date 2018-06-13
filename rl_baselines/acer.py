@@ -20,8 +20,10 @@ class ACERModel(BaseRLObject):
         self.ob_space = None
         self.ac_space = None
         self.policy = None
+        self.model = None
 
     def save(self, save_path):
+        assert self.model is not None, "Error: must train or load model before use"
         self.model.save(os.path.dirname(save_path) + "acer_weights")
         save_param = {
             "ob_space": self.ob_space,
@@ -61,6 +63,7 @@ class ACERModel(BaseRLObject):
         return parser
 
     def getAction(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
         actions, _, _ = self.model.step(observation, state=None, mask=dones)
         return actions
 

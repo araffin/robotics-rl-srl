@@ -8,8 +8,71 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+from rl_baselines.rl_algorithm import BaseRLObject
 from rl_baselines.utils import createEnvs
 from srl_zoo.utils import printYellow
+
+
+class CMAESModel(BaseRLObject):
+    def __init__(self):
+        super(CMAESModel, self).__init__()
+        self.model = None
+
+    def save(self, save_path):
+        assert self.model is not None, "Error: must train or load model before use"
+        self.model.save(save_path)
+
+    @classmethod
+    def load(cls, load_path, args=None):
+        with open(load_path, "rb") as f:
+            class_dict = pickle.load(f)
+        loaded_model = CMAESModel()
+        loaded_model.model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"],
+                                   class_dict["init_sigma"])
+        loaded_model.model.__dict__ = class_dict
+        return loaded_model
+
+    def customArguments(self, parser):
+        parser.add_argument('--num-population', help='Number of population', type=int, default=20)
+        parser.add_argument('--mu', type=float, default=0,
+                            help='inital location for gaussian sampling of network parameters')
+        parser.add_argument('--sigma', type=float, default=0.2,
+                            help='inital scale for gaussian sampling of network parameters')
+        parser.add_argument('--cuda', action='store_true', default=False,
+                            help='use gpu for the neural network')
+        return parser
+
+    def getAction(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        return self.model.getAction(observation)
+
+    def train(self, args, callback, env_kwargs=None):
+        args.num_cpu = args.num_population
+        envs = createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs)
+
+        if args.continuous_actions:
+            action_space = np.prod(envs.action_space.shape)
+        else:
+            action_space = envs.action_space.n
+
+        if args.srl_model != "":
+            printYellow("Using MLP policy because working on state representation")
+            args.policy = "mlp"
+            net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
+        else:
+            net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
+
+        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
+
+        self.model = CMAES(
+            args.num_population,
+            policy,
+            mu=args.mu,
+            sigma=args.sigma,
+            continuous_actions=args.continuous_actions
+        )
+
+        self.model.train(envs, callback, num_updates=int(args.num_timesteps))
 
 
 class Policy(object):
@@ -236,64 +299,3 @@ class CMAES:
             print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
             self.es.tell(population, -r)
             self.best_model = self.es.result.xbest
-
-
-def load(save_path):
-    """
-    :param save_path: (str)
-    :return: (CMAES Object)
-    """
-    with open(save_path, "rb") as f:
-        class_dict = pickle.load(f)
-    model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"], class_dict["init_sigma"])
-    model.__dict__ = class_dict
-    return model
-
-
-def customArguments(parser):
-    """
-    :param parser: (ArgumentParser Object)
-    :return: (ArgumentParser Object)
-    """
-    parser.add_argument('--num-population', help='Number of population', type=int, default=20)
-    parser.add_argument('--mu', type=float, default=0,
-                        help='inital location for gaussian sampling of network parameters')
-    parser.add_argument('--sigma', type=float, default=0.2,
-                        help='inital scale for gaussian sampling of network parameters')
-    parser.add_argument('--cuda', action='store_true', default=False,
-                        help='use gpu for the neural network')
-    return parser
-
-
-def main(args, callback, env_kwargs=None):
-    """
-    :param args: (argparse.Namespace Object)
-    :param callback: (function)
-    :param env_kwargs: (dict) The extra arguments for the environment
-    """
-    args.num_cpu = args.num_population
-    envs = createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs)
-
-    if args.continuous_actions:
-        action_space = np.prod(envs.action_space.shape)
-    else:
-        action_space = envs.action_space.n
-
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
-        net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
-    else:
-        net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
-
-    policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
-
-    model = CMAES(
-        args.num_population,
-        policy,
-        mu=args.mu,
-        sigma=args.sigma,
-        continuous_actions=args.continuous_actions
-    )
-
-    model.train(envs, callback, num_updates=int(args.num_timesteps))

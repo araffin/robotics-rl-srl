@@ -16,6 +16,7 @@ class ARSModel(BaseRLObject):
         self.model = None
 
     def save(self, save_path):
+        assert self.model is not None, "Error: must train or load model before use"
         self.model.save(save_path)
 
     @classmethod
@@ -41,6 +42,7 @@ class ARSModel(BaseRLObject):
         return parser
 
     def getAction(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
         return self.model.getAction(observation)
 
     def train(self, args, callback, env_kwargs=None):
