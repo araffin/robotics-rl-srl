@@ -94,8 +94,8 @@ class ACERModel(BaseRLObject):
         ob_space = env.observation_space
         ac_space = env.action_space
         num_procs = nenvs
-        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps, nstack=nstack,
-                           num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
+        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps,
+                           nstack=nstack, num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
                            max_grad_norm=max_grad_norm, lr=lr, rprop_alpha=rprop_alpha, rprop_epsilon=rprop_epsilon,
                            total_timesteps=total_timesteps, lrschedule=lrschedule, c=c,
                            trust_region=trust_region, alpha=alpha, delta=delta)

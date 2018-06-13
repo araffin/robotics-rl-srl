@@ -4,9 +4,78 @@ import pickle
 import numpy as np
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
+from rl_baselines.rl_algorithm import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize, VecFrameStack
 from srl_zoo.utils import printYellow
+
+
+class ARSModel(BaseRLObject):
+    def __init__(self):
+        super(ARSModel, self).__init__()
+        self.model = None
+
+    def save(self, save_path):
+        self.model.save(save_path)
+
+    @classmethod
+    def load(cls, load_path, args=None):
+        with open(load_path, "rb") as f:
+            class_dict = pickle.load(f)
+        loaded_model = ARSModel()
+        loaded_model.model = ARS(1, 0, 0)
+        loaded_model.model.__dict__ = class_dict
+        return loaded_model
+
+    def customArguments(self, parser):
+        parser.add_argument('--num-population', help='Number of population (each one has 2 threads)', type=int,
+                            default=20)
+        parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float,
+                            default=0.02)
+        parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)
+        parser.add_argument('--top-population', help='Number of top population to use in update', type=int, default=2)
+        parser.add_argument('--algo-type', help='"v1" is standard ARS, "v2" is for rolling average normalization.',
+                            type=str, default="v2", choices=["v1", "v2"])
+        parser.add_argument('--max-step-amplitude', type=float, default=10,
+                            help='Set the maximum update vectors amplitude (mesured in factors of step_size)')
+        return parser
+
+    def getAction(self, observation, dones=None):
+        return self.model.getAction(observation)
+
+    def train(self, args, callback, env_kwargs=None):
+        assert args.top_population <= args.num_population, \
+            "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
+        assert args.num_population > 1, "The population cannot be less than 2."
+
+        envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True, env_kwargs=env_kwargs)
+                for i in range(args.num_population * 2)]
+        envs = SubprocVecEnv(envs)
+        envs = VecFrameStack(envs, args.num_stack)
+
+        if args.srl_model != "":
+            printYellow("Using MLP policy because working on state representation")
+            args.policy = "mlp"
+            if args.algo_type == "v2":
+                envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+
+        if args.continuous_actions:
+            action_space = np.prod(envs.action_space.shape)
+        else:
+            action_space = envs.action_space.n
+
+        self.model = ARS(
+            args.num_population,
+            np.prod(envs.observation_space.shape),
+            action_space,
+            top_population=args.top_population,
+            step_size=args.step_size,
+            exploration_noise=args.exploration_noise,
+            continuous_actions=args.continuous_actions,
+            max_step_amplitude=args.max_step_amplitude
+        )
+
+        self.model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))
 
 
 class ARS:
@@ -22,7 +91,6 @@ class ARS:
     :param continuous_actions: (bool)
     :param max_step_amplitude: (float) the maximum amplitude factor for step_size 
     """
-
     def __init__(self, n_population, observation_space, action_space, top_population=2,
                  step_size=0.02, exploration_noise=0.02, continuous_actions=False, max_step_amplitude=10):
         self.n_population = n_population
@@ -105,74 +173,7 @@ class ARS:
             for i in range(self.top_population):
                 delta_sum += (r[idx[i], 0] - r[idx[i], 1]) * delta[idx[i]]
             # here, we need to be careful with the normalization of step_size, as the variance can be 0 on sparse reward
-            self.M += self.step_size / max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) * delta_sum
+            self.M += (self.step_size /
+                       max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) *
+                       delta_sum)
 
-
-def load(save_path):
-    """
-    :param save_path: (str)
-    :return: (ARS Object)
-    """
-    with open(save_path, "rb") as f:
-        class_dict = pickle.load(f)
-    model = ARS(1, 0, 0)
-    model.__dict__ = class_dict
-    return model
-
-
-def customArguments(parser):
-    """
-    :param parser: (ArgumentParser Object)
-    :return: (ArgumentParser Object)
-    """
-    parser.add_argument('--num-population', help='Number of population (each one has 2 threads)', type=int, default=20)
-    parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float,
-                        default=0.02)
-    parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)
-    parser.add_argument('--top-population', help='Number of top population to use in update', type=int, default=2)
-    parser.add_argument('--algo-type', help='"v1" is standard ARS, "v2" is for rolling average normalization.',
-                        type=str, default="v2", choices=["v1", "v2"])
-    parser.add_argument('--max-step-amplitude', type=float, default=10, 
-                        help='Set the maximum update vectors amplitude (mesured in factors of step_size)')
-    return parser
-
-
-def main(args, callback=None, env_kwargs=None):
-    """
-    :param args: (argparse.Namespace Object)
-    :param callback: (function)
-    :param env_kwargs: (dict) The extra arguments for the environment
-    """
-
-    assert args.top_population <= args.num_population, \
-        "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
-    assert args.num_population > 1, "The population cannot be less than 2."
-
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True, env_kwargs=env_kwargs)
-            for i in range(args.num_population * 2)]
-    envs = SubprocVecEnv(envs)
-    envs = VecFrameStack(envs, args.num_stack)
-
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
-        if args.algo_type == "v2":
-            envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
-
-    if args.continuous_actions:
-        action_space = np.prod(envs.action_space.shape)
-    else:
-        action_space = envs.action_space.n
-
-    model = ARS(
-        args.num_population,
-        np.prod(envs.observation_space.shape),
-        action_space,
-        top_population=args.top_population,
-        step_size=args.step_size,
-        exploration_noise=args.exploration_noise,
-        continuous_actions=args.continuous_actions,
-        max_step_amplitude=args.max_step_amplitude
-    )
-
-    model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))

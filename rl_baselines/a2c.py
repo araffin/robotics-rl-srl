@@ -42,7 +42,8 @@ class A2CModel(BaseRLObject):
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
         policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[loaded_model.policy]
-        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1, reuse=False)
+        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
+                                    reuse=False)
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "a2c_weights")
