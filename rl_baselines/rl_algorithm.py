@@ -13,10 +13,12 @@ class BaseRLObject:
         raise NotImplementedError()
 
     @classmethod
-    def load(cls, save_path):
+    def load(cls, save_path, args=None, tf_sess=None):
         """
         Load the model from a path
         :param save_path: (str)
+        :param args: (dict) the arguments used
+        :param tf_sess: (Tensorflow session)
         :return: (BaseRLObject)
         """
         raise NotImplementedError()
@@ -29,10 +31,11 @@ class BaseRLObject:
         """
         raise NotImplementedError()
 
-    def getAction(self, observation):
+    def getAction(self, observation, dones=None):
         """
         From an observation returns the associated action
         :param observation: (numpy float)
+        :param dones: ([bool])
         :return: (numpy float)
         """
         raise NotImplementedError()

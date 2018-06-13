@@ -1,13 +1,130 @@
-from baselines.a2c.a2c import *
+import os
+import pickle
+import time
+
+import numpy as np
+import tensorflow as tf
+from baselines.acer.acer_simple import find_trainable_variables, joblib
+from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
 from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
+from rl_baselines.rl_algorithm import BaseRLObject
 from rl_baselines.policies import MlpPolicyDiscrete
 from rl_baselines.utils import createTensorflowSession, createEnvs
 
 
+class A2CModel(BaseRLObject):
+    def __init__(self):
+        super(A2CModel, self).__init__()
+        self.ob_space = None
+        self.ac_space = None
+        self.policy = None
+
+    def save(self, save_path):
+        self.model.save(os.path.dirname(save_path) + "a2c_weights")
+        save_param = {
+            "ob_space": self.ob_space,
+            "ac_space": self.ac_space,
+            "policy": self.policy
+        }
+        with open(save_path, "wb") as f:
+            pickle.dump(save_param, f)
+
+    @classmethod
+    def load(cls, load_path, args=None, tf_sess=None):
+        with open(load_path, "rb") as f:
+            save_param = pickle.load(f)
+        loaded_model = A2CModel()
+        loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
+
+        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[loaded_model.policy]
+        loaded_model.model = policy(tf_sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1, reuse=False)
+
+        tf.global_variables_initializer().run(session=tf_sess)
+        loaded_params = joblib.load(os.path.dirname(load_path) + "a2c_weights")
+        restores = []
+        for p, loaded_p in zip(find_trainable_variables("model"), loaded_params):
+            restores.append(p.assign(loaded_p))
+        tf_sess.run(restores)
+        return loaded_model
+
+    def customArguments(self, parser):
+        parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
+        parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'],
+                            default='cnn')
+        parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
+                            default='constant')
+        return parser
+
+    def getAction(self, observation, dones=None):
+        actions, _, _, _ = self.model.step(observation, None, dones)
+        return actions
+
+    def train(self, args, callback, env_kwargs=None):
+        envs = createEnvs(args, env_kwargs=env_kwargs)
+
+        self.ob_space = envs.observation_space
+        self.ac_space = envs.action_space
+        self.policy = args.policy
+
+        logger.configure()
+        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
+                    lrschedule=args.lr_schedule, callback=callback)
+        envs.close()
+
+    def _learn(self, policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
+               max_grad_norm=0.5, lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100,
+               callback=None):
+        tf.reset_default_graph()
+        createTensorflowSession()
+
+        if policy == 'cnn':
+            policy_fn = CnnPolicy
+        elif policy == 'lstm':
+            policy_fn = LstmPolicy
+        elif policy == 'lnlstm':
+            policy_fn = LnLstmPolicy
+        elif policy == 'mlp':
+            policy_fn = MlpPolicyDiscrete
+        else:
+            raise ValueError("Policy {} not implemented".format(policy))
+
+        nenvs = env.num_envs
+        ob_space = env.observation_space
+        ac_space = env.action_space
+        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps,
+                           ent_coef=ent_coef,
+                           vf_coef=vf_coef,
+                           max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon,
+                           total_timesteps=total_timesteps,
+                           lrschedule=lrschedule)
+        runner = _Runner(env, self.model, nsteps=nsteps, gamma=gamma)
+
+        nbatch = nenvs * nsteps
+        tstart = time.time()
+        for update in range(1, total_timesteps // nbatch + 1):
+            obs, states, rewards, masks, actions, values = runner.run()
+            policy_loss, value_loss, policy_entropy = self.model.train(obs, states, rewards, masks, actions, values)
+            nseconds = time.time() - tstart
+            fps = int((update * nbatch) / nseconds)
+
+            if callback is not None:
+                callback(locals(), globals())
+
+            if update % log_interval == 0 or update == 1:
+                ev = explained_variance(values, rewards)
+                logger.record_tabular("nupdates", update)
+                logger.record_tabular("total_timesteps", update * nbatch)
+                logger.record_tabular("fps", fps)
+                logger.record_tabular("policy_entropy", float(policy_entropy))
+                logger.record_tabular("value_loss", float(value_loss))
+                logger.record_tabular("explained_variance", float(ev))
+                logger.dump_tabular()
+
+
 # Redefine runner to add support for srl models
-class Runner(object):
+class _Runner(object):
     def __init__(self, env, model, nsteps=5, gamma=0.99):
         self.env = env
         self.model = model
@@ -24,7 +141,7 @@ class Runner(object):
             self.obs_dtype = np.float32
             self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
 
-        obs = env.reset()
+        env.reset()
         self.gamma = gamma
         self.nsteps = nsteps
         self.states = model.initial_state
@@ -71,77 +188,3 @@ class Runner(object):
         mb_values = mb_values.flatten()
         mb_masks = mb_masks.flatten()
         return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values
-
-
-def learn(policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01, max_grad_norm=0.5,
-          lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100, callback=None):
-    tf.reset_default_graph()
-    createTensorflowSession()
-
-    if policy == 'cnn':
-        policy_fn = CnnPolicy
-    elif policy == 'lstm':
-        policy_fn = LstmPolicy
-    elif policy == 'lnlstm':
-        policy_fn = LnLstmPolicy
-    elif policy == 'mlp':
-        policy_fn = MlpPolicyDiscrete
-    else:
-        raise ValueError("Policy {} not implemented".format(policy))
-
-    nenvs = env.num_envs
-    ob_space = env.observation_space
-    ac_space = env.action_space
-    model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps, ent_coef=ent_coef,
-                  vf_coef=vf_coef,
-                  max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps,
-                  lrschedule=lrschedule)
-    runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
-
-    nbatch = nenvs * nsteps
-    tstart = time.time()
-    for update in range(1, total_timesteps // nbatch + 1):
-        obs, states, rewards, masks, actions, values = runner.run()
-        policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values)
-        nseconds = time.time() - tstart
-        fps = int((update * nbatch) / nseconds)
-
-        if callback is not None:
-            callback(locals(), globals())
-
-        if update % log_interval == 0 or update == 1:
-            ev = explained_variance(values, rewards)
-            logger.record_tabular("nupdates", update)
-            logger.record_tabular("total_timesteps", update * nbatch)
-            logger.record_tabular("fps", fps)
-            logger.record_tabular("policy_entropy", float(policy_entropy))
-            logger.record_tabular("value_loss", float(value_loss))
-            logger.record_tabular("explained_variance", float(ev))
-            logger.dump_tabular()
-
-
-def customArguments(parser):
-    """
-    :param parser: (ArgumentParser Object)
-    :return: (ArgumentParser Object)
-    """
-    parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-    parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'], default='cnn')
-    parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
-                        default='constant')
-    return parser
-
-
-def main(args, callback, env_kwargs=None):
-    """
-    :param args: (argparse.Namespace Object)
-    :param callback: (function)
-    :param env_kwargs: (dict) The extra arguments for the environment
-    """
-
-    envs = createEnvs(args, env_kwargs=env_kwargs)
-
-    logger.configure()
-    learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
-          lrschedule=args.lr_schedule, callback=callback)
-    envs.close()
