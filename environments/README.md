@@ -2,10 +2,10 @@
 
 ## Available environments
 - Kuka arm
-    - KukaButtonGymEnv-v0: Kuka arm with a single button below.
-    - KukaRandButtonGymEnv-v0: Kuka arm with a single button below, and some distractors.
-    - Kuka2ButtonGymEnv-v0: Kuka arm with 2 buttons to be pressed in a specific order.
-    - KukaMovingButtonGymEnv-v0: Kuka arm with a single button moving left and right.
+    - KukaButtonGymEnv-v0: Kuka arm with a single button in front.
+    - KukaRandButtonGymEnv-v0: Kuka arm with a single button in front, and some randomly positioned objects
+    - Kuka2ButtonGymEnv-v0: Kuka arm with 2 buttons next to each others, they must be pressed in the correct order.
+    - KukaMovingButtonGymEnv-v0: Kuka arm with a single button in front, slowly moving left to right.
 - mobile robot
     - MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it needs to park on a button.
 - Baxter
