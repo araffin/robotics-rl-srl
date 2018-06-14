@@ -146,7 +146,7 @@ def callback(_locals, _globals):
 
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
-            ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl")
+            ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
