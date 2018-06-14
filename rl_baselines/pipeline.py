@@ -8,6 +8,7 @@ import subprocess
 import yaml
 import numpy as np
 
+from rl_baselines import registered_rl
 from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -15,9 +16,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorf
 
 def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines Benchmark",
-                                     epilog='After the arguments are parsed, the rest are assumed to be arguments for rl_baselines.train')
+                                     epilog='After the arguments are parsed, the rest are assumed to be arguments for' +
+                                            ' rl_baselines.train')
     parser.add_argument('--algo', type=str, default='ppo2', help='OpenAI baseline to use',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars'])
+                        choices=list(registered_rl.keys()))
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
                         choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
                                  "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
