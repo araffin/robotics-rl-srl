@@ -7,25 +7,19 @@ import os
 from datetime import datetime
 from pprint import pprint
 import inspect
+import sys
 
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 
-from gym.envs.registration import registry as gym_registry
 from rl_baselines import registered_rl, AlgoType, ActionType
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
-from environments.utils import dynamicEnvLoad
-# Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
-import environments.kuka_gym.kuka_button_gym_env as kuka_inherited_env
-from environments.kuka_gym.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
-import environments.gym_baxter.baxter_env as baxter_inherited_env
-from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
-import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env
-from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobile_robot_inherited_env_class
+from environments import registered_env
+from environments.srl_env import SRLGymEnv
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -170,7 +164,8 @@ def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
     parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',
                         type=str)
-    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
+    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0',
+                        choices=list(registered_env.keys()))
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
@@ -203,9 +198,6 @@ def main():
     env_kwargs = {}
 
     # Sanity check
-    assert args.env in gym_registry.env_specs, "Error: could not find the environment {}, ".format(args.env) + \
-                                               "here are the valid environments: {}".format(
-                                                   list(gym_registry.env_specs.keys()))
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
@@ -214,8 +206,6 @@ def main():
                                    "port number must be an unsigned 16bit number [0,65535]."
     assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
-
-    module_env, class_name, env_module_path = dynamicEnvLoad(args.env)
 
     ENV_NAME = args.env
     ALGO_NAME = args.algo
@@ -240,10 +230,10 @@ def main():
 
     if not args.continuous_actions and ActionType.Discrete not in action_type:
         raise ValueError(args.algo + " does not support discrete actions, please use the '--continuous-actions' " +
-                                     "(or '-c') flag.")
+                         "(or '-c') flag.")
     if args.continuous_actions and ActionType.Continuous not in action_type:
         raise ValueError(args.algo + " does not support continuous actions, please remove the '--continuous-actions' " +
-                                     "(or '-c') flag.")
+                         "(or '-c') flag.")
 
     env_kwargs["is_discrete"] = not args.continuous_actions
 
@@ -264,44 +254,36 @@ def main():
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
+    env_class = registered_env[args.env][0]
     # env default kwargs
     default_env_kwargs = {k: v.default
-                          for k, v in inspect.signature(module_env.__dict__[class_name].__init__).parameters.items()
+                          for k, v in inspect.signature(env_class.__init__).parameters.items()
                           if v is not None}
 
-    # here we need to get the defaut kwargs and globals from the the correct env, if we inherit from it
-    if issubclass(module_env.__dict__[class_name], kuka_inherited_env_class):
-        inherited_env = kuka_inherited_env
-        inherited_env_class = kuka_inherited_env_class
-    elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
-        inherited_env = baxter_inherited_env
-        inherited_env_class = baxter_inherited_env_class
-    elif issubclass(module_env.__dict__[class_name], mobile_robot_inherited_env_class):
-        inherited_env = mobile_robot_inherited_env
-        inherited_env_class = mobile_robot_inherited_env_class
-    else:
-        # Sanity check to make sure we have implemented the environment correctly,
-        raise AssertionError("Error: not implemented for the environment {}"
-                             .format(module_env.__dict__[class_name].__name__))
+    globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
-    if inherited_env != module_env:
-        inherited_env_kwargs = {k: v.default
-                                for k, v in inspect.signature(inherited_env_class.__init__).parameters.items()
-                                if v is not None}
-        inherited_globals = inherited_env.getGlobals()
-    else:
-        inherited_env_kwargs = {}
-        inherited_globals = {}
+    super_class = registered_env[args.env][1]
+    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class) in
+                              registered_env.items()}
+    while super_class != SRLGymEnv:
+        assert super_class in rec_super_class_lookup, "Error: could not find super class of {}".format(super_class) + \
+                                                      ", are you sure \"registered_env\" is correctly defined?"
+        super_env_kwargs = {k: v.default
+                            for k, v in inspect.signature(super_class.__init__).parameters.items()
+                            if v is not None}
+        default_env_kwargs = {**super_env_kwargs, **default_env_kwargs}
+
+        globals_env_param = {**sys.modules[super_class.__module__].getGlobals(), **globals_env_param}
+
+        super_class = rec_super_class_lookup[super_class]
 
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
     printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects(
-        {**inherited_globals, **module_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs, **env_kwargs}))
+    pprint(filterJSONSerializableObjects({**globals_env_param, **default_env_kwargs, **env_kwargs}))
     # Save kuka env params
-    saveEnvParams({**inherited_globals, **module_env.getGlobals()},
-                  {**inherited_env_kwargs, **default_env_kwargs, **env_kwargs})
+    saveEnvParams(globals_env_param, {**default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)

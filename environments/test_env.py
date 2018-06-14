@@ -9,11 +9,7 @@ import time
 
 import numpy as np
 
-import environments.kuka_gym.kuka_2button_gym_env as kuka_env_2
-import environments.kuka_gym.kuka_button_gym_env as kuka_env
-import environments.kuka_gym.kuka_rand_button_gym_env as kuka_env_rand
-import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
-import environments.mobile_robot.mobile_robot_env as mobile_robot
+from environments import registered_env
 from srl_zoo.utils import printRed
 
 
@@ -51,15 +47,7 @@ def env_thread(args, thread_num, partition=True):
         "shape_reward": args.shape_reward
     }
 
-    if args.env == "Kuka2ButtonGymEnv":
-        env_kwargs["force_down"] = False
-
-    env_class = {"KukaButtonGymEnv-v0": kuka_env.KukaButtonGymEnv,
-                 "Kuka2ButtonGymEnv-v0": kuka_env_2.Kuka2ButtonGymEnv,
-                 "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
-                 "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv
-                 }[args.env]
+    env_class = registered_env[args.env]
 
     if partition:
         env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
@@ -97,8 +85,7 @@ def main():
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
+                        choices=list(registered_env.keys()))
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
@@ -106,7 +93,8 @@ def main():
     parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
     parser.add_argument('--seed', type=int, default=0, help='the seed')
     parser.add_argument('-f', '--force', action='store_true', default=False,
-                        help='Force the save, even if it overrides something else (including partial parts if they exist)')
+                        help='Force the save, even if it overrides something else,' +
+                             ' including partial parts if they exist')
     parser.add_argument('-r', '--relative', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')

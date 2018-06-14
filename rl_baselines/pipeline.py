@@ -9,6 +9,7 @@ import yaml
 import numpy as np
 
 from rl_baselines import registered_rl
+from environments import registered_env
 from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -21,8 +22,7 @@ def main():
     parser.add_argument('--algo', type=str, default='ppo2', help='OpenAI baseline to use',
                         choices=list(registered_rl.keys()))
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
+                        choices=list(registered_env.keys()))
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
                         choices=["autoencoder", "ground_truth", "srl_priors", "supervised",
                                  "pca", "vae", "joints", "joints_position", "raw_pixels"])
