@@ -1,7 +1,7 @@
 from baselines import deepq
 from baselines import logger
 
-from rl_baselines.rl_algorithm import BaseRLObject
+from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, \
     WrapFrameStack, loadRunningAverage

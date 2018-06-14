@@ -10,7 +10,7 @@
 - CMA-ES: Covariance Matrix Adaptation Evolution Strategy
 
 ## Add your own
-1. Create a class that inherits ```rl_baselines.rl_algorithm.BaseRLObject``` that implements your algorithm, specificaly: 
+1. Create a class that inherits ```rl_baselines.base_classes.BaseRLObject``` that implements your algorithm, specificaly: 
     * ```save(save_path, _locals=None)```: to save your model during or after training
     * ```load(load_path, args=None)```: to load the object of your class with variables
     * ```customArguments(parser)```: to parse flags from ```train.py``` or ```pipeline.py``` calls
@@ -22,7 +22,7 @@ using this format ```NAME: (CLASS, ALGO_TYPE, [ACTION_TYPE])```, where:
     * ```NAME```: is your algorithm's name.
     * ```CLASS```: is your class that inherits ```BaseRLObject```.
     * ```ALGO_TYPE```: is the type of algorithm, defined by ```AlgoType``` in ```rl_baselines/__init__.py```,
-    can be ```Reinforcement_learning```, ```Evolution_stategies``` or ```Other``` 
+    can be ```Reinforcement_learning```, ```Evolution_strategies``` or ```Other``` 
     (```Other``` is used to define algorithms that can't be run in ```enjoy_baselines.py``` (ex: Random_agent)).
     * ```[ACTION_TYPE]```: is the list of compatible action types, 
     defined by ```ActionType``` in ```rl_baselines/__init__.py```, can be ```Continuous``` and/or ```Discrete```.

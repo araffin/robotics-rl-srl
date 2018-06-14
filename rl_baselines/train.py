@@ -121,7 +121,7 @@ def callback(_locals, _globals):
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
-    is_es = registered_rl[ALGO_NAME][1] == AlgoType.Evolution_stategies
+    is_es = registered_rl[ALGO_NAME][1] == AlgoType.Evolution_strategies
 
     # Save RL agent parameters
     if not params_saved:

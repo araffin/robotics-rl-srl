@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from rl_baselines.rl_algorithm import BaseRLObject
+from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import createEnvs
 from srl_zoo.utils import printYellow
 

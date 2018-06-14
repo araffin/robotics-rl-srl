@@ -8,7 +8,7 @@ from baselines.common import tf_util
 from baselines.acer.acer_simple import Model, Acer, find_trainable_variables, joblib
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 
-from rl_baselines.rl_algorithm import BaseRLObject
+from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import createTensorflowSession
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer

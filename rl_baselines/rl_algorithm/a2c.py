@@ -10,7 +10,7 @@ from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
 from baselines import logger
 from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
-from rl_baselines.rl_algorithm import BaseRLObject
+from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.policies import MlpPolicyDiscrete
 from rl_baselines.utils import createTensorflowSession
 

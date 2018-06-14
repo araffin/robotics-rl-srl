@@ -1,19 +1,19 @@
 from enum import Enum
 
-from rl_baselines.rl_algorithm import BaseRLObject
-from rl_baselines.a2c import A2CModel
-from rl_baselines.acer import ACERModel
-from rl_baselines.ars import ARSModel
-from rl_baselines.cma_es import CMAESModel
-from rl_baselines.ddpg import DDPGModel
-from rl_baselines.deepq import DeepQModel
-from rl_baselines.ppo2 import PPO2Model
+from rl_baselines.base_classes import BaseRLObject
+from rl_baselines.rl_algorithm.a2c import A2CModel
+from rl_baselines.rl_algorithm.acer import ACERModel
+from rl_baselines.evolution_strategies.ars import ARSModel
+from rl_baselines.evolution_strategies.cma_es import CMAESModel
+from rl_baselines.rl_algorithm.ddpg import DDPGModel
+from rl_baselines.rl_algorithm.deepq import DeepQModel
+from rl_baselines.rl_algorithm.ppo2 import PPO2Model
 from rl_baselines.random_agent import RandomAgentModel
 
 
 class AlgoType(Enum):
     Reinforcement_learning = 1
-    Evolution_stategies = 2
+    Evolution_strategies = 2
     Other = 3  # used to define other algorithms that can't be run in enjoy_baselines.py (ex: Random_agent)
 
 
@@ -26,8 +26,8 @@ class ActionType(Enum):
 registered_rl = {
     "a2c":          (A2CModel, AlgoType.Reinforcement_learning, [ActionType.Discrete]),
     "acer":         (ACERModel, AlgoType.Reinforcement_learning, [ActionType.Discrete]),
-    "ars":          (ARSModel, AlgoType.Evolution_stategies, [ActionType.Discrete, ActionType.Continuous]),
-    "cma-es":       (CMAESModel, AlgoType.Evolution_stategies, [ActionType.Discrete, ActionType.Continuous]),
+    "ars":          (ARSModel, AlgoType.Evolution_strategies, [ActionType.Discrete, ActionType.Continuous]),
+    "cma-es":       (CMAESModel, AlgoType.Evolution_strategies, [ActionType.Discrete, ActionType.Continuous]),
     "ddpg":         (DDPGModel, AlgoType.Reinforcement_learning, [ActionType.Continuous]),
     "deepq":        (DeepQModel, AlgoType.Reinforcement_learning, [ActionType.Discrete]),
     "ppo2":         (PPO2Model, AlgoType.Reinforcement_learning, [ActionType.Discrete, ActionType.Continuous]),

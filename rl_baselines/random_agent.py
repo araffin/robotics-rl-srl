@@ -3,7 +3,7 @@ Random agent: randomly sample actions from the action space
 """
 import time
 
-from rl_baselines.rl_algorithm import BaseRLObject
+from rl_baselines.base_classes import BaseRLObject
 
 
 class RandomAgentModel(BaseRLObject):

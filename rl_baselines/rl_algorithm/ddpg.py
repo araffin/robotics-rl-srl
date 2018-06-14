@@ -12,7 +12,7 @@ from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from mpi4py import MPI
 
-from rl_baselines.rl_algorithm import BaseRLObject
+from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
