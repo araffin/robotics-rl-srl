@@ -14,9 +14,8 @@ from mpi4py import MPI
 
 from rl_baselines.rl_algorithm import BaseRLObject
 from environments.utils import makeEnv
-from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
-from rl_baselines.utils import createTensorflowSession, CustomVecNormalize
+from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack
 
 
 class DDPGModel(BaseRLObject):
@@ -24,7 +23,7 @@ class DDPGModel(BaseRLObject):
         super(DDPGModel, self).__init__()
         self.model = None
 
-    def save(self, save_path):
+    def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
         self.model.save(save_path)
 

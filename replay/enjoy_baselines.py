@@ -21,8 +21,8 @@ import seaborn as sns
 import rl_baselines.ddpg as ddpg
 import rl_baselines.ars as ars
 import rl_baselines.cma_es as cma_es
-from rl_baselines.deepq import CustomDummyVecEnv, WrapFrameStack
-from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomVecNormalize, VecFrameStack
+from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomVecNormalize, VecFrameStack, \
+    CustomDummyVecEnv, WrapFrameStack
 from rl_baselines.policies import MlpPolicyDiscrete, AcerMlpPolicy, CNNPolicyContinuous
 from srl_zoo.utils import printYellow, printGreen
 from environments.utils import makeEnv

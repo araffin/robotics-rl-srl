@@ -22,7 +22,7 @@ class ACERModel(BaseRLObject):
         self.policy = None
         self.model = None
 
-    def save(self, save_path):
+    def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
         self.model.save(os.path.dirname(save_path) + "acer_weights")
         save_param = {

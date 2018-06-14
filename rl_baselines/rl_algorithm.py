@@ -5,10 +5,11 @@ class BaseRLObject:
     def __init__(self):
         pass
 
-    def save(self, save_path):
+    def save(self, save_path, _locals=None):
         """
         Save the model to a path
         :param save_path: (str)
+        :param _locals: (dict) local variable from callback, if present
         """
         raise NotImplementedError()
 

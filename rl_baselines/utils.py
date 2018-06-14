@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 import torch as th
 from baselines.common.running_mean_std import RunningMeanStd
-from baselines.common.vec_env import VecEnvWrapper
+from baselines.common.vec_env import VecEnvWrapper, VecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
@@ -103,6 +103,7 @@ class CustomVecNormalize(VecEnvWrapper):
         self.training = training
         self.norm_obs = norm_obs
         self.norm_rewards = norm_rewards
+        self.old_obs = np.array([])
 
     def step_wait(self):
         """
@@ -245,3 +246,80 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None):
         args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
     return envs
+
+
+class CustomDummyVecEnv(VecEnv):
+    """Dummy class in order to use FrameStack with DQN"""
+
+    def __init__(self, env_fns):
+        """
+        :param env_fns: ([function])
+        """
+        assert len(env_fns) == 1, "This dummy class does not support multiprocessing"
+        self.envs = [fn() for fn in env_fns]
+        env = self.envs[0]
+        VecEnv.__init__(self, len(env_fns), env.observation_space, env.action_space)
+        self.env = self.envs[0]
+        self.actions = None
+        self.obs = None
+        self.reward, self.done, self.infos = None, None, None
+
+    def step_wait(self):
+        self.obs, self.reward, self.done, self.infos = self.env.step(self.actions[0])
+        return self.obs[None], self.reward, [self.done], [self.infos]
+
+    def step_async(self, actions):
+        """
+        :param actions: ([int])
+        """
+        self.actions = actions
+
+    def reset(self):
+        return self.env.reset()
+
+    def close(self):
+        return
+
+
+class WrapFrameStack(VecFrameStack):
+    """
+    Wrap VecFrameStack in order to be usable with dqn
+    and scale output if necessary
+    """
+
+    def __init__(self, venv, nstack, normalize=True):
+        super(WrapFrameStack, self).__init__(venv, nstack)
+        self.factor = 255.0 if normalize else 1
+
+    def step(self, action):
+        self.step_async([action])
+        stackedobs, rews, news, infos = self.step_wait()
+        return stackedobs[0] / self.factor, rews, news[0], infos[0]
+
+    def reset(self):
+        """
+        Reset all environments
+        """
+        stackedobs = super(WrapFrameStack, self).reset()
+        return stackedobs[0] / self.factor
+
+    def getOriginalObs(self):
+        """
+        Hack to use CustomVecNormalize
+        :return: (numpy float)
+        """
+        return self.venv.getOriginalObs()
+
+    def saveRunningAverage(self, path):
+        """
+        Hack to use CustomVecNormalize
+        :param path: (str) path to log dir
+        """
+        self.venv.saveRunningAverage(path)
+
+    def loadRunningAverage(self, path):
+        """
+        Hack to use CustomVecNormalize
+        :param path: (str) path to log dir
+        """
+        self.venv.loadRunningAverage(path)

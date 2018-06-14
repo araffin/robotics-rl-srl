@@ -18,7 +18,7 @@ class CMAESModel(BaseRLObject):
         super(CMAESModel, self).__init__()
         self.model = None
 
-    def save(self, save_path):
+    def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
         self.model.save(save_path)
 
