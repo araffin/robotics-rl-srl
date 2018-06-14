@@ -6,7 +6,6 @@ channels:
   - defaults
 dependencies:
   - bleach=1.5.0=py35_0
-  - coverage==4.5.1
   - cudnn=7.0.5=cuda8.0_0
   - html5lib=0.9999999=py35_0
   - markdown=2.6.9=py35_0
@@ -118,6 +117,7 @@ dependencies:
     - pyopengl==3.1.0
     - pyparsing==2.2.0
     - pytest==3.5.0
+    - pytest-cov==2.5.1
     - python-dateutil==2.6.1
     - python-utils==2.2.0
     - pytz==2018.3

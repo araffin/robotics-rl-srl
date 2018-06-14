@@ -1,0 +1,13 @@
+[run]
+branch = False
+omit =
+    test/*
+    replay/aggregate_plots.py
+    replay/compare_plots.py
+    replay/plots.py
+[report]
+exclude_lines =
+    pragma: no cover
+
+[html]
+directory = logs/coverage/
