@@ -13,7 +13,7 @@ from rl_baselines.random_agent import RandomAgentModel
 class AlgoType(Enum):
     Reinforcement_learning = 1
     Evolution_stategies = 2
-    Other = 3
+    Other = 3  # used to define other algorithms that can't be run in enjoy_baselines.py (ex: Random_agent)
 
 
 class ActionType(Enum):
@@ -21,6 +21,7 @@ class ActionType(Enum):
     Continuous = 2
 
 
+# Register, name: (algo class, algo type, list of action types)
 registered_rl = {
     "a2c":          (A2CModel, AlgoType.Reinforcement_learning, [ActionType.Discrete]),
     "acer":         (ACERModel, AlgoType.Reinforcement_learning, [ActionType.Discrete]),
