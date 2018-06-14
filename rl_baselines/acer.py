@@ -9,7 +9,7 @@ from baselines.acer.acer_simple import Model, Acer, find_trainable_variables, jo
 from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 
 from rl_baselines.rl_algorithm import BaseRLObject
-from rl_baselines.utils import createTensorflowSession, createEnvs
+from rl_baselines.utils import createTensorflowSession
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer
 
@@ -68,7 +68,7 @@ class ACERModel(BaseRLObject):
         return actions
 
     def train(self, args, callback, env_kwargs=None):
-        envs = createEnvs(args, env_kwargs=env_kwargs)
+        envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space

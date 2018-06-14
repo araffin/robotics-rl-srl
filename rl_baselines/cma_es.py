@@ -46,9 +46,13 @@ class CMAESModel(BaseRLObject):
         assert self.model is not None, "Error: must train or load model before use"
         return self.model.getAction(observation)
 
+    @classmethod
+    def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
+        return createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
+
     def train(self, args, callback, env_kwargs=None):
         args.num_cpu = args.num_population
-        envs = createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs)
+        envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if args.continuous_actions:
             action_space = np.prod(envs.action_space.shape)

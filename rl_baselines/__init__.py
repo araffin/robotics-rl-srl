@@ -1,5 +1,6 @@
 from enum import Enum
 
+from rl_baselines.rl_algorithm import BaseRLObject
 from rl_baselines.a2c import A2CModel
 from rl_baselines.acer import ACERModel
 from rl_baselines.ars import ARSModel
@@ -32,3 +33,7 @@ registered_rl = {
     "ppo2":         (PPO2Model, AlgoType.Reinforcement_learning, [ActionType.Discrete, ActionType.Continuous]),
     "random_agent": (RandomAgentModel, AlgoType.Other, [ActionType.Discrete, ActionType.Continuous])
 }
+
+# Checking validity of the registered RL algorithms
+for _, val in registered_rl.items():
+    assert issubclass(val[0], BaseRLObject), "Error: tried to load {} as a BaseRLObject".format(val[0])

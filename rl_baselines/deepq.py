@@ -4,7 +4,7 @@ from baselines import logger
 from rl_baselines.rl_algorithm import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, \
-    WrapFrameStack
+    WrapFrameStack, loadRunningAverage
 
 
 class DeepQModel(BaseRLObject):
@@ -34,16 +34,27 @@ class DeepQModel(BaseRLObject):
         assert self.model is not None, "Error: must train or load model before use"
         return self.model(observation[None])[0]
 
+    @classmethod
+    def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
+        env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
+
+        if args.srl_model != "":
+            env = CustomVecNormalize(env)
+            env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
+
+        # Normalize only raw pixels
+        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
+        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "")
+
     def train(self, args, callback, env_kwargs=None):
         logger.configure()
 
-        env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
+        env = self.makeEnv(args, env_kwargs)
 
         createTensorflowSession()
 
         if args.srl_model != "":
             model = deepq.models.mlp([64, 64])
-            env = CustomVecNormalize(env)
         else:
             # Atari CNN
             model = deepq.models.cnn_to_mlp(
@@ -51,11 +62,6 @@ class DeepQModel(BaseRLObject):
                 hiddens=[256],
                 dueling=bool(args.dueling),
             )
-
-        # Normalize only raw pixels
-        normalize = args.srl_model == ""
-        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        env = WrapFrameStack(env, args.num_stack, normalize=normalize)
 
         # TODO: tune params
         self.model = deepq.learn(

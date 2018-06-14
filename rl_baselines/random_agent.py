@@ -3,7 +3,6 @@ Random agent: randomly sample actions from the action space
 """
 import time
 
-from rl_baselines.utils import createEnvs
 from rl_baselines.rl_algorithm import BaseRLObject
 
 
@@ -26,7 +25,7 @@ class RandomAgentModel(BaseRLObject):
         raise ValueError("Error: getAction is not supported for random agent.")
 
     def train(self, args, callback, env_kwargs=None):
-        env = createEnvs(args, env_kwargs=env_kwargs)
+        env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         obs = env.reset()
         num_updates = int(args.num_timesteps) // args.num_cpu

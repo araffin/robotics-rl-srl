@@ -15,7 +15,8 @@ from mpi4py import MPI
 from rl_baselines.rl_algorithm import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.policies import DDPGActorCNN, DDPGActorMLP, DDPGCriticCNN, DDPGCriticMLP
-from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack
+from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
+    loadRunningAverage
 
 
 class DDPGModel(BaseRLObject):
@@ -89,9 +90,21 @@ class DDPGModel(BaseRLObject):
         assert self.model is not None, "Error: must train or load model before use"
         return self.model.pi(observation, apply_noise=False, compute_Q=False)[0]
 
+    @classmethod
+    def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
+        env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
+
+        if args.srl_model != "":
+            env = CustomVecNormalize(env)
+            env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
+
+        # Normalize only raw pixels
+        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
+        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "")
+
     def train(self, args, callback, env_kwargs=None):
         logger.configure()
-        env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
+        env = self.makeEnv(args, env_kwargs)
 
         createTensorflowSession()
         layer_norm = not args.no_layer_norm
@@ -114,15 +127,9 @@ class DDPGModel(BaseRLObject):
         if args.srl_model != "":
             critic = DDPGCriticMLP(layer_norm=layer_norm)
             actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
-            env = CustomVecNormalize(env)
         else:
             critic = DDPGCriticCNN(layer_norm=layer_norm)
             actor = DDPGActorCNN(n_actions, layer_norm=layer_norm)
-
-        # Normalize only raw pixels
-        normalize = args.srl_model == ""
-        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        env = WrapFrameStack(env, args.num_stack, normalize=normalize)
 
         memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape,
                         observation_shape=env.observation_space.shape)

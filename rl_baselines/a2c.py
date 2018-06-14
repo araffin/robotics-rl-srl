@@ -12,7 +12,7 @@ from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
 from rl_baselines.rl_algorithm import BaseRLObject
 from rl_baselines.policies import MlpPolicyDiscrete
-from rl_baselines.utils import createTensorflowSession, createEnvs
+from rl_baselines.utils import createTensorflowSession
 
 
 class A2CModel(BaseRLObject):
@@ -70,7 +70,7 @@ class A2CModel(BaseRLObject):
         return actions
 
     def train(self, args, callback, env_kwargs=None):
-        envs = createEnvs(args, env_kwargs=env_kwargs)
+        envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space

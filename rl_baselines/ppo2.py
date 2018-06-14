@@ -14,7 +14,6 @@ import tensorflow as tf
 
 from rl_baselines.rl_algorithm import BaseRLObject
 from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous
-from rl_baselines.utils import createEnvs
 
 
 class PPO2Model(BaseRLObject):
@@ -76,7 +75,7 @@ class PPO2Model(BaseRLObject):
         return actions
 
     def train(self, args, callback, env_kwargs=None):
-        envs = createEnvs(args, env_kwargs=env_kwargs)
+        envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space

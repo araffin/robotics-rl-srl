@@ -13,7 +13,7 @@ from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecF
 
 from environments.utils import makeEnv, dynamicEnvLoad
 from rl_baselines.visualize import loadCsv
-from srl_zoo.utils import printYellow
+from srl_zoo.utils import printYellow, printGreen
 from state_representation.models import loadSRLModel, getSRLDim
 
 
@@ -191,63 +191,6 @@ class VecFrameStack(OpenAIVecFrameStack):
         return self.stackedobs, rews, news, infos
 
 
-class MultithreadSRLModel:
-    """
-    Allows multiple environments to use a single SRL model
-    :param num_cpu: (int) the number of environments that will spawn
-    :param env_id: (str) the environment id string
-    :param env_kwargs: (dict)
-    """
-
-    def __init__(self, num_cpu, env_id, env_kwargs):
-        # Create a duplex pipe between env and srl model, where all the inputs are unified and the origin
-        # marked with a index number
-        self.pipe = (Queue(), [Queue() for _ in range(num_cpu)])
-        module_env, class_name, _ = dynamicEnvLoad(env_id)
-        # we need to know the expected dim output of the SRL model, before it is created
-        self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
-        self.p = Process(target=self._run, args=(env_kwargs,))
-        self.p.daemon = True
-        self.p.start()
-
-    def _run(self, env_kwargs):
-        self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
-        # run until the end of the caller thread
-        while True:
-            # pop an item, get state, and return to sender.
-            env_id, var = self.pipe[0].get()
-            self.pipe[1][env_id].put(self.model.getState(var))
-
-
-def createEnvs(args, allow_early_resets=False, env_kwargs=None):
-    """
-    :param args: (argparse.Namespace Object)
-    :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs
-    :param env_kwargs: (dict) The extra arguments for the environment
-    :return: (Gym VecEnv)
-    """
-    if env_kwargs is not None and env_kwargs.get("use_srl", False):
-        srl_model = MultithreadSRLModel(args.num_cpu, args.env, env_kwargs)
-        env_kwargs["state_dim"] = srl_model.state_dim
-        env_kwargs["srl_pipe"] = srl_model.pipe
-    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
-            for i in range(args.num_cpu)]
-
-    if len(envs) == 1:
-        # No need for subprocesses when having only one env
-        envs = DummyVecEnv(envs)
-    else:
-        envs = SubprocVecEnv(envs)
-
-    envs = VecFrameStack(envs, args.num_stack)
-
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
-        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
-    return envs
-
-
 class CustomDummyVecEnv(VecEnv):
     """Dummy class in order to use FrameStack with DQN"""
 
@@ -323,3 +266,75 @@ class WrapFrameStack(VecFrameStack):
         :param path: (str) path to log dir
         """
         self.venv.loadRunningAverage(path)
+
+
+class MultithreadSRLModel:
+    """
+    Allows multiple environments to use a single SRL model
+    :param num_cpu: (int) the number of environments that will spawn
+    :param env_id: (str) the environment id string
+    :param env_kwargs: (dict)
+    """
+
+    def __init__(self, num_cpu, env_id, env_kwargs):
+        # Create a duplex pipe between env and srl model, where all the inputs are unified and the origin
+        # marked with a index number
+        self.pipe = (Queue(), [Queue() for _ in range(num_cpu)])
+        module_env, class_name, _ = dynamicEnvLoad(env_id)
+        # we need to know the expected dim output of the SRL model, before it is created
+        self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
+        self.p = Process(target=self._run, args=(env_kwargs,))
+        self.p.daemon = True
+        self.p.start()
+
+    def _run(self, env_kwargs):
+        self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
+        # run until the end of the caller thread
+        while True:
+            # pop an item, get state, and return to sender.
+            env_id, var = self.pipe[0].get()
+            self.pipe[1][env_id].put(self.model.getState(var))
+
+
+def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
+    """
+    :param args: (argparse.Namespace Object)
+    :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs
+    :param env_kwargs: (dict) The extra arguments for the environment
+    :param load_path_normalise: (str) the path to loading the rolling average, None if not available or wanted.
+    :return: (Gym VecEnv)
+    """
+    if env_kwargs is not None and env_kwargs.get("use_srl", False):
+        srl_model = MultithreadSRLModel(args.num_cpu, args.env, env_kwargs)
+        env_kwargs["state_dim"] = srl_model.state_dim
+        env_kwargs["srl_pipe"] = srl_model.pipe
+    envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
+            for i in range(args.num_cpu)]
+
+    if len(envs) == 1:
+        # No need for subprocesses when having only one env
+        envs = DummyVecEnv(envs)
+    else:
+        envs = SubprocVecEnv(envs)
+
+    envs = VecFrameStack(envs, args.num_stack)
+
+    if args.srl_model != "":
+        printYellow("Using MLP policy because working on state representation")
+        args.policy = "mlp"
+        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+        envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
+    return envs
+
+
+def loadRunningAverage(envs, load_path_normalise=None):
+    if load_path_normalise is not None:
+        try:
+            printGreen("Loading saved running average")
+            envs.loadRunningAverage(load_path_normalise)
+            envs.training = False
+        except FileNotFoundError:
+            envs.training = True
+            printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
+    return envs
+

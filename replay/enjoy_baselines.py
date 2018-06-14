@@ -10,17 +10,14 @@ import yaml
 import numpy as np
 import tensorflow as tf
 from baselines.common import set_global_seeds
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 import seaborn as sns
 
 from rl_baselines import registered_rl, AlgoType
-from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomVecNormalize, VecFrameStack, \
-    CustomDummyVecEnv, WrapFrameStack
+from rl_baselines.utils import createTensorflowSession, computeMeanReward
 from srl_zoo.utils import printYellow, printGreen
-from environments.utils import makeEnv
 
 
 def fixStateDim(states):
@@ -125,13 +122,13 @@ def loadConfigAndSetup(load_args):
     return train_args, load_path, algo_name, algo_class, srl_models, env_kwargs
 
 
-# TODO: fix this?
-def createEnv(load_args, train_args, algo_name, env_kwargs, log_dir="/tmp/gym/test/"):
+def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir="/tmp/gym/test/"):
     """
     Create the Gym environment
     :param load_args: (Arguments)
     :param train_args: (dict)
     :param algo_name: (str)
+    :param algo_class: (Class) a BaseRLObject subclass
     :param env_kwargs: (dict) The extra arguments for the environment
     :param log_dir: (str) Log dir for testing the agent
     :return: (str, SubprocVecEnv)
@@ -140,31 +137,15 @@ def createEnv(load_args, train_args, algo_name, env_kwargs, log_dir="/tmp/gym/te
     log_dir += "{}/{}/".format(algo_name, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     os.makedirs(log_dir, exist_ok=True)
 
-    if algo_name not in ["deepq", "ddpg"]:
-        envs = SubprocVecEnv([makeEnv(train_args['env'], load_args.seed, i, log_dir, env_kwargs=env_kwargs)
-                              for i in range(load_args.num_cpu)])
-        envs = VecFrameStack(envs, train_args['num_stack'])
-    else:
-        if load_args.num_cpu > 1:
-            printYellow(algo_name + " does not support multiprocessing, setting num-cpu=1")
-        envs = CustomDummyVecEnv([makeEnv(train_args['env'], load_args.seed, 0, log_dir, env_kwargs=env_kwargs)])
-
-    if train_args["srl_model"] != "":
-        # special case where ars type v1 is not normalized
-        if algo_name != "ars" or train_args['algo_type'] != "v1":
-            envs = CustomVecNormalize(envs, training=False)
-        # Temp fix for experiments where no running average were saved
-        try:
-            printGreen("Loading saved running average")
-            envs.loadRunningAverage(load_args.log_dir)
-        except FileNotFoundError:
-            envs.training = True
-            printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
-
-    if algo_name in ["deepq", "ddpg"]:
-        # Normalize only raw pixels
-        normalize = train_args['srl_model'] == ""
-        envs = WrapFrameStack(envs, train_args['num_stack'], normalize=normalize)
+    args = {
+        "env": train_args['env'],
+        "seed": load_args.seed,
+        "num_cpu": load_args.num_cpu,
+        "num_stack": train_args["num_stack"],
+        "srl_model": train_args["srl_model"],
+        "algo_type": train_args.get('algo_type', None),
+    }
+    envs = algo_class.makeEnv(args, env_kwargs=env_kwargs, load_path_normalise=load_args.log_dir)
 
     return log_dir, envs
 
@@ -172,7 +153,7 @@ def createEnv(load_args, train_args, algo_name, env_kwargs, log_dir="/tmp/gym/te
 def main():
     load_args = parseArguments()
     train_args, load_path, algo_name, algo_class, srl_models, env_kwargs = loadConfigAndSetup(load_args)
-    log_dir, envs = createEnv(load_args, train_args, algo_name, env_kwargs)
+    log_dir, envs = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
 
     assert (not load_args.plotting) or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 
