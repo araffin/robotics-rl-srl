@@ -13,14 +13,7 @@ from baselines.common import set_global_seeds
 from visdom import Visdom
 
 from gym.envs.registration import registry as gym_registry
-import rl_baselines.a2c as a2c
-import rl_baselines.acer as acer
-import rl_baselines.ddpg as ddpg
-import rl_baselines.deepq as deepq
-import rl_baselines.ppo2 as ppo2
-import rl_baselines.random_agent as random_agent
-import rl_baselines.ars as ars
-import rl_baselines.cma_es as cma_es
+from rl_baselines import registered_rl, AlgoType, ActionType
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
@@ -37,7 +30,8 @@ from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobi
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
 LOG_DIR = ""
-ALGO = ""
+ALGO = None
+ALGO_NAME = ""
 ENV_NAME = ""
 PLOT_TITLE = "Raw Pixels"
 EPISODE_WINDOW = 40  # For plotting moving average
@@ -108,7 +102,7 @@ def configureEnvAndLogFolder(args, env_kwargs):
         args.log_dir += "raw_pixels/"
 
     # Add date + current time
-    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
+    args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
     # TODO: wait one second if the folder exist to avoid overwritting logs
     os.makedirs(args.log_dir, exist_ok=True)
@@ -127,7 +121,7 @@ def callback(_locals, _globals):
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
-    is_es = ALGO in ['ars', 'cma-es']
+    is_es = registered_rl[ALGO_NAME][1] == AlgoType.Evolution_stategies
 
     # Save RL agent parameters
     if not params_saved:
@@ -158,32 +152,24 @@ def callback(_locals, _globals):
 
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
-            if ALGO == "deepq":
-                _locals['act'].save(LOG_DIR + "deepq_model.pkl")
-            elif ALGO == "ddpg":
-                _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
-            elif ALGO in ["acer", "a2c", "ppo2"]:
-                _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
-            elif ALGO in ['ars', 'cma-es']:
-                _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
+            ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl")
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed",
+        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO_NAME, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO_NAME, title=PLOT_TITLE + " smoothed",
                                    is_es=is_es)
-        win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
+        win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
     return False
 
 
 def main():
-    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
+    global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='ppo2',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma-es'],
-                        help='OpenAI baseline to use', type=str)
+    parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',
+                        type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--episode_window', type=int, default=40,
@@ -232,40 +218,32 @@ def main():
     module_env, class_name, env_module_path = dynamicEnvLoad(args.env)
 
     ENV_NAME = args.env
-    ALGO = args.algo
+    ALGO_NAME = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
 
     if args.no_vis:
         viz = False
 
-    if args.algo == "deepq":
-        algo = deepq
-    elif args.algo == "acer":
-        algo = acer
+    algo_class, algo_type, action_type = registered_rl[args.algo]
+    algo = algo_class()
+    ALGO = algo
+    if args.algo == "acer":
         # callback is not called after each steps
         # so we need to reduce log and save interval
         LOG_INTERVAL = 1
         SAVE_INTERVAL = 20
         assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
-    elif args.algo == "a2c":
-        algo = a2c
     elif args.algo == "ppo2":
-        algo = ppo2
         LOG_INTERVAL = 10
         SAVE_INTERVAL = 10
-    elif args.algo == "random_agent":
-        algo = random_agent
-    elif args.algo == "ddpg":
-        algo = ddpg
-        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
-    elif args.algo == "ars":
-        algo = ars
-    elif args.algo == "cma-es":
-        algo = cma_es
 
-    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
-        raise ValueError(args.algo + " does not support continuous actions")
+    if not args.continuous_actions and ActionType.Discrete not in action_type:
+        raise ValueError(args.algo + " does not support discrete actions, please use the '--continuous-actions' " +
+                                     "(or '-c') flag.")
+    if args.continuous_actions and ActionType.Continuous not in action_type:
+        raise ValueError(args.algo + " does not support continuous actions, please remove the '--continuous-actions' " +
+                                     "(or '-c') flag.")
 
     env_kwargs["is_discrete"] = not args.continuous_actions
 
@@ -303,7 +281,8 @@ def main():
         inherited_env_class = mobile_robot_inherited_env_class
     else:
         # Sanity check to make sure we have implemented the environment correctly,
-        raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
+        raise AssertionError("Error: not implemented for the environment {}"
+                             .format(module_env.__dict__[class_name].__name__))
 
     if inherited_env != module_env:
         inherited_env_kwargs = {k: v.default
@@ -328,7 +307,7 @@ def main():
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback, env_kwargs=env_kwargs)
+    algo.train(args, callback, env_kwargs=env_kwargs)
 
 
 if __name__ == '__main__':
