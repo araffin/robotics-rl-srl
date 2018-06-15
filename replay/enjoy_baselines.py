@@ -17,7 +17,7 @@ import seaborn as sns
 
 from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
-from rl_baselines.utils import createTensorflowSession, computeMeanReward
+from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomDummyVecEnv
 from srl_zoo.utils import printYellow, printGreen
 # has to be imported here, as otherwise it will cause loading of undefined functions
 from environments.registry import registered_env
@@ -172,9 +172,11 @@ def main():
     method = algo_class.load(load_path, args=algo_args)
 
     dones = [False for _ in range(load_args.num_cpu)]
+    # HACK: check for custom vec env
+    using_custom_ven_env = issubclass(envs, CustomDummyVecEnv)
+
     obs = envs.reset()
-    # HACK: check for custom output of obs, should be list
-    if not isinstance(obs, list):
+    if using_custom_ven_env:
         obs = [obs]
     # print(obs.shape)
 
@@ -218,8 +220,7 @@ def main():
     for i in range(load_args.num_timesteps):
         actions = method.getAction(obs, dones)
         obs, rewards, dones, _ = envs.step(actions)
-        # HACK: check for custom output of obs, should be list
-        if not isinstance(obs, list):
+        if using_custom_ven_env:
             obs = [obs]
 
         # plotting
@@ -251,8 +252,7 @@ def main():
                 fig.canvas.draw()
                 plt.pause(0.000001)
 
-        # HACK: check for custom output of dones, need to reset manualy because of custome wrapper
-        if not isinstance(dones, list):
+        if using_custom_ven_env:
             if dones:
                 obs = [envs.reset()]
 

@@ -48,7 +48,7 @@ class ACERModel(BaseRLObject):
 
         policy = {'cnn': AcerCnnPolicy, 'mlp': AcerMlpPolicy}[loaded_model.policy]
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
-                                    nstack=loaded_model.nstack, reuse=False)
+                                    nstack=1, reuse=False)
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "/acer_weights.pkl")
