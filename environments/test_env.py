@@ -10,7 +10,7 @@ import time
 import numpy as np
 
 from environments.registry import registered_env
-from srl_zoo.utils import printRed
+from srl_zoo.utils import printRed, printYellow
 
 
 def convertImagePath(args, path, record_id_start):
@@ -105,6 +105,9 @@ def main():
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
+    if args.num_cpu > args.num_episode:
+        args.num_cpu = args.num_episode
+        printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
 
     # File exists, need to deal with it
     if args.record_data and os.path.exists(args.save_folder + args.save_name):
