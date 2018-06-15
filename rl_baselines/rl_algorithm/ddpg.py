@@ -20,6 +20,10 @@ from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, Cust
 
 
 class DDPGModel(BaseRLObject):
+    """
+    object containing the interface between baselines.ddpg and this code base
+    DDPG: Deep Deterministic Policy Gradients
+    """
     def __init__(self):
         super(DDPGModel, self).__init__()
         self.model = None
@@ -88,7 +92,7 @@ class DDPGModel(BaseRLObject):
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.pi(observation, apply_noise=False, compute_Q=False)[0]
+        return self.model.pi(observation[0], apply_noise=False, compute_Q=False)[0]
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):

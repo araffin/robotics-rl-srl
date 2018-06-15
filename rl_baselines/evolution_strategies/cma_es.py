@@ -14,6 +14,10 @@ from srl_zoo.utils import printYellow
 
 
 class CMAESModel(BaseRLObject):
+    """
+    object containing an implementation of CMA-ES
+    CMA-ES: https://pdfs.semanticscholar.org/9b95/6e094c3aa5a831c9b916dde35d1ca9abf066.pdf
+    """
     def __init__(self):
         super(CMAESModel, self).__init__()
         self.model = None
@@ -44,7 +48,7 @@ class CMAESModel(BaseRLObject):
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.getAction(observation)
+        return [self.model.getAction(observation)]
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):

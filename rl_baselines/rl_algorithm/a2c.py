@@ -16,6 +16,10 @@ from rl_baselines.utils import createTensorflowSession
 
 
 class A2CModel(BaseRLObject):
+    """
+    object containing the interface between baselines.a2c and this code base
+    A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C)
+    """
     def __init__(self):
         super(A2CModel, self).__init__()
         self.ob_space = None
@@ -25,7 +29,7 @@ class A2CModel(BaseRLObject):
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
-        self.model.save(os.path.dirname(save_path) + "a2c_weights")
+        self.model.save(os.path.dirname(save_path) + "/a2c_weights.pkl")
         save_param = {
             "ob_space": self.ob_space,
             "ac_space": self.ac_space,
@@ -48,7 +52,7 @@ class A2CModel(BaseRLObject):
                                     reuse=False)
 
         tf.global_variables_initializer().run(session=sess)
-        loaded_params = joblib.load(os.path.dirname(load_path) + "a2c_weights")
+        loaded_params = joblib.load(os.path.dirname(load_path) + "/a2c_weights.pkl")
         restores = []
         for p, loaded_p in zip(find_trainable_variables("model"), loaded_params):
             restores.append(p.assign(loaded_p))

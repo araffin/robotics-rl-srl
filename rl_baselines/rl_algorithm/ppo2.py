@@ -17,6 +17,10 @@ from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous
 
 
 class PPO2Model(BaseRLObject):
+    """
+    object containing the interface between baselines.ppo2 and this code base
+    PPO2: Proximal Policy Optimization (GPU Implementation)
+    """
     def __init__(self):
         super(PPO2Model, self).__init__()
         self.ob_space = None
@@ -27,7 +31,7 @@ class PPO2Model(BaseRLObject):
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
-        self.model.save(os.path.dirname(save_path) + "ppo2_weights")
+        self.model.save(os.path.dirname(save_path) + "/ppo2_weights.pkl")
         save_param = {
             "ob_space": self.ob_space,
             "ac_space": self.ac_space,
@@ -54,7 +58,7 @@ class PPO2Model(BaseRLObject):
                                     reuse=False)
 
         tf.global_variables_initializer().run(session=sess)
-        loaded_params = joblib.load(os.path.dirname(load_path) + "ppo2_weights")
+        loaded_params = joblib.load(os.path.dirname(load_path) + "/ppo2_weights.pkl")
         restores = []
         for p, loaded_p in zip(find_trainable_variables("model"), loaded_params):
             restores.append(p.assign(loaded_p))

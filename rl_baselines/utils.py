@@ -147,7 +147,10 @@ class CustomVecNormalize(VecEnvWrapper):
         Reset all environments
         """
         obs = self.venv.reset()
-        self.old_obs = obs
+        if len(np.array(obs).shape) == 1:  # for when num_cpu is 1
+            self.old_obs = [obs]
+        else:
+            self.old_obs = obs
         return self._normalizeObservation(obs)
 
     def saveRunningAverage(self, path):

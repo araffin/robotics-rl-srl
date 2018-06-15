@@ -8,6 +8,10 @@ from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, Cust
 
 
 class DeepQModel(BaseRLObject):
+    """
+    object containing the interface between baselines.deepq and this code base
+    DeepQ: https://arxiv.org/pdf/1312.5602v1.pdf
+    """
     def __init__(self):
         super(DeepQModel, self).__init__()
         self.model = None
@@ -32,7 +36,7 @@ class DeepQModel(BaseRLObject):
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model(observation[None])[0]
+        return self.model(observation[0][None])[0]
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):

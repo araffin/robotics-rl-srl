@@ -15,6 +15,10 @@ from rl_baselines.buffer_acer import Buffer
 
 
 class ACERModel(BaseRLObject):
+    """
+    object containing the interface between baselines.acer and this code base
+    ACER: Sample Efficient Actor-Critic with Experience Replay
+    """
     def __init__(self):
         super(ACERModel, self).__init__()
         self.ob_space = None
@@ -24,7 +28,7 @@ class ACERModel(BaseRLObject):
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
-        self.model.save(os.path.dirname(save_path) + "acer_weights")
+        self.model.save(os.path.dirname(save_path) + "/acer_weights.pkl")
         save_param = {
             "ob_space": self.ob_space,
             "ac_space": self.ac_space,
@@ -44,10 +48,10 @@ class ACERModel(BaseRLObject):
 
         policy = {'cnn': AcerCnnPolicy, 'mlp': AcerMlpPolicy}[loaded_model.policy]
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
-                                    reuse=False)
+                                    nstack=loaded_model.nstack, reuse=False)
 
         tf.global_variables_initializer().run(session=sess)
-        loaded_params = joblib.load(os.path.dirname(load_path) + "acer_weights")
+        loaded_params = joblib.load(os.path.dirname(load_path) + "/acer_weights.pkl")
         restores = []
         for p, loaded_p in zip(find_trainable_variables("model"), loaded_params):
             restores.append(p.assign(loaded_p))
@@ -74,7 +78,7 @@ class ACERModel(BaseRLObject):
         self.ac_space = envs.action_space
         self.policy = args.policy
 
-        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=args.num_stack,
+        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1,
                     lrschedule=args.lr_schedule, callback=callback)
 
     def _learn(self, policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,

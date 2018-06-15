@@ -11,6 +11,10 @@ from srl_zoo.utils import printYellow
 
 
 class ARSModel(BaseRLObject):
+    """
+    object containing an implementation of Augmented Random Search
+    ARS: https://arxiv.org/pdf/1803.07055.pdf
+    """
     def __init__(self):
         super(ARSModel, self).__init__()
         self.model = None
@@ -43,12 +47,15 @@ class ARSModel(BaseRLObject):
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.getAction(observation)
+        return [self.model.getAction(observation)]
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
+        if "num_population" in args.__dict__:
+            args.num_cpu = args.num_population * 2
+
         envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True, env_kwargs=env_kwargs)
-                for i in range(args.num_population * 2)]
+                for i in range(args.num_cpu)]
         envs = SubprocVecEnv(envs)
         envs = VecFrameStack(envs, args.num_stack)
         if args.srl_model != "" and args.algo_type == "v2":

@@ -19,6 +19,10 @@ from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
 from rl_baselines.utils import createTensorflowSession, computeMeanReward
 from srl_zoo.utils import printYellow, printGreen
+# has to be imported here, as otherwise it will cause loading of undefined functions
+from environments.registry import registered_env
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 
 def fixStateDim(states):
@@ -145,16 +149,18 @@ def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir=
         "num_stack": train_args["num_stack"],
         "srl_model": train_args["srl_model"],
         "algo_type": train_args.get('algo_type', None),
+        "log_dir": log_dir
     }
-    envs = algo_class.makeEnv(args, env_kwargs=env_kwargs, load_path_normalise=load_args.log_dir)
+    algo_args = type('attrib_dict', (), args)()  # anonymous class so the dict looks like Arguments object
+    envs = algo_class.makeEnv(algo_args, env_kwargs=env_kwargs, load_path_normalise=load_args.log_dir)
 
-    return log_dir, envs
+    return log_dir, envs, algo_args
 
 
 def main():
     load_args = parseArguments()
     train_args, load_path, algo_name, algo_class, srl_models, env_kwargs = loadConfigAndSetup(load_args)
-    log_dir, envs = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
+    log_dir, envs, algo_args = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
 
     assert (not load_args.plotting) or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 
@@ -163,10 +169,13 @@ def main():
     createTensorflowSession()
 
     printYellow("Compiling Policy function....")
-    method = algo_class.load(load_path)
+    method = algo_class.load(load_path, args=algo_args)
 
     dones = [False for _ in range(load_args.num_cpu)]
     obs = envs.reset()
+    # HACK: check for custom output of obs, should be list
+    if not isinstance(obs, list):
+        obs = [obs]
     # print(obs.shape)
 
     # plotting init
@@ -209,6 +218,9 @@ def main():
     for i in range(load_args.num_timesteps):
         actions = method.getAction(obs, dones)
         obs, rewards, dones, _ = envs.step(actions)
+        # HACK: check for custom output of obs, should be list
+        if not isinstance(obs, list):
+            obs = [obs]
 
         # plotting
         if load_args.plotting:
@@ -218,7 +230,7 @@ def main():
                 ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished
-            if sum(dones) > 0:
+            if np.sum(dones) > 0:
                 old_obs.append(np.array(delta_obs))
                 line.set_c(sns.color_palette()[episode % len(sns.color_palette())])
                 episode += 1
@@ -239,12 +251,12 @@ def main():
                 fig.canvas.draw()
                 plt.pause(0.000001)
 
-        # TODO: fix this?
-        if algo_name in ["deepq", "ddpg"]:
+        # HACK: check for custom output of dones, need to reset manualy because of custome wrapper
+        if not isinstance(dones, list):
             if dones:
-                obs = envs.reset()
-            dones = [dones]
-        n_done += sum(dones)
+                obs = [envs.reset()]
+
+        n_done += np.sum(dones)
         if (n_done - last_n_done) > 1:
             last_n_done = n_done
             _, mean_reward = computeMeanReward(log_dir, n_done)
