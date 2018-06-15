@@ -20,7 +20,7 @@ You will need to define specifically:
     * ```step(action)```: step the environment in simulation with the given action.
     * ```reset()```: re-initialise the environment.
     * ```render(mode='human')```: returns an observation of the environment.
-2. Add your class to the ```registered_env``` dictionary in ```environments/__init__.py```, 
+2. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```, 
 using this format ```NAME: (CLASS, SUPER_CLASS)```, where:
     * ```NAME```: is your environment's name.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.

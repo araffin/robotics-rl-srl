@@ -13,12 +13,13 @@ import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 
-from rl_baselines import registered_rl, AlgoType, ActionType
+from rl_baselines import AlgoType, ActionType
+from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
-from environments import registered_env
+from environments.registry import registered_env
 from environments.srl_env import SRLGymEnv
 
 VISDOM_PORT = 8097
@@ -115,7 +116,7 @@ def callback(_locals, _globals):
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
-    is_es = registered_rl[ALGO_NAME][1] == AlgoType.Evolution_strategies
+    is_es = registered_rl[ALGO_NAME][1] == AlgoType.EVOLUTION_STRATEGIES
 
     # Save RL agent parameters
     if not params_saved:
@@ -228,10 +229,10 @@ def main():
         LOG_INTERVAL = 10
         SAVE_INTERVAL = 10
 
-    if not args.continuous_actions and ActionType.Discrete not in action_type:
+    if not args.continuous_actions and ActionType.DISCRETE not in action_type:
         raise ValueError(args.algo + " does not support discrete actions, please use the '--continuous-actions' " +
                          "(or '-c') flag.")
-    if args.continuous_actions and ActionType.Continuous not in action_type:
+    if args.continuous_actions and ActionType.CONTINUOUS not in action_type:
         raise ValueError(args.algo + " does not support continuous actions, please remove the '--continuous-actions' " +
                          "(or '-c') flag.")
 

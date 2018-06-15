@@ -15,7 +15,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 import seaborn as sns
 
-from rl_baselines import registered_rl, AlgoType
+from rl_baselines import AlgoType
+from rl_baselines.registry import registered_rl
 from rl_baselines.utils import createTensorflowSession, computeMeanReward
 from srl_zoo.utils import printYellow, printGreen
 
@@ -69,7 +70,7 @@ def loadConfigAndSetup(load_args):
             algo_name = algo
             break
     algo_class, algo_type, _ = registered_rl[algo_name]
-    if algo_type == AlgoType.Other:
+    if algo_type == AlgoType.OTHER:
         raise ValueError(algo_name + " is not supported for replay")
     printGreen("\n" + algo_name + "\n")
 

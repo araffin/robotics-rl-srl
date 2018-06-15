@@ -8,8 +8,8 @@ import subprocess
 import yaml
 import numpy as np
 
-from rl_baselines import registered_rl
-from environments import registered_env
+from rl_baselines.registry import registered_rl
+from environments.registry import registered_env
 from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow

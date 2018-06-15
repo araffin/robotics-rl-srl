@@ -19,13 +19,13 @@ You will need to define specifically:
     * ```makeEnv(self, args, env_kwargs=None, load_path_normalise=None)```: override if you need to change 
     the environment wrappers (static function).
     * ```train(args, callback, env_kwargs=None)```: to create the environment, and train your algorithm on said environment.
-2. Add your class to the ```registered_rl``` dictionary in ```rl_baselines/__init__.py```, 
+2. Add your class to the ```registered_rl``` dictionary in ```rl_baselines/registry.py```, 
 using this format ```NAME: (CLASS, ALGO_TYPE, [ACTION_TYPE])```, where:
     * ```NAME```: is your algorithm's name.
     * ```CLASS```: is your class that inherits ```BaseRLObject```.
     * ```ALGO_TYPE```: is the type of algorithm, defined by the enumerator ```AlgoType``` in ```rl_baselines/__init__.py```,
-    can be ```Reinforcement_learning```, ```Evolution_strategies``` or ```Other``` 
-    (```Other``` is used to define algorithms that can't be run in ```enjoy_baselines.py``` (ex: Random_agent)).
+    can be ```REINFORCEMENT_LEARNING```, ```EVOLUTION_STRATEGIES``` or ```OTHER``` 
+    (```OTHER``` is used to define algorithms that can't be run in ```enjoy_baselines.py``` (ex: Random_agent)).
     * ```[ACTION_TYPE]```: is the list of compatible type of actions, defined by the enumerator ```ActionType``` 
-    in ```rl_baselines/__init__.py```, can be ```Continuous``` and/or ```Discrete```.
+    in ```rl_baselines/__init__.py```, can be ```CONTINUOUS``` and/or ```DISCRETE```.
 3. Now you can call your algorithm using ```--algo NAME``` with ```train.py``` or ```pipeline.py```. 

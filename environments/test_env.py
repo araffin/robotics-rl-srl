@@ -9,7 +9,7 @@ import time
 
 import numpy as np
 
-from environments import registered_env
+from environments.registry import registered_env
 from srl_zoo.utils import printRed
 
 
