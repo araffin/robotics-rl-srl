@@ -6,7 +6,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage
+from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultithreadSRLModel
 from srl_zoo.utils import printYellow
 
 
@@ -53,6 +53,11 @@ class ARSModel(BaseRLObject):
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         if "num_population" in args.__dict__:
             args.num_cpu = args.num_population * 2
+
+        if env_kwargs is not None and env_kwargs.get("use_srl", False):
+            srl_model = MultithreadSRLModel(args.num_cpu, args.env, env_kwargs)
+            env_kwargs["state_dim"] = srl_model.state_dim
+            env_kwargs["srl_pipe"] = srl_model.pipe
 
         envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=True, env_kwargs=env_kwargs)
                 for i in range(args.num_cpu)]
