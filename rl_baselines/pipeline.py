@@ -10,6 +10,8 @@ import numpy as np
 
 from rl_baselines.registry import registered_rl
 from environments.registry import registered_env
+from state_representation.registry import registered_srl
+from state_representation import SRLType
 from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -24,8 +26,7 @@ def main():
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
                         choices=list(registered_env.keys()))
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised",
-                                 "pca", "vae", "joints", "joints_position", "raw_pixels"])
+                        choices=list(registered_srl.keys()))
     parser.add_argument('--num-timesteps', type=int, default=1e6, help='number of timesteps the baseline should run')
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Display baseline STDOUT')
     parser.add_argument('--num-iteration', type=int, default=15,
@@ -68,7 +69,7 @@ def main():
 
         # validate each model for the current env definition
         for model in srl_models:
-            if model in ["ground_truth", "joints", "joints_position", "raw_pixels"]:
+            if registered_srl[model][0] == SRLType.ENVIRONMENT:
                 continue  # not an srl model, skip to the next model
             elif model not in all_models[env]:
                 printRed("Error: 'srl_models.yaml' missing srl_model {} for environment {}".format(model, env))
@@ -81,6 +82,21 @@ def main():
                 valid = False
 
     assert valid, "Errors occured due to malformed 'srl_models.yaml', cannot continue."
+
+    # check that all the SRL_models can be run on all the environments
+    valid = True
+    for env in envs:
+        for model in srl_models:
+            if registered_srl[model][1] is not None:
+                found = False
+                for compatible_class in registered_srl[model][1]:
+                    if issubclass(compatible_class, registered_env[env][0]):
+                        found = True
+                        break
+                if not found:
+                    valid = False
+                    printRed("Error: srl_model {}, is not compatible with the {} environment.".format(model, env))
+    assert valid, "Errors occured due to an incompatible combination of srl_model and environment, cannot continue."
 
     # the seeds used in training the baseline.
     seeds = list(np.arange(args.num_iteration) + args.seed)
@@ -104,12 +120,8 @@ def main():
                     "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}'".format(i, seeds[i], env, model))
 
                 # redefine the parsed args for rl_baselines.train
-                loop_args = []
-                if model != "raw_pixels":
-                    # raw_pixels is when --srl-model is left as default
-                    loop_args.extend(['--srl-model', model])
-                loop_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
-                                  str(int(args.num_timesteps))])
+                loop_args = ['--srl-model', model, '--seed', str(seeds[i]), '--algo', args.algo, '--env', env,
+                             '--num-timesteps', str(int(args.num_timesteps))]
 
                 ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 

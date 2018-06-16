@@ -76,8 +76,8 @@ class BaxterEnv(SRLGymEnv):
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
                  learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
-                 shape_reward=False, env_rank=0, srl_pipe=None):
-        super(BaxterEnv, self).__init__(use_ground_truth=use_ground_truth,
+                 shape_reward=False, env_rank=0, srl_pipe=None, srl_model="raw_pixels"):
+        super(BaxterEnv, self).__init__(srl_model=srl_model,
                                         relative_pos=RELATIVE_POS,
                                         env_rank=env_rank,
                                         srl_pipe=srl_pipe)
@@ -107,8 +107,8 @@ class BaxterEnv(SRLGymEnv):
             action_bounds = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
-        if self.use_srl:
-            if use_ground_truth:
+        if self.srl_model != "raw_pixels":
+            if self.srl_model == "ground_truth":
                 self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)

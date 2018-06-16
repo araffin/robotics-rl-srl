@@ -11,6 +11,8 @@ from gym.utils import seeding
 from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
 from srl_zoo.preprocessing import N_CHANNELS
+from state_representation import SRLType
+from state_representation.registry import registered_srl
 
 from environments.kuka_gym import kuka
 
@@ -65,11 +67,7 @@ class KukaButtonGymEnv(SRLGymEnv):
     :param action_repeat: (int) Number of timesteps an action is repeated (here it is equivalent to frameskip)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     :param action_joints: (bool) Set actions to apply to the joint space
-    :param use_srl: (bool) Set to true, use srl_models
-    :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
-    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
-    :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
     :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
@@ -78,14 +76,14 @@ class KukaButtonGymEnv(SRLGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_model: (str) The SRL_model used
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
                  name="kuka_button_gym", max_distance=0.4, action_repeat=1, shape_reward=False, action_joints=False,
-                 use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False, use_joints=False,
-                 random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
-                 save_path='srl_zoo/data/', env_rank=0, srl_pipe=None):
-        super(KukaButtonGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+                 record_data=False, random_target=False, force_down=True, state_dim=-1, learn_states=False,
+                 verbose=False, save_path='srl_zoo/data/', env_rank=0, srl_pipe=None, srl_model="raw_pixels"):
+        super(KukaButtonGymEnv, self).__init__(srl_model=srl_model,
                                                relative_pos=RELATIVE_POS,
                                                env_rank=env_rank,
                                                srl_pipe=srl_pipe)
@@ -112,9 +110,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         self.debug = False
         self.n_contacts = 0
         self.state_dim = state_dim
-        self.use_srl = use_srl or use_ground_truth or use_joints
-        self.use_ground_truth = use_ground_truth
-        self.use_joints = use_joints
         self.action_joints = action_joints
         self.relative_pos = RELATIVE_POS
         self.cuda = th.cuda.is_available()
@@ -129,6 +124,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         self.button_uid = None
         self._kuka = None
         self.action = None
+        self.srl_model = srl_model
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -170,17 +166,20 @@ class KukaButtonGymEnv(SRLGymEnv):
             action_high = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
 
-        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-
-        if self.use_srl:
-            if self.use_ground_truth and self.use_joints:
-                self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
-            elif self.use_joints:
-                self.state_dim = self.getJointsDim()
-            elif self.use_ground_truth:
-                self.state_dim = self.getGroundTruthDim()
-                
+        if self.srl_model == "raw_pixels":
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        elif self.srl_model == "ground_truth":
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+            self.state_dim = self.getGroundTruthDim()
+        elif self.srl_model == "joints":
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+            self.state_dim = self.getJointsDim()
+        elif self.srl_model == "joints_position":
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+            self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
+        else:
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+                
         # Create numpy random generator
         # This seed can be changed later
         self.seed(0)
@@ -192,12 +191,12 @@ class KukaButtonGymEnv(SRLGymEnv):
         :return: (numpy float)
         """
         state = []
-        if self.use_ground_truth:
+        if self.srl_model in ["ground_truth", "joints_position"]:
             if self.relative_pos:
                 state += list(self.getGroundTruth() - self.getTargetPos())
             else:
                 state += list(self.getGroundTruth())
-        if self.use_joints:
+        if self.srl_model in ["joints", "joints_position"]:
             state += list(self._kuka.joint_positions)
 
         if len(state) != 0:
@@ -307,7 +306,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             # if len(self.saver.srl_model_path) > 0:
             # self.srl_model.load(self.saver.srl_model_path))
             return self.getSRLState(self._observation)
@@ -408,7 +407,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.step(self._observation, self.action, reward, done, self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}

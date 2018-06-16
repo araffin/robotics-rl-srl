@@ -119,7 +119,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.button_all_pos[self.goal_id], self.getArmPos())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
@@ -148,7 +148,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         if self.saver is not None:
             self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}

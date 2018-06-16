@@ -18,12 +18,12 @@ def register(_id, **kvargs):
 
 
 registered_env = {
-    "KukaButtonGymEnv-v0": (KukaButtonGymEnv, SRLGymEnv),
-    "KukaRandButtonGymEnv-v0": (KukaRandButtonGymEnv, KukaButtonGymEnv),
-    "Kuka2ButtonGymEnv-v0": (Kuka2ButtonGymEnv, KukaButtonGymEnv),
+    "KukaButtonGymEnv-v0":       (KukaButtonGymEnv, SRLGymEnv),
+    "KukaRandButtonGymEnv-v0":   (KukaRandButtonGymEnv, KukaButtonGymEnv),
+    "Kuka2ButtonGymEnv-v0":      (Kuka2ButtonGymEnv, KukaButtonGymEnv),
     "KukaMovingButtonGymEnv-v0": (KukaMovingButtonGymEnv, KukaButtonGymEnv),
-    "MobileRobotGymEnv-v0": (MobileRobotGymEnv, SRLGymEnv),
-    "Baxter-v0": (BaxterEnv, SRLGymEnv)
+    "MobileRobotGymEnv-v0":      (MobileRobotGymEnv, SRLGymEnv),
+    "Baxter-v0":                 (BaxterEnv, SRLGymEnv)
 }
 
 

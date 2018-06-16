@@ -21,6 +21,8 @@ from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
 from environments.registry import registered_env
 from environments.srl_env import SRLGymEnv
+from state_representation import SRLType
+from state_representation.registry import registered_srl
 
 VISDOM_PORT = 8097
 LOG_INTERVAL = 100
@@ -28,7 +30,7 @@ LOG_DIR = ""
 ALGO = None
 ALGO_NAME = ""
 ENV_NAME = ""
-PLOT_TITLE = "Raw Pixels"
+PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 viz = None
 n_steps = 0
@@ -70,31 +72,16 @@ def configureEnvAndLogFolder(args, env_kwargs):
     args.log_dir += args.env + "/"
 
     models = all_models[args.env]
-    if args.srl_model != "":
-        PLOT_TITLE = args.srl_model
-        path = models.get(args.srl_model)
-        args.log_dir += args.srl_model + "/"
+    PLOT_TITLE = args.srl_model
+    path = models.get(args.srl_model)
+    args.log_dir += args.srl_model + "/"
 
-        if args.srl_model == "ground_truth":
-            env_kwargs["use_ground_truth"] = True
-            PLOT_TITLE = "Ground Truth"
-        elif args.srl_model == "joints":
-            # Observations in joint space
-            env_kwargs["use_joints"] = True
-            PLOT_TITLE = "Joints"
-        elif args.srl_model == "joints_position":
-            # Observations in joint and position space
-            env_kwargs["use_ground_truth"] = True
-            env_kwargs["use_joints"] = True
-            PLOT_TITLE = "Joints and position"
-        elif path is not None:
-            env_kwargs["use_srl"] = True
-            env_kwargs["srl_model_path"] = models['log_folder'] + path
-        else:
-            raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
-
+    env_kwargs["srl_model"] = args.srl_model
+    if path is not None:  # FIXME
+        env_kwargs["use_srl"] = True
+        env_kwargs["srl_model_path"] = models['log_folder'] + path
     else:
-        args.log_dir += "raw_pixels/"
+        raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
 
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
@@ -173,9 +160,7 @@ def main():
     parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
-    parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints",
-                                 "joints_position"],
+    parser.add_argument('--srl-model', type=str, default='raw_pixels', choices=list(registered_srl.keys()),
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=1,
                         help='number of frames to stack (default: 1)')
@@ -205,8 +190,16 @@ def main():
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
     assert 0 <= args.port < 65535, "Error: invalid visdom port number {}, ".format(args.port) + \
                                    "port number must be an unsigned 16bit number [0,65535]."
-    assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
+    assert registered_srl[args.srl_model][0] == SRLType.ENVIRONMENT or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
+    # check that all the SRL_model can be run on the environment
+    if registered_srl[args.srl_model][1] is not None:
+        found = False
+        for compatible_class in registered_srl[args.srl_model][1]:
+            if issubclass(compatible_class, registered_env[args.env][0]):
+                found = True
+                break
+        assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
 
     ENV_NAME = args.env
     ALGO_NAME = args.algo

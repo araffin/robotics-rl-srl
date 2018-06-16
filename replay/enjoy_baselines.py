@@ -93,6 +93,7 @@ def loadConfigAndSetup(load_args):
         "action_joints": train_args["action_joints"],
         "is_discrete": not train_args["continuous_actions"],
         "random_target": train_args.get('relative', False),
+        "srl_model": train_args["srl_model"]
     }
 
     # load it, if it was defined
@@ -111,14 +112,7 @@ def loadConfigAndSetup(load_args):
         train_args["policy"] = "mlp"
         path = srl_models.get(train_args["srl_model"])
 
-        if train_args["srl_model"] == "ground_truth":
-            env_kwargs["use_ground_truth"] = True
-        elif train_args["srl_model"] == "joints":
-            env_kwargs["use_joints"] = True
-        elif train_args["srl_model"] == "joints_position":
-            env_kwargs["use_ground_truth"] = True
-            env_kwargs["use_joints"] = True
-        elif path is not None:
+        if path is not None:
             env_kwargs["use_srl"] = True
             env_kwargs["srl_model_path"] = srl_models['log_folder'] + path
         else:

@@ -114,7 +114,7 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.button_pos, self.getArmPos())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
