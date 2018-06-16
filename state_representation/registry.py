@@ -13,4 +13,3 @@ registered_srl = {
     "vae":             (SRLType.SRL, None),
     "pca":             (SRLType.SRL, None)
 }
-

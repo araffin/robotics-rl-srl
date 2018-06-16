@@ -4,7 +4,7 @@ from baselines import logger
 from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, \
-    WrapFrameStack, loadRunningAverage
+    WrapFrameStack, loadRunningAverage, MultithreadSRLModel
 
 
 class DeepQModel(BaseRLObject):
@@ -40,6 +40,12 @@ class DeepQModel(BaseRLObject):
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
+        # Even though DeepQ is single core only, we need to use the pipe system to work
+        if env_kwargs is not None and env_kwargs.get("use_srl", False):
+            srl_model = MultithreadSRLModel(1, args.env, env_kwargs)
+            env_kwargs["state_dim"] = srl_model.state_dim
+            env_kwargs["srl_pipe"] = srl_model.pipe
+
         env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
         if args.srl_model != "":
