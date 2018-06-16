@@ -15,17 +15,16 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
     :param action_repeat: (int) Number of timesteps an action is repeated (here it is equivalent to frameskip)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     :param action_joints: (bool) Set actions to apply to the joint space
-    :param use_srl: (bool) Set to true, use srl_models
-    :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
-    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
-    :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
     :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
+    :param env_rank: (int) the number ID of the environment
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_model: (str) The SRL_model used
     """
 
     def __init__(self, name="kuka_2button_gym", max_distance=2, force_down=False, **kwargs):

@@ -11,8 +11,6 @@ from gym.utils import seeding
 from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
 from srl_zoo.preprocessing import N_CHANNELS
-from state_representation import SRLType
-from state_representation.registry import registered_srl
 
 from environments.kuka_gym import kuka
 

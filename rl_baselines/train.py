@@ -77,7 +77,7 @@ def configureEnvAndLogFolder(args, env_kwargs):
     args.log_dir += args.srl_model + "/"
 
     env_kwargs["srl_model"] = args.srl_model
-    if path is not None:  # FIXME
+    if path is not None:
         env_kwargs["use_srl"] = True
         env_kwargs["srl_model_path"] = models['log_folder'] + path
     else:
