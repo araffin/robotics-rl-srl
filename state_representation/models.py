@@ -256,9 +256,9 @@ class SRLNeuralNetwork(SRLBaseClass):
         # Channel first
         observation = np.transpose(observation, (0, 3, 2, 1))
         observation = th.from_numpy(observation).to(th.float).to(self.device)
-        observation.requires_grad_(False) # Volatile=True
-
-        state = self.model.getStates(observation)[0]
+ 
+        with th.no_grad():
+            state = self.model.getStates(observation)[0]
         return state.to(th.device("cpu")).detach().numpy()
 
 

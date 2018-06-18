@@ -72,10 +72,12 @@ class PytorchPolicy(Policy):
             obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
-        if self.continuous_actions:
-            return self.model(self.makeVar(obs)).to(torch.device("cpu")).detach().numpy()
-        else:
-            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).to(torch.device("cpu")).detach())
+        with th.no_grad():
+            if self.continuous_actions:
+                action = self.model(self.makeVar(obs)).to(torch.device("cpu")).detach().numpy()
+            else:
+                action = np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).to(torch.device("cpu")).detach())
+        return action
 
     def makeVar(self, arr):
         """
