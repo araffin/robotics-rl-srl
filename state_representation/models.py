@@ -232,7 +232,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
-        self.model.to(self.device)
+        self.model = self.model.to(self.device)
 
 
     def load(self, path):

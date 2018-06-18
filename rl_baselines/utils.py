@@ -210,6 +210,8 @@ class MultithreadSRLModel:
         self.p.start()
 
     def _run(self, env_kwargs):
+        # this is to control the number of CPUs that torch is allowed to use.
+        # By default it will use all CPUs, even with GPU acceleration
         th.set_num_threads(1)
         self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
         # run until the end of the caller thread

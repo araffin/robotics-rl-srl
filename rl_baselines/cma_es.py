@@ -10,6 +10,17 @@ import torch.nn.functional as F
 from rl_baselines.utils import createEnvs
 from srl_zoo.utils import printYellow
 
+
+def detachToNumpy(tensor):
+    """
+    gets a pytorch tensor and returns a numpy array
+    :param tensor: (pytorch tensor)
+    :return: (numpy float)
+    """
+    # detach means to seperate the gradient from the data of the tensor
+    return tensor.to(torch.device('cpu')).detach().numpy()
+
+
 class Policy(object):
     """
     The policy object for genetic algorithms
@@ -47,19 +58,22 @@ class PytorchPolicy(Policy):
         self.srl_model = srl_model
         self.cuda = cuda
         self.device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
-        
-        self.model.to(self.device)
 
-    # used to prevent pickling of pytorch device object
+        self.model = self.model.to(self.device)
+
+    # used to prevent pickling of pytorch device object, as they cannot be pickled
     def __getstate__(self):
         d = self.__dict__.copy()
+        d['model'] = d['model'].to(torch.device('cpu'))
         if 'device' in d:
-            d['device'] = 'device'
+            d['device'] = 'cpu'
         return d
 
+    # restore torch device from a pickle using the same config, if cuda is available
     def __setstate__(self, d):
         if 'device' in d:
             d['device'] = torch.device("cuda" if torch.cuda.is_available() and d['cuda'] else "cpu")
+        d['model'] = d['model'].to(d['device'])
         self.__dict__.update(d)
 
     def getAction(self, obs):
@@ -72,11 +86,11 @@ class PytorchPolicy(Policy):
             obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
-        with th.no_grad():
+        with torch.no_grad():
             if self.continuous_actions:
-                action = self.model(self.makeVar(obs)).to(torch.device("cpu")).detach().numpy()
+                action = detachToNumpy(self.model(self.makeVar(obs)))
             else:
-                action = np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).to(torch.device("cpu")).detach())
+                action = np.argmax(detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1)))
         return action
 
     def makeVar(self, arr):
