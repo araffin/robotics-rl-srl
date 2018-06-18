@@ -5,8 +5,7 @@ import numpy as np
 import torch as th
 from torch.autograd import Variable
 
-from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet, \
-    ConvolutionalNetwork
+from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, ConvolutionalNetwork, SRLModules
 from srl_zoo.preprocessing import preprocessImage, N_CHANNELS
 from srl_zoo.utils import printGreen, printYellow
 
@@ -45,15 +44,19 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     :return: (srl model)
     """
     model_type = None
+    losses =  None
+    n_actions = None
     model = None
     if path is not None:
         # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
-
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
         try:
             state_dim = exp_config['state-dim']
+            losses = exp_config['losses']
+            n_actions = exp_config['n_actions']
+            model_type = exp_config['model-type']
         except KeyError:
             # Old format
             state_dim = exp_config['state_dim']
@@ -90,7 +93,10 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'autoencoder'
             elif 'vae' in path:
                 model_type = 'vae'
-        else:
+
+        # retro-compatibility ?!
+        elif model_type is None:
+
             if 'custom_cnn' in path:
                 model_type = 'custom_cnn'
             elif 'triplet' in path:
@@ -103,7 +109,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     model must be given, or ground truth must be used."
 
     if model is None:
-        model = SRLNeuralNetwork(state_dim, cuda, model_type)
+        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
 
     printGreen("\nSRL: Using {} \n".format(model_type))
 
@@ -207,29 +213,19 @@ class SRLJointsPos(SRLBaseClass):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn"):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
-
-        if model_type == "custom_cnn":
-            self.model = SRLCustomCNN(state_dim, self.cuda, noise_std=NOISE_STD)
+        if model_type == "vae":
+            self.model = CNNVAE(self.state_dim)
         elif model_type == "supervised_custom_cnn":
             self.model = CustomCNN(state_dim)
         elif model_type == "supervised_resnet":
             self.model = ConvolutionalNetwork(state_dim)
-        elif model_type == "resnet":
-            self.model = SRLConvolutionalNetwork(state_dim, self.cuda, noise_std=NOISE_STD)
-        # TODO: support mlp models
-        elif model_type == "autoencoder":
-            self.model = CNNAutoEncoder(self.state_dim)
-        elif model_type == "triplet_cnn":
-            self.model = TripletNet(state_dim)
-        elif model_type == "vae":
-            self.model = CNNVAE(self.state_dim)
         else:
-            raise ValueError("Model type not supported: {}".format(model_type))
-
+            self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type, cuda=self.cuda,
+                                losses=losses)
         self.model.eval()
 
         if self.cuda:
