@@ -61,6 +61,13 @@ class WrapFrameStack(VecFrameStack):
         stackedobs = super(WrapFrameStack, self).reset()
         return stackedobs[0] / self.factor
 
+    def getOriginalObs(self):
+        """
+        Hack to use CustomVecNormalize
+        :return: (numpy float) 
+        """
+        return self.venv.getOriginalObs()
+
     def saveRunningAverage(self, path):
         """
         Hack to use CustomVecNormalize

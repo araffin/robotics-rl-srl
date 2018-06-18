@@ -31,8 +31,9 @@ def dynamicEnvLoad(env_id):
     except ImportError:
         raise AssertionError("Error: could not import module {}, ".format(env_module_path) +
                              "Halting execution. Are you sure this is a valid environement?")
-        
+
     return module_env, class_name, env_module_path
+
 
 def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=None):
     """
@@ -47,7 +48,7 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=No
 
     # define a place holder function to be returned to the caller.
     def _thunk():
-        local_env_kwargs = dict(env_kwargs) # copy this to avoid altering the others
+        local_env_kwargs = dict(env_kwargs)  # copy this to avoid altering the others
         local_env_kwargs["env_rank"] = rank
         env = _make(env_id, env_kwargs=local_env_kwargs)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)

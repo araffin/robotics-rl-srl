@@ -4,11 +4,13 @@ import pickle as pkl
 import numpy as np
 import torch as th
 
-from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet, ConvolutionalNetwork
+from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet, \
+    ConvolutionalNetwork
 from srl_zoo.preprocessing import preprocessImage, N_CHANNELS
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
+
 
 def getSRLDim(path=None, env_object=None):
     """
@@ -30,6 +32,7 @@ def getSRLDim(path=None, env_object=None):
             return exp_config['state_dim']
     else:
         return env_object.getGroundTruthDim()
+
 
 def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     """
@@ -95,7 +98,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'resnet'
 
     assert model_type is not None or model is not None, \
-    "Model type not supported. In order to use loadSRLModel, a path to an SRL \
+        "Model type not supported. In order to use loadSRLModel, a path to an SRL \
     model must be given, or ground truth must be used."
 
     if model is None:
@@ -159,6 +162,7 @@ class SRLJoints(SRLBaseClass):
     """
     Using Joint space for state representation model
     """
+
     def __init__(self, env_object, state_dim=14):
         super(SRLJoints, self).__init__(state_dim)
         self.env_object = env_object
@@ -178,6 +182,7 @@ class SRLJointsPos(SRLBaseClass):
     """
     Using Joint and position space for state representation model
     """
+
     def __init__(self, env_object, state_dim=17, relative_pos=True):
         super(SRLJointsPos, self).__init__(state_dim)
         self.env_object = env_object
@@ -193,7 +198,7 @@ class SRLJointsPos(SRLBaseClass):
         """
         pos = self.env_object.getArmPos()
         if self.relative_pos:
-            pos = pos -self.env_object.button_pos
+            pos = pos - self.env_object.button_pos
 
         return np.array(self.env_object._kuka.joint_positions + list(pos))
 

@@ -6,7 +6,6 @@ import argparse
 import subprocess
 
 import yaml
-import tensorflow as tf
 import numpy as np
 
 from srl_zoo.utils import printGreen, printRed
@@ -108,7 +107,7 @@ def main():
                     # raw_pixels is when --srl-model is left as default
                     loop_args.extend(['--srl-model', model])
                 loop_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
-                                   str(int(args.num_timesteps))])
+                                  str(int(args.num_timesteps))])
 
                 ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 

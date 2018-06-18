@@ -4,7 +4,7 @@ from __future__ import print_function, absolute_import, division
 # Socket port
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
-USING_REAL_BAXTER = True
+USING_REAL_BAXTER = False
 
 # Calibrated values for Real Baxter
 if USING_REAL_BAXTER:
@@ -39,6 +39,7 @@ else:
     Z_TABLE = -0.14
     IMAGE_TOPIC = "/cameras/head_camera_2/image"
     MAX_STEPS = 100
+    MAX_DISTANCE = 0.35
 
 # Arrow keys for teleoperation
 UP_KEY = 82  # the arrow key "up"
