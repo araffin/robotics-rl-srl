@@ -26,3 +26,4 @@ using this format ```NAME: (SRLType.SRL, [LIMITED_TO_ENV])```, where:
     * ```NAME```: is your model's name.
     * ```[LIMITED_TO_ENV]```: is the list of environment where this model works (will check for subclass), 
     set to ```None``` if this model applies to every environment.
+3. Add the name of the model to ```config\srl_models.yaml```, with the location of the saved model for each environment (can point to a dummy location, but must be defined).
