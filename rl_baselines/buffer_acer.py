@@ -51,7 +51,7 @@ class Buffer(object):
             # y = np.empty([nsteps + nstack - 1, nenv, 1, 1, 1], dtype=np.float32)
             # obs = np.zeros([nstack, nsteps + nstack, nenv, nh, nw, nc], dtype=np.uint8)
             # [nsteps + nstack, nenv, nh, nw, nc]
-            x = np.reshape(enc_obs, [nenv, nsteps + nstack, nh, nw, nc]).swapaxes(1, 0)
+            x = np.reshape(enc_obs, [nstack, nenv, nsteps + nstack, nh, nw, nc]).swapaxes(2, 1)
             # y[3:] = np.reshape(1.0 - dones, [nenv, nsteps, 1, 1, 1]).swapaxes(1, 0)  # keep
             # y[:3] = 1.0
             # y = np.reshape(1 - dones, [nenvs, nsteps, 1, 1, 1])
