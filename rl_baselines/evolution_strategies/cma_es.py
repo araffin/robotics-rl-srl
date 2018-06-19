@@ -6,11 +6,20 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import createEnvs
 from srl_zoo.utils import printYellow
+
+
+def detachToNumpy(tensor):
+    """
+    gets a pytorch tensor and returns a numpy array
+    :param tensor: (pytorch tensor)
+    :return: (numpy float)
+    """
+    # detach means to seperate the gradient from the data of the tensor
+    return tensor.to(torch.device('cpu')).detach().numpy()
 
 
 class CMAESModel(BaseRLObject):
@@ -124,9 +133,24 @@ class PytorchPolicy(Policy):
         self.srl_model = srl_model
         self.cuda = cuda
         self.sampling = sampling
+        self.device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
 
-        if self.cuda:
-            self.model.cuda()
+        self.model = self.model.to(self.device)
+
+    # used to prevent pickling of pytorch device object, as they cannot be pickled
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['model'] = d['model'].to(torch.device('cpu'))
+        if 'device' in d:
+            d['device'] = 'cpu'
+        return d
+
+    # restore torch device from a pickle using the same config, if cuda is available
+    def __setstate__(self, d):
+        if 'device' in d:
+            d['device'] = torch.device("cuda" if torch.cuda.is_available() and d['cuda'] else "cpu")
+        d['model'] = d['model'].to(d['device'])
+        self.__dict__.update(d)
 
     def getAction(self, obs):
         """
@@ -138,26 +162,24 @@ class PytorchPolicy(Policy):
             obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
-        if self.continuous_actions:
-            action = self.model(self.makeVar(obs)).data.numpy()
-        else:
-            action = F.softmax(self.model(self.makeVar(obs)), dim=-1).data
-            if self.sampling:
-                action = np.random.choice(len(action), p=action)
+        with torch.no_grad():
+            if self.continuous_actions:
+                action = detachToNumpy(self.model(self.makeVar(obs)))
             else:
-                action = np.argmax(action)
+                action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
+                if self.sampling:
+                    action = np.random.choice(len(action), p=action)
+                else:
+                    action = np.argmax(action)
         return action
 
     def makeVar(self, arr):
         """
-        Returns a pytorch Variable object from a numpy array
+        Returns a pytorch Tensor object from a numpy array
         :param arr: ([float])
-        :return: (Variable)
+        :return: (Tensor)
         """
-        if self.cuda:
-            return Variable(torch.from_numpy(arr)).float().cuda()
-        else:
-            return Variable(torch.from_numpy(arr)).float()
+        return torch.from_numpy(arr).to(torch.float).to(self.device)
 
     def getParamSpace(self):
         """
