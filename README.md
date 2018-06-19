@@ -291,11 +291,12 @@ export ROS_HOSTNAME=192.168.0.211  # Your IP
 export ROS_MASTER_URI=http://robobo.local:11311 # Robobo IP
 ```
 
-2. Calibrate the different values in in `real_robots/constants.py` using `real_robots/real_robobo_server.py` and `real_robots/teleop_client.py` (Client for teleoperation):
+2. Calibrate the different values in `real_robots/constants.py` using `real_robots/real_robobo_server.py` and `real_robots/teleop_client.py` (Client for teleoperation):
 - Set USING_ROBOBO to True
 - Area of the target: TARGET_INITIAL_AREA
 - Boundaries of the enviroment: (MIN_X, MAX_X, MIN_Y, MAX_Y)
 - Maximum number of steps per episode: MAX_STEPS
+IMPORTANT NOTE: if you use color detection to detect the target, you need to calibrate the HSV thresholds `LOWER_RED` and `UPPER_RED` in `real_robots/constants.py` (for instance, using [this script](https://github.com/sergionr2/RacingRobot/blob/v0.3/opencv/dev/threshold.py)). Be careful, you may have to change the color conversion (`cv2.COLOR_BGR2HSV` instead of `cv2.COLOR_RGB2HSV`)
 
 3. Configure images topics in `real_robots/constants.py`:
 - IMAGE_TOPIC: main camera

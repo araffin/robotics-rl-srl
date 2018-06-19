@@ -1,5 +1,6 @@
 from __future__ import print_function, absolute_import, division
 
+import numpy as np
 from enum import Enum
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
@@ -49,6 +50,10 @@ elif USING_ROBOBO:
     # Initial area in the image of the target
     # It must be calibrated after changing the target position
     TARGET_INITIAL_AREA = 3700
+    # HSV thresholds, MUST be calibrated before starting the experiment
+    # using for instance https://github.com/sergionr2/RacingRobot/blob/v0.3/opencv/dev/threshold.py
+    LOWER_RED = np.array([120, 130, 0])
+    UPPER_RED = np.array([135, 255, 255])
     # Change in percent of the target area to consider
     # that the target was reached
     MIN_DELTA_AREA = 0.2  # 20% covered to considered it reached

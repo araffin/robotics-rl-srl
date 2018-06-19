@@ -228,12 +228,9 @@ def findTarget(image, debug=False):
     error = False
 
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # define range of blue color in HSV
-    lower_red = np.array([120, 130, 0])
-    upper_red = np.array([135, 255, 255])
 
     # Threshold the HSV image
-    mask = cv2.inRange(hsv, lower_red, upper_red)
+    mask = cv2.inRange(hsv, LOWER_RED, UPPER_RED)
 
     # Remove noise
     kernel_erode = np.ones((4, 4), np.uint8)
