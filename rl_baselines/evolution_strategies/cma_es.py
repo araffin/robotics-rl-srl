@@ -44,6 +44,8 @@ class CMAESModel(BaseRLObject):
                             help='inital scale for gaussian sampling of network parameters')
         parser.add_argument('--cuda', action='store_true', default=False,
                             help='use gpu for the neural network')
+        parser.add_argument('--sampling', action='store_true', default=False,
+                            help='do a sampling of the actions on the output of the policy')
         return parser
 
     def getAction(self, observation, dones=None):
@@ -70,7 +72,8 @@ class CMAESModel(BaseRLObject):
         else:
             net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
 
-        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"), cuda=args.cuda)
+        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"), cuda=args.cuda,
+                               sampling=args.sampling)
 
         self.model = CMAES(
             args.num_population,
@@ -110,15 +113,17 @@ class PytorchPolicy(Policy):
     :param continuous_actions: (bool)
     :param srl_model: (bool) if using an srl model or not
     :param cuda: (bool)
+    :param sampling: (bool) for sampling from the policy output, this makes the policy non-deterministic
     """
 
-    def __init__(self, model, continuous_actions, srl_model=True, cuda=False):
+    def __init__(self, model, continuous_actions, srl_model=True, cuda=False, sampling=False):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
         self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
         self.srl_model = srl_model
         self.cuda = cuda
+        self.sampling = sampling
 
         if self.cuda:
             self.model.cuda()
@@ -134,9 +139,14 @@ class PytorchPolicy(Policy):
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         if self.continuous_actions:
-            return self.model(self.makeVar(obs)).data.numpy()
+            action = self.model(self.makeVar(obs)).data.numpy()
         else:
-            return np.argmax(F.softmax(self.model(self.makeVar(obs)), dim=-1).data)
+            action = F.softmax(self.model(self.makeVar(obs)), dim=-1).data
+            if self.sampling:
+                action = np.random.choice(len(action), p=action)
+            else:
+                action = np.argmax(action)
+        return action
 
     def makeVar(self, arr):
         """

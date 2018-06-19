@@ -165,10 +165,10 @@ def main():
 
     dones = [False for _ in range(load_args.num_cpu)]
     # HACK: check for custom vec env
-    using_custom_ven_env = issubclass(envs, CustomDummyVecEnv)
+    using_custom_vec_env = issubclass(envs, CustomDummyVecEnv)
 
     obs = envs.reset()
-    if using_custom_ven_env:
+    if using_custom_vec_env:
         obs = [obs]
     # print(obs.shape)
 
@@ -212,7 +212,7 @@ def main():
     for i in range(load_args.num_timesteps):
         actions = method.getAction(obs, dones)
         obs, rewards, dones, _ = envs.step(actions)
-        if using_custom_ven_env:
+        if using_custom_vec_env:
             obs = [obs]
 
         # plotting
@@ -244,7 +244,7 @@ def main():
                 fig.canvas.draw()
                 plt.pause(0.000001)
 
-        if using_custom_ven_env:
+        if using_custom_vec_env:
             if dones:
                 obs = [envs.reset()]
 

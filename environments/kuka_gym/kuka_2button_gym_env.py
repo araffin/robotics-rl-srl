@@ -116,7 +116,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         self._observation = self.getExtendedObservation()
 
         if self.saver is not None:
-            self.saver.reset(self._observation, self.button_all_pos[self.goal_id], self.getArmPos())
+            self.saver.reset(self._observation, self.button_all_pos[self.goal_id], self.getGroundTruth())
 
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
@@ -145,7 +145,7 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         reward = self._reward()
         done = self._termination()
         if self.saver is not None:
-            self.saver.step(self._observation, self.action, reward, done, self.getArmPos())
+            self.saver.step(self._observation, self.action, reward, done, self.getGroundTruth())
 
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
