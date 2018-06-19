@@ -184,12 +184,12 @@ Also, ROS comes with its own version of OpenCV, so when running the python3 scri
 roslaunch arm_scenario_simulator baxter_world.launch
 rosrun arm_scenario_simulator spawn_objects_example
 
-python -m gazebo.gazebo_server
+python -m real_robots.gazebo_server
 ```
 
 Then, you can either try to teleoperate the robot (python 3):
 ```
-python -m gazebo.teleop_client
+python -m real_robots.teleop_client
 ```
 or test the environment with random actions (using the gym wrapper):
 
@@ -222,7 +222,7 @@ export ROS_HOSTNAME=192.168.0.211  # Your IP
 export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 ```
 
-2. Calibrate the different values in in `real_robots/constants.py` using `real_robots/real_baxter_debug.py`:
+2. Calibrate the different values in `real_robots/constants.py` using `real_robots/real_baxter_debug.py`:
 - Set USING_REAL_BAXTER to True
 - Position of the target: BUTTON_POS
 - Init position and orientation: LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION
@@ -238,7 +238,7 @@ export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 
 4. Launch ROS bridge server (python 2):
 ```
-python -m gazebo.real_baxter_server
+python -m real_robots.real_baxter_server
 ```
 
 5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
@@ -261,7 +261,7 @@ NB: If you want to save the image without resizing, you need to comment the line
 
 3. Launch ROS bridge server (python 2):
 ```
-python -m gazebo.real_baxter_server
+python -m real_robots.real_baxter_server
 ```
 
 4. Start visdom for visualizing the training
@@ -278,7 +278,7 @@ python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num
 
 [Robobo Documentation](https://bitbucket.org/mytechia/robobo-programming/wiki/Home)
 
-Note: the Robobo is controlled using time (the feedback frequency is to low to do closed-loop control)
+Note: the Robobo is controlled using time (the feedback frequency is too low to do closed-loop control)
 The robot was calibrated for a constant speed of 10.
 
 ### Recording Data With a Random Agent for SRL
@@ -309,7 +309,7 @@ rosrun image_transport republish compressed in:=/camera/image raw out:=/camera/i
 
 4. Launch ROS bridge server (python 2):
 ```
-python -m gazebo.real_robobo_server
+python -m real_robots.real_robobo_server
 ```
 
 5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
@@ -327,13 +327,13 @@ NB: If you want to save the image without resizing, you need to comment the line
 
 ### RL on a Real Robobo
 
-1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
+1. Update the settings in `rl_baselines/train.py`, so it saves and logs the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
 
 2. Make sure that USING_ROBOBO is set to True in `real_robots/constants.py`.
 
 3. Launch ROS bridge server (python 2):
 ```
-python -m gazebo.real_robobo_server
+python -m real_robots.real_robobo_server
 ```
 
 4. Start visdom for visualizing the training

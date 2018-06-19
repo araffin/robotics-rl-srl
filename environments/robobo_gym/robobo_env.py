@@ -11,7 +11,6 @@ import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Baxter-Gazebo bridge specific
 from environments.srl_env import SRLGymEnv
 from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
 from real_robots.utils import recvMatrix
@@ -47,6 +46,7 @@ class RoboboEnv(SRLGymEnv):
     """
     Robobo robot Environment (Gym wrapper for Robobo Gazebo environment)
     The goal of robobo is to go to the location on the table
+    (signaled with a circle sticker on the table)
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) true if action space is discrete vs continuous
     :param log_folder: (str) name of the folder where recorded data will be stored
