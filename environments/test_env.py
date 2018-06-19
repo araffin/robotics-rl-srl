@@ -47,7 +47,7 @@ def env_thread(args, thread_num, partition=True):
         "shape_reward": args.shape_reward
     }
 
-    env_class = registered_env[args.env]
+    env_class = registered_env[args.env][0]
 
     if partition:
         env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
@@ -145,7 +145,8 @@ def main():
             raise e
 
     if args.record_data and args.num_cpu > 1:
-
+        # sleep 1 second, to avoid congruency issues from multiprocess (eg., files still writing)
+        time.sleep(1)
         # get all the parts
         file_parts = glob.glob(args.save_folder + args.save_name + "_part-[0-9]*")
 
