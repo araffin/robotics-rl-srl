@@ -62,21 +62,6 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
             to a srl_model.pth file with learned states."
 
-    if env_object is not None:
-        if env_object.use_ground_truth and env_object.use_joints:
-            model_type = 'joints and position'
-            if not env_object.relative_pos:
-                model_type += " (absolute pos)"
-            model = SRLJointsPos(env_object, relative_pos=env_object.relative_pos)
-        elif env_object.use_joints:
-            model_type = 'joints'
-            model = SRLJoints(env_object)
-        elif env_object.use_ground_truth:
-            model_type = 'ground truth'
-            if not env_object.relative_pos:
-                model_type += " (absolute pos)"
-            model = SRLGroundTruth(env_object, relative_pos=env_object.relative_pos)
-
     if path is not None:
         if 'baselines' in path:
             if 'pca' in path:
@@ -100,9 +85,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL \
-    model must be given, or ground truth must be used."
+    model must be given."
 
-    if model is None:
+    if model is not None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
 
     printGreen("\nSRL: Using {} \n".format(model_type))
@@ -138,70 +123,6 @@ class SRLBaseClass(object):
         Predict the state for a given observation
         """
         raise NotImplementedError("getState() not implemented")
-
-
-class SRLGroundTruth(SRLBaseClass):
-    def __init__(self, env_object, relative_pos=True):
-        super(SRLGroundTruth, self).__init__(env_object.getGroundTruthDim())
-        self.env_object = env_object
-        self.relative_pos = relative_pos
-
-    def load(self, path=None):
-        pass
-
-    def getState(self, observation=None):
-        """
-        :param observation: (numpy tensor)
-        :return: (numpy array) 1D
-        """
-        if self.relative_pos:
-            return self.env_object.getGroundTruth() - self.env_object.getTargetPos()
-        return self.env_object.getGroundTruth()
-
-
-class SRLJoints(SRLBaseClass):
-    """
-    Using Joint space for state representation model
-    """
-
-    def __init__(self, env_object, state_dim=14):
-        super(SRLJoints, self).__init__(state_dim)
-        self.env_object = env_object
-
-    def load(self, path=None):
-        pass
-
-    def getState(self, observation=None):
-        """
-        :param observation: (numpy tensor)
-        :return: (numpy matrix)
-        """
-        return np.array(self.env_object._kuka.joint_positions)
-
-
-class SRLJointsPos(SRLBaseClass):
-    """
-    Using Joint and position space for state representation model
-    """
-
-    def __init__(self, env_object, state_dim=17, relative_pos=True):
-        super(SRLJointsPos, self).__init__(state_dim)
-        self.env_object = env_object
-        self.relative_pos = relative_pos
-
-    def load(self, path=None):
-        pass
-
-    def getState(self, observation=None):
-        """
-        :param observation: (numpy tensor)
-        :return: (numpy matrix)
-        """
-        pos = self.env_object.getArmPos()
-        if self.relative_pos:
-            pos = pos - self.env_object.button_pos
-
-        return np.array(self.env_object._kuka.joint_positions + list(pos))
 
 
 class SRLNeuralNetwork(SRLBaseClass):

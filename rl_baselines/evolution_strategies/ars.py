@@ -63,7 +63,7 @@ class ARSModel(BaseRLObject):
                 for i in range(args.num_cpu)]
         envs = SubprocVecEnv(envs)
         envs = VecFrameStack(envs, args.num_stack)
-        if args.srl_model != "" and args.algo_type == "v2":
+        if args.srl_model != "raw_pixels" and args.algo_type == "v2":
             envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
             envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
         return envs
@@ -75,7 +75,7 @@ class ARSModel(BaseRLObject):
 
         envs = self.makeEnv(args, env_kwargs)
 
-        if args.srl_model != "":
+        if args.srl_model != "raw_pixels":
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
 

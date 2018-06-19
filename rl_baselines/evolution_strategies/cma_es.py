@@ -63,14 +63,14 @@ class CMAESModel(BaseRLObject):
         else:
             action_space = envs.action_space.n
 
-        if args.srl_model != "":
+        if args.srl_model != "raw_pixels":
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
             net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
         else:
             net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
 
-        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
+        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"), cuda=args.cuda)
 
         self.model = CMAES(
             args.num_population,

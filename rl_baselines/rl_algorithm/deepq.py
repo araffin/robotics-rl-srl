@@ -48,13 +48,13 @@ class DeepQModel(BaseRLObject):
 
         env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
-        if args.srl_model != "":
+        if args.srl_model != "raw_pixels":
             env = CustomVecNormalize(env)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
         # Normalize only raw pixels
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "")
+        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
     def train(self, args, callback, env_kwargs=None):
         logger.configure()
@@ -63,7 +63,7 @@ class DeepQModel(BaseRLObject):
 
         createTensorflowSession()
 
-        if args.srl_model != "":
+        if args.srl_model != "raw_pixels":
             model = deepq.models.mlp([64, 64])
         else:
             # Atari CNN

@@ -104,13 +104,13 @@ class DDPGModel(BaseRLObject):
 
         env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
-        if args.srl_model != "":
+        if args.srl_model != "raw_pixels":
             env = CustomVecNormalize(env)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
         # Normalize only raw pixels
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "")
+        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
     def train(self, args, callback, env_kwargs=None):
         logger.configure()
@@ -134,7 +134,7 @@ class DDPGModel(BaseRLObject):
                                                         sigma=args.noise_action_sigma * np.ones(n_actions))
 
         # Configure components.
-        if args.srl_model != "":
+        if args.srl_model != "raw_pixels":
             critic = DDPGCriticMLP(layer_norm=layer_norm)
             actor = DDPGActorMLP(n_actions, layer_norm=layer_norm)
         else:
@@ -159,7 +159,7 @@ class DDPGModel(BaseRLObject):
             actor=actor,
             critic=critic,
             normalize_returns=False,
-            normalize_observations=(args.srl_model == ""),
+            normalize_observations=(args.srl_model == "raw_pixels"),
             critic_l2_reg=1e-2,
             actor_lr=1e-4,
             critic_lr=1e-3,

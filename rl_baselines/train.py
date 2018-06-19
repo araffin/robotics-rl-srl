@@ -80,8 +80,6 @@ def configureEnvAndLogFolder(args, env_kwargs):
     if path is not None:
         env_kwargs["use_srl"] = True
         env_kwargs["srl_model_path"] = models['log_folder'] + path
-    else:
-        raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
 
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))

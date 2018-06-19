@@ -322,7 +322,7 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
     envs = VecFrameStack(envs, args.num_stack)
 
-    if args.srl_model != "":
+    if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)

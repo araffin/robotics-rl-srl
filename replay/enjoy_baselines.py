@@ -115,8 +115,6 @@ def loadConfigAndSetup(load_args):
         if path is not None:
             env_kwargs["use_srl"] = True
             env_kwargs["srl_model_path"] = srl_models['log_folder'] + path
-        else:
-            raise ValueError("Unsupported value for srl-model: {}".format(train_args["srl_model"]))
 
     return train_args, load_path, algo_name, algo_class, srl_models, env_kwargs
 
