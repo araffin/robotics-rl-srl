@@ -17,11 +17,7 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
     :param action_repeat: (int) Number of timesteps an action is repeated (here it is equivalent to frameskip)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     :param action_joints: (bool) Set actions to apply to the joint space
-    :param use_srl: (bool) Set to true, use srl_models
-    :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
-    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
-    :param use_joints: (bool) Set input to include the joint angles (only if not using SRL model)
     :param random_target: (bool) Set the button position to a random position on the table
     :param force_down: (bool) Set Down as the only vertical action allowed
     :param state_dim: (int) When learning states
@@ -29,7 +25,8 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_model: (str) The SRL_model used
     """
     
     def __init__(self, name="kuka_rand_button_gym", **kwargs):
@@ -114,9 +111,9 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
         self.button_pos[2] += BUTTON_DISTANCE_HEIGHT  # Set the target position on the top of the button
         if self.saver is not None:
-            self.saver.reset(self._observation, self.button_pos, self.getArmPos())
+            self.saver.reset(self._observation, self.button_pos, self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)

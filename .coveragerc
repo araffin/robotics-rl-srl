@@ -1,0 +1,16 @@
+[run]
+branch = False
+omit =
+    tests/*
+    replay/aggregate_plots.py
+    replay/compare_plots.py
+    replay/plots.py
+    gazebo/*
+    srl_zoo/*
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError()
+
+[html]
+directory = logs/coverage/
