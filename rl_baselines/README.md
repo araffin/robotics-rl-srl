@@ -1,5 +1,19 @@
 # Reinforcement learning algorithms
 
+Reinforcement Learning (RL) algorithms, are agents in an environment that are capable of learning a _policy_ in order to try and maximise an objective function (eg., reward).  
+RL algorithms can me modeled as a [Markov decision process](https://en.wikipedia.org/wiki/Markov_decision_process), where we have:
+
+- Set of states
+- Set of actions
+- Probability of transition from state s to state s' under action a
+- Reward for every transition from state s to state s' under action a
+- The observation the agent can see
+
+We define a Policy, as the probability of taking action a when in state s.  
+Here the RL algorithm, will create a policy from the observations and the rewards obtained from interacting with the environment though actions.  
+In our case, the policies of the RL algorithms will be deep neural networks.
+
+
 ## Available algorithms
 - DeepQ: and variants (Double, Dueling, prioritized experience replay)
 - ACER: Sample Efficient Actor-Critic with Experience Replay

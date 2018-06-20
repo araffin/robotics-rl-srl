@@ -1,5 +1,10 @@
 # Gym Environments
 
+In order to use reinforcement learning methods, we must have an environment.
+As such, we have created a few robotic environments, using OpenAI's Gym environments.  
+
+(https://github.com/openai/gym)
+
 ## Available environments
 - Kuka arm
     - KukaButtonGymEnv-v0: Kuka arm with a single button in front.
@@ -25,4 +30,5 @@ using this format ```NAME: (CLASS, SUPER_CLASS)```, where:
     * ```NAME```: is your environment's name.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
     * ```SUPER_CLASS```: is the super class of your class, this is for saving all the globals and parameters.
-3. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```test_env.py```. 
+3. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
+4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```test_env.py```. 

@@ -1,5 +1,11 @@
 # SRL Models
 
+A State Representation Learning (SRL) model aims to generate from a high dimentional observation, a compact representation.
+Here it is done in order to learn a policy directly from a representation,
+without the use of an internal feature extraction (eg., CNN) in a deep reinforcement learning algorithm.  
+
+(A more detailed overview: https://arxiv.org/pdf/1802.04181.pdf)
+
 ## Available models
 - autoencoder: an autoencoder from the raw pixels
 - ground_truth: the agent's position
@@ -18,6 +24,7 @@ using this format ```NAME: (SRLType.ENVIRONMENT, [LIMITED_TO_ENV])```, where:
     * ```[LIMITED_TO_ENV]```: is the list of environment where this model works (will check for subclass), 
     set to ```None``` if this model applies to every environment.
 2. Modifiy the ```def getSRLState(self, observation)``` in the environments to return the data you want for this model.  
+3. Now you can call your SRL model using ```--srl-model NAME``` with ```train.py``` or ```pipeline.py```.  
 
 Otherwise, for the SRL model that are external to the environment (Supervised, autoencoder, ...): 
 1. Add your SRL model that inherits ```SRLBaseClass```, to the function ```state_representation.models.loadSRLModel```.
@@ -26,4 +33,5 @@ using this format ```NAME: (SRLType.SRL, [LIMITED_TO_ENV])```, where:
     * ```NAME```: is your model's name.
     * ```[LIMITED_TO_ENV]```: is the list of environment where this model works (will check for subclass), 
     set to ```None``` if this model applies to every environment.
-3. Add the name of the model to ```config\srl_models.yaml```, with the location of the saved model for each environment (can point to a dummy location, but must be defined).
+3. Add the name of the model to ```config/srl_models.yaml```, with the location of the saved model for each environment (can point to a dummy location, but must be defined).
+4. Now you can call your SRL model using ```--srl-model NAME``` with ```train.py``` or ```pipeline.py```.  
