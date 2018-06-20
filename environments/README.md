@@ -8,6 +8,9 @@
     - KukaMovingButtonGymEnv-v0: Kuka arm with a single button in front, slowly moving left to right.
 - mobile robot
     - MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it needs to park on a button.
+    - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to park on two buttons, in the correct order.
+    - MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can only go up and down, it must park it self on the button.
+    - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to park on a colored band going across the terrain.
 - Baxter
     - Baxter-v0: A bridge environment between Gazebo and the tools, in order to test on a real Baxter robot.
     
@@ -25,4 +28,5 @@ using this format ```NAME: (CLASS, SUPER_CLASS)```, where:
     * ```NAME```: is your environment's name.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
     * ```SUPER_CLASS```: is the super class of your class, this is for saving all the globals and parameters.
-3. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```test_env.py```. 
+3. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
+4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```test_env.py```. 
