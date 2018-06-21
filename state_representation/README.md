@@ -1,5 +1,11 @@
 # SRL Models
 
+A State Representation Learning (SRL) model aims to generate from a high dimentional observation, a compact representation.
+Here it is done in order to learn a policy directly from a representation,
+without the use of an internal feature extraction (eg., CNN) in a deep reinforcement learning algorithm.  
+
+(A more detailed overview: https://arxiv.org/pdf/1802.04181.pdf)
+
 ## Available models
 - autoencoder: an autoencoder from the raw pixels
 - ground_truth: the agent's position

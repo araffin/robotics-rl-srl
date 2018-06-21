@@ -1,5 +1,10 @@
 # Gym Environments
 
+In order to use reinforcement learning methods, we must have an environment.
+As such, we have created a few robotic environments, using OpenAI's Gym environments.  
+
+(https://github.com/openai/gym)
+
 ## Available environments
 - Kuka arm
     - KukaButtonGymEnv-v0: Kuka arm with a single button in front.
