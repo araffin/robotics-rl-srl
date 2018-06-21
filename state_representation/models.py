@@ -3,7 +3,6 @@ import pickle as pkl
 
 import numpy as np
 import torch as th
-from torch.autograd import Variable
 
 from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet, \
     ConvolutionalNetwork
@@ -232,8 +231,9 @@ class SRLNeuralNetwork(SRLBaseClass):
 
         self.model.eval()
 
-        if self.cuda:
-            self.model.cuda()
+        self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
+        self.model = self.model.to(self.device)
+
 
     def load(self, path):
         """
@@ -255,14 +255,11 @@ class SRLNeuralNetwork(SRLBaseClass):
         observation = observation.reshape(1, *observation.shape)
         # Channel first
         observation = np.transpose(observation, (0, 3, 2, 1))
-        observation = Variable(th.from_numpy(observation), volatile=True)
-        if self.cuda:
-            observation = observation.cuda()
-
-        state = self.model.getStates(observation)[0]
-        if self.cuda:
-            state = state.cpu()
-        return state.data.numpy()
+        observation = th.from_numpy(observation).to(th.float).to(self.device)
+ 
+        with th.no_grad():
+            state = self.model.getStates(observation)[0]
+        return state.to(th.device("cpu")).detach().numpy()
 
 
 class SRLPCA(SRLBaseClass):

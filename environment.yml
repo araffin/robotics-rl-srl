@@ -78,7 +78,7 @@ dependencies:
   - zlib=1.2.11=ha838bed_2
   - opencv3=3.1.0=py35_0
   - cuda90=1.0=h6433d27_0
-  - pytorch=0.3.1=py35_cuda9.0.176_cudnn7.0.5_2
+  - pytorch=0.4.0=py35_cuda9.0.176_cudnn7.1.2_1
   - torchvision=0.2.0=py35heaa392f_1
   - pip:
     - absl-py==0.1.9
