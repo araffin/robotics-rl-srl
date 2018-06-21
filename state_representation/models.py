@@ -86,7 +86,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         "Model type not supported. In order to use loadSRLModel, a path to an SRL \
     model must be given."
 
-    if model is not None:
+    if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
 
     printGreen("\nSRL: Using {} \n".format(model_type))

@@ -17,7 +17,7 @@ import seaborn as sns
 
 from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
-from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomDummyVecEnv
+from rl_baselines.utils import createTensorflowSession, computeMeanReward, WrapFrameStack
 from srl_zoo.utils import printYellow, printGreen
 # has to be imported here, as otherwise it will cause loading of undefined functions
 from environments.registry import registered_env
@@ -165,7 +165,7 @@ def main():
 
     dones = [False for _ in range(load_args.num_cpu)]
     # HACK: check for custom vec env
-    using_custom_vec_env = issubclass(envs, CustomDummyVecEnv)
+    using_custom_vec_env = isinstance(envs, WrapFrameStack)
 
     obs = envs.reset()
     if using_custom_vec_env:
@@ -187,7 +187,7 @@ def main():
             ax.set_ylim([-0.4, 0.4])
             ax.set_zlim([-0.2, 0.2])
             delta_obs = [envs.getOriginalObs()[0]]
-        elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors"]:
+        else:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
             path = srl_models['log_folder'] + "/".join(
@@ -203,8 +203,6 @@ def main():
             ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
             ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
             delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
-        else:
-            assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
 
     n_done = 0
     last_n_done = 0
@@ -219,7 +217,7 @@ def main():
         if load_args.plotting:
             if train_args["srl_model"] in ["ground_truth", "supervised"]:
                 ajusted_obs = envs.getOriginalObs()[0]
-            elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors"]:
+            else:
                 ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished
