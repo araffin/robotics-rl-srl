@@ -57,6 +57,10 @@ class CMAESModel(BaseRLObject):
                             help='do a sampling of the actions on the output of the policy')
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        return self.model.getActionProba(observation)
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
         return [self.model.getAction(observation)]
@@ -151,6 +155,15 @@ class PytorchPolicy(Policy):
             d['device'] = torch.device("cuda" if torch.cuda.is_available() and d['cuda'] else "cpu")
         d['model'] = d['model'].to(d['device'])
         self.__dict__.update(d)
+
+    def getActionProba(self, obs):
+        """
+        Returns the action probability for the given observation
+        :param obs: ([float])
+        :return: the action
+        """
+        action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
+        return action
 
     def getAction(self, obs):
         """

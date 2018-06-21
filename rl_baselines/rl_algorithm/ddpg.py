@@ -90,6 +90,9 @@ class DDPGModel(BaseRLObject):
                             default=64)
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        return [self.getAction(observation, dones=dones)]
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
         return self.model.pi(observation[0], apply_noise=False, compute_Q=False)[0]

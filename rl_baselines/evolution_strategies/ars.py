@@ -6,7 +6,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultithreadSRLModel
+from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultithreadSRLModel, softmax
 from srl_zoo.utils import printYellow
 
 
@@ -44,6 +44,10 @@ class ARSModel(BaseRLObject):
         parser.add_argument('--max-step-amplitude', type=float, default=10,
                             help='Set the maximum update vectors amplitude (mesured in factors of step_size)')
         return parser
+
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        return self.model.getActionProba(observation)
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -122,6 +126,16 @@ class ARS:
 
         # The linear policy, initialized to zero
         self.M = np.zeros((observation_space, action_space))
+
+    def getActionProba(self, obs, delta=0):
+        """
+        returns the probability of each action
+        :param obs: ([float]) vectorized observation
+        :param delta: ([float]) the exploration noise added to the param (default=0)
+        :return: ([float]) the chosen action
+        """
+        action = np.dot(obs, self.M + delta)
+        return softmax(action)
 
     def getAction(self, obs, delta=0):
         """

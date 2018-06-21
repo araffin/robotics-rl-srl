@@ -7,12 +7,12 @@ import joblib
 from baselines.common import tf_util
 from baselines.acer.acer_simple import find_trainable_variables
 from baselines.ppo2.ppo2 import Model, constfn, Runner, deque, explained_variance, safemean, osp
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
+from baselines.ppo2.policies import LstmPolicy, LnLstmPolicy
 from baselines import logger
 import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous, MlpPolicyContinuous
+from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous, MlpPolicyContinuous, CnnPolicy
 
 
 class PPO2Model(BaseRLObject):
@@ -72,9 +72,14 @@ class PPO2Model(BaseRLObject):
 
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        _, _, _, _, pi = self.model.step(observation, None, dones)
+        return pi
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, _, _, _ = self.model.step(observation, None, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):

@@ -1,10 +1,11 @@
 from baselines import deepq
 from baselines import logger
+import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
 from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, \
-    WrapFrameStack, loadRunningAverage, MultithreadSRLModel
+    WrapFrameStack, loadRunningAverage, MultithreadSRLModel, softmax
 
 
 class DeepQModel(BaseRLObject):
@@ -34,9 +35,15 @@ class DeepQModel(BaseRLObject):
         parser.add_argument('--buffer-size', type=int, default=int(1e3), help="Replay buffer size")
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        tensor = tf.get_default_graph().get_tensor_by_name('deepq/q_func/fully_connected_2/BiasAdd:0')
+        sess = tf.get_default_session()
+        return softmax(sess.run(tensor, feed_dict={'deepq/observation:0': observation}))
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model(observation[0][None])[0]
+        return self.model(observation)[0]
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):

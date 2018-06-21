@@ -8,10 +8,10 @@ from baselines.acer.acer_simple import find_trainable_variables, joblib
 from baselines.common import tf_util
 from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
 from baselines import logger
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
+from baselines.ppo2.policies import LstmPolicy, LnLstmPolicy
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import MlpPolicyDiscrete
+from rl_baselines.policies import MlpPolicyDiscrete, CnnPolicy
 from rl_baselines.utils import createTensorflowSession
 
 
@@ -68,9 +68,14 @@ class A2CModel(BaseRLObject):
                             default='constant')
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        _, _, _, _, pi = self.model.step(observation, None, dones)
+        return pi
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, _, _, _ = self.model.step(observation, None, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):

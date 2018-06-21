@@ -50,6 +50,7 @@ class MlpPolicyDiscrete(object):
         self.step = step
         self.value = value
 
+
 # Modified version of OpenAI to retrun PI
 class MlpPolicyContinuous(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False): #pylint: disable=W0613
@@ -150,7 +151,7 @@ class CnnPolicy(object):
         self.initial_state = None
 
         def step(ob, *_args, **_kwargs):
-            a, v, neglogp, pi_val = sess.run([a0, vf, neglogp0, pi], {X:ob})
+            a, v, neglogp, pi_val = sess.run([a0, vf, neglogp0, self.pi], {X:ob})
             return a, v, self.initial_state, neglogp, pi_val
 
         def value(ob, *_args, **_kwargs):

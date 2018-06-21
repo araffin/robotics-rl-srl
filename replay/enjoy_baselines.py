@@ -17,7 +17,7 @@ import seaborn as sns
 
 from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
-from rl_baselines.utils import createTensorflowSession, computeMeanReward, CustomDummyVecEnv
+from rl_baselines.utils import createTensorflowSession, computeMeanReward, WrapFrameStack, softmax
 from srl_zoo.utils import printYellow, printGreen
 # has to be imported here, as otherwise it will cause loading of undefined functions
 from environments.registry import registered_env
@@ -150,10 +150,6 @@ def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir=
 
     return log_dir, envs, algo_args
 
-def softmax(x):
-    """Compute softmax values for each sets of scores in x."""
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
 
 def main():
     load_args = parseArguments()
@@ -172,7 +168,7 @@ def main():
 
     dones = [False for _ in range(load_args.num_cpu)]
     # HACK: check for custom vec env
-    using_custom_vec_env = issubclass(envs, CustomDummyVecEnv)
+    using_custom_vec_env = isinstance(envs, WrapFrameStack)
 
     obs = envs.reset()
     if using_custom_vec_env:
@@ -194,7 +190,7 @@ def main():
             ax.set_ylim([-0.4, 0.4])
             ax.set_zlim([-0.2, 0.2])
             delta_obs = [envs.getOriginalObs()[0]]
-        elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors"]:
+        else:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
             path = srl_models['log_folder'] + "/".join(
@@ -210,16 +206,21 @@ def main():
             ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
             ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
             delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
-        else:
-            assert False, "Error: srl_model {} not supported with plotting.".format(train_args["srl_model"])
         plt.pause(0.00001)
 
-    if load_args.action_proba and hasattr("getActionProba", method):
+    if load_args.action_proba and hasattr(method, "getActionProba"):
         fig_prob = plt.figure()
         ax_prob = fig_prob.add_subplot(111)
-        ax_prob.set_ylim([0,1])
         old_obs = []
-        bar = ax_prob.bar(np.arange(envs.ac_space.n), np.array([0] * envs.ac_space.n))
+        if train_args["continuous_actions"]:
+            ax_prob.set_ylim([np.min(envs.action_space.low), np.max(envs.action_space.high)])
+            bar = ax_prob.bar(np.arange(np.prod(envs.action_space.shape)),
+                              np.array([0] * np.prod(envs.action_space.shape)),
+                              color=plt.get_cmap('viridis')(int(1 / np.prod(envs.action_space.shape) * 255)))
+        else:
+            ax_prob.set_ylim([0, 1])
+            bar = ax_prob.bar(np.arange(envs.action_space.n), np.array([0] * envs.action_space.n),
+                              color=plt.get_cmap('viridis')(int(1 / envs.action_space.n * 255)))
         plt.pause(1)
         background_prob = fig_prob.canvas.copy_from_bbox(ax_prob.bbox)
 
@@ -236,7 +237,7 @@ def main():
         if load_args.plotting:
             if train_args["srl_model"] in ["ground_truth", "supervised"]:
                 ajusted_obs = envs.getOriginalObs()[0]
-            elif train_args["srl_model"] in ["vae", "autoencoder", "srl_priors"]:
+            else:
                 ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
 
             # create a new line, if the episode is finished
@@ -261,11 +262,17 @@ def main():
                 fig.canvas.draw()
                 plt.pause(0.000001)
 
-        if load_args.action_proba and hasattr("getActionProba", method):
+        if load_args.action_proba and hasattr(method, "getActionProba"):
             pi = method.getActionProba(obs, dones)
             fig_prob.canvas.restore_region(background_prob)
             for act, rect in enumerate(bar):
-                rect.set_height(softmax(pi[0])[act])
+                rect.set_height(pi[0][act])
+                if train_args["continuous_actions"]:
+                    color_val = np.abs(pi[0][act]) / max(np.max(envs.action_space.high),
+                                                         np.max(np.abs(envs.action_space.low)))
+                else:
+                    color_val = softmax(pi[0])[act]
+                rect.set_color(plt.get_cmap('viridis')(int(color_val * 255)))
                 ax_prob.draw_artist(rect)
             fig_prob.canvas.blit(ax_prob.bbox)
 
