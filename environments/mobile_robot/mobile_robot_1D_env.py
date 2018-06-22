@@ -23,7 +23,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param fpv: (bool) enable first personne vue camera
+    :param fpv: (bool) enable first person view camera
     """
     def __init__(self, name="mobile_robot_1D", **kwargs):
         super(MobileRobot1DGymEnv, self).__init__(name=name, **kwargs)
