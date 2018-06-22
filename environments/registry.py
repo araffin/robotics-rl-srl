@@ -8,6 +8,7 @@ from environments.kuka_gym.kuka_2button_gym_env import Kuka2ButtonGymEnv
 from environments.kuka_gym.kuka_moving_button_gym_env import KukaMovingButtonGymEnv
 from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv
 from environments.gym_baxter.baxter_env import BaxterEnv
+from environments.robobo_gym.mobile_robot_env import RoboboEnv
 
 
 def register(_id, **kvargs):
@@ -23,7 +24,8 @@ registered_env = {
     "Kuka2ButtonGymEnv-v0":      (Kuka2ButtonGymEnv, KukaButtonGymEnv),
     "KukaMovingButtonGymEnv-v0": (KukaMovingButtonGymEnv, KukaButtonGymEnv),
     "MobileRobotGymEnv-v0":      (MobileRobotGymEnv, SRLGymEnv),
-    "Baxter-v0":                 (BaxterEnv, SRLGymEnv)
+    "Baxter-v0":                 (BaxterEnv, SRLGymEnv),
+    "RoboboGymEnv-v0":           (RoboboEnv, SRLGymEnv)
 }
 
 
