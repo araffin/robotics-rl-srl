@@ -20,6 +20,7 @@ from rl_baselines.registry import registered_rl
 from rl_baselines.utils import createTensorflowSession, computeMeanReward, WrapFrameStack, softmax
 from srl_zoo.utils import printYellow, printGreen
 # has to be imported here, as otherwise it will cause loading of undefined functions
+from environments import PlottingType
 from environments.registry import registered_env
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -27,14 +28,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorf
 
 def fixStateDim(states):
     """
-    Fix for plotting when state_dim < 3
+    Fix for plotting when state_dim < 2
     :param states: (numpy array or [float])
     :return: (numpy array)
     """
     states = np.array(states)
     state_dim = states.shape[1]
-    if state_dim < 3:
-        tmp = np.zeros((states.shape[0], 3))
+    if state_dim < 2:
+        tmp = np.zeros((states.shape[0], 2))
         tmp[:, :state_dim] = states
         return tmp
     return states
@@ -157,7 +158,7 @@ def main():
     log_dir, envs, algo_args = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
 
     assert (not load_args.plotting and not load_args.action_proba)\
-           or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
+        or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 
     tf.reset_default_graph()
     set_global_seeds(load_args.seed)
@@ -179,16 +180,22 @@ def main():
     if load_args.plotting:
         plt.pause(0.1)
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
         old_obs = []
-        line, = ax.plot([], [], [], c=[1, 0, 0, 1], label="episode 0")
-        point = ax.scatter([0], [0], [0], c=[1, 0, 0, 1])
+        if registered_env[train_args["env"]][2] == PlottingType.PLOT_3D:
+            ax = fig.add_subplot(111, projection='3d')
+            line, = ax.plot([], [], [], c=[1, 0, 0, 1], label="episode 0")
+            point = ax.scatter([0], [0], [0], c=[1, 0, 0, 1])
+            min_zone = [+np.inf, +np.inf, +np.inf]
+            max_zone = [-np.inf, -np.inf, -np.inf]
+        else:
+            ax = fig.add_subplot(111)
+            line, = ax.plot([], [], c=[1, 0, 0, 1], label="episode 0")
+            point = ax.scatter([0], [0], c=[1, 0, 0, 1])
+            min_zone = [+np.inf, +np.inf]
+            max_zone = [-np.inf, -np.inf]
         fig.legend()
 
         if train_args["srl_model"] in ["ground_truth", "supervised"]:
-            ax.set_xlim([-0.4, 0.4])
-            ax.set_ylim([-0.4, 0.4])
-            ax.set_zlim([-0.2, 0.2])
             delta_obs = [envs.getOriginalObs()[0]]
         else:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
@@ -200,11 +207,11 @@ def main():
             X = fixStateDim(X)
 
             # train the PCA and et the limits
-            pca = PCA(n_components=3)
+            if registered_env[train_args["env"]][2] == PlottingType.PLOT_3D:
+                pca = PCA(n_components=3)
+            else:
+                pca = PCA(n_components=2)
             X_new = pca.fit_transform(X)
-            ax.set_xlim([np.min(X_new[:, 0]) * 1.2, np.max(X_new[:, 0]) * 1.2])
-            ax.set_ylim([np.min(X_new[:, 1]) * 1.2, np.max(X_new[:, 1]) * 1.2])
-            ax.set_zlim([np.min(X_new[:, 2]) * 1.2, np.max(X_new[:, 2]) * 1.2])
             delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
         plt.pause(0.00001)
 
@@ -213,12 +220,12 @@ def main():
         ax_prob = fig_prob.add_subplot(111)
         old_obs = []
         if train_args["continuous_actions"]:
-            ax_prob.set_ylim([np.min(envs.action_space.low), np.max(envs.action_space.high)])
+            ax_prob.set_ylim(np.min(envs.action_space.low), np.max(envs.action_space.high))
             bar = ax_prob.bar(np.arange(np.prod(envs.action_space.shape)),
                               np.array([0] * np.prod(envs.action_space.shape)),
                               color=plt.get_cmap('viridis')(int(1 / np.prod(envs.action_space.shape) * 255)))
         else:
-            ax_prob.set_ylim([0, 1])
+            ax_prob.set_ylim(0, 1)
             bar = ax_prob.bar(np.arange(envs.action_space.n), np.array([0] * envs.action_space.n),
                               color=plt.get_cmap('viridis')(int(1 / envs.action_space.n * 255)))
         plt.pause(1)
@@ -245,17 +252,38 @@ def main():
                 old_obs.append(np.array(delta_obs))
                 line.set_c(sns.color_palette()[episode % len(sns.color_palette())])
                 episode += 1
-                line, = ax.plot([], [], [], c=[1, 0, 0, 1], label="episode " + str(episode))
+                if registered_env[train_args["env"]][2] == PlottingType.PLOT_3D:
+                    line, = ax.plot([], [], [], c=[1, 0, 0, 1], label="episode " + str(episode))
+                else:
+                    line, = ax.plot([], [], c=[1, 0, 0, 1], label="episode " + str(episode))
                 fig.legend()
                 delta_obs = [ajusted_obs]
             else:
                 delta_obs.append(ajusted_obs)
 
-            coor_plt = fixStateDim(np.array(delta_obs))
+            coor_plt = fixStateDim(np.array(delta_obs))[1:]
+            unstack_val = coor_plt.shape[1] // train_args.get("num_stack", 1)
+            coor_plt = coor_plt[:, -unstack_val:]
 
             # updating the 3d vertices for the line and the dot drawing, to avoid redrawing the entire image
-            line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
-            point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
+            if registered_env[train_args["env"]][2] == PlottingType.PLOT_3D:
+                line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
+                point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
+                if coor_plt.shape[0] > 0:
+                    min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
+                    max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
+                ax.set_xlim(min_zone[0] - abs(min_zone[0] * 1.2), max_zone[0] + abs(max_zone[0] * 1.2))
+                ax.set_ylim(min_zone[1] - abs(min_zone[1] * 1.2), max_zone[1] + abs(max_zone[1] * 1.2))
+                ax.set_zlim(min_zone[2] - abs(min_zone[2] * 1.2), max_zone[2] + abs(max_zone[2] * 1.2))
+            else:
+                line.set_xdata(coor_plt[:, 0])
+                line.set_ydata(coor_plt[:, 1])
+                point._offsets = coor_plt[-1:, :]
+                if coor_plt.shape[0] > 0:
+                    min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
+                    max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
+                ax.set_xlim(min_zone[0] - abs(min_zone[0] * 0.2), max_zone[0] + abs(max_zone[0] * 0.2))
+                ax.set_ylim(min_zone[1] - abs(min_zone[1] * 0.2), max_zone[1] + abs(max_zone[1] * 0.2))
 
             # Draw every 5 frames to avoid UI freezing
             if i % 5 == 0:

@@ -66,6 +66,11 @@ class ACERModel(BaseRLObject):
                             default='constant')
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        _, pi, _ = self.model.step(observation, state=None, mask=dones)
+        return pi
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
         actions, _, _ = self.model.step(observation, state=None, mask=dones)

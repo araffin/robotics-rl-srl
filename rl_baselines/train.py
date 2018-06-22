@@ -255,7 +255,7 @@ def main():
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
     super_class = registered_env[args.env][1]
-    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class) in
+    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _) in
                               registered_env.items()}
     while super_class != SRLGymEnv:
         assert super_class in rec_super_class_lookup, "Error: could not find super class of {}".format(super_class) + \
