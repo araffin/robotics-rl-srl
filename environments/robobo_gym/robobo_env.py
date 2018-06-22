@@ -1,5 +1,5 @@
 """
-This program allows to run Baxter Gym Environment as a module
+This program allows to run Robobo Gym Environment as a module
 """
 
 import numpy as np
@@ -11,30 +11,16 @@ import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Baxter-Gazebo bridge specific
 from environments.srl_env import SRLGymEnv
-from real_robots.constants import SERVER_PORT, HOSTNAME, Z_TABLE, DELTA_POS, MAX_DISTANCE, MAX_STEPS
+from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-N_CONTACTS_BEFORE_TERMINATION = 2
-RELATIVE_POS = True
+RELATIVE_POS = False
 
-# ==== CONSTANTS FOR BAXTER ROBOT ====
-# Each action array is [dx, dy, dz]: representing movements up, down, left, right,
-# backward and forward from Baxter coordinate system center
-action_dict = {
-    0: [- DELTA_POS, 0, 0],
-    1: [DELTA_POS, 0, 0],
-    2: [0, - DELTA_POS, 0],
-    3: [0, DELTA_POS, 0],
-    4: [0, 0, - DELTA_POS],
-    # Remove Up action
-    # 5: [0, 0, DELTA_POS]
-}
-N_DISCRETE_ACTIONS = len(action_dict)
+N_DISCRETE_ACTIONS = 4
 
 # Init seaborn
 sns.set()
@@ -56,10 +42,11 @@ def bgr2rgb(bgr_img):
     return cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
 
 
-class BaxterEnv(SRLGymEnv):
+class RoboboEnv(SRLGymEnv):
     """
-    Baxter robot arm Environment (Gym wrapper for Baxter Gazebo environment)
-    The goal of the robotic arm is to push the button on the table
+    Robobo robot Environment (Gym wrapper for Robobo Gazebo environment)
+    The goal of robobo is to go to the location on the table
+    (signaled with a circle sticker on the table)
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) true if action space is discrete vs continuous
     :param log_folder: (str) name of the folder where recorded data will be stored
@@ -74,10 +61,10 @@ class BaxterEnv(SRLGymEnv):
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
-    def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
+    def __init__(self, renders=False, is_discrete=True, log_folder="robobo_log_folder", state_dim=-1,
                  learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
                  shape_reward=False, env_rank=0, srl_pipe=None):
-        super(BaxterEnv, self).__init__(use_ground_truth=use_ground_truth,
+        super(RoboboEnv, self).__init__(use_ground_truth=use_ground_truth,
                                         relative_pos=RELATIVE_POS,
                                         env_rank=env_rank,
                                         srl_pipe=srl_pipe)
@@ -94,15 +81,14 @@ class BaxterEnv(SRLGymEnv):
         self.state_dim = state_dim
         self._renders = renders
         self._shape_reward = shape_reward
-        self.np_random = None
         self.cuda = th.cuda.is_available()
-        self.button_pos = None
+        self.target_pos = None
         self.saver = None
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
-            action_dim = 3
+            action_dim = 2
             self._action_bound = 1
             action_bounds = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
@@ -119,7 +105,7 @@ class BaxterEnv(SRLGymEnv):
 
         if record_data:
             print("Recording data...")
-            self.saver = EpisodeSaver(log_folder, MAX_DISTANCE, self.state_dim, globals_=getGlobals(),
+            self.saver = EpisodeSaver(log_folder, 0, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
                                       learn_states=learn_states)
 
@@ -133,9 +119,9 @@ class BaxterEnv(SRLGymEnv):
         msg = self.socket.recv_json()
         print("Connected to server (received message: {})".format(msg))
 
-        self.action = [0, 0, 0]
+        self.action = [0, 0]
         self.reward = 0
-        self.arm_pos = np.array([0, 0, 0])
+        self.robobo_pos = np.array([0, 0])
         # Create numpy random generator
         # This seed can be changed later
         self.seed(0)
@@ -149,7 +135,7 @@ class BaxterEnv(SRLGymEnv):
         :seed: (int)
         :return: (int array)
         """
-        self.np_random, seed = seeding.np_random(seed)
+        _, seed = seeding.np_random(seed)
         return [seed]
 
     def step(self, action):
@@ -159,7 +145,7 @@ class BaxterEnv(SRLGymEnv):
         """
         assert self.action_space.contains(action)
         # Convert int action to action in (x,y,z) space
-        self.action = action_dict[action]
+        self.action = action
         self._env_step_counter += 1
 
         # Send the action to the server
@@ -181,43 +167,20 @@ class BaxterEnv(SRLGymEnv):
     def getEnvState(self):
         """
         Returns a dictionary containing info about the environment state.
-        It also sets the reward: the agent is rewarded for pushing the button
-        and the reward value is negative if the arm goes outside the bounding sphere
-        surrounding the button.
-        :return: (dict) state_data containing data related to the state: button_pos,
-        arm_pos and reward.
+        :return: (dict) state_data containing data related to the state: target_pos,
+        robobo_pos and reward.
         """
         state_data = self.socket.recv_json()
         self.reward = state_data["reward"]
-        self.button_pos = np.array(state_data["button_pos"])
-        self.arm_pos = np.array(state_data["position"])  # gripper_pos
+        self.target_pos = np.array(state_data["target_pos"])
+        self.robobo_pos = np.array(state_data["position"])
 
-        # Compute distance from Baxter left arm to goal (the button_pos)
-        distance_to_goal = np.linalg.norm(self.button_pos - self.arm_pos, 2)
-
-        # TODO: tune max distance
-        self.n_contacts += self.reward
-
-        contact_with_table = self.arm_pos[2] < Z_TABLE - 0.01
-
-        if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION or contact_with_table:
-            self.episode_terminated = True
-
-        # print("dist=", distance_to_goal)
-
-        if distance_to_goal > MAX_DISTANCE or contact_with_table:  # outside sphere of proximity
-            self.reward = -1
-
-        # print('state_data: {}'.format(state_data))
-
-        if self._shape_reward:
-            self.reward = -distance_to_goal
         return state_data
 
     def getObservation(self):
         """
-        Receive the observation image using a socket (required method by gazebo)
-        :return: np.ndarray (tensor) observation
+        Receive the observation image using a socket
+        :return: (numpy ndarray) observation
         """
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
@@ -229,27 +192,27 @@ class BaxterEnv(SRLGymEnv):
         """
         :return (numpy array): Position of the target (button)
         """
-        return self.button_pos
+        return self.target_pos
 
     @staticmethod
     def getGroundTruthDim():
         """
         :return: (int)
         """
-        return 3
+        return 2
 
     def getGroundTruth(self):
         """
-        Alias for getArmPos for compatibility between envs
+        Alias for getRoboboPos for compatibility between envs
         :return: (numpy array)
         """
-        return np.array(self.getArmPos())
+        return np.array(self.getRoboboPos())
 
-    def getArmPos(self):
+    def getRoboboPos(self):
         """
         :return: ([float])->  np.ndarray Position (x, y, z) of Baxter left gripper
         """
-        return self.arm_pos
+        return self.robobo_pos
 
     def reset(self):
         """
@@ -257,7 +220,6 @@ class BaxterEnv(SRLGymEnv):
         :return: (numpy ndarray) first observation of the env
         """
         self.episode_terminated = False
-        self.n_contacts = 0
         # Step count since episode start
         self._env_step_counter = 0
         self.socket.send_json({"command": "reset"})
@@ -284,12 +246,13 @@ class BaxterEnv(SRLGymEnv):
         """
         To be called at the end of running the program, externally
         """
-        print("Baxter_env client exiting and closing socket...")
+        print("Robobo_env client exiting and closing socket...")
         self.socket.send_json({"command": "exit"})
         self.socket.close()
 
     def render(self, mode='rgb_array'):
         """
+        :param mode: (str)
         :return: (numpy array) BGR image
         """
         if mode != "rgb_array":
@@ -299,7 +262,7 @@ class BaxterEnv(SRLGymEnv):
         if self._renders:
             plt.ion()  # needed for interactive update
             if self.image_plot is None:
-                plt.figure('Baxter RL')
+                plt.figure('Robobo RL')
                 self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
                 self.image_plot.axes.grid(False)
             else:

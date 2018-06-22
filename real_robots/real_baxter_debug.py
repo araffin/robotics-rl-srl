@@ -19,7 +19,7 @@ from std_msgs.msg import Header
 
 from .constants import *
 
-assert USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to True in gazebo/constants.py"
+assert USING_REAL_BAXTER, "Please set USING_REAL_BAXTER to True in real_robots/constants.py"
 
 should_exit = [False]
 

@@ -1,5 +1,10 @@
 # Reinforcement Learning (RL) and State Representation Learning (SRL) for Robotics
 
+This repository was made to evaluate State Representation Learning methods using Reinforcement Learning. It integrates (automatic logging, plotting, saving, loading of trained agent) various RL algorithms (PPO, A2C, ARS, DDPG, DQN, ACER, CMA-ES) along with different SRL methods (see [SRL Repo](https://github.com/araffin/srl-zoo)) in an efficient way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
+
+We also release customizable Gym environments for working with simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
+
+
 Table of Contents
 =================
 
@@ -14,6 +19,9 @@ Table of Contents
   * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
     * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
     * [RL on a Real Robot](#rl-on-a-real-robot)
+  * [Working With a Real Robobo](#working-with-a-real-robobo)
+    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl-1)
+    * [RL on a Real Robobo](#rl-on-a-real-robobo)
   * [Troubleshooting](#troubleshooting)
   * [Known issues](#known-issues)
 
@@ -136,6 +144,9 @@ the available environments are:
 - Kuka2ButtonGymEnv-v0: 2 buttons next to each others, they must be pressed in order
 - KukaRandButtonGymEnv-v0: a single button in front of the arm, with some randomly positioned objects
 - KukaMovingButtonGymEnv-v0: a single button in front of the arm, slowly moving left to right
+- MobileRobotGymEnv-v0:
+- Baxter-v0: real baxter robot (see [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)), can be also used to work with gazebo
+- RoboboGymEnv-v0: real robobo (see [Working With a Real Robobo](#working-with-a-real-robobo))
 
 ## State Representation Learning Models
 
@@ -173,12 +184,12 @@ Also, ROS comes with its own version of OpenCV, so when running the python3 scri
 roslaunch arm_scenario_simulator baxter_world.launch
 rosrun arm_scenario_simulator spawn_objects_example
 
-python -m gazebo.gazebo_server
+python -m real_robots.gazebo_server
 ```
 
 Then, you can either try to teleoperate the robot (python 3):
 ```
-python -m gazebo.teleop_client
+python -m real_robots.teleop_client
 ```
 or test the environment with random actions (using the gym wrapper):
 
@@ -211,7 +222,7 @@ export ROS_HOSTNAME=192.168.0.211  # Your IP
 export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 ```
 
-2. Calibrate the different values in in `gazebo/constants.py` using `gazebo/real_baxter_debug.py`:
+2. Calibrate the different values in `real_robots/constants.py` using `real_robots/real_baxter_debug.py`:
 - Set USING_REAL_BAXTER to True
 - Position of the target: BUTTON_POS
 - Init position and orientation: LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION
@@ -220,14 +231,14 @@ export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
 - Distance above which the agent will get a negative reward: MAX_DISTANCE
 - Maximum number of steps per episode: MAX_STEPS
 
-3. Configure images topics in `gazebo/constants.py`:
+3. Configure images topics in `real_robots/constants.py`:
 - IMAGE_TOPIC: main camera
 - SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
 - DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
 
 4. Launch ROS bridge server (python 2):
 ```
-python -m gazebo.real_baxter_server
+python -m real_robots.real_baxter_server
 ```
 
 5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
@@ -242,23 +253,15 @@ python -m environments.gym_baxter.test_baxter_env
 
 NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/gym_baxter/baxter_env.py`
 
-### RL on a Real Robot
+### RL on a Real Baxter Robot
 
 1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
 
-2. Make sure that USING_REAL_BAXTER is set to True in `gazebo/constants.py`.
-WARNING: you need to copy code from `rl_baselines/ppo2.py` if you want to use an algo different from PPO2:
-```python
-from gazebo.constants import USING_REAL_BAXTER
-if USING_REAL_BAXTER:
-    import environments.gym_baxter.baxter_env as kuka_env
-else:
-    import environments.kuka_button_gym_env as kuka_env
-```
+2. Make sure that USING_REAL_BAXTER is set to True in `real_robots/constants.py`.
 
 3. Launch ROS bridge server (python 2):
 ```
-python -m gazebo.real_baxter_server
+python -m real_robots.real_baxter_server
 ```
 
 4. Start visdom for visualizing the training
@@ -270,6 +273,80 @@ python -m visdom.server
 ```
 python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --shape-reward --algo ppo2 --env Baxter-v0
 ```
+
+## Working With a Real Robobo
+
+[Robobo Documentation](https://bitbucket.org/mytechia/robobo-programming/wiki/Home)
+
+Note: the Robobo is controlled using time (the feedback frequency is too low to do closed-loop control)
+The robot was calibrated for a constant speed of 10.
+
+### Recording Data With a Random Agent for SRL
+
+1. Change you environment to match Robobo ROS settings or in your .bashrc:
+NOTE: Robobo is using ROS Java, if you encounter any problem with the cameras (e.g. with a xtion), you should create the master node on your computer and change the settings in the robobo dev app.
+```
+# NB: This is only an example
+export ROS_HOSTNAME=192.168.0.211  # Your IP
+export ROS_MASTER_URI=http://robobo.local:11311 # Robobo IP
+```
+
+2. Calibrate the different values in `real_robots/constants.py` using `real_robots/real_robobo_server.py` and `real_robots/teleop_client.py` (Client for teleoperation):
+- Set USING_ROBOBO to True
+- Area of the target: TARGET_INITIAL_AREA
+- Boundaries of the enviroment: (MIN_X, MAX_X, MIN_Y, MAX_Y)
+- Maximum number of steps per episode: MAX_STEPS
+IMPORTANT NOTE: if you use color detection to detect the target, you need to calibrate the HSV thresholds `LOWER_RED` and `UPPER_RED` in `real_robots/constants.py` (for instance, using [this script](https://github.com/sergionr2/RacingRobot/blob/v0.3/opencv/dev/threshold.py)). Be careful, you may have to change the color conversion (`cv2.COLOR_BGR2HSV` instead of `cv2.COLOR_RGB2HSV`)
+
+3. Configure images topics in `real_robots/constants.py`:
+- IMAGE_TOPIC: main camera
+- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
+- DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
+
+NOTE: If you want to use robobo's camera (phone camera), you need to republish the image to the raw format:
+```
+rosrun image_transport republish compressed in:=/camera/image raw out:=/camera/image_repub
+```
+
+4. Launch ROS bridge server (python 2):
+```
+python -m real_robots.real_robobo_server
+```
+
+5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
+
+6. Set the number of episodes you want to record, name of the experiment and random seed in `environments/robobo_gym/test_robobo_env.py`
+
+7. Record data using a random agent:
+```
+python -m environments.robobo_gym.test_robobo_env
+```
+
+8. Wait until the end... Note: the real robobo runs at approximately 0.1 FPS.
+
+NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/robobo_gym/robobo_env.py`
+
+### RL on a Real Robobo
+
+1. Update the settings in `rl_baselines/train.py`, so it saves and logs the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
+
+2. Make sure that USING_ROBOBO is set to True in `real_robots/constants.py`.
+
+3. Launch ROS bridge server (python 2):
+```
+python -m real_robots.real_robobo_server
+```
+
+4. Start visdom for visualizing the training
+```
+python -m visdom.server
+```
+
+4. Train the agent (python 3)
+```
+python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --algo ppo2 --env RoboboGymEnv-v0
+```
+
 
 ## Troubleshooting
 If a submodule is not downloaded:
