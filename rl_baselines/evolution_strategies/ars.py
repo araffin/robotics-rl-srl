@@ -34,7 +34,7 @@ class ARSModel(BaseRLObject):
 
     def customArguments(self, parser):
         parser.add_argument('--num-population', help='Number of population (each one has 2 threads)', type=int,
-                            default=20)
+                            default=10)
         parser.add_argument('--exploration-noise', help='The standard deviation of the exploration noise', type=float,
                             default=0.02)
         parser.add_argument('--step-size', help='The step size for param update', type=float, default=0.02)

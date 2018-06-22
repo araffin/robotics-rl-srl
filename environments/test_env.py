@@ -79,7 +79,9 @@ def env_thread(args, thread_num, partition=True):
 
 def main():
     parser = argparse.ArgumentParser(description='Environment tester (can be used to record datasets for SRL training)')
-    parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to run on')
+    parser.add_argument('--num-cpu', type=int, default=1,
+                        help='number of cpu to run on (WARNING: this will change the seed of the generation of the '
+                             'dataset, as such if this parameter changes, it will not be exactly the same dataset.')
     parser.add_argument('--num-episode', type=int, default=50, help='number of episode to run')
     parser.add_argument('--save-folder', type=str, default='srl_zoo/data/',
                         help='Folder where the environments will save the output')
@@ -116,7 +118,7 @@ def main():
         shutil.rmtree(args.save_folder + args.save_name)
         for part in glob.glob(args.save_folder + args.save_name + "_part-[0-9]*"):
             shutil.rmtree(part)
-    elif args.record_data:
+    if args.record_data:
         # create the output
         os.mkdir(args.save_folder + args.save_name)
 
