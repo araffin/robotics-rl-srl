@@ -112,7 +112,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
@@ -158,7 +158,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
         if self.saver is not None:
             self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
