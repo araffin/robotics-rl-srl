@@ -12,7 +12,7 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     :param name: (str) name of the folder where recorded data will be stored
     :param max_distance: (float) Max distance between end effector and the button (for negative reward)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
-    :param use_srl: (bool) Set to true, use srl_models
+    :param srl_model: (bool) Set to true, use srl_models
     :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
@@ -100,7 +100,7 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
-        if self.srl_model != "raw_pixels":
+        if self.srl_model != 'raw_pixels':
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)

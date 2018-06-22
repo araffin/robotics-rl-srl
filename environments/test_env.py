@@ -15,7 +15,7 @@ from srl_zoo.utils import printRed, printYellow
 
 def convertImagePath(args, path, record_id_start):
     """
-    Used to convert an image path, from one location, to an other
+    Used to convert an image path, from one location, to another
     :param args: (ArgumentParser object)
     :param path: (str)
     :param record_id_start: (int) where does the current part start counting its records
@@ -37,7 +37,7 @@ def env_thread(args, thread_num, partition=True):
     """
     env_kwargs = {
         "max_distance": args.max_distance,
-        "random_target": args.relative,
+        "random_target": args.random_target,
         "force_down": True,
         "is_discrete": not args.continuous_actions,
         "renders": thread_num == 0 and not args.no_display,
@@ -95,7 +95,7 @@ def main():
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else,' +
                              ' including partial parts if they exist')
-    parser.add_argument('-r', '--relative', action='store_true', default=False,
+    parser.add_argument('-r', '--random_target', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
     parser.add_argument('--shape-reward', action='store_true', default=False,
