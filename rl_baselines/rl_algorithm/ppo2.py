@@ -7,12 +7,12 @@ import joblib
 from baselines.common import tf_util
 from baselines.acer.acer_simple import find_trainable_variables
 from baselines.ppo2.ppo2 import Model, constfn, Runner, deque, explained_variance, safemean, osp
-from baselines.ppo2.policies import LstmPolicy, LnLstmPolicy
 from baselines import logger
 import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous, MlpPolicyContinuous, CnnPolicy
+from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous, MlpPolicyContinuous, CnnPolicy, LstmPolicy, \
+    LnLstmPolicy
 
 
 class PPO2Model(BaseRLObject):
@@ -50,9 +50,21 @@ class PPO2Model(BaseRLObject):
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
         if loaded_model.continuous_actions:
-            policy = {'cnn': CNNPolicyContinuous, 'mlp': MlpPolicyContinuous}[loaded_model.policy]
+            policy = {'cnn': CNNPolicyContinuous,
+                      'lstm': None,
+                      'lnlstm': None,
+                      'mlp': MlpPolicyContinuous}[loaded_model.policy]
         else:
-            policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[loaded_model.policy]
+            # LN-LSTM: Layer Normalization LSTM
+            policy = {'cnn': CnnPolicy,
+                      'lstm': LstmPolicy,
+                      'lnlstm': LnLstmPolicy,
+                      'mlp': MlpPolicyDiscrete}[loaded_model.policy]
+
+        if policy is None:
+            raise ValueError(loaded_model.policy + " not implemented for " + (
+                "discrete" if loaded_model.continuous_actions else "continuous") + " action space.")
+
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
 
@@ -74,12 +86,11 @@ class PPO2Model(BaseRLObject):
 
     def getActionProba(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        _, _, _, _, pi = self.model.step(observation, None, dones)
-        return pi
+        return self.model.probaStep(observation, None, dones)
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, _, _ = self.model.step(observation, None, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):
