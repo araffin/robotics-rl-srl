@@ -294,11 +294,12 @@ def main():
             pi = method.getActionProba(obs, dones)
             fig_prob.canvas.restore_region(background_prob)
             for act, rect in enumerate(bar):
-                rect.set_height(pi[0][act])
                 if train_args["continuous_actions"]:
+                    rect.set_height(pi[0][act])
                     color_val = np.abs(pi[0][act]) / max(np.max(envs.action_space.high),
                                                          np.max(np.abs(envs.action_space.low)))
                 else:
+                    rect.set_height(softmax(pi[0])[act])
                     color_val = softmax(pi[0])[act]
                 rect.set_color(plt.get_cmap('viridis')(int(color_val * 255)))
                 ax_prob.draw_artist(rect)
