@@ -43,10 +43,6 @@ win, win_smooth, win_episodes = None, None, None
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
-# LOAD SRL models list
-with open('config/srl_models.yaml', 'rb') as f:
-    all_models = yaml.load(f)
-
 
 def saveEnvParams(kuka_env_globals, env_kwargs):
     """
@@ -58,10 +54,11 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
         json.dump(params, f)
 
 
-def configureEnvAndLogFolder(args, env_kwargs):
+def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
     :param args: (ArgumentParser object)
     :param env_kwargs: (dict) The extra arguments for the environment
+    :param all_models: (dict) The location of all the trained SRL models
     :return: (ArgumentParser object, dict)
     """
     global PLOT_TITLE, LOG_DIR
@@ -176,10 +173,18 @@ def main():
                         action='store_true', default=False)
     parser.add_argument('-r', '--relative', action='store_true', default=False,
                         help='Set the button to a random position')
+    parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
+                        help='Set the location of the SRL model path configuration.')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
+
+    # LOAD SRL models list
+    assert os.path.exists(args.srl_config_file), \
+        "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
+    with open(args.srl_config_file, 'rb') as f:
+        all_models = yaml.load(f)
 
     # Sanity check
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
@@ -240,7 +245,7 @@ def main():
     parser = algo.customArguments(parser)
     args = parser.parse_args()
 
-    args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs)
+    args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs, all_models)
     args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
     with open(LOG_DIR + "args.json", "w") as f:

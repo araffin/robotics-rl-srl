@@ -34,6 +34,8 @@ def main():
                              ' and srl-model.')
     parser.add_argument('--seed', type=int, default=0,
                         help='initial seed for each unique combination of environment and srl-model.')
+    parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
+                        help='Set the location of the SRL model path configuration.')
 
     # returns the parsed arguments, and the rest are assumed to be arguments for rl_baselines.train
     args, train_args = parser.parse_known_args()
@@ -48,8 +50,10 @@ def main():
     srl_models.sort()
     envs.sort()
 
-    # loading the config file for the srl_models
-    with open('config/srl_models.yaml', 'rb') as f:
+    # LOAD SRL models list
+    assert os.path.exists(args.srl_config_file), \
+        "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
+    with open(args.srl_config_file, 'rb') as f:
         all_models = yaml.load(f)
 
     # Checking definition and presence of all requested srl_models
@@ -121,7 +125,7 @@ def main():
 
                 # redefine the parsed args for rl_baselines.train
                 loop_args = ['--srl-model', model, '--seed', str(seeds[i]), '--algo', args.algo, '--env', env,
-                             '--num-timesteps', str(int(args.num_timesteps))]
+                             '--num-timesteps', str(int(args.num_timesteps)), '--srl-config-file', args.srl_config_file]
 
                 ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 

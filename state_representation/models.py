@@ -66,7 +66,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             if 'pca' in path:
                 model_type = 'pca'
                 model = SRLPCA(state_dim)
-            elif 'supervised' in path and 'custom_cnn' in path:
+            elif 'supervised' in path and 'cnn' in path:
                 model_type = 'supervised_custom_cnn'
             elif 'supervised' in path and 'resnet' in path:
                 model_type = 'supervised_resnet'
@@ -83,8 +83,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'resnet'
 
     assert model_type is not None or model is not None, \
-        "Model type not supported. In order to use loadSRLModel, a path to an SRL \
-    model must be given."
+        "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
 
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type)
