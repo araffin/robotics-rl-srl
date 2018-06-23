@@ -268,7 +268,7 @@ def main():
             # updating the 3d vertices for the line and the dot drawing, to avoid redrawing the entire image
             if registered_env[train_args["env"]][2] == PlottingType.PLOT_3D:
                 line._verts3d = (coor_plt[:, 0], coor_plt[:, 1], coor_plt[:, 2])
-                point._offsets3d = ([coor_plt[-1, 0]], [coor_plt[-1, 1]], [coor_plt[-1, 2]])
+                point._offsets3d = (coor_plt[-1:, 0], coor_plt[-1:, 1], coor_plt[-1:, 2])
                 if coor_plt.shape[0] > 0:
                     min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
                     max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
