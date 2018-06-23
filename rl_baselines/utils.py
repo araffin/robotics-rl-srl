@@ -327,7 +327,8 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
     if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
+        if not hasattr(args, "policy") or args.policy == "cnn":
+            args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
         envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
     return envs

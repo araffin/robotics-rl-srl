@@ -184,24 +184,29 @@ class CnnPolicy(object):
         self.value = value
 
 
-# Modified version of OpenAI to retrun PI, and work seamlessly with the codebase
+# Modified version of OpenAI to return PI, remove CNN, and work seamlessly with the codebase
 class LnLstmPolicy(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False):
         nenv = nbatch // nsteps
-        nh, nw, nc = ob_space.shape
-        ob_shape = (nbatch, nh, nw, nc)
         nact = ac_space.n
-        X = tf.placeholder(tf.uint8, ob_shape)  # obs
+        ob_shape = (nbatch,) + ob_space.shape
+        X = tf.placeholder(tf.float32, ob_shape, name='Ob')  # obs
         M = tf.placeholder(tf.float32, [nbatch])  # mask (done t-1)
         S = tf.placeholder(tf.float32, [nenv, nlstm*2])  # states
         with tf.variable_scope("model", reuse=reuse):
-            h = nature_cnn(X)
-            xs = batch_to_seq(h, nenv, nsteps)
+            activ = tf.tanh
+            h1 = activ(fc(X, 'lstm_fc1', nh=64, init_scale=np.sqrt(2)))
+            h2 = activ(fc(h1, 'lstm_fc2', nh=64, init_scale=np.sqrt(2)))
+            xs = batch_to_seq(h2, nenv, nsteps)
             ms = batch_to_seq(M, nenv, nsteps)
             h5, snew = lnlstm(xs, ms, S, 'lstm1', nh=nlstm)
             h5 = seq_to_batch(h5)
-            pi = fc(h5, 'pi', nact)
-            vf = fc(h5, 'v', 1)
+            h1 = activ(fc(h5, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
+            h2 = activ(fc(h1, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
+            pi = fc(h2, 'pi', nact, init_scale=0.01)
+            h1 = activ(fc(h5, 'vf_fc1', nh=64, init_scale=np.sqrt(2)))
+            h2 = activ(fc(h1, 'vf_fc2', nh=64, init_scale=np.sqrt(2)))
+            vf = fc(h2, 'v', 1)
 
         self.pdtype = make_pdtype(ac_space)
         self.pd = self.pdtype.pdfromflat(pi)

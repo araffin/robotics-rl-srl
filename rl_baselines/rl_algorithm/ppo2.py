@@ -101,6 +101,9 @@ class PPO2Model(BaseRLObject):
         self.policy = args.policy
         self.continuous_actions = args.continuous_actions
 
+        assert not (self.policy in ['lstm', 'lnlstm'] and args.num_cpu % 4 != 0), \
+            "Error: Reccurent policies must have num cpu at a multiple of 4."
+
         logger.configure()
         self._learn(args, envs, nsteps=128, ent_coef=.01, lr=lambda f: f * 2.5e-4, total_timesteps=args.num_timesteps,
                     callback=callback)
