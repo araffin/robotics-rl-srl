@@ -187,12 +187,14 @@ def main():
             point = ax.scatter([0], [0], [0], c=[1, 0, 0, 1])
             min_zone = [+np.inf, +np.inf, +np.inf]
             max_zone = [-np.inf, -np.inf, -np.inf]
+            amplitude = [0, 0, 0]
         else:
             ax = fig.add_subplot(111)
             line, = ax.plot([], [], c=[1, 0, 0, 1], label="episode 0")
             point = ax.scatter([0], [0], c=[1, 0, 0, 1])
             min_zone = [+np.inf, +np.inf]
             max_zone = [-np.inf, -np.inf]
+            amplitude = [0, 0]
         fig.legend()
 
         if train_args["srl_model"] in ["ground_truth", "supervised"]:
@@ -272,9 +274,10 @@ def main():
                 if coor_plt.shape[0] > 0:
                     min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
                     max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
-                ax.set_xlim(min_zone[0] - abs(min_zone[0] * 1.2), max_zone[0] + abs(max_zone[0] * 1.2))
-                ax.set_ylim(min_zone[1] - abs(min_zone[1] * 1.2), max_zone[1] + abs(max_zone[1] * 1.2))
-                ax.set_zlim(min_zone[2] - abs(min_zone[2] * 1.2), max_zone[2] + abs(max_zone[2] * 1.2))
+                    amplitude = max_zone - min_zone
+                ax.set_xlim(min_zone[0] - abs(amplitude[0] * 0.2), max_zone[0] + abs(amplitude[0] * 0.2))
+                ax.set_ylim(min_zone[1] - abs(amplitude[1] * 0.2), max_zone[1] + abs(amplitude[1] * 0.2))
+                ax.set_zlim(min_zone[2] - abs(amplitude[2] * 0.2), max_zone[2] + abs(amplitude[2] * 0.2))
             else:
                 line.set_xdata(coor_plt[:, 0])
                 line.set_ydata(coor_plt[:, 1])
@@ -282,8 +285,9 @@ def main():
                 if coor_plt.shape[0] > 0:
                     min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
                     max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
-                ax.set_xlim(min_zone[0] - abs(min_zone[0] * 0.2), max_zone[0] + abs(max_zone[0] * 0.2))
-                ax.set_ylim(min_zone[1] - abs(min_zone[1] * 0.2), max_zone[1] + abs(max_zone[1] * 0.2))
+                    amplitude = max_zone - min_zone
+                ax.set_xlim(min_zone[0] - abs(amplitude[0] * 0.2), max_zone[0] + abs(amplitude[0] * 0.2))
+                ax.set_ylim(min_zone[1] - abs(amplitude[1] * 0.2), max_zone[1] + abs(amplitude[1] * 0.2))
 
             # Draw every 5 frames to avoid UI freezing
             if i % 5 == 0:
