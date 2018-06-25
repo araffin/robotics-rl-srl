@@ -1,4 +1,5 @@
 import gym
+from gym.utils import seeding
 
 
 class SRLGymEnv(gym.Env):
@@ -23,6 +24,11 @@ class SRLGymEnv(gym.Env):
         self.srl_pipe = srl_pipe
         self.srl_model = srl_model
         self.relative_pos = relative_pos
+        self.np_random = None
+
+        # Create numpy random generator
+        # This seed can be changed later
+        self.seed(0)
 
     def getSRLState(self, observation):
         """
@@ -62,6 +68,15 @@ class SRLGymEnv(gym.Env):
         """
         # Return only the [x, y] coordinates
         raise NotImplementedError()
+
+    def seed(self, seed=None):
+        """
+        Seed random generator
+        :param seed: (int)
+        :return: ([int])
+        """
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def step(self, action):
         raise NotImplementedError()

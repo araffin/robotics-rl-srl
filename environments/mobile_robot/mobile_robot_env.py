@@ -5,7 +5,6 @@ import numpy as np
 import torch as th
 import pybullet_data
 from gym import spaces
-from gym.utils import seeding
 
 from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
@@ -100,7 +99,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         self.robot_uid = None
         self.target_pos = np.zeros(3)
         self.target_uid = None
-        self.np_random = None
         # Boundaries of the square env
         self._min_x, self._max_x = 0, 4
         self._min_y, self._max_y = 0, 4
@@ -148,9 +146,6 @@ class MobileRobotGymEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         else:
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
-        # Create numpy random generator
-        # This seed can be changed later
-        self.seed(0)
 
     def getTargetPos(self):
         """
@@ -246,15 +241,6 @@ class MobileRobotGymEnv(SRLGymEnv):
     def __del__(self):
         if CONNECTED_TO_SIMULATOR:
             p.disconnect()
-
-    def seed(self, seed=None):
-        """
-        Seed random generator
-        :param seed: (int)
-        :return: ([int])
-        """
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def getObservation(self):
         """

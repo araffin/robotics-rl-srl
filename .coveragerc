@@ -2,15 +2,29 @@
 branch = False
 omit =
     tests/*
+    real_robots/*
+    srl_zoo/*
     replay/aggregate_plots.py
     replay/compare_plots.py
     replay/plots.py
-    gazebo/*
-    srl_zoo/*
+    environments/gym_baxter/test_baxter_env.py
+    environments/mobile_robot/test_env.py
+    environments/robobo_gym/test_env.py
+
 [report]
 exclude_lines =
     pragma: no cover
     raise NotImplementedError()
+omit =
+    tests/*
+    real_robots/*
+    srl_zoo/*
+    replay/aggregate_plots.py
+    replay/compare_plots.py
+    replay/plots.py
+    environments/gym_baxter/test_baxter_env.py
+    environments/mobile_robot/test_env.py
+    environments/robobo_gym/test_env.py
 
 [html]
 directory = logs/coverage/
