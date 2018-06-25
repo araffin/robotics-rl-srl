@@ -31,4 +31,4 @@ using this format ```NAME: (CLASS, SUPER_CLASS)```, where:
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
     * ```SUPER_CLASS```: is the super class of your class, this is for saving all the globals and parameters.
 3. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
-4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```test_env.py```. 
+4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```dataset_generator.py```. 

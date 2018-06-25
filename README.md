@@ -54,13 +54,13 @@ python -m visdom.server
 
 To test the environment with random actions:
 ```
-python -m environments.test_env
+python -m environments.dataset_generator --no-record-data --display
 ```
 Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
 To **record data** (i.e. generate a dataset) from the environment for **SRL training**, using random actions:
 ```bash
-python -m environments.test_env --record-data --num-cpu 4 --save-name folder_name
+python -m environments.dataset_generator --num-cpu 4 --name folder_name
 ```
 
 ## Reinforcement Learning

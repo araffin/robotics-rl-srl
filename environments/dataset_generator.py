@@ -58,7 +58,6 @@ def env_thread(args, thread_num, partition=True):
 
     frames = 0
     start_time = time.time()
-    np.random.RandomState()
     # divide evenly, then do an extra one for only some of them in order to get the right count
     for i_episode in range(args.num_episode // args.num_cpu + 1 * (args.num_episode % args.num_cpu > thread_num)):
         # seed + position in this slice + size of slice (with reminder if uneven partitions)
