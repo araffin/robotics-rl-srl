@@ -137,12 +137,13 @@ class MobileRobotGymEnv(SRLGymEnv):
         else:
             raise ValueError("Only discrete actions is supported")
 
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         if self.srl_model == "ground_truth":
             self.state_dim = self.getGroundTruthDim()
 
         if self.srl_model == "raw_pixels":
             self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        else:
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getTargetPos(self):
         """
