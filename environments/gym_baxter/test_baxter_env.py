@@ -2,9 +2,8 @@ import time
 
 import environments.gym_baxter.baxter_env as baxter_env
 
-baxter_env.RECORD_DATA = True
 
-env = baxter_env.BaxterEnv(renders=False, is_discrete=True, log_folder="baxter_real_2")
+env = baxter_env.BaxterEnv(renders=False, is_discrete=True, log_folder="baxter_real_2", record_data=True)
 timesteps = 500  # must be greater than MAX_STEPS
 episodes = 100
 env.seed(1)

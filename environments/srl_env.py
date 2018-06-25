@@ -9,19 +9,19 @@ class SRLGymEnv(gym.Env):
 
     """
     Gym wrapper for SRL environments
-    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
+    :param srl_model: (str) The SRL_model used
     :param relative_pos: (bool) position for ground truth
     :param env_rank: (int) the number ID of the environment
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
-    def __init__(self, *, use_ground_truth, relative_pos, env_rank, srl_pipe):
+    def __init__(self, *, srl_model, relative_pos, env_rank, srl_pipe):
         # the * here, means that the rest of the args need to be called as kwargs.
         # This is done to avoid unwanted situations where we might add a parameter
         #  later and not realise that srl_pipe was not set by an unchanged subclass.
         self.env_rank = env_rank
         self.srl_pipe = srl_pipe
-        self.use_ground_truth = use_ground_truth
+        self.srl_model = srl_model
         self.relative_pos = relative_pos
 
     def getSRLState(self, observation):
@@ -30,7 +30,7 @@ class SRLGymEnv(gym.Env):
         :param observation: (numpy float) image
         :return: (numpy float)
         """
-        if self.use_ground_truth:
+        if self.srl_model == "ground_truth":
             if self.relative_pos:
                 return self.getGroundTruth() - self.getTargetPos()
             return self.getGroundTruth()

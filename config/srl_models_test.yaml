@@ -1,0 +1,9 @@
+KukaButtonGymEnv-v0:
+  # Base path to SRL log folder
+  log_folder: srl_zoo/logs/RL_test/
+  # Path to the different trained SRL models
+  autoencoder: baselines/autoencoder_cnn_ST_DIM3_SEED0_NOISE0_1_EPOCHS1_BS32/srl_ae_model.pth
+  vae: baselines/vae_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_vae_model.pth
+  supervised: baselines/supervised_cnn_SEED0_EPOCHS1_BS32/srl_supervised_model.pth
+  pca: baselines/pca_ST_DIM5/pca.pkl
+  srl_priors: test_priors_custom_cnn/srl_model.pth

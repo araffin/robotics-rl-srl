@@ -48,31 +48,31 @@ class Buffer(object):
         # returns stacked obs of shape [nenv, (nsteps + 1), nh, nw, nstack*nc]
         if self.raw_pixels:
             nstack, nenv, nsteps, nh, nw, nc = self.nstack, self.nenv, self.nsteps, self.nh, self.nw, self.nc
-            y = np.empty([nsteps + nstack - 1, nenv, 1, 1, 1], dtype=np.float32)
-            obs = np.zeros([nstack, nsteps + nstack, nenv, nh, nw, nc], dtype=np.uint8)
+            # y = np.empty([nsteps + nstack - 1, nenv, 1, 1, 1], dtype=np.float32)
+            # obs = np.zeros([nstack, nsteps + nstack, nenv, nh, nw, nc], dtype=np.uint8)
             # [nsteps + nstack, nenv, nh, nw, nc]
-            x = np.reshape(enc_obs, [nenv, nsteps + nstack, nh, nw, nc]).swapaxes(1, 0)
-            y[3:] = np.reshape(1.0 - dones, [nenv, nsteps, 1, 1, 1]).swapaxes(1, 0)  # keep
-            y[:3] = 1.0
+            x = np.reshape(enc_obs, [nstack, nenv, nsteps + nstack, nh, nw, nc]).swapaxes(2, 1)
+            # y[3:] = np.reshape(1.0 - dones, [nenv, nsteps, 1, 1, 1]).swapaxes(1, 0)  # keep
+            # y[:3] = 1.0
             # y = np.reshape(1 - dones, [nenvs, nsteps, 1, 1, 1])
-            for i in range(nstack):
-                obs[-(i + 1), i:] = x
-                # obs[:,i:,:,:,-(i+1),:] = x
-                x = x[:-1] * y
-                y = y[1:]
-            return np.reshape(obs[:, 3:].transpose((2, 1, 3, 4, 0, 5)), [nenv, (nsteps + 1), nh, nw, nstack * nc])
+            # for i in range(nstack):
+            #     obs[-(i + 1), i:] = x
+            #     obs[:,i:,:,:,-(i+1),:] = x
+            #     x = x[:-1] * y
+            #     y = y[1:]
+            return np.reshape(x[:, :].transpose((2, 1, 3, 4, 0, 5)), [nenv, (nsteps + 1), nh, nw, nstack * nc])
         else:
             nstack, nenv, nsteps, obs_dim = self.nstack, self.nenv, self.nsteps, self.obs_dim
-            y = np.empty([nsteps + nstack - 1, nenv, 1], dtype=np.float32)
-            obs = np.zeros([nstack, nsteps + nstack, nenv, obs_dim], dtype=self.obs_dtype)
-            x = np.reshape(enc_obs, [nenv, nsteps + nstack, obs_dim]).swapaxes(1, 0)
-            y[3:] = np.reshape(1.0 - dones, [nenv, nsteps, 1]).swapaxes(1, 0)  # keep
-            y[:3] = 1.0
-            for i in range(nstack):
-                obs[-(i + 1), i:] = x
-                # obs[:,i:,:,:,-(i+1),:] = x
-                x = x[:-1] * y
-                y = y[1:]
+            # y = np.empty([nsteps + nstack - 1, nenv, 1], dtype=np.float32)
+            # obs = np.zeros([nstack, nsteps + nstack, nenv, obs_dim], dtype=self.obs_dtype)
+            x = np.reshape(enc_obs, [nstack, nenv, nsteps + nstack, obs_dim]).swapaxes(2, 1)
+            # y[3:] = np.reshape(1.0 - dones, [nenv, nsteps, 1]).swapaxes(1, 0)  # keep
+            # y[:3] = 1.0
+            # for i in range(nstack):
+            #     obs[-(i + 1), i:] = x
+            #     obs[:,i:,:,:,-(i+1),:] = x
+            #     x = x[:-1] * y
+            #     y = y[1:]
             # (0, 1, 2, 3)
             # (nstack, nsteps + nstack, nenv, obs_dim)
             # (2, 1, 3, 0)
@@ -81,7 +81,7 @@ class Buffer(object):
             # (nstack, nsteps + nstack, nenv, nh, nw, nc)
             # (2, 1, 3, 4, 0, 5)
             # (nenv, nsteps + nstack, nh, nstack, nc)
-            return np.reshape(obs[:, 3:].transpose((2, 1, 3, 0)), [nenv, (nsteps + 1), obs_dim, nstack])
+            return np.reshape(x[:, :].transpose((2, 1, 3, 0)), [nenv, (nsteps + 1), obs_dim, nstack])
 
     def put(self, enc_obs, actions, rewards, mus, dones, masks):
         # enc_obs [nenv, (nsteps + nstack), nh, nw, nc]

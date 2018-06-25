@@ -9,20 +9,13 @@ import time
 
 import numpy as np
 
-import environments.kuka_gym.kuka_2button_gym_env as kuka_env_2
-import environments.kuka_gym.kuka_button_gym_env as kuka_env
-import environments.kuka_gym.kuka_rand_button_gym_env as kuka_env_rand
-import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
-import environments.mobile_robot.mobile_robot_env as mobile_robot
-import environments.mobile_robot.mobile_robot_2target_env as mobile_robot_2target
-import environments.mobile_robot.mobile_robot_1D_env as mobile_robot_1D
-import environments.mobile_robot.mobile_robot_line_target_env as mobile_robot_line_target
-from srl_zoo.utils import printRed
+from environments.registry import registered_env
+from srl_zoo.utils import printRed, printYellow
 
 
 def convertImagePath(args, path, record_id_start):
     """
-    Used to convert an image path, from one location, to an other
+    Used to convert an image path, from one location, to another
     :param args: (ArgumentParser object)
     :param path: (str)
     :param record_id_start: (int) where does the current part start counting its records
@@ -44,7 +37,7 @@ def env_thread(args, thread_num, partition=True):
     """
     env_kwargs = {
         "max_distance": args.max_distance,
-        "random_target": args.relative,
+        "random_target": args.random_target,
         "force_down": True,
         "is_discrete": not args.continuous_actions,
         "renders": thread_num == 0 and not args.no_display,
@@ -54,18 +47,7 @@ def env_thread(args, thread_num, partition=True):
         "shape_reward": args.shape_reward
     }
 
-    if args.env == "Kuka2ButtonGymEnv":
-        env_kwargs["force_down"] = False
-
-    env_class = {"KukaButtonGymEnv-v0": kuka_env.KukaButtonGymEnv,
-                 "Kuka2ButtonGymEnv-v0": kuka_env_2.Kuka2ButtonGymEnv,
-                 "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
-                 "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv,
-                 "MobileRobot2TargetGymEnv-v0": mobile_robot_2target.MobileRobot2TargetGymEnv,
-                 "MobileRobot1DGymEnv-v0": mobile_robot_1D.MobileRobot1DGymEnv,
-                 "MobileRobotLineTargetGymEnv-v0": mobile_robot_line_target.MobileRobotLineTargetGymEnv
-                 }[args.env]
+    env_class = registered_env[args.env][0]
 
     if partition:
         env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
@@ -97,15 +79,15 @@ def env_thread(args, thread_num, partition=True):
 
 def main():
     parser = argparse.ArgumentParser(description='Environment tester (can be used to record datasets for SRL training)')
-    parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to run on')
+    parser.add_argument('--num-cpu', type=int, default=1,
+                        help='number of cpu to run on (WARNING: this will change the seed of the generation of the '
+                             'dataset, as such if this parameter changes, it will not be exactly the same dataset.')
     parser.add_argument('--num-episode', type=int, default=50, help='number of episode to run')
     parser.add_argument('--save-folder', type=str, default='srl_zoo/data/',
                         help='Folder where the environments will save the output')
     parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0",
-                                 "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0", "MobileRobot2TargetGymEnv-v0",
-                                 "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"])
+                        choices=list(registered_env.keys()))
     parser.add_argument('--no-display', action='store_true', default=False)
     parser.add_argument('--record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
@@ -113,8 +95,9 @@ def main():
     parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
     parser.add_argument('--seed', type=int, default=0, help='the seed')
     parser.add_argument('-f', '--force', action='store_true', default=False,
-                        help='Force the save, even if it overrides something else (including partial parts if they exist)')
-    parser.add_argument('-r', '--relative', action='store_true', default=False,
+                        help='Force the save, even if it overrides something else,' +
+                             ' including partial parts if they exist')
+    parser.add_argument('-r', '--random_target', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
     parser.add_argument('--shape-reward', action='store_true', default=False,
@@ -124,6 +107,9 @@ def main():
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
+    if args.num_cpu > args.num_episode:
+        args.num_cpu = args.num_episode
+        printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
 
     # File exists, need to deal with it
     if args.record_data and os.path.exists(args.save_folder + args.save_name):
@@ -132,7 +118,7 @@ def main():
         shutil.rmtree(args.save_folder + args.save_name)
         for part in glob.glob(args.save_folder + args.save_name + "_part-[0-9]*"):
             shutil.rmtree(part)
-    elif args.record_data:
+    if args.record_data:
         # create the output
         os.mkdir(args.save_folder + args.save_name)
 
@@ -161,7 +147,8 @@ def main():
             raise e
 
     if args.record_data and args.num_cpu > 1:
-
+        # sleep 1 second, to avoid congruency issues from multiprocess (eg., files still writing)
+        time.sleep(1)
         # get all the parts
         file_parts = glob.glob(args.save_folder + args.save_name + "_part-[0-9]*")
 
