@@ -162,19 +162,16 @@ class KukaButtonGymEnv(SRLGymEnv):
             action_high = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
 
-        if self.srl_model == "raw_pixels":
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        elif self.srl_model == "ground_truth":
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+        if self.srl_model == "ground_truth":
             self.state_dim = self.getGroundTruthDim()
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         elif self.srl_model == "joints":
             self.state_dim = self.getJointsDim()
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         elif self.srl_model == "joints_position":
             self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
-        else:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+
+        if self.srl_model == "raw_pixels":
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
 
     def getSRLState(self, observation):
         """
@@ -447,10 +444,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         else:
             rgb_array_res = rgb_array1[:, :, :3]
         return rgb_array_res
-
-    def close(self):
-        # TODO: implement close function to close GUI
-        pass
 
     def _termination(self):
         if self.terminated or self._env_step_counter > self.max_steps:

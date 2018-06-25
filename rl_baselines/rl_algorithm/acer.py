@@ -19,6 +19,10 @@ class ACERModel(BaseRLObject):
     object containing the interface between baselines.acer and this code base
     ACER: Sample Efficient Actor-Critic with Experience Replay
     """
+
+    LOG_INTERVAL = 1
+    SAVE_INTERVAL = 20
+
     def __init__(self):
         super(ACERModel, self).__init__()
         self.ob_space = None
@@ -72,6 +76,8 @@ class ACERModel(BaseRLObject):
         return actions
 
     def train(self, args, callback, env_kwargs=None):
+        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
+
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.ob_space = envs.observation_space

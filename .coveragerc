@@ -7,9 +7,9 @@ omit =
     replay/aggregate_plots.py
     replay/compare_plots.py
     replay/plots.py
-    environments/gym_baxter/test_baxter_env.py
+    environments/gym_baxter/*
     environments/mobile_robot/test_env.py
-    environments/robobo_gym/test_env.py
+    environments/robobo_gym/*
 
 [report]
 exclude_lines =
@@ -22,9 +22,9 @@ omit =
     replay/aggregate_plots.py
     replay/compare_plots.py
     replay/plots.py
-    environments/gym_baxter/test_baxter_env.py
+    environments/gym_baxter/*
     environments/mobile_robot/test_env.py
-    environments/robobo_gym/test_env.py
+    environments/robobo_gym/*
 
 [html]
 directory = logs/coverage/

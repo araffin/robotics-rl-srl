@@ -21,6 +21,10 @@ class PPO2Model(BaseRLObject):
     object containing the interface between baselines.ppo2 and this code base
     PPO2: Proximal Policy Optimization (GPU Implementation)
     """
+
+    LOG_INTERVAL = 10
+    SAVE_INTERVAL = 10
+
     def __init__(self):
         super(PPO2Model, self).__init__()
         self.ob_space = None

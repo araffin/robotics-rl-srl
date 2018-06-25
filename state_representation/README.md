@@ -1,15 +1,14 @@
 # SRL Models
 
-A State Representation Learning (SRL) model aims to generate from a high dimentional observation, a compact representation.
-Here it is done in order to learn a policy directly from a representation,
-without the use of an internal feature extraction (eg., CNN) in a deep reinforcement learning algorithm.  
+A State Representation Learning (SRL) model aims to compress from a high dimensional observation, a compact representation.
+This learned representation can be used instead of learning a policy directly from pixels, in a deep reinforcement learning algorithm.  
 
 (A more detailed overview: https://arxiv.org/pdf/1802.04181.pdf)
 
 ## Available models
 - autoencoder: an autoencoder from the raw pixels
 - ground_truth: the agent's position
-- srl_priors: SRL priors model
+- robotic_priors: robotic priors model ([Learning State Representations with Robotic Priors](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/Jonschkowski-15-AURO.pdf))
 - supervised: a supervised model from the raw pixels to the agent's position
 - pca: pca applied to the raw pixels
 - vae: a variational autoencoder from the raw pixels

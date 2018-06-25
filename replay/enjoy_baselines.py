@@ -99,14 +99,12 @@ def loadConfigAndSetup(load_args):
     # load it, if it was defined
     if "action_repeat" in env_globals:
         env_kwargs["action_repeat"] = env_globals['action_repeat']
-    elif "ACTION_REPEAT" in env_globals:
-        env_kwargs["action_repeat"] = env_globals['ACTION_REPEAT']
 
     # Remove up action
     if train_args["env"] == "Kuka2ButtonGymEnv-v0":
-        env_kwargs["force_down"] = env_globals.get('force_down', env_globals.get('FORCE_DOWN', True))
+        env_kwargs["force_down"] = env_globals.get('force_down', True)
     else:
-        env_kwargs["force_down"] = env_globals.get('force_down', env_globals.get('FORCE_DOWN', False))
+        env_kwargs["force_down"] = env_globals.get('force_down', False)
 
     if train_args["srl_model"] != "":
         train_args["policy"] = "mlp"

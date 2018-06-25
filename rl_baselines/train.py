@@ -50,7 +50,7 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
     :param env_kwargs: (dict) The extra arguments for the environment
     """
     params = filterJSONSerializableObjects({**kuka_env_globals, **env_kwargs})
-    with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
+    with open(LOG_DIR + "env_globals.json", "w") as f:
         json.dump(params, f)
 
 
@@ -215,15 +215,10 @@ def main():
     algo_class, algo_type, action_type = registered_rl[args.algo]
     algo = algo_class()
     ALGO = algo
-    if args.algo == "acer":
-        # callback is not called after each steps
-        # so we need to reduce log and save interval
-        LOG_INTERVAL = 1
-        SAVE_INTERVAL = 20
-        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
-    elif args.algo == "ppo2":
-        LOG_INTERVAL = 10
-        SAVE_INTERVAL = 10
+
+    # if callback frequency needs to be changed
+    LOG_INTERVAL = algo.LOG_INTERVAL
+    SAVE_INTERVAL = algo.SAVE_INTERVAL
 
     if not args.continuous_actions and ActionType.DISCRETE not in action_type:
         raise ValueError(args.algo + " does not support discrete actions, please use the '--continuous-actions' " +
@@ -260,6 +255,7 @@ def main():
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
     super_class = registered_env[args.env][1]
+    # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
     rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class) in
                               registered_env.items()}
     while super_class != SRLGymEnv:
@@ -277,9 +273,9 @@ def main():
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
-    printYellow("Kuka Env Globals:")
+    printYellow("Env Globals:")
     pprint(filterJSONSerializableObjects({**globals_env_param, **default_env_kwargs, **env_kwargs}))
-    # Save kuka env params
+    # Save env params
     saveEnvParams(globals_env_param, {**default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)

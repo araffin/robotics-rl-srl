@@ -53,8 +53,8 @@ class CMAESModel(BaseRLObject):
                             help='inital scale for gaussian sampling of network parameters')
         parser.add_argument('--cuda', action='store_true', default=False,
                             help='use gpu for the neural network')
-        parser.add_argument('--sampling', action='store_true', default=False,
-                            help='do a sampling of the actions on the output of the policy')
+        parser.add_argument('--stochastic', action='store_true', default=False,
+                            help='do a stochastic approche for the actions on the output of the policy')
         return parser
 
     def getAction(self, observation, dones=None):
@@ -82,7 +82,7 @@ class CMAESModel(BaseRLObject):
             net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
 
         policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"), cuda=args.cuda,
-                               sampling=args.sampling)
+                               stochastic=args.stochastic)
 
         self.model = CMAES(
             args.num_population,
@@ -125,14 +125,14 @@ class PytorchPolicy(Policy):
     :param sampling: (bool) for sampling from the policy output, this makes the policy non-deterministic
     """
 
-    def __init__(self, model, continuous_actions, srl_model=True, cuda=False, sampling=False):
+    def __init__(self, model, continuous_actions, srl_model=True, cuda=False, stochastic=False):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
         self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
         self.srl_model = srl_model
         self.cuda = cuda
-        self.sampling = sampling
+        self.stochastic = stochastic
         self.device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
 
         self.model = self.model.to(self.device)
@@ -167,10 +167,11 @@ class PytorchPolicy(Policy):
                 action = detachToNumpy(self.model(self.makeVar(obs)))
             else:
                 action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
-                if self.sampling:
-                    action = np.random.choice(len(action), p=action)
-                else:
+                if self.stochastic:
                     action = np.argmax(action)
+                else:
+                    action = np.random.choice(len(action), p=action)
+
         return action
 
     def makeVar(self, arr):

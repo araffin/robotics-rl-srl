@@ -22,6 +22,7 @@ class RandomAgentModel(BaseRLObject):
         return parser
 
     def getAction(self, observation, dones=None):
+        # Action space is not available here, so we do not support it.
         raise ValueError("Error: getAction is not supported for random agent.")
 
     def train(self, args, callback, env_kwargs=None):

@@ -5,6 +5,11 @@ class BaseRLObject:
     """
     Base object for RL algorithms
     """
+
+    # if callback frequency needs to be changed, overwrite this.
+    LOG_INTERVAL = 100
+    SAVE_INTERVAL = 500
+
     def __init__(self):
         pass
 
