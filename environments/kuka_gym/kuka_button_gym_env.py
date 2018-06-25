@@ -6,7 +6,6 @@ import numpy as np
 import torch as th
 import pybullet_data
 from gym import spaces
-from gym.utils import seeding
 
 from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
@@ -117,7 +116,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         self.max_steps = MAX_STEPS
         self.n_steps_outside = 0
         self.table_uid = None
-        self.np_random = None
         self.button_pos = None
         self.button_uid = None
         self._kuka = None
@@ -177,10 +175,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         else:
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
-                
-        # Create numpy random generator
-        # This seed can be changed later
-        self.seed(0)
 
     def getSRLState(self, observation):
         """
@@ -314,15 +308,6 @@ class KukaButtonGymEnv(SRLGymEnv):
     def __del__(self):
         if CONNECTED_TO_SIMULATOR:
             p.disconnect()
-
-    def seed(self, seed=None):
-        """
-        Seed random generator
-        :param seed: (int)
-        :return: ([int])
-        """
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def getExtendedObservation(self):
         if N_CHANNELS > 3:

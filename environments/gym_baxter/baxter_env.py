@@ -6,7 +6,6 @@ import numpy as np
 import cv2
 import zmq
 from gym import spaces
-from gym.utils import seeding
 import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -94,7 +93,6 @@ class BaxterEnv(SRLGymEnv):
         self.state_dim = state_dim
         self._renders = renders
         self._shape_reward = shape_reward
-        self.np_random = None
         self.cuda = th.cuda.is_available()
         self.button_pos = None
         self.saver = None
@@ -136,21 +134,10 @@ class BaxterEnv(SRLGymEnv):
         self.action = [0, 0, 0]
         self.reward = 0
         self.arm_pos = np.array([0, 0, 0])
-        # Create numpy random generator
-        # This seed can be changed later
-        self.seed(0)
 
         # Initialize the state
         if self._renders:
             self.image_plot = None
-
-    def seed(self, seed=None):
-        """
-        :seed: (int)
-        :return: (int array)
-        """
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def step(self, action):
         """

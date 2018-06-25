@@ -40,11 +40,10 @@ def createFolders():
 
 
 def testDataGen():
-    args = ['--num-cpu', 4, '--num-episode', 8, '--save-name', DATA_FOLDER_NAME, '--no-display', '--record-data',
-            '--force', '--env', DEFAULT_ENV]
+    args = ['--num-cpu', 4, '--num-episode', 8, '--name', DATA_FOLDER_NAME, '--force', '--env', DEFAULT_ENV]
     args = list(map(str, args))
 
-    ok = subprocess.call(['python', '-m', 'environments.test_env'] + args)
+    ok = subprocess.call(['python', '-m', 'environments.dataset_generator'] + args)
     assertEq(ok, 0)
 
 
