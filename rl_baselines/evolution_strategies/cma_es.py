@@ -59,7 +59,7 @@ class CMAESModel(BaseRLObject):
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return [self.model.getAction(observation)]
+        return self.model.getAction([observation])
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
@@ -159,7 +159,6 @@ class PytorchPolicy(Policy):
         :return: the action
         """
         if not self.srl_model:
-            obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         with torch.no_grad():
@@ -168,9 +167,9 @@ class PytorchPolicy(Policy):
             else:
                 action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
                 if self.stochastic:
-                    action = np.argmax(action)
+                    action = np.argmax(action, axis=1)
                 else:
-                    action = np.random.choice(len(action), p=action)
+                    action = np.array([np.random.choice(len(a), p=a) for a in action])
 
         return action
 
@@ -319,9 +318,8 @@ class CMAES:
                 actions = []
                 for k in range(self.n_population):
                     if not done[k]:
-                        current_obs = obs[k].reshape(-1)
                         self.policy.setParam(population[k])
-                        action = self.policy.getAction(obs[k])
+                        action = self.policy.getAction(np.array([obs[k]]))[0]
                         actions.append(action)
                     else:
                         actions.append(None)  # do nothing, as we are done

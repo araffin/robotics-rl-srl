@@ -32,7 +32,7 @@ def assertNeq(left, right):
 def make_test_fun(algo):
     def testBaselineTrain():
         for model_type in ['ground_truth', 'raw_pixels']:
-            args = ['--algo', algo, '--srl-model', model_type,'--num-timesteps', NUM_TIMESTEP, '--seed', SEED,
+            args = ['--algo', algo, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP, '--seed', SEED,
                     '--num-iteration', NUM_ITERATION, '--no-vis']
             if algo == "ddpg":
                 mem_limit = 100 if model_type == 'raw_pixels' else 100000
