@@ -83,7 +83,7 @@ def loadConfigAndSetup(load_args):
 
     load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
 
-    env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
+    env_globals = json.load(open(load_args.log_dir + "env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
     # choose the right paths for the environment
     assert train_args["env"] in srl_models, \
@@ -272,7 +272,7 @@ def main():
                 if coor_plt.shape[0] > 0:
                     min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
                     max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
-                    amplitude = max_zone - min_zone
+                    amplitude = max_zone - min_zone + 1e-10
                 ax.set_xlim(min_zone[0] - abs(amplitude[0] * 0.2), max_zone[0] + abs(amplitude[0] * 0.2))
                 ax.set_ylim(min_zone[1] - abs(amplitude[1] * 0.2), max_zone[1] + abs(amplitude[1] * 0.2))
                 ax.set_zlim(min_zone[2] - abs(amplitude[2] * 0.2), max_zone[2] + abs(amplitude[2] * 0.2))
@@ -283,7 +283,7 @@ def main():
                 if coor_plt.shape[0] > 0:
                     min_zone = np.minimum(np.amin(coor_plt, axis=0), min_zone)
                     max_zone = np.maximum(np.amax(coor_plt, axis=0), max_zone)
-                    amplitude = max_zone - min_zone
+                    amplitude = max_zone - min_zone + 1e-10
                 ax.set_xlim(min_zone[0] - abs(amplitude[0] * 0.2), max_zone[0] + abs(amplitude[0] * 0.2))
                 ax.set_ylim(min_zone[1] - abs(amplitude[1] * 0.2), max_zone[1] + abs(amplitude[1] * 0.2))
 

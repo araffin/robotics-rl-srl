@@ -20,6 +20,9 @@ class A2CModel(BaseRLObject):
     object containing the interface between baselines.a2c and this code base
     A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C)
     """
+
+    SAVE_INTERVAL = 10
+
     def __init__(self):
         super(A2CModel, self).__init__()
         self.ob_space = None

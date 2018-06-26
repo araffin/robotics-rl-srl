@@ -43,6 +43,8 @@ class ARSModel(BaseRLObject):
                             type=str, default="v2", choices=["v1", "v2"])
         parser.add_argument('--max-step-amplitude', type=float, default=10,
                             help='Set the maximum update vectors amplitude (mesured in factors of step_size)')
+        parser.add_argument('--stochastic', action='store_true', default=False,
+                            help='do a stochastic approche for the actions on the output of the policy')
         return parser
 
     def getActionProba(self, observation, dones=None):
@@ -51,7 +53,7 @@ class ARSModel(BaseRLObject):
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return [self.model.getAction(observation)]
+        return self.model.getAction(observation)
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
@@ -96,7 +98,8 @@ class ARSModel(BaseRLObject):
             step_size=args.step_size,
             exploration_noise=args.exploration_noise,
             continuous_actions=args.continuous_actions,
-            max_step_amplitude=args.max_step_amplitude
+            max_step_amplitude=args.max_step_amplitude,
+            stochastic=args.stochastic
         )
 
         self.model.train(envs, callback, num_updates=(int(args.num_timesteps) // args.num_population * 2))
@@ -115,14 +118,15 @@ class ARS:
     :param continuous_actions: (bool)
     :param max_step_amplitude: (float) the maximum amplitude factor for step_size 
     """
-    def __init__(self, n_population, observation_space, action_space, top_population=2,
-                 step_size=0.02, exploration_noise=0.02, continuous_actions=False, max_step_amplitude=10):
+    def __init__(self, n_population, observation_space, action_space, top_population=2, step_size=0.02,
+                 exploration_noise=0.02, continuous_actions=False, max_step_amplitude=10, stochastic=False):
         self.n_population = n_population
         self.top_population = top_population
         self.step_size = step_size
         self.exploration_noise = exploration_noise
         self.continuous_actions = continuous_actions
         self.max_step_amplitude = max_step_amplitude
+        self.stochastic = stochastic
 
         # The linear policy, initialized to zero
         self.M = np.zeros((observation_space, action_space))
@@ -147,7 +151,10 @@ class ARS:
         action = np.dot(obs, self.M + delta)
 
         if not self.continuous_actions:
-            action = np.argmax(action)
+            if self.stochastic:
+                action = np.argmax(action, axis=1)
+            else:
+                action = np.array([np.random.choice(len(a), p=a) for a in softmax(action)])
 
         return action
 
@@ -208,6 +215,6 @@ class ARS:
                 delta_sum += (r[idx[i], 0] - r[idx[i], 1]) * delta[idx[i]]
             # here, we need to be careful with the normalization of step_size, as the variance can be 0 on sparse reward
             self.M += (self.step_size /
-                       max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) *
+                       np.max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) *
                        delta_sum)
 

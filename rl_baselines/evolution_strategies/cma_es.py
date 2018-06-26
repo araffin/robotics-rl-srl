@@ -59,11 +59,11 @@ class CMAESModel(BaseRLObject):
 
     def getActionProba(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.getActionProba([observation])[0]
+        return self.model.getActionProba(observation)
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.getAction([observation])
+        return self.model.getAction(observation)
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
@@ -299,6 +299,14 @@ class CMAES:
         self.continuous_actions = continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
         self.best_model = np.array(self.policy.getParamSpace() * [mu])
+
+    def getActionProba(self, obs):
+        """
+        Returns the action probability for the given observation
+        :param obs: ([float])
+        :return: the action
+        """
+        return self.policy.getActionProba(obs)
 
     def getAction(self, obs):
         """

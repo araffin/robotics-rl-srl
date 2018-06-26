@@ -22,7 +22,7 @@ class PPO2Model(BaseRLObject):
     """
 
     LOG_INTERVAL = 10
-    SAVE_INTERVAL = 10
+    SAVE_INTERVAL = 1
 
     def __init__(self):
         super(PPO2Model, self).__init__()
