@@ -80,7 +80,7 @@ def loadConfigAndSetup(load_args):
 
     load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
 
-    env_globals = json.load(open(load_args.log_dir + "kuka_env_globals.json", 'r'))
+    env_globals = json.load(open(load_args.log_dir + "env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
     # choose the right paths for the environment
     assert train_args["env"] in srl_models, \
