@@ -78,6 +78,10 @@ class SRLGymEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+    def close(self):
+        # TODO: implement close function to close GUI
+        pass
+
     def step(self, action):
         raise NotImplementedError()
 

@@ -139,11 +139,11 @@ class MobileRobotGymEnv(SRLGymEnv):
         else:
             raise ValueError("Only discrete actions is supported")
 
+        if self.srl_model == "ground_truth":
+            self.state_dim = self.getGroundTruthDim()
+
         if self.srl_model == "raw_pixels":
             self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        elif self.srl_model == "ground_truth":
-            self.state_dim = self.getGroundTruthDim()
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
         else:
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
@@ -352,10 +352,6 @@ class MobileRobotGymEnv(SRLGymEnv):
             rgb_array_res = np.dstack([rgb_array_res, rgb_array[:, :, :3]])
 
         return rgb_array_res
-
-    def close(self):
-        # TODO: implement close function to close GUI
-        pass
 
     def _termination(self):
         """

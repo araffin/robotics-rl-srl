@@ -6,7 +6,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultithreadSRLModel, softmax
+from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultiprocessSRLModel, softmax
 from srl_zoo.utils import printYellow
 
 
@@ -59,7 +59,7 @@ class ARSModel(BaseRLObject):
             args.num_cpu = args.num_population * 2
 
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
-            srl_model = MultithreadSRLModel(args.num_cpu, args.env, env_kwargs)
+            srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
             env_kwargs["state_dim"] = srl_model.state_dim
             env_kwargs["srl_pipe"] = srl_model.pipe
 

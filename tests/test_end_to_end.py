@@ -104,7 +104,7 @@ def testPriorTrain():
 
 
 def testRLSrlTrain():
-    for model_type in ['vae', 'autoencoder', 'supervised', 'srl_priors']:
+    for model_type in ['vae', 'autoencoder', 'supervised', 'robotic_priors']:
         args = ['--algo', DEFAULT_ALGO, '--env', DEFAULT_ENV, '--srl-model', model_type,
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
                 '--no-vis', '--srl-config-file', DEFAULT_SRL_CONFIG_YAML]

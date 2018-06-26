@@ -7,7 +7,7 @@ registered_srl = {
     "ground_truth":    (SRLType.ENVIRONMENT, None),
     "joints":          (SRLType.ENVIRONMENT, [KukaButtonGymEnv]),
     "joints_position": (SRLType.ENVIRONMENT, [KukaButtonGymEnv]),
-    "srl_priors":      (SRLType.SRL, None),
+    "robotic_priors":  (SRLType.SRL, None),
     "supervised":      (SRLType.SRL, None),
     "autoencoder":     (SRLType.SRL, None),
     "vae":             (SRLType.SRL, None),

@@ -260,6 +260,3 @@ class RoboboEnv(SRLGymEnv):
             plt.pause(0.0001)
         return self.observation
 
-    def close(self):
-        # TODO: implement close function to close GUI
-        pass

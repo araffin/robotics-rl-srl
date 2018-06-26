@@ -1,4 +1,4 @@
-# Reinforcement learning algorithms
+# Reinforcement learning setting
 
 Reinforcement Learning (RL) algorithms, are agents in an environment that are capable of learning a _policy_ in order to try and maximise an objective function (eg., reward).  
 RL algorithms can me modeled as a [Markov decision process](https://en.wikipedia.org/wiki/Markov_decision_process), where we have:
@@ -9,18 +9,18 @@ RL algorithms can me modeled as a [Markov decision process](https://en.wikipedia
 - Reward for every transition from state s to state s' under action a
 - The observation the agent can see
 
-We define a Policy, as the probability of taking action a when in state s.  
-Here the RL algorithm, will create a policy from the observations and the rewards obtained from interacting with the environment though actions.  
+We define a Policy, as a function that returns an action or the probability of taking action, a when in state s.  
+Here the RL algorithm, will create a policy from the observations and the rewards obtained from interacting with the environment through actions.  
 In our case, the policies of the RL algorithms will be deep neural networks.
 
 
 ## Available algorithms
 - DeepQ: and variants (Double, Dueling, prioritized experience replay)
 - ACER: Sample Efficient Actor-Critic with Experience Replay
-- A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
+- A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C).
 - PPO2: Proximal Policy Optimization (GPU Implementation)
 - DDPG: Deep Deterministic Policy Gradients
-- ARS: Augmented Random Search
+- ARS: Augmented Random Search (https://arxiv.org/abs/1803.07055)
 - CMA-ES: Covariance Matrix Adaptation Evolution Strategy
 
 ## Add your own
@@ -28,7 +28,7 @@ In our case, the policies of the RL algorithms will be deep neural networks.
 You will need to define specifically: 
     * ```save(save_path, _locals=None)```: to save your model during or after training.
     * ```load(load_path, args=None)```: to load and return a saved instance of your class (static function).
-    * ```customArguments(parser)```: to define specifics flags from ```train.py``` or ```pipeline.py``` calls, then returns the parser object. 
+    * ```customArguments(parser)```: to define specifics command line arguments from ```train.py``` or ```pipeline.py``` calls, then returns the parser object. 
     * ```getAction(observation, dones=None)```: to get the action from a given observation.
     * ```makeEnv(self, args, env_kwargs=None, load_path_normalise=None)```: override if you need to change 
     the environment wrappers (static function).
