@@ -186,7 +186,7 @@ class CnnPolicy(object):
 
 # Modified version of OpenAI to return PI, remove CNN, and work seamlessly with the codebase
 class LnLstmPolicy(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False):
+    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=64, reuse=False):
         nenv = nbatch // nsteps
         nact = ac_space.n
         ob_shape = (nbatch,) + ob_space.shape
