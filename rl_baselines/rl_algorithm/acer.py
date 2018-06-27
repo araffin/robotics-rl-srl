@@ -80,7 +80,7 @@ class ACERModel(BaseRLObject):
         actions, _, _ = self.model.step(observation, state=None, mask=dones)
         return actions
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
 
         envs = self.makeEnv(args, env_kwargs=env_kwargs)

@@ -115,7 +115,7 @@ class DDPGModel(BaseRLObject):
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
         return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         logger.configure()
         env = self.makeEnv(args, env_kwargs)
 

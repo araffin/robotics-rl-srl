@@ -84,7 +84,7 @@ class A2CModel(BaseRLObject):
         actions, _, _, _ = self.model.step(observation, None, dones)
         return actions
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.ob_space = envs.observation_space

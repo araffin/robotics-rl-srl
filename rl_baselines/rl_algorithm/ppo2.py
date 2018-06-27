@@ -93,7 +93,21 @@ class PPO2Model(BaseRLObject):
         actions, _, _, _ = self.model.step(observation, None, dones)
         return actions
 
-    def train(self, args, callback, env_kwargs=None):
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "lam": (float, (0, 1)),
+            "gamma": (float, (0, 1)),
+            "max_grad_norm": (float, (0, 1)),
+            "vf_coef": (float, (0, 1)),
+            "lr": (float, (1e-2, 1e-5)),
+            "ent_coef": (float, (0, 1)),
+            "cliprange": (float, (0, 1)),
+            "noptepochs": (int, (1, 10)),
+            "nsteps": (int, 32, 2048)
+        }
+
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.ob_space = envs.observation_space
@@ -101,12 +115,27 @@ class PPO2Model(BaseRLObject):
         self.policy = args.policy
         self.continuous_actions = args.continuous_actions
 
-        assert not (self.policy in ['lstm', 'lnlstm'] and args.num_cpu % 4 != 0), \
+        learn_param = {
+            'nsteps': 128,
+            'ent_coef': .01,
+            'lr': lambda f: f * 2.5e-4,
+        }
+
+        opt_param = self.getOptParam()
+        for name, val in hyperparam.items():
+            if name not in opt_param:
+                raise AssertionError("Error: hyperparameter {} not in list of valid hyperparameters".format(name))
+
+            if name == 'lr':
+                learn_param[name] = lambda f: f * opt_param[name][0](val)
+            else:
+                learn_param[name] = opt_param[name][0](val)
+
+        assert not (self.policy in ['lstm', 'lnlstm', 'cnnlstm', 'cnnlnlstm'] and args.num_cpu % 4 != 0), \
             "Error: Reccurent policies must have num cpu at a multiple of 4."
 
         logger.configure()
-        self._learn(args, envs, nsteps=128, ent_coef=.01, lr=lambda f: f * 2.5e-4, total_timesteps=args.num_timesteps,
-                    callback=callback)
+        self._learn(args, envs, total_timesteps=args.num_timesteps, callback=callback, **learn_param)
 
     # Modified version of OpenAI to work with SRL models
     def _learn(self, args, env, nsteps, total_timesteps, ent_coef, lr, vf_coef=0.5, max_grad_norm=0.5, gamma=0.99,

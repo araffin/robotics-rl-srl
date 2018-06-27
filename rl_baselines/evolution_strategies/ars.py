@@ -74,7 +74,7 @@ class ARSModel(BaseRLObject):
             envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
         return envs
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         assert args.top_population <= args.num_population, \
             "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
         assert args.num_population > 1, "The population cannot be less than 2."

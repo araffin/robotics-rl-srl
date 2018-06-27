@@ -69,7 +69,7 @@ class CMAESModel(BaseRLObject):
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         return createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         args.num_cpu = args.num_population
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 

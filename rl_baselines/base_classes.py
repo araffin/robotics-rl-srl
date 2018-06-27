@@ -49,6 +49,10 @@ class BaseRLObject:
         raise NotImplementedError()
 
     @classmethod
+    def getOptParam(cls):
+        return None
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         """
         Makes an environment and returns it
@@ -59,11 +63,12 @@ class BaseRLObject:
         """
         return createEnvs(args, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         """
         Makes an environment and trains the model on it
         :param args: (argparse.Namespace Object)
         :param callback: (function)
         :param env_kwargs: (dict) The extra arguments for the environment
+        :param hyperparam: (dict) The list of all hyperparameters (used in Hyperband)
         """
         raise NotImplementedError()
