@@ -72,3 +72,13 @@ def testEnvTrain():
 
         ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
         assertEq(ok, 0)
+
+
+def testContinousEnvTrain():
+    for env in ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0"]:
+        args = ['--algo', 'ppo2', '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
+                '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '--num-cpu', 4, '-c']
+        args = list(map(str, args))
+
+        ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
+        assertEq(ok, 0)
