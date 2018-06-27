@@ -11,8 +11,7 @@ from baselines import logger
 import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import MlpPolicyDiscrete, CNNPolicyContinuous, MlpPolicyContinuous, CnnPolicy, LstmPolicy, \
-    LnLstmPolicy
+from rl_baselines.policies import PPO2MLPPolicy, PPO2CNNPolicy
 
 
 class PPO2Model(BaseRLObject):
@@ -53,17 +52,14 @@ class PPO2Model(BaseRLObject):
         loaded_model = PPO2Model()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
-        if loaded_model.continuous_actions:
-            policy = {'cnn': CNNPolicyContinuous,
-                      'lstm': None,
-                      'lnlstm': None,
-                      'mlp': MlpPolicyContinuous}[loaded_model.policy]
-        else:
-            # LN-LSTM: Layer Normalization LSTM
-            policy = {'cnn': CnnPolicy,
-                      'lstm': LstmPolicy,
-                      'lnlstm': LnLstmPolicy,
-                      'mlp': MlpPolicyDiscrete}[loaded_model.policy]
+        # LN-LSTM: Layer Normalization LSTM
+        continuous = loaded_model.continuous_actions
+        policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
+                  'cnnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
+                  'cnnlnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+                  'mlp': PPO2MLPPolicy(continuous=continuous),
+                  'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
+                  'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[loaded_model.policy]
 
         if policy is None:
             raise ValueError(loaded_model.policy + " not implemented for " + (
@@ -83,8 +79,8 @@ class PPO2Model(BaseRLObject):
 
     def customArguments(self, parser):
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-        parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'],
-                            default='cnn')
+        parser.add_argument('--policy', help='Policy architecture', default='linear',
+                            choices=['linear', 'lstm', 'lnlstm'])
 
         return parser
 
@@ -139,17 +135,13 @@ class PPO2Model(BaseRLObject):
         config.gpu_options.allow_growth = True
         tf.Session(config=config).__enter__()
 
-        if args.continuous_actions:
-            policy = {'cnn': CNNPolicyContinuous,
-                      'lstm': None,
-                      'lnlstm': None,
-                      'mlp': MlpPolicyContinuous}[args.policy]
-        else:
-            # LN-LSTM: Layer Normalization LSTM
-            policy = {'cnn': CnnPolicy,
-                      'lstm': LstmPolicy,
-                      'lnlstm': LnLstmPolicy,
-                      'mlp': MlpPolicyDiscrete}[args.policy]
+        continuous = args.continuous_actions
+        policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
+                  'cnnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
+                  'cnnlnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+                  'mlp': PPO2MLPPolicy(continuous=continuous),
+                  'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
+                  'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[args.policy]
 
         if policy is None:
             raise ValueError(args.policy + " not implemented for " + (

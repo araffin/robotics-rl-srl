@@ -101,7 +101,7 @@ class ACERModel(BaseRLObject):
 
         if policy == 'cnn':
             policy_fn = AcerCnnPolicy
-        elif policy == 'lstm':
+        elif policy == 'cnnlstm':
             policy_fn = AcerLstmPolicy
         elif policy == 'mlp':
             policy_fn = AcerMlpPolicy

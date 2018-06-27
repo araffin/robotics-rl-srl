@@ -8,10 +8,9 @@ from baselines.acer.acer_simple import find_trainable_variables, joblib
 from baselines.common import tf_util
 from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
 from baselines import logger
-from baselines.ppo2.policies import LstmPolicy, LnLstmPolicy
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import MlpPolicyDiscrete, CnnPolicy
+from rl_baselines.policies import PPO2MLPPolicy, PPO2CNNPolicy
 from rl_baselines.utils import createTensorflowSession
 
 
@@ -50,7 +49,12 @@ class A2CModel(BaseRLObject):
         loaded_model = A2CModel()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
-        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[loaded_model.policy]
+        policy = {'cnn': PPO2CNNPolicy(),
+                  'cnnlstm': PPO2CNNPolicy(reccurent=True),
+                  'cnnlnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+                  'mlp': PPO2MLPPolicy(),
+                  'lstm': PPO2MLPPolicy(reccurent=True),
+                  'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[loaded_model.policy]
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
 
@@ -65,8 +69,8 @@ class A2CModel(BaseRLObject):
 
     def customArguments(self, parser):
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-        parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'],
-                            default='cnn')
+        parser.add_argument('--policy', help='Policy architecture', choices=['linear', 'lstm', 'lnlstm'],
+                            default='linear')
         parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
                             default='constant')
         return parser
@@ -98,16 +102,12 @@ class A2CModel(BaseRLObject):
         tf.reset_default_graph()
         createTensorflowSession()
 
-        if policy == 'cnn':
-            policy_fn = CnnPolicy
-        elif policy == 'lstm':
-            policy_fn = LstmPolicy
-        elif policy == 'lnlstm':
-            policy_fn = LnLstmPolicy
-        elif policy == 'mlp':
-            policy_fn = MlpPolicyDiscrete
-        else:
-            raise ValueError("Policy {} not implemented".format(policy))
+        policy_fn = {'cnn': PPO2CNNPolicy(),
+                     'cnnlstm': PPO2CNNPolicy(reccurent=True),
+                     'cnnlnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+                     'mlp': PPO2MLPPolicy(),
+                     'lstm': PPO2MLPPolicy(reccurent=True),
+                     'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[policy]
 
         nenvs = env.num_envs
         ob_space = env.observation_space

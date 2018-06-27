@@ -327,10 +327,18 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
     if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
-        if not hasattr(args, "policy") or args.policy == "cnn":
+        # define MLP for any that dont define it, or defaulted to cnn, or asked for a linear policy.
+        if not hasattr(args, "policy") or args.policy == "linear" or args.policy == "cnn":
             args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
         envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
+    else:
+        # define CNN for any that dont define it, or asked for a linear policy.
+        if not hasattr(args, "policy") or args.policy == "linear":
+            args.policy = "cnn"
+        elif "cnn" not in args.policy:  # extend for those who have something else with CNN
+            args.policy = "cnn" + args.policy
+
     return envs
 
 
