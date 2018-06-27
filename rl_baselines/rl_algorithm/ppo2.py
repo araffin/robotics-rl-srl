@@ -104,7 +104,7 @@ class PPO2Model(BaseRLObject):
             "ent_coef": (float, (0, 1)),
             "cliprange": (float, (0, 1)),
             "noptepochs": (int, (1, 10)),
-            "nsteps": (int, 32, 2048)
+            "nsteps": (int, (32, 2048))
         }
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):

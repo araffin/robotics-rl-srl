@@ -51,11 +51,11 @@ def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64)
                         h5, snew = lnlstm(xs, ms, S, 'lstm1', nh=nlstm)
                     else:
                         h5, snew = lstm(xs, ms, S, 'lstm1', nh=nlstm)
-                    h5 = seq_to_batch(h5)
+                    decoder = seq_to_batch(h5)
                 # output layer
-                h_pi = activ(fc(h5, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
+                h_pi = activ(fc(decoder, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
                 h_pi = activ(fc(h_pi, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
-                h_vf = activ(fc(h5, 'vf_fc1', nh=64, init_scale=np.sqrt(2)))
+                h_vf = activ(fc(decoder, 'vf_fc1', nh=64, init_scale=np.sqrt(2)))
                 h_vf = activ(fc(h_vf, 'vf_fc2', nh=64, init_scale=np.sqrt(2)))
 
                 pi = fc(h_pi, 'pi', actdim, init_scale=0.01)
@@ -149,10 +149,10 @@ def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64)
                         h5, snew = lnlstm(xs, ms, S, 'lstm1', nh=nlstm)
                     else:
                         h5, snew = lstm(xs, ms, S, 'lstm1', nh=nlstm)
-                    h5 = seq_to_batch(h5)
+                    decoder = seq_to_batch(h5)
                 # output layer
-                pi = fc(h5, 'pi', actdim, init_scale=0.01)
-                vf = fc(h5, 'vf', 1)[:, 0]
+                pi = fc(decoder, 'pi', actdim, init_scale=0.01)
+                vf = fc(decoder, 'vf', 1)[:, 0]
                 if continuous:
                     logstd = tf.get_variable(name="logstd", shape=[1, actdim], initializer=tf.zeros_initializer())
 
