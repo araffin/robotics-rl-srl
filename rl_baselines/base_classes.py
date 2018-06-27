@@ -8,7 +8,7 @@ class BaseRLObject:
 
     # if callback frequency needs to be changed, overwrite this.
     LOG_INTERVAL = 100
-    SAVE_INTERVAL = 500
+    SAVE_INTERVAL = 200
 
     def __init__(self):
         pass

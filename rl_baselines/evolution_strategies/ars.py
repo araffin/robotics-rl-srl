@@ -186,9 +186,9 @@ class ARS:
                         if not done[k * 2 + direction]:
                             current_obs = obs[k * 2 + direction].reshape(-1)
                             if direction == 0:
-                                action = self.getAction(current_obs, delta=(self.exploration_noise * delta[k]))
+                                action = self.getAction([current_obs], delta=(self.exploration_noise * delta[k]))[0]
                             else:
-                                action = self.getAction(current_obs, delta=(-self.exploration_noise * delta[k]))
+                                action = self.getAction([current_obs], delta=(-self.exploration_noise * delta[k]))[0]
 
                             actions.append(action)
                         else:
@@ -215,6 +215,6 @@ class ARS:
                 delta_sum += (r[idx[i], 0] - r[idx[i], 1]) * delta[idx[i]]
             # here, we need to be careful with the normalization of step_size, as the variance can be 0 on sparse reward
             self.M += (self.step_size /
-                       np.max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) *
+                       max(self.top_population * np.std(r[idx[:self.top_population]]), 1 / self.max_step_amplitude) *
                        delta_sum)
 

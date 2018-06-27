@@ -137,7 +137,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
-            raise ValueError("Only discrete actions is supported")
+            self.action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
         if self.srl_model == "ground_truth":
             self.state_dim = self.getGroundTruthDim()
@@ -263,7 +263,10 @@ class MobileRobotGymEnv(SRLGymEnv):
             dy = [0, 0, -dv, dv][action]
             real_action = np.array([dx, dy])
         else:
-            raise ValueError("Only discrete actions is supported")
+            dv = DELTA_POS
+            # Add noise to action
+            dv += self.np_random.normal(0.0, scale=NOISE_STD)
+            real_action = action * dv
 
         if self.verbose:
             print(np.array2string(np.array(real_action), precision=2))
