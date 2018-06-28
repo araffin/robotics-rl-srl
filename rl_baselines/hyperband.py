@@ -33,7 +33,7 @@ class Hyperband(object):
             n = int(math.ceil(self.B / self.max_iter * self.eta**s / (s + 1)))
             r = self.max_iter * self.eta**(-s)
 
-            all_parameters = [self.param_sampler() for _ in range(n)]
+            all_parameters = np.array([self.param_sampler() for _ in range(n)])
             for i in range(s+1):
                 printGreen("\npop_itt:{}/{}, itt:{}/{}, pop_size:{}".format(s, self.s_max + 1, i, s+1, n))
                 n_i = int(math.floor(n * self.eta**(-i)))
@@ -41,7 +41,7 @@ class Hyperband(object):
                 losses = [self.train(t, r_i, k) for k, t in enumerate(all_parameters)]
 
                 self.history.extend(zip([(t, r_i) for t in all_parameters], losses))
-                all_parameters = all_parameters[np.argsort(losses)[::-1][:np.floor(n_i / self.eta)]]
+                all_parameters = all_parameters[np.argsort(losses)[::-1][:int(math.floor(n_i / self.eta))]]
 
         return self.history[int(np.argmin([val[1] for val in self.history]))]
 
@@ -129,7 +129,7 @@ def main():
     opt.run()
     all_params, loss = zip(*opt.history)
     idx = np.argmin(loss)
-    nb_iter, opt_params = all_params[idx]
+    opt_params, nb_iter = all_params[idx]
     reward = loss[idx]
     print('Total nb. evaluations : {}'.format(len(all_params)))
     print('Best nb. of iterations : {}'.format(int(nb_iter)))
