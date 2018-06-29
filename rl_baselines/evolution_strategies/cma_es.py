@@ -267,7 +267,7 @@ class MLPPolicyPytorch(nn.Module):
 
 class CMAES:
     """
-    An implementation of the CMA-ES algorithme
+    An implementation of the CMA-ES algorithm
     :param n_population: (int)
     :param policy: (Policy Object)
     :param mu: (float) default=0
