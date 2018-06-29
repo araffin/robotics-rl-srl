@@ -6,7 +6,7 @@ import torch as th
 from torch.autograd import Variable
 
 from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, ConvolutionalNetwork, SRLModules
-from srl_zoo.preprocessing import preprocessImage, N_CHANNELS
+from srl_zoo.preprocessing import preprocessImage, getNChannels
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -242,7 +242,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
-        if N_CHANNELS > 3:
+        if getNChannels() > 3:
             observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
         else:
             observation = preprocessImage(observation)
