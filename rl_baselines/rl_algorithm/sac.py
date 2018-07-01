@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Categorical, Normal
+from torch.distributions import Categorical, Normal, Uniform
 from baselines.deepq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 
 from environments.utils import makeEnv
@@ -13,6 +13,16 @@ from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
     loadRunningAverage, MultiprocessSRLModel
 from srl_zoo.utils import printYellow
+
+def encodeOneHot(tensor, n_dim):
+    """
+    One hot encoding for a given tensor
+    :param tensor: (th Tensor)
+    :param n_dim: (int) Number of dimensions
+    :return: (th.Tensor)
+    """
+    encoded_tensor = th.Tensor(tensor.shape[0], n_dim).zero_().to(tensor.device)
+    return encoded_tensor.scatter_(1, tensor, 1.)
 
 
 def toTensor(arr, device):
@@ -109,7 +119,7 @@ class SACModel(BaseRLObject):
             args.policy = "mlp"
             input_dim = np.prod(env.observation_space.shape)
             self.policy_net = MLPPolicy(input_dim, [100], action_space)
-            self.q_value_net = MLPQValueNetwork(input_dim, action_space)
+            self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions)
             self.value_net = MLPValueNetwork(input_dim)
             self.target_value_net = MLPValueNetwork(input_dim)
         else:
@@ -132,6 +142,7 @@ class SACModel(BaseRLObject):
         gradient_steps = 1
         print_freq = 500
         batch_size = 64
+        learn_start = 0
         replay_buffer = ReplayBuffer(args.buffer_size)
 
         policy_optimizer = th.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
@@ -155,7 +166,7 @@ class SACModel(BaseRLObject):
                 obs = env.reset()
 
             for _ in range(gradient_steps):
-                if step < batch_size:
+                if step < learn_start or step < batch_size:
                     break
                 # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
                 batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: toTensor(x, self.device),
@@ -179,12 +190,12 @@ class SACModel(BaseRLObject):
                 log_prob_target = new_q_value - value
                 loss_policy = (log_prob * (log_prob - log_prob_target).detach()).mean()
 
-                w_reg = 1e-3
-                mean_loss = w_reg * mu.pow(2).mean()
-                std_loss = w_reg * logvar.pow(2).mean()
-                z_loss = w_reg * z.pow(2).sum(1).mean()
+                w_reg = 0
+                mu_loss = mu.pow(2).mean()
+                std_loss = logvar.pow(2).mean()
+                # z_loss = z.pow(2).sum(1).mean()
 
-                loss_policy += mean_loss + std_loss + z_loss
+                loss_policy += w_reg * (mu_loss + std_loss)
 
                 q_optimizer.zero_grad()
                 loss_q_value.backward()
@@ -241,17 +252,24 @@ class PytorchPolicy(object):
         self.__dict__.update(d)
 
     def sampleAction(self, obs):
-        mu, logvar = self.model(obs)
-        # logvar = \log(\sigma^2) = 2 * \log(\sigma)
-        # \sigma = \exp(0.5 * logvar)
-        std = logvar.mul(0.5).exp_()
-        distribution = Normal(mu, std)
-        z = distribution.sample()
-        # Squash the value
-        action = F.tanh(z)
-        # Correction to the log prob
-        log_prob = distribution.log_prob(z) - th.log(1 - action.pow(2) + 1e-6)
-        log_prob = log_prob.sum(-1, keepdim=True)
+        if self.continuous_actions:
+            mu, logvar = self.model(obs)
+            # logvar = \log(\sigma^2) = 2 * \log(\sigma)
+            # \sigma = \exp(0.5 * logvar)
+            std = logvar.mul(0.5).exp_()
+            distribution = Normal(mu, std)
+            z = distribution.sample()
+            # Squash the value
+            action = F.tanh(z)
+            # Correction to the log prob
+            log_prob = distribution.log_prob(z) - th.log(1 - action.pow(2) + 1e-6)
+            log_prob = log_prob.sum(-1, keepdim=True)
+        else:
+            mu, logvar = self.model(obs)
+            distribution = Categorical(logits=mu)
+            action = distribution.sample()
+            z = action
+            log_prob = distribution.log_prob(action).unsqueeze(1)
 
         # action = z.detach()
         # log_prob = distribution.log_prob(action)
@@ -319,9 +337,11 @@ class MLPQValueNetwork(nn.Module):
     :param input_dim: (int)
     """
 
-    def __init__(self, input_dim, n_actions):
+    def __init__(self, input_dim, n_actions, continuous_actions):
         super(MLPQValueNetwork, self).__init__()
 
+        self.continuous_actions = continuous_actions
+        self.n_actions = n_actions
         self.q_value_net = nn.Sequential(
             nn.Linear(int(input_dim) + int(n_actions), 128),
             nn.ReLU(inplace=True),
@@ -331,4 +351,11 @@ class MLPQValueNetwork(nn.Module):
         )
 
     def forward(self, obs, action):
+        if not self.continuous_actions:
+            action = encodeOneHot(action.unsqueeze(1).long(), self.n_actions)
+
+        # print(action.shape)
+        # print(th.cat([obs, action], dim=1).shape)
+        # print(self.q_value_net(th.cat([obs, action], dim=1)).shape)
+
         return self.q_value_net(th.cat([obs, action], dim=1))

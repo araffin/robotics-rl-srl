@@ -19,7 +19,7 @@ registered_rl = {
     "ddpg":         (DDPGModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.CONTINUOUS]),
     "deepq":        (DeepQModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE]),
     "ppo2":         (PPO2Model, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
-    "sac":         (SACModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.CONTINUOUS]),
+    "sac":         (SACModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
     "random_agent": (RandomAgentModel, AlgoType.OTHER, [ActionType.DISCRETE, ActionType.CONTINUOUS])
 }
 
