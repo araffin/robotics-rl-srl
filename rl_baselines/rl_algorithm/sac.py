@@ -15,7 +15,7 @@ from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameS
 from srl_zoo.utils import printYellow
 
 def l2Loss(tensor):
-    return (tensor ** 2).mean()
+    return (tensor.float() ** 2).mean()
 
 def encodeOneHot(tensor, n_dim):
     """
@@ -119,7 +119,7 @@ class SACModel(BaseRLObject):
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
             input_dim = np.prod(env.observation_space.shape)
-            self.policy_net = MLPPolicy(input_dim, [100], action_space)
+            self.policy_net = MLPPolicy(input_dim, action_space)
             self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions)
             self.value_net = MLPValueNetwork(input_dim)
             self.target_value_net = MLPValueNetwork(input_dim)
@@ -140,9 +140,10 @@ class SACModel(BaseRLObject):
         gamma = 0.99
         learning_rate = 3e-4
         # mixture_components = 4
-        gradient_steps = 1
+        gradient_steps = 4
         print_freq = 500
-        batch_size = 64
+        batch_size = 128
+        soft_update_factor = 1e-2
         learn_start = 0
         replay_buffer = ReplayBuffer(args.buffer_size)
 
@@ -178,18 +179,17 @@ class SACModel(BaseRLObject):
                 new_actions, log_pi, pre_tanh_value, mean_policy, logstd = self.policy.sampleAction(batch_obs)
 
                 # Q-Value function loss
-                target_value = self.target_value_net(batch_next_obs)
-                next_q_value = args.reward_scale * reward + (1 - done) * gamma * target_value.detach()
+                target_value_pred = self.target_value_net(batch_next_obs)
+                next_q_value = args.reward_scale * reward + (1 - done) * gamma * target_value_pred.detach()
                 loss_q_value = 0.5 * q_value_criterion(q_value, next_q_value.detach())
 
                 # Value Function loss
                 q_value_new_actions = self.q_value_net(batch_obs, new_actions)
                 next_value = q_value_new_actions - log_pi
-                # loss_v = 0.5 * (vf_t - (log_target - log_pi + policy_prior_log_probs)) **  2
                 loss_value = 0.5 * value_criterion(value_pred, next_value.detach())
 
                 # Policy Loss
-                # policy_kl_loss = tf.reduce_mean(log_pi * tf.stop_gradient(log_pi - log_target + self._vf_t - policy_prior_log_probs))
+                # why not log_pi.exp_() ?
                 loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
 
                 w_reg = 0
@@ -208,7 +208,7 @@ class SACModel(BaseRLObject):
                 policy_optimizer.step()
 
                 # Update target value_pred network
-                softUpdate(source=self.value_net, target=self.target_value_net, factor=0.001)
+                softUpdate(source=self.value_net, target=self.target_value_net, factor=soft_update_factor)
 
             if (step + 1) % print_freq == 0:
                 print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
@@ -252,8 +252,6 @@ class PytorchPolicy(object):
     def sampleAction(self, obs):
         if self.continuous_actions:
             mean_policy, logstd = self.model(obs)
-            # logstd = \log(\sigma^2) = 2 * \log(\sigma)
-            # \sigma = \exp(0.5 * logstd)
             # log_std_min=-20, log_std_max=2
             logstd = th.clamp(logstd, -20, 2)
             std = th.exp(logstd)
@@ -269,8 +267,8 @@ class PytorchPolicy(object):
             mean_policy, logstd = self.model(obs)
             distribution = Categorical(logits=mean_policy)
             action = distribution.sample().detach()
-            pre_tanh_value = action * 0
-            logstd = logstd * 0
+            pre_tanh_value = action * 0.0
+            logstd = logstd * 0.0
             log_pi = distribution.log_prob(action).unsqueeze(1)
 
         return action, log_pi, pre_tanh_value, mean_policy, logstd
@@ -283,26 +281,21 @@ class PytorchPolicy(object):
 class MLPPolicy(nn.Module):
     """
     :param input_dim: (int)
-    :param hidden_dims: ([int])
+    :param hidden_dim: (int)
     :param out_dim: (int)
     """
 
-    def __init__(self, input_dim, hidden_dims, out_dim, init_w=3e-3):
+    def __init__(self, input_dim, out_dim, hidden_dim=128):
         super(MLPPolicy, self).__init__()
 
         self.policy_net = nn.Sequential(
-            nn.Linear(int(input_dim), 128),
+            nn.Linear(int(input_dim), hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 128),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(inplace=True),
         )
-        self.mean_head = nn.Linear(128, int(out_dim))
-        self.logstd_head = nn.Linear(128, int(out_dim))
-
-        # self.mean_head.weight.data.uniform_(-init_w, init_w)
-        # self.logstd_head.weight.data.uniform_(-init_w, init_w)
-        # self.mean_head.bias.data.uniform_(-init_w, init_w)
-        # self.logstd_head.bias.data.uniform_(-init_w, init_w)
+        self.mean_head = nn.Linear(hidden_dim, int(out_dim))
+        self.logstd_head = nn.Linear(hidden_dim, int(out_dim))
 
     def forward(self, x):
         x = self.policy_net(x)
@@ -314,18 +307,16 @@ class MLPValueNetwork(nn.Module):
     :param input_dim: (int)
     """
 
-    def __init__(self, input_dim, init_w=3e-3):
+    def __init__(self, input_dim, hidden_dim=128):
         super(MLPValueNetwork, self).__init__()
 
         self.value_net = nn.Sequential(
-            nn.Linear(int(input_dim), 128),
+            nn.Linear(int(input_dim), hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 128),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 1)
+            nn.Linear(hidden_dim, 1)
         )
-        # self.value_net[-1].weight.data.uniform_(-init_w, init_w)
-        # self.value_net[-1].bias.data.uniform_(-init_w, init_w)
 
     def forward(self, x):
         return self.value_net(x)
@@ -336,20 +327,18 @@ class MLPQValueNetwork(nn.Module):
     :param input_dim: (int)
     """
 
-    def __init__(self, input_dim, n_actions, continuous_actions, init_w=3e-3):
+    def __init__(self, input_dim, n_actions, continuous_actions, hidden_dim=128):
         super(MLPQValueNetwork, self).__init__()
 
         self.continuous_actions = continuous_actions
         self.n_actions = n_actions
         self.q_value_net = nn.Sequential(
-            nn.Linear(int(input_dim) + int(n_actions), 128),
+            nn.Linear(int(input_dim) + int(n_actions), hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 128),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 1)
+            nn.Linear(hidden_dim, 1)
         )
-        # self.q_value_net[-1].weight.data.uniform_(-init_w, init_w)
-        # self.q_value_net[-1].bias.data.uniform_(-init_w, init_w)
 
     def forward(self, obs, action):
         if not self.continuous_actions:
