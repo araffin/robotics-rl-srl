@@ -106,11 +106,15 @@ def main():
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
+    parser.add_argument('--reward-dist', action='store_true', default=False,
+                        help='Prints out the reward distribution when the dataset generation is finished')
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
+    assert not args.reward_dist or not args.shape_reward, \
+        "Error: cannot display the reward distribution for continuous reward"
     if args.num_cpu > args.num_episode:
         args.num_cpu = args.num_episode
         printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
@@ -214,6 +218,13 @@ def main():
         # save the fused outputs
         np.savez(args.save_path + args.name + "/ground_truth.npz", **ground_truth)
         np.savez(args.save_path + args.name + "/preprocessed_data.npz", **preprocessed_data)
+
+    if args.reward_dist:
+        rewards, count = np.unique(np.load(args.save_path + args.name + "/preprocessed_data.npz")['rewards'],
+                                   return_counts=True)
+        count = ["{:.2f}%".format(val * 100) for val in count / np.sum(count)]
+        print("reward distribution:")
+        [print(" ", val[0], val[1]) for val in list(zip(rewards, count))]
 
 
 if __name__ == '__main__':
