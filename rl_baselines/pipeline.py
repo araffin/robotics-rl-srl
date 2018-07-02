@@ -8,6 +8,10 @@ import subprocess
 import yaml
 import numpy as np
 
+from rl_baselines.registry import registered_rl
+from environments.registry import registered_env
+from state_representation.registry import registered_srl
+from state_representation import SRLType
 from srl_zoo.utils import printGreen, printRed
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -15,15 +19,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorf
 
 def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines Benchmark",
-                                     epilog='After the arguments are parsed, the rest are assumed to be arguments for rl_baselines.train')
+                                     epilog='After the arguments are parsed, the rest are assumed to be arguments for' +
+                                            ' rl_baselines.train')
     parser.add_argument('--algo', type=str, default='ppo2', help='OpenAI baseline to use',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars'])
+                        choices=list(registered_rl.keys()))
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
+                        choices=list(registered_env.keys()))
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised",
-                                 "pca", "vae", "joints", "joints_position", "raw_pixels"])
+                        choices=list(registered_srl.keys()))
     parser.add_argument('--num-timesteps', type=int, default=1e6, help='number of timesteps the baseline should run')
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Display baseline STDOUT')
     parser.add_argument('--num-iteration', type=int, default=15,
@@ -31,6 +34,8 @@ def main():
                              ' and srl-model.')
     parser.add_argument('--seed', type=int, default=0,
                         help='initial seed for each unique combination of environment and srl-model.')
+    parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
+                        help='Set the location of the SRL model path configuration.')
 
     # returns the parsed arguments, and the rest are assumed to be arguments for rl_baselines.train
     args, train_args = parser.parse_known_args()
@@ -45,8 +50,10 @@ def main():
     srl_models.sort()
     envs.sort()
 
-    # loading the config file for the srl_models
-    with open('config/srl_models.yaml', 'rb') as f:
+    # LOAD SRL models list
+    assert os.path.exists(args.srl_config_file), \
+        "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
+    with open(args.srl_config_file, 'rb') as f:
         all_models = yaml.load(f)
 
     # Checking definition and presence of all requested srl_models
@@ -66,7 +73,7 @@ def main():
 
         # validate each model for the current env definition
         for model in srl_models:
-            if model in ["ground_truth", "joints", "joints_position", "raw_pixels"]:
+            if registered_srl[model][0] == SRLType.ENVIRONMENT:
                 continue  # not an srl model, skip to the next model
             elif model not in all_models[env]:
                 printRed("Error: 'srl_models.yaml' missing srl_model {} for environment {}".format(model, env))
@@ -79,6 +86,21 @@ def main():
                 valid = False
 
     assert valid, "Errors occured due to malformed 'srl_models.yaml', cannot continue."
+
+    # check that all the SRL_models can be run on all the environments
+    valid = True
+    for env in envs:
+        for model in srl_models:
+            if registered_srl[model][1] is not None:
+                found = False
+                for compatible_class in registered_srl[model][1]:
+                    if issubclass(compatible_class, registered_env[env][0]):
+                        found = True
+                        break
+                if not found:
+                    valid = False
+                    printRed("Error: srl_model {}, is not compatible with the {} environment.".format(model, env))
+    assert valid, "Errors occured due to an incompatible combination of srl_model and environment, cannot continue."
 
     # the seeds used in training the baseline.
     seeds = list(np.arange(args.num_iteration) + args.seed)
@@ -102,12 +124,8 @@ def main():
                     "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}'".format(i, seeds[i], env, model))
 
                 # redefine the parsed args for rl_baselines.train
-                loop_args = []
-                if model != "raw_pixels":
-                    # raw_pixels is when --srl-model is left as default
-                    loop_args.extend(['--srl-model', model])
-                loop_args.extend(['--seed', str(seeds[i]), '--algo', args.algo, '--env', env, '--num-timesteps',
-                                  str(int(args.num_timesteps))])
+                loop_args = ['--srl-model', model, '--seed', str(seeds[i]), '--algo', args.algo, '--env', env,
+                             '--num-timesteps', str(int(args.num_timesteps)), '--srl-config-file', args.srl_config_file]
 
                 ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
 

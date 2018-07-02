@@ -7,43 +7,35 @@ import os
 from datetime import datetime
 from pprint import pprint
 import inspect
+import sys
+import time
 
 import yaml
 from baselines.common import set_global_seeds
 from visdom import Visdom
 
-from gym.envs.registration import registry as gym_registry
-import rl_baselines.a2c as a2c
-import rl_baselines.acer as acer
-import rl_baselines.ddpg as ddpg
-import rl_baselines.deepq as deepq
-import rl_baselines.ppo2 as ppo2
-import rl_baselines.random_agent as random_agent
-import rl_baselines.ars as ars
-import rl_baselines.cma_es as cma_es
+from rl_baselines import AlgoType, ActionType
+from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
-from environments.utils import dynamicEnvLoad
-# Our environments, must be a sub class of these classes. If they are, we need the default globals as well for logging.
-import environments.kuka_gym.kuka_button_gym_env as kuka_inherited_env
-from environments.kuka_gym.kuka_button_gym_env import KukaButtonGymEnv as kuka_inherited_env_class
-import environments.gym_baxter.baxter_env as baxter_inherited_env
-from environments.gym_baxter.baxter_env import BaxterEnv as baxter_inherited_env_class
-import environments.mobile_robot.mobile_robot_env as mobile_robot_inherited_env
-from environments.mobile_robot.mobile_robot_env import MobileRobotGymEnv as mobile_robot_inherited_env_class
+from environments.registry import registered_env
+from environments.srl_env import SRLGymEnv
+from state_representation import SRLType
+from state_representation.registry import registered_srl
 
 VISDOM_PORT = 8097
-LOG_INTERVAL = 100
+LOG_INTERVAL = 0  # initialised during loading of the algorithm
 LOG_DIR = ""
-ALGO = ""
+ALGO = None
+ALGO_NAME = ""
 ENV_NAME = ""
-PLOT_TITLE = "Raw Pixels"
+PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 viz = None
 n_steps = 0
-SAVE_INTERVAL = 500  # Save RL model every 500 steps
+SAVE_INTERVAL = 0  # initialised during loading of the algorithm
 N_EPISODES_EVAL = 100  # Evaluate the performance on the last 100 episodes
 params_saved = False
 best_mean_reward = -10000
@@ -52,10 +44,6 @@ win, win_smooth, win_episodes = None, None, None
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
-# LOAD SRL models list
-with open('config/srl_models.yaml', 'rb') as f:
-    all_models = yaml.load(f)
-
 
 def saveEnvParams(kuka_env_globals, env_kwargs):
     """
@@ -63,14 +51,15 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
     :param env_kwargs: (dict) The extra arguments for the environment
     """
     params = filterJSONSerializableObjects({**kuka_env_globals, **env_kwargs})
-    with open(LOG_DIR + "kuka_env_globals.json", "w") as f:
+    with open(LOG_DIR + "env_globals.json", "w") as f:
         json.dump(params, f)
 
 
-def configureEnvAndLogFolder(args, env_kwargs):
+def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
     :param args: (ArgumentParser object)
     :param env_kwargs: (dict) The extra arguments for the environment
+    :param all_models: (dict) The location of all the trained SRL models
     :return: (ArgumentParser object, dict)
     """
     global PLOT_TITLE, LOG_DIR
@@ -81,36 +70,20 @@ def configureEnvAndLogFolder(args, env_kwargs):
     args.log_dir += args.env + "/"
 
     models = all_models[args.env]
-    if args.srl_model != "":
-        PLOT_TITLE = args.srl_model
-        path = models.get(args.srl_model)
-        args.log_dir += args.srl_model + "/"
+    PLOT_TITLE = args.srl_model
+    path = models.get(args.srl_model)
+    args.log_dir += args.srl_model + "/"
 
-        if args.srl_model == "ground_truth":
-            env_kwargs["use_ground_truth"] = True
-            PLOT_TITLE = "Ground Truth"
-        elif args.srl_model == "joints":
-            # Observations in joint space
-            env_kwargs["use_joints"] = True
-            PLOT_TITLE = "Joints"
-        elif args.srl_model == "joints_position":
-            # Observations in joint and position space
-            env_kwargs["use_ground_truth"] = True
-            env_kwargs["use_joints"] = True
-            PLOT_TITLE = "Joints and position"
-        elif path is not None:
-            env_kwargs["use_srl"] = True
-            env_kwargs["srl_model_path"] = models['log_folder'] + path
-        else:
-            raise ValueError("Unsupported value for srl-model: {}".format(args.srl_model))
-
-    else:
-        args.log_dir += "raw_pixels/"
+    env_kwargs["srl_model"] = args.srl_model
+    if path is not None:
+        env_kwargs["use_srl"] = True
+        env_kwargs["srl_model_path"] = models['log_folder'] + path
 
     # Add date + current time
-    args.log_dir += "{}/{}/".format(ALGO, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
+    args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
-    # TODO: wait one second if the folder exist to avoid overwritting logs
+    # wait one second if the folder exist to avoid overwritting logs
+    time.sleep(1)
     os.makedirs(args.log_dir, exist_ok=True)
 
     return args, env_kwargs
@@ -127,7 +100,7 @@ def callback(_locals, _globals):
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
 
-    is_es = ALGO in ['ars', 'cma-es']
+    is_es = registered_rl[ALGO_NAME][1] == AlgoType.EVOLUTION_STRATEGIES
 
     # Save RL agent parameters
     if not params_saved:
@@ -158,42 +131,33 @@ def callback(_locals, _globals):
 
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
-            if ALGO == "deepq":
-                _locals['act'].save(LOG_DIR + "deepq_model.pkl")
-            elif ALGO == "ddpg":
-                _locals['agent'].save(LOG_DIR + "ddpg_model.pkl")
-            elif ALGO in ["acer", "a2c", "ppo2"]:
-                _locals['model'].save(LOG_DIR + ALGO + "_model.pkl")
-            elif ALGO in ['ars', 'cma-es']:
-                _locals['self'].save(LOG_DIR + ALGO + "_model.pkl")
+            ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
-        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
-        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO, title=PLOT_TITLE + " smoothed",
+        win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO_NAME, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
+        win_smooth = timestepsPlot(viz, win_smooth, LOG_DIR, ENV_NAME, ALGO_NAME, title=PLOT_TITLE + " smoothed",
                                    is_es=is_es)
-        win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO, window=EPISODE_WINDOW,
+        win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
     return False
 
 
 def main():
-    global ENV_NAME, ALGO, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
+    global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='ppo2',
-                        choices=['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'ars', 'cma-es'],
-                        help='OpenAI baseline to use', type=str)
-    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0')
+    parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',
+                        type=str)
+    parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0',
+                        choices=list(registered_env.keys()))
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
-    parser.add_argument('--srl-model', type=str, default='',
-                        choices=["autoencoder", "ground_truth", "srl_priors", "supervised", "pca", "vae", "joints",
-                                 "joints_position"],
+    parser.add_argument('--srl-model', type=str, default='raw_pixels', choices=list(registered_srl.keys()),
                         help='SRL model to use')
     parser.add_argument('--num-stack', type=int, default=1,
                         help='number of frames to stack (default: 1)')
@@ -211,61 +175,59 @@ def main():
                         action='store_true', default=False)
     parser.add_argument('-r', '--relative', action='store_true', default=False,
                         help='Set the button to a random position')
+    parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
+                        help='Set the location of the SRL model path configuration.')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
 
+    # LOAD SRL models list
+    assert os.path.exists(args.srl_config_file), \
+        "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
+    with open(args.srl_config_file, 'rb') as f:
+        all_models = yaml.load(f)
+
     # Sanity check
-    assert args.env in gym_registry.env_specs, "Error: could not find the environment {}, ".format(args.env) + \
-                                               "here are the valid environments: {}".format(
-                                                   list(gym_registry.env_specs.keys()))
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
     assert args.num_stack >= 1, "Error: --num-stack cannot be less than 1"
     assert args.action_repeat >= 1, "Error: --action-repeat cannot be less than 1"
     assert 0 <= args.port < 65535, "Error: invalid visdom port number {}, ".format(args.port) + \
                                    "port number must be an unsigned 16bit number [0,65535]."
-    assert args.srl_model in ["joints", "joints_position", "ground_truth", ''] or args.env in all_models, \
+    assert registered_srl[args.srl_model][0] == SRLType.ENVIRONMENT or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
-
-    module_env, class_name, env_module_path = dynamicEnvLoad(args.env)
+    # check that all the SRL_model can be run on the environment
+    if registered_srl[args.srl_model][1] is not None:
+        found = False
+        for compatible_class in registered_srl[args.srl_model][1]:
+            if issubclass(compatible_class, registered_env[args.env][0]):
+                found = True
+                break
+        assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
 
     ENV_NAME = args.env
-    ALGO = args.algo
+    ALGO_NAME = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
 
     if args.no_vis:
         viz = False
 
-    if args.algo == "deepq":
-        algo = deepq
-    elif args.algo == "acer":
-        algo = acer
-        # callback is not called after each steps
-        # so we need to reduce log and save interval
-        LOG_INTERVAL = 1
-        SAVE_INTERVAL = 20
-        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
-    elif args.algo == "a2c":
-        algo = a2c
-    elif args.algo == "ppo2":
-        algo = ppo2
-        LOG_INTERVAL = 10
-        SAVE_INTERVAL = 10
-    elif args.algo == "random_agent":
-        algo = random_agent
-    elif args.algo == "ddpg":
-        algo = ddpg
-        assert args.continuous_actions, "DDPG only works with '--continuous-actions' (or '-c')"
-    elif args.algo == "ars":
-        algo = ars
-    elif args.algo == "cma-es":
-        algo = cma_es
+    algo_class, algo_type, action_type = registered_rl[args.algo]
+    algo = algo_class()
+    ALGO = algo
 
-    if args.continuous_actions and (args.algo in ['acer', 'deepq', 'a2c', 'random_search']):
-        raise ValueError(args.algo + " does not support continuous actions")
+    # if callback frequency needs to be changed
+    LOG_INTERVAL = algo.LOG_INTERVAL
+    SAVE_INTERVAL = algo.SAVE_INTERVAL
+
+    if not args.continuous_actions and ActionType.DISCRETE not in action_type:
+        raise ValueError(args.algo + " does not support discrete actions, please use the '--continuous-actions' " +
+                         "(or '-c') flag.")
+    if args.continuous_actions and ActionType.CONTINUOUS not in action_type:
+        raise ValueError(args.algo + " does not support continuous actions, please remove the '--continuous-actions' " +
+                         "(or '-c') flag.")
 
     env_kwargs["is_discrete"] = not args.continuous_actions
 
@@ -280,55 +242,49 @@ def main():
     parser = algo.customArguments(parser)
     args = parser.parse_args()
 
-    args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs)
+    args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs, all_models)
     args_dict = filterJSONSerializableObjects(vars(args))
     # Save args
     with open(LOG_DIR + "args.json", "w") as f:
         json.dump(args_dict, f)
 
+    env_class = registered_env[args.env][0]
     # env default kwargs
     default_env_kwargs = {k: v.default
-                          for k, v in inspect.signature(module_env.__dict__[class_name].__init__).parameters.items()
+                          for k, v in inspect.signature(env_class.__init__).parameters.items()
                           if v is not None}
 
-    # here we need to get the defaut kwargs and globals from the the correct env, if we inherit from it
-    if issubclass(module_env.__dict__[class_name], kuka_inherited_env_class):
-        inherited_env = kuka_inherited_env
-        inherited_env_class = kuka_inherited_env_class
-    elif issubclass(module_env.__dict__[class_name], baxter_inherited_env_class):
-        inherited_env = baxter_inherited_env
-        inherited_env_class = baxter_inherited_env_class
-    elif issubclass(module_env.__dict__[class_name], mobile_robot_inherited_env_class):
-        inherited_env = mobile_robot_inherited_env
-        inherited_env_class = mobile_robot_inherited_env_class
-    else:
-        # Sanity check to make sure we have implemented the environment correctly,
-        raise AssertionError("Error: not implemented for the environment {}".format(module_env.__dict__[class_name].__name__))
+    globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
-    if inherited_env != module_env:
-        inherited_env_kwargs = {k: v.default
-                                for k, v in inspect.signature(inherited_env_class.__init__).parameters.items()
-                                if v is not None}
-        inherited_globals = inherited_env.getGlobals()
-    else:
-        inherited_env_kwargs = {}
-        inherited_globals = {}
+    super_class = registered_env[args.env][1]
+    # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
+    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class) in
+                              registered_env.items()}
+    while super_class != SRLGymEnv:
+        assert super_class in rec_super_class_lookup, "Error: could not find super class of {}".format(super_class) + \
+                                                      ", are you sure \"registered_env\" is correctly defined?"
+        super_env_kwargs = {k: v.default
+                            for k, v in inspect.signature(super_class.__init__).parameters.items()
+                            if v is not None}
+        default_env_kwargs = {**super_env_kwargs, **default_env_kwargs}
+
+        globals_env_param = {**sys.modules[super_class.__module__].getGlobals(), **globals_env_param}
+
+        super_class = rec_super_class_lookup[super_class]
 
     # Print Variables
     printYellow("Arguments:")
     pprint(args_dict)
-    printYellow("Kuka Env Globals:")
-    pprint(filterJSONSerializableObjects(
-        {**inherited_globals, **module_env.getGlobals(), **inherited_env_kwargs, **default_env_kwargs, **env_kwargs}))
-    # Save kuka env params
-    saveEnvParams({**inherited_globals, **module_env.getGlobals()},
-                  {**inherited_env_kwargs, **default_env_kwargs, **env_kwargs})
+    printYellow("Env Globals:")
+    pprint(filterJSONSerializableObjects({**globals_env_param, **default_env_kwargs, **env_kwargs}))
+    # Save env params
+    saveEnvParams(globals_env_param, {**default_env_kwargs, **env_kwargs})
     # Seed tensorflow, python and numpy random generator
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Train the agent
-    algo.main(args, callback, env_kwargs=env_kwargs)
+    algo.train(args, callback, env_kwargs=env_kwargs)
 
 
 if __name__ == '__main__':

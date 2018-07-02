@@ -1,10 +1,21 @@
 from __future__ import print_function, absolute_import, division
 
+import numpy as np
+from enum import Enum
+
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
 USING_REAL_BAXTER = False
+USING_ROBOBO = True
+
+assert not (USING_ROBOBO and USING_REAL_BAXTER), "You can only use one real robot at a time"
+# For compatibility with teleop_client
+Move = None
+DELTA_POS = 0
+
+Z_TABLE, MAX_DISTANCE = 0, 0
 
 # Calibrated values for Real Baxter
 if USING_REAL_BAXTER:
@@ -30,6 +41,36 @@ if USING_REAL_BAXTER:
     # Set the second cam topic to None if there is only one camera
     SECOND_CAM_TOPIC = "/camera/rgb/image_raw"
     DATA_FOLDER_SECOND_CAM = "real_baxter_second_cam"
+elif USING_ROBOBO:
+    # ROS Topics
+    IMAGE_TOPIC = "/camera/rgb/image_raw"
+    # SECOND_CAM_TOPIC = "/camera/image_repub"
+    SECOND_CAM_TOPIC = None
+    DATA_FOLDER_SECOND_CAM = "real_robobo_second_cam"
+    # Max number of steps per episode
+    MAX_STEPS = 20
+    # Initial area in the image of the target
+    # It must be calibrated after changing the target position
+    TARGET_INITIAL_AREA = 3700
+    # HSV thresholds, MUST be calibrated before starting the experiment
+    # using for instance https://github.com/sergionr2/RacingRobot/blob/v0.3/opencv/dev/threshold.py
+    LOWER_RED = np.array([120, 130, 0])
+    UPPER_RED = np.array([135, 255, 255])
+    # Change in percent of the target area to consider
+    # that the target was reached
+    MIN_DELTA_AREA = 0.2  # 20% covered to considered it reached
+    # Boundaries
+    MIN_X, MAX_X = -3, 3
+    MIN_Y, MAX_Y = -4, 3
+
+    # Define the possible Moves
+    class Move(Enum):
+        FORWARD = 0
+        BACKWARD = 1
+        LEFT = 2
+        RIGHT = 3
+        STOP = 4
+
 # Gazebo
 else:
     LEFT_ARM_INIT_POS = [0.6, 0.30, 0.20]

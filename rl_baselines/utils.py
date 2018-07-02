@@ -6,14 +6,14 @@ import numpy as np
 import tensorflow as tf
 import torch as th
 from baselines.common.running_mean_std import RunningMeanStd
-from baselines.common.vec_env import VecEnvWrapper
+from baselines.common.vec_env import VecEnvWrapper, VecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
 
 from environments.utils import makeEnv, dynamicEnvLoad
 from rl_baselines.visualize import loadCsv
-from srl_zoo.utils import printYellow
+from srl_zoo.utils import printYellow, printGreen
 from state_representation.models import loadSRLModel, getSRLDim
 
 
@@ -103,6 +103,7 @@ class CustomVecNormalize(VecEnvWrapper):
         self.training = training
         self.norm_obs = norm_obs
         self.norm_rewards = norm_rewards
+        self.old_obs = np.array([])
 
     def step_wait(self):
         """
@@ -136,7 +137,7 @@ class CustomVecNormalize(VecEnvWrapper):
 
     def getOriginalObs(self):
         """
-        retrun original observation
+        retruns the unnormalized observation
         :return: (numpy float) 
         """
         return self.old_obs
@@ -146,7 +147,10 @@ class CustomVecNormalize(VecEnvWrapper):
         Reset all environments
         """
         obs = self.venv.reset()
-        self.old_obs = obs
+        if len(np.array(obs).shape) == 1:  # for when num_cpu is 1
+            self.old_obs = [obs]
+        else:
+            self.old_obs = obs
         return self._normalizeObservation(obs)
 
     def saveRunningAverage(self, path):
@@ -190,7 +194,84 @@ class VecFrameStack(OpenAIVecFrameStack):
         return self.stackedobs, rews, news, infos
 
 
-class MultithreadSRLModel:
+class CustomDummyVecEnv(VecEnv):
+    """Dummy class in order to use FrameStack with DQN"""
+
+    def __init__(self, env_fns):
+        """
+        :param env_fns: ([function])
+        """
+        assert len(env_fns) == 1, "This dummy class does not support multiprocessing"
+        self.envs = [fn() for fn in env_fns]
+        env = self.envs[0]
+        VecEnv.__init__(self, len(env_fns), env.observation_space, env.action_space)
+        self.env = self.envs[0]
+        self.actions = None
+        self.obs = None
+        self.reward, self.done, self.infos = None, None, None
+
+    def step_wait(self):
+        self.obs, self.reward, self.done, self.infos = self.env.step(self.actions[0])
+        return self.obs[None], self.reward, [self.done], [self.infos]
+
+    def step_async(self, actions):
+        """
+        :param actions: ([int])
+        """
+        self.actions = actions
+
+    def reset(self):
+        return self.env.reset()
+
+    def close(self):
+        return
+
+
+class WrapFrameStack(VecFrameStack):
+    """
+    Wrap VecFrameStack in order to be usable with dqn
+    and scale output if necessary
+    """
+
+    def __init__(self, venv, nstack, normalize=True):
+        super(WrapFrameStack, self).__init__(venv, nstack)
+        self.factor = 255.0 if normalize else 1
+
+    def step(self, action):
+        self.step_async([action])
+        stackedobs, rews, news, infos = self.step_wait()
+        return stackedobs[0] / self.factor, rews, news[0], infos[0]
+
+    def reset(self):
+        """
+        Reset all environments
+        """
+        stackedobs = super(WrapFrameStack, self).reset()
+        return stackedobs[0] / self.factor
+
+    def getOriginalObs(self):
+        """
+        Hack to use CustomVecNormalize
+        :return: (numpy float)
+        """
+        return self.venv.getOriginalObs()
+
+    def saveRunningAverage(self, path):
+        """
+        Hack to use CustomVecNormalize
+        :param path: (str) path to log dir
+        """
+        self.venv.saveRunningAverage(path)
+
+    def loadRunningAverage(self, path):
+        """
+        Hack to use CustomVecNormalize
+        :param path: (str) path to log dir
+        """
+        self.venv.loadRunningAverage(path)
+
+
+class MultiprocessSRLModel:
     """
     Allows multiple environments to use a single SRL model
     :param num_cpu: (int) the number of environments that will spawn
@@ -210,6 +291,9 @@ class MultithreadSRLModel:
         self.p.start()
 
     def _run(self, env_kwargs):
+        # this is to control the number of CPUs that torch is allowed to use.
+        # By default it will use all CPUs, even with GPU acceleration
+        th.set_num_threads(1)
         self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
         # run until the end of the caller thread
         while True:
@@ -218,15 +302,16 @@ class MultithreadSRLModel:
             self.pipe[1][env_id].put(self.model.getState(var))
 
 
-def createEnvs(args, allow_early_resets=False, env_kwargs=None):
+def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
     """
     :param args: (argparse.Namespace Object)
     :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs
     :param env_kwargs: (dict) The extra arguments for the environment
+    :param load_path_normalise: (str) the path to loading the rolling average, None if not available or wanted.
     :return: (Gym VecEnv)
     """
     if env_kwargs is not None and env_kwargs.get("use_srl", False):
-        srl_model = MultithreadSRLModel(args.num_cpu, args.env, env_kwargs)
+        srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
         env_kwargs["state_dim"] = srl_model.state_dim
         env_kwargs["srl_pipe"] = srl_model.pipe
     envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
@@ -240,8 +325,22 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None):
 
     envs = VecFrameStack(envs, args.num_stack)
 
-    if args.srl_model != "":
+    if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
         args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+        envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
     return envs
+
+
+def loadRunningAverage(envs, load_path_normalise=None):
+    if load_path_normalise is not None:
+        try:
+            printGreen("Loading saved running average")
+            envs.loadRunningAverage(load_path_normalise)
+            envs.training = False
+        except FileNotFoundError:
+            envs.training = True
+            printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
+    return envs
+

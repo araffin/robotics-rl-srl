@@ -3,7 +3,7 @@ from __future__ import print_function, division, absolute_import
 import subprocess
 
 DEFAULT_ALGO = "ppo2"
-DEFAULT_ENV = "KukaButtonGymEnv-v0"
+DEFAULT_ENV = "MobileRobotGymEnv-v0"
 DEFAULT_SRL = "ground_truth"
 NUM_ITERATION = 1
 NUM_TIMESTEP = 1600
@@ -32,14 +32,17 @@ def assertNeq(left, right):
 def make_test_fun(algo):
     def testBaselineTrain():
         for model_type in ['ground_truth', 'raw_pixels']:
-            args = ['--algo', algo, '--env', DEFAULT_ENV, '--srl-model', model_type,
-                    '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
-                    '--no-vis']
+            args = ['--algo', algo, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP, '--seed', SEED,
+                    '--num-iteration', NUM_ITERATION, '--no-vis']
             if algo == "ddpg":
                 mem_limit = 100 if model_type == 'raw_pixels' else 100000
                 args.extend(['-c', '--memory-limit', mem_limit])
+                args.extend(['--env', "KukaButtonGymEnv-v0"])
             elif algo == "acer":
                 args.extend(['--num-stack', 4])
+                args.extend(['--env', DEFAULT_ENV])
+            else:
+                args.extend(['--env', DEFAULT_ENV])
 
             args = list(map(str, args))
 
