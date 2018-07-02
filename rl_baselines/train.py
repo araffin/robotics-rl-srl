@@ -8,6 +8,7 @@ from datetime import datetime
 from pprint import pprint
 import inspect
 import sys
+import time
 
 import yaml
 from baselines.common import set_global_seeds
@@ -25,7 +26,7 @@ from state_representation import SRLType
 from state_representation.registry import registered_srl
 
 VISDOM_PORT = 8097
-LOG_INTERVAL = 100
+LOG_INTERVAL = 0  # initialised during loading of the algorithm
 LOG_DIR = ""
 ALGO = None
 ALGO_NAME = ""
@@ -34,7 +35,7 @@ PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 viz = None
 n_steps = 0
-SAVE_INTERVAL = 500  # Save RL model every 500 steps
+SAVE_INTERVAL = 0  # initialised during loading of the algorithm
 N_EPISODES_EVAL = 100  # Evaluate the performance on the last 100 episodes
 params_saved = False
 best_mean_reward = -10000
@@ -81,7 +82,8 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
-    # TODO: wait one second if the folder exist to avoid overwritting logs
+    # wait one second if the folder exist to avoid overwritting logs
+    time.sleep(1)
     os.makedirs(args.log_dir, exist_ok=True)
 
     return args, env_kwargs
