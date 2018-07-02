@@ -28,8 +28,7 @@ DELTA_V = 0.03  # velocity per physics step.
 DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = True  # Use relative position for ground truth
-# NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0.01
+NOISE_STD = 0.01  # Add noise to actions, so the env is not fully deterministic
 NOISE_STD_CONTINUOUS = 0.0001
 NOISE_STD_JOINTS = 0.002
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
@@ -132,7 +131,6 @@ class KukaButtonGymEnv(SRLGymEnv):
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
-            # self.renderer = p.ER_BULLET_HARDWARE_OPENGL
             self.debug = True
             # Debug sliders for moving the camera
             self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
@@ -297,8 +295,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.srl_model != "raw_pixels":
-            # if len(self.saver.srl_model_path) > 0:
-            # self.srl_model.load(self.saver.srl_model_path))
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)

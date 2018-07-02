@@ -166,13 +166,14 @@ def main():
     method = algo_class.load(load_path, args=algo_args)
 
     dones = [False for _ in range(load_args.num_cpu)]
-    # HACK: check for custom vec env
+    # HACK: check for custom vec env by checking if the last wrapper is WrapFrameStack
+    # this is used for detecting algorithms that have a similar wrapping to deepq
+    # is considered a hack because we are unable to detect if this wrapper was added earlier to the environment object
     using_custom_vec_env = isinstance(envs, WrapFrameStack)
 
     obs = envs.reset()
     if using_custom_vec_env:
         obs = [obs]
-    # print(obs.shape)
 
     # plotting init
     if load_args.plotting:
