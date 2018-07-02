@@ -24,25 +24,30 @@ def detachToNumpy(tensor):
 
 class CMAESModel(BaseRLObject):
     """
-    object containing an implementation of CMA-ES
+    An implementation of CMA-ES
     CMA-ES: https://pdfs.semanticscholar.org/9b95/6e094c3aa5a831c9b916dde35d1ca9abf066.pdf
     """
     def __init__(self):
         super(CMAESModel, self).__init__()
-        self.model = None
+        self.policy = None
+        self.n_population = None
+        self.mu = None
+        self.sigma = None
+        self.continuous_actions = None
+        self.es = None
+        self.best_model = None
 
     def save(self, save_path, _locals=None):
-        assert self.model is not None, "Error: must train or load model before use"
-        self.model.save(save_path)
+        assert self.policy is not None, "Error: must train or load model before use"
+        with open(save_path, "wb") as f:
+            pickle.dump(self.__dict__, f)
 
     @classmethod
     def load(cls, load_path, args=None):
         with open(load_path, "rb") as f:
             class_dict = pickle.load(f)
         loaded_model = CMAESModel()
-        loaded_model.model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"],
-                                   class_dict["init_sigma"])
-        loaded_model.model.__dict__ = class_dict
+        loaded_model.__dict__ = class_dict
         return loaded_model
 
     def customArguments(self, parser):
@@ -58,12 +63,12 @@ class CMAESModel(BaseRLObject):
         return parser
 
     def getActionProba(self, observation, dones=None):
-        assert self.model is not None, "Error: must train or load model before use"
-        return self.model.getActionProba(observation)
+        assert self.policy is not None, "Error: must train or load model before use"
+        return self.policy.getActionProba(observation)
 
     def getAction(self, observation, dones=None):
-        assert self.model is not None, "Error: must train or load model before use"
-        return self.model.getAction(observation)
+        assert self.policy is not None, "Error: must train or load model before use"
+        return self.policy.getAction(observation)
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
@@ -71,32 +76,63 @@ class CMAESModel(BaseRLObject):
 
     def train(self, args, callback, env_kwargs=None):
         args.num_cpu = args.num_population
-        envs = self.makeEnv(args, env_kwargs=env_kwargs)
+        env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if args.continuous_actions:
-            action_space = np.prod(envs.action_space.shape)
+            action_space = np.prod(env.action_space.shape)
         else:
-            action_space = envs.action_space.n
+            action_space = env.action_space.n
 
         if args.srl_model != "raw_pixels":
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
-            net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
+            net = MLPPolicyPytorch(np.prod(env.observation_space.shape), [100], action_space)
         else:
-            net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
+            net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
 
-        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"), cuda=args.cuda,
-                               stochastic=args.stochastic)
+        self.policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"),
+                                    cuda=args.cuda, deterministic=args.deterministic)
+        self.n_population = args.num_population
+        self.mu = args.mu
+        self.sigma = args.sigma
+        self.continuous_actions = args.continuous_actions
+        self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [self.mu], self.sigma,
+                                           {'popsize': self.n_population})
+        self.best_model = np.array(self.policy.getParamSpace() * [self.mu])
+        num_updates = int(args.num_timesteps)
 
-        self.model = CMAES(
-            args.num_population,
-            policy,
-            mu=args.mu,
-            sigma=args.sigma,
-            continuous_actions=args.continuous_actions
-        )
+        start_time = time.time()
+        step = 0
+        while step < num_updates:
+            obs = env.reset()
+            r = np.zeros((self.n_population,))
+            # here, CMAEvolutionStrategy will return a list of param for each of the population
+            population = self.es.ask()
+            done = np.full((self.n_population,), False)
+            while not done.all():
+                actions = []
+                for k in range(self.n_population):
+                    if not done[k]:
+                        self.policy.setParam(population[k])
+                        action = self.policy.getAction(np.array([obs[k]]))[0]
+                        actions.append(action)
+                    else:
+                        actions.append(None)  # do nothing, as we are done
 
-        self.model.train(envs, callback, num_updates=int(args.num_timesteps))
+                obs, reward, new_done, info = env.step(actions)
+                step += np.sum(~done)
+
+                done = np.bitwise_or(done, new_done)
+
+                # cumulate the reward for every enviroment that is not finished
+                r[~done] += reward[~done]
+
+                if callback is not None:
+                    callback(locals(), globals())
+
+            print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
+            self.es.tell(population, -r)
+            self.best_model = self.es.result.xbest
 
 
 class Policy(object):
@@ -126,17 +162,17 @@ class PytorchPolicy(Policy):
     :param continuous_actions: (bool)
     :param srl_model: (bool) if using an srl model or not
     :param cuda: (bool)
-    :param sampling: (bool) for sampling from the policy output, this makes the policy non-deterministic
+    :param deterministic: (bool) for sampling from the policy output, this makes the policy non-deterministic
     """
 
-    def __init__(self, model, continuous_actions, srl_model=True, cuda=False, stochastic=False):
+    def __init__(self, model, continuous_actions, srl_model=True, cuda=False, deterministic=False):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
         self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
         self.srl_model = srl_model
         self.cuda = cuda
-        self.stochastic = stochastic
+        self.deterministic = deterministic
         self.device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
 
         self.model = self.model.to(self.device)
@@ -220,15 +256,15 @@ class CNNPolicyPytorch(nn.Module):
 
     def __init__(self, in_dim, out_dim):
         super(CNNPolicyPytorch, self).__init__()
-        self.conv1 = nn.Conv2d(in_dim, 8, kernel_size=5, padding=2, stride=2)
+        self.conv1 = nn.Conv2d(in_dim, 8, kernel_size=5, padding=2, stride=2, bias=False)
         self.norm1 = nn.BatchNorm2d(8)
         self.pool1 = nn.MaxPool2d(2)
 
-        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1, stride=2)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1, stride=2, bias=False)
         self.norm2 = nn.BatchNorm2d(16)
         self.pool2 = nn.MaxPool2d(2)
 
-        self.conv3 = nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2)
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2, bias=False)
         self.norm3 = nn.BatchNorm2d(32)
         self.pool3 = nn.MaxPool2d(2)
 
@@ -279,86 +315,3 @@ class MLPPolicyPytorch(nn.Module):
             x = F.relu(getattr(self, name)(x))
         x = self.fc_out(x)
         return x
-
-
-class CMAES:
-    """
-    An implementation of the CMA-ES algorithme
-    :param n_population: (int)
-    :param policy: (Policy Object)
-    :param mu: (float) default=0
-    :param sigma: (float) default=1
-    :param continuous_actions: (bool) default=False
-    """
-
-    def __init__(self, n_population, policy, mu=0, sigma=1, continuous_actions=False):
-        self.policy = policy
-        self.n_population = n_population
-        self.init_mu = mu
-        self.init_sigma = sigma
-        self.continuous_actions = continuous_actions
-        self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [mu], sigma, {'popsize': n_population})
-        self.best_model = np.array(self.policy.getParamSpace() * [mu])
-
-    def getActionProba(self, obs):
-        """
-        Returns the action probability for the given observation
-        :param obs: ([float])
-        :return: the action
-        """
-        return self.policy.getActionProba(obs)
-
-    def getAction(self, obs):
-        """
-        Returns an action for the given observation
-        :param obs: ([float])
-        :return: the action
-        """
-        return self.policy.getAction(obs)
-
-    def save(self, save_path):
-        """
-        :param save_path: (str)
-        """
-        with open(save_path, "wb") as f:
-            pickle.dump(self.__dict__, f)
-
-    def train(self, env, callback, num_updates=1e6):
-        """
-        :param env: (gym enviroment)
-        :param callback: (function)
-        :param num_updates: (int) the number of updates to do (default=100000)
-        """
-        start_time = time.time()
-        step = 0
-
-        while step < num_updates:
-            obs = env.reset()
-            r = np.zeros((self.n_population,))
-            # here, CMAEvolutionStrategy will return a list of param for each of the population
-            population = self.es.ask()
-            done = np.full((self.n_population,), False)
-            while not done.all():
-                actions = []
-                for k in range(self.n_population):
-                    if not done[k]:
-                        self.policy.setParam(population[k])
-                        action = self.policy.getAction(np.array([obs[k]]))[0]
-                        actions.append(action)
-                    else:
-                        actions.append(None)  # do nothing, as we are done
-
-                obs, reward, new_done, info = env.step(actions)
-                step += np.sum(~done)
-
-                done = np.bitwise_or(done, new_done)
-
-                # cumulate the reward for every enviroment that is not finished
-                r[~done] += reward[~done]
-
-                if callback is not None:
-                    callback(locals(), globals())
-
-            print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
-            self.es.tell(population, -r)
-            self.best_model = self.es.result.xbest
