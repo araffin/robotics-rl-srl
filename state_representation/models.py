@@ -4,7 +4,7 @@ import pickle as pkl
 import numpy as np
 import torch as th
 
-from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, ConvolutionalNetwork, SRLModules
+from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
 from srl_zoo.preprocessing import preprocessImage, getNChannels
 from srl_zoo.utils import printGreen, printYellow
 
@@ -43,7 +43,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     :return: (srl model)
     """
     model_type = None
-    losses =  None
+    losses = None
     n_actions = None
     model = None
     if path is not None:
@@ -73,20 +73,6 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
                 model_type = 'supervised_custom_cnn'
             elif 'supervised' in path and 'resnet' in path:
                 model_type = 'supervised_resnet'
-            elif 'autoencoder' in path:
-                model_type = 'autoencoder'
-            elif 'vae' in path:
-                model_type = 'vae'
-
-        # retro-compatibility ?!
-        elif model_type is None:
-
-            if 'custom_cnn' in path:
-                model_type = 'custom_cnn'
-            elif 'triplet' in path:
-                model_type = "triplet_cnn"
-            else:
-                model_type = 'resnet'
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
@@ -94,7 +80,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
 
-    printGreen("\nSRL: Using {} \n".format(model_type))
+    printGreen("\nSRL: Using {} \n".format(model_type + " with " + ", ".join(losses)))
 
     if path is not None:
         printYellow("Loading trained model...{}".format(path))
@@ -136,15 +122,13 @@ class SRLNeuralNetwork(SRLBaseClass):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
-        if model_type == "vae":
-            self.model = CNNVAE(self.state_dim)
-        elif model_type == "supervised_custom_cnn":
+        if model_type == "supervised_custom_cnn":
             self.model = CustomCNN(state_dim)
         elif model_type == "supervised_resnet":
             self.model = ConvolutionalNetwork(state_dim)
         else:
-            self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type, cuda=self.cuda,
-                                losses=losses)
+            self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+                                    cuda=self.cuda, losses=losses)
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
