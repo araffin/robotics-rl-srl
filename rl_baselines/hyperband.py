@@ -5,6 +5,7 @@ import shutil
 import glob
 import pprint
 import math
+import time
 
 import pandas as pd
 import numpy as np
@@ -14,7 +15,8 @@ from environments.registry import registered_env
 from state_representation.registry import registered_srl
 from srl_zoo.utils import printGreen
 
-ITERATION_SCALE = 20000
+ITERATION_SCALE = 10000
+MIN_ITERATION = 30000
 
 
 class Hyperband(object):
@@ -35,13 +37,14 @@ class Hyperband(object):
 
             all_parameters = np.array([self.param_sampler() for _ in range(n)])
             for i in range(s+1):
-                printGreen("\npop_itt:{}/{}, itt:{}/{}, pop_size:{}".format(s, self.s_max + 1, i, s+1, n))
+                printGreen("\npop_itt:{}/{}, itt:{}/{}, pop_size:{}".format(s, self.s_max + 1, i, s+1,
+                                                                            len(all_parameters)))
                 n_i = int(math.floor(n * self.eta**(-i)))
                 r_i = r * self.eta**i
                 losses = [self.train(t, r_i, k) for k, t in enumerate(all_parameters)]
 
                 self.history.extend(zip([(t, r_i) for t in all_parameters], losses))
-                all_parameters = all_parameters[np.argsort(losses)[::-1][:int(math.floor(n_i / self.eta))]]
+                all_parameters = all_parameters[np.argsort(losses)[:int(math.floor(n_i / self.eta))]]
 
         return self.history[int(np.argmin([val[1] for val in self.history]))]
 
@@ -91,14 +94,15 @@ def main():
         return params
 
     def train(params, num_iters, train_id):
-        printGreen("\nID_num={}, Num-timesteps={}, Param:".format(train_id, int(num_iters * ITERATION_SCALE)))
+        printGreen("\nID_num={}, Num-timesteps={}, Param:"
+                   .format(train_id, int(max(MIN_ITERATION, num_iters * ITERATION_SCALE))))
         pprint.pprint(params)
 
         # cleanup old files
         if os.path.exists("logs/_hyperband_search/"):
             shutil.rmtree("logs/_hyperband_search/")
 
-        loop_args = ['--num-timesteps', str(int(num_iters * ITERATION_SCALE))]
+        loop_args = ['--num-timesteps', str(int(max(MIN_ITERATION, num_iters * ITERATION_SCALE)))]
 
         # redefine the parsed args for rl_baselines.train
         if len(params) > 0:
@@ -126,15 +130,24 @@ def main():
         return -np.mean(rewards)
 
     opt = Hyperband(sample, train, max_iter=args.num_timesteps // ITERATION_SCALE)
+    t_start = time.time()
     opt.run()
     all_params, loss = zip(*opt.history)
     idx = np.argmin(loss)
     opt_params, nb_iter = all_params[idx]
     reward = loss[idx]
+    print('time to run : {}s'.format(int(time.time() - t_start)))
     print('Total nb. evaluations : {}'.format(len(all_params)))
     print('Best nb. of iterations : {}'.format(int(nb_iter)))
     print('Best params : {}'.format(opt_params))
     print('Best reward : {:.3f}'.format(-reward))
+
+    param_dict, timesteps = zip(*all_params)
+    output = pd.DataFrame(list(param_dict))
+    output["timesteps"] = np.array(np.maximum(MIN_ITERATION, np.array(timesteps) * ITERATION_SCALE).astype(int))
+    output["reward"] = -np.array(loss)
+    output.to_csv("logs/hyperband_{}_{}_{}_seed{}_numtimestep{}.csv"
+                  .format(args.algo, args.env, args.srl_model, args.seed, args.num_timesteps))
 
 
 if __name__ == '__main__':
