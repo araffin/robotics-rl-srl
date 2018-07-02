@@ -53,8 +53,8 @@ class CMAESModel(BaseRLObject):
                             help='inital scale for gaussian sampling of network parameters')
         parser.add_argument('--cuda', action='store_true', default=False,
                             help='use gpu for the neural network')
-        parser.add_argument('--stochastic', action='store_true', default=False,
-                            help='do a stochastic approche for the actions on the output of the policy')
+        parser.add_argument('--deterministic', action='store_true', default=False,
+                            help='do a deterministic approach for the actions on the output of the policy')
         return parser
 
     def getActionProba(self, observation, dones=None):
@@ -182,7 +182,7 @@ class PytorchPolicy(Policy):
                 action = detachToNumpy(self.model(self.makeVar(obs)))
             else:
                 action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
-                if self.stochastic:
+                if self.deterministic:
                     action = np.argmax(action, axis=1)
                 else:
                     action = np.array([np.random.choice(len(a), p=a) for a in action])

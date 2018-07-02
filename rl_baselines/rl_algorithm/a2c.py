@@ -20,7 +20,7 @@ class A2CModel(BaseRLObject):
     A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C)
     """
 
-    SAVE_INTERVAL = 10
+    SAVE_INTERVAL = 10  # Save RL model every 10 steps
 
     def __init__(self):
         super(A2CModel, self).__init__()
@@ -49,9 +49,13 @@ class A2CModel(BaseRLObject):
         loaded_model = A2CModel()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
         policy = {'cnn': PPO2CNNPolicy(),
-                  'cnnlstm': PPO2CNNPolicy(reccurent=True),
-                  'cnnlnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+                  'cnn-lstm': PPO2CNNPolicy(reccurent=True),
+                  'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
                   'mlp': PPO2MLPPolicy(),
                   'lstm': PPO2MLPPolicy(reccurent=True),
                   'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[loaded_model.policy]
@@ -102,9 +106,13 @@ class A2CModel(BaseRLObject):
         tf.reset_default_graph()
         createTensorflowSession()
 
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
         policy_fn = {'cnn': PPO2CNNPolicy(),
-                     'cnnlstm': PPO2CNNPolicy(reccurent=True),
-                     'cnnlnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+                     'cnn-lstm': PPO2CNNPolicy(reccurent=True),
+                     'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
                      'mlp': PPO2MLPPolicy(),
                      'lstm': PPO2MLPPolicy(reccurent=True),
                      'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[policy]

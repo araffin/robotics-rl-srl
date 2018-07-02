@@ -19,6 +19,11 @@ def assertNeq(left, right):
 
 
 def make_test_fun(algo):
+    """
+    returns a test function for the given RL algorithm
+    :param algo: (str) RL algorithm name
+    :return: (func) A test function
+    """
     def testBaselineTrain():
         for model_type in ['raw_pixels']:
             args = ['--algo', algo, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP, '--seed', SEED,

@@ -20,8 +20,8 @@ class ACERModel(BaseRLObject):
     ACER: Sample Efficient Actor-Critic with Experience Replay
     """
 
-    LOG_INTERVAL = 1
-    SAVE_INTERVAL = 20
+    LOG_INTERVAL = 1  # log RL model performance every 1 steps
+    SAVE_INTERVAL = 20  # Save RL model every 20 steps
 
     def __init__(self):
         super(ACERModel, self).__init__()

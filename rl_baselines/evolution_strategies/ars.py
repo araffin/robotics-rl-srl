@@ -43,8 +43,8 @@ class ARSModel(BaseRLObject):
                             type=str, default="v2", choices=["v1", "v2"])
         parser.add_argument('--max-step-amplitude', type=float, default=10,
                             help='Set the maximum update vectors amplitude (mesured in factors of step_size)')
-        parser.add_argument('--stochastic', action='store_true', default=False,
-                            help='do a stochastic approche for the actions on the output of the policy')
+        parser.add_argument('--deterministic', action='store_true', default=False,
+                            help='do a deterministic approach for the actions on the output of the policy')
         return parser
 
     def getActionProba(self, observation, dones=None):
@@ -151,7 +151,7 @@ class ARS:
         action = np.dot(obs, self.M + delta)
 
         if not self.continuous_actions:
-            if self.stochastic:
+            if self.deterministic:
                 action = np.argmax(action, axis=1)
             else:
                 action = np.array([np.random.choice(len(a), p=a) for a in softmax(action)])

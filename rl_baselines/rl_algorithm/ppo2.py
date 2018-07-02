@@ -20,8 +20,8 @@ class PPO2Model(BaseRLObject):
     PPO2: Proximal Policy Optimization (GPU Implementation)
     """
 
-    LOG_INTERVAL = 10
-    SAVE_INTERVAL = 1
+    LOG_INTERVAL = 10  # log RL model performance every 10 steps
+    SAVE_INTERVAL = 1  # Save RL model every 1 steps
 
     def __init__(self):
         super(PPO2Model, self).__init__()
@@ -52,11 +52,14 @@ class PPO2Model(BaseRLObject):
         loaded_model = PPO2Model()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
-        # LN-LSTM: Layer Normalization LSTM
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
         continuous = loaded_model.continuous_actions
         policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnnlnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
+                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
                   'mlp': PPO2MLPPolicy(continuous=continuous),
                   'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
                   'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[loaded_model.policy]
@@ -135,10 +138,14 @@ class PPO2Model(BaseRLObject):
         config.gpu_options.allow_growth = True
         tf.Session(config=config).__enter__()
 
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
         continuous = args.continuous_actions
         policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnnlnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
+                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
                   'mlp': PPO2MLPPolicy(continuous=continuous),
                   'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
                   'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[args.policy]
