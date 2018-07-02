@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import createEnvs
 from srl_zoo.utils import printYellow
 
@@ -19,6 +20,79 @@ def detachToNumpy(tensor):
     """
     # detach means to seperate the gradient from the data of the tensor
     return tensor.to(torch.device('cpu')).detach().numpy()
+
+
+class CMAESModel(BaseRLObject):
+    """
+    object containing an implementation of CMA-ES
+    CMA-ES: https://pdfs.semanticscholar.org/9b95/6e094c3aa5a831c9b916dde35d1ca9abf066.pdf
+    """
+    def __init__(self):
+        super(CMAESModel, self).__init__()
+        self.model = None
+
+    def save(self, save_path, _locals=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        self.model.save(save_path)
+
+    @classmethod
+    def load(cls, load_path, args=None):
+        with open(load_path, "rb") as f:
+            class_dict = pickle.load(f)
+        loaded_model = CMAESModel()
+        loaded_model.model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"],
+                                   class_dict["init_sigma"])
+        loaded_model.model.__dict__ = class_dict
+        return loaded_model
+
+    def customArguments(self, parser):
+        parser.add_argument('--num-population', help='Number of population', type=int, default=20)
+        parser.add_argument('--mu', type=float, default=0,
+                            help='inital location for gaussian sampling of network parameters')
+        parser.add_argument('--sigma', type=float, default=0.2,
+                            help='inital scale for gaussian sampling of network parameters')
+        parser.add_argument('--cuda', action='store_true', default=False,
+                            help='use gpu for the neural network')
+        parser.add_argument('--stochastic', action='store_true', default=False,
+                            help='do a stochastic approche for the actions on the output of the policy')
+        return parser
+
+    def getAction(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        return self.model.getAction([observation])
+
+    @classmethod
+    def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
+        return createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
+
+    def train(self, args, callback, env_kwargs=None):
+        args.num_cpu = args.num_population
+        envs = self.makeEnv(args, env_kwargs=env_kwargs)
+
+        if args.continuous_actions:
+            action_space = np.prod(envs.action_space.shape)
+        else:
+            action_space = envs.action_space.n
+
+        if args.srl_model != "raw_pixels":
+            printYellow("Using MLP policy because working on state representation")
+            args.policy = "mlp"
+            net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
+        else:
+            net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
+
+        policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"), cuda=args.cuda,
+                               stochastic=args.stochastic)
+
+        self.model = CMAES(
+            args.num_population,
+            policy,
+            mu=args.mu,
+            sigma=args.sigma,
+            continuous_actions=args.continuous_actions
+        )
+
+        self.model.train(envs, callback, num_updates=int(args.num_timesteps))
 
 
 class Policy(object):
@@ -48,15 +122,17 @@ class PytorchPolicy(Policy):
     :param continuous_actions: (bool)
     :param srl_model: (bool) if using an srl model or not
     :param cuda: (bool)
+    :param sampling: (bool) for sampling from the policy output, this makes the policy non-deterministic
     """
 
-    def __init__(self, model, continuous_actions, srl_model=True, cuda=False):
+    def __init__(self, model, continuous_actions, srl_model=True, cuda=False, stochastic=False):
         super(PytorchPolicy, self).__init__(continuous_actions)
         self.model = model
         self.param_len = np.sum([np.prod(x.shape) for x in self.model.parameters()])
         self.continuous_actions = continuous_actions
         self.srl_model = srl_model
         self.cuda = cuda
+        self.stochastic = stochastic
         self.device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
 
         self.model = self.model.to(self.device)
@@ -83,14 +159,18 @@ class PytorchPolicy(Policy):
         :return: the action
         """
         if not self.srl_model:
-            obs = obs.reshape((1,) + obs.shape)
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
         with torch.no_grad():
             if self.continuous_actions:
                 action = detachToNumpy(self.model(self.makeVar(obs)))
             else:
-                action = np.argmax(detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1)))
+                action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
+                if self.stochastic:
+                    action = np.argmax(action, axis=1)
+                else:
+                    action = np.array([np.random.choice(len(a), p=a) for a in action])
+
         return action
 
     def makeVar(self, arr):
@@ -187,7 +267,7 @@ class MLPPolicyPytorch(nn.Module):
 
 class CMAES:
     """
-    An implementation of the CMA-ES algorithme
+    An implementation of the CMA-ES algorithm
     :param n_population: (int)
     :param policy: (Policy Object)
     :param mu: (float) default=0
@@ -238,9 +318,8 @@ class CMAES:
                 actions = []
                 for k in range(self.n_population):
                     if not done[k]:
-                        current_obs = obs[k].reshape(-1)
                         self.policy.setParam(population[k])
-                        action = self.policy.getAction(obs[k])
+                        action = self.policy.getAction(np.array([obs[k]]))[0]
                         actions.append(action)
                     else:
                         actions.append(None)  # do nothing, as we are done
@@ -259,64 +338,3 @@ class CMAES:
             print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
             self.es.tell(population, -r)
             self.best_model = self.es.result.xbest
-
-
-def load(save_path):
-    """
-    :param save_path: (str)
-    :return: (CMAES Object)
-    """
-    with open(save_path, "rb") as f:
-        class_dict = pickle.load(f)
-    model = CMAES(class_dict["n_population"], class_dict["policy"], class_dict["init_mu"], class_dict["init_sigma"])
-    model.__dict__ = class_dict
-    return model
-
-
-def customArguments(parser):
-    """
-    :param parser: (ArgumentParser Object)
-    :return: (ArgumentParser Object)
-    """
-    parser.add_argument('--num-population', help='Number of population', type=int, default=20)
-    parser.add_argument('--mu', type=float, default=0,
-                        help='inital location for gaussian sampling of network parameters')
-    parser.add_argument('--sigma', type=float, default=0.2,
-                        help='inital scale for gaussian sampling of network parameters')
-    parser.add_argument('--cuda', action='store_true', default=False,
-                        help='use gpu for the neural network')
-    return parser
-
-
-def main(args, callback, env_kwargs=None):
-    """
-    :param args: (argparse.Namespace Object)
-    :param callback: (function)
-    :param env_kwargs: (dict) The extra arguments for the environment
-    """
-    args.num_cpu = args.num_population
-    envs = createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs)
-
-    if args.continuous_actions:
-        action_space = np.prod(envs.action_space.shape)
-    else:
-        action_space = envs.action_space.n
-
-    if args.srl_model != "":
-        printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
-        net = MLPPolicyPytorch(np.prod(envs.observation_space.shape), [100], action_space)
-    else:
-        net = CNNPolicyPytorch(envs.observation_space.shape[-1], action_space)
-
-    policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != ""), cuda=args.cuda)
-
-    model = CMAES(
-        args.num_population,
-        policy,
-        mu=args.mu,
-        sigma=args.sigma,
-        continuous_actions=args.continuous_actions
-    )
-
-    model.train(envs, callback, num_updates=int(args.num_timesteps))

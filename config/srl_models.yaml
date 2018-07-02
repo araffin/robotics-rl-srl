@@ -6,7 +6,7 @@ KukaButtonGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM6_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM5/pca.pkl
-  srl_priors: 07-03-18_13h55_31_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/srl_model.pth
+  robotic_priors: 07-03-18_13h55_31_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/srl_model.pth
 
 Kuka2ButtonGymEnv-v0:
   # Base path to SRL log folder
@@ -16,7 +16,7 @@ Kuka2ButtonGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  srl_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
+  robotic_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
 
 KukaRandButtonGymEnv-v0:
   # Base path to SRL log folder
@@ -26,7 +26,7 @@ KukaRandButtonGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM10/pca.pkl
-  srl_priors: 18-04-11_13h03_10_custom_cnn_ProTemCauRep_ST_DIM4_SEED0_priors/srl_model.pth
+  robotic_priors: 18-04-11_13h03_10_custom_cnn_ProTemCauRep_ST_DIM4_SEED0_priors/srl_model.pth
 
 KukaMovingButtonGymEnv-v0:
   # Base path to SRL log folder
@@ -36,7 +36,7 @@ KukaMovingButtonGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  srl_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
+  robotic_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
 
 MobileRobotGymEnv-v0:
   # Base path to SRL log folder
@@ -46,4 +46,4 @@ MobileRobotGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  srl_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
+  robotic_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth

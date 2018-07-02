@@ -8,13 +8,10 @@ import shutil
 import time
 
 import numpy as np
+from gym.spaces import prng
 
-import environments.kuka_gym.kuka_2button_gym_env as kuka_env_2
-import environments.kuka_gym.kuka_button_gym_env as kuka_env
-import environments.kuka_gym.kuka_rand_button_gym_env as kuka_env_rand
-import environments.kuka_gym.kuka_moving_button_gym_env as kuka_env_moving
-import environments.mobile_robot.mobile_robot_env as mobile_robot
-from srl_zoo.utils import printRed
+from environments.registry import registered_env
+from srl_zoo.utils import printRed, printYellow
 
 
 def convertImagePath(args, path, record_id_start):
@@ -29,7 +26,7 @@ def convertImagePath(args, path, record_id_start):
     # get record id for output, by adding the current offset with the record_id
     # of the folder
     new_record_id = record_id_start + int(path.split("/")[-2].split("_")[-1])
-    return args.save_name + "/record_{:03d}".format(new_record_id) + "/" + image_name
+    return args.name + "/record_{:03d}".format(new_record_id) + "/" + image_name
 
 
 def env_thread(args, thread_num, partition=True):
@@ -44,35 +41,31 @@ def env_thread(args, thread_num, partition=True):
         "random_target": args.relative,
         "force_down": True,
         "is_discrete": not args.continuous_actions,
-        "renders": thread_num == 0 and not args.no_display,
-        "record_data": args.record_data,
+        "renders": thread_num == 0 and args.display,
+        "record_data": not args.no_record_data,
         "multi_view": args.multi_view,
-        "save_path": args.save_folder,
+        "save_path": args.save_path,
         "shape_reward": args.shape_reward
     }
 
-    if args.env == "Kuka2ButtonGymEnv":
-        env_kwargs["force_down"] = False
-
-    env_class = {"KukaButtonGymEnv-v0": kuka_env.KukaButtonGymEnv,
-                 "Kuka2ButtonGymEnv-v0": kuka_env_2.Kuka2ButtonGymEnv,
-                 "KukaRandButtonGymEnv-v0": kuka_env_rand.KukaRandButtonGymEnv,
-                 "KukaMovingButtonGymEnv-v0": kuka_env_moving.KukaMovingButtonGymEnv,
-                 "MobileRobotGymEnv-v0": mobile_robot.MobileRobotGymEnv
-                 }[args.env]
-
     if partition:
-        env_kwargs["name"] = args.save_name + "_part-" + str(thread_num)
+        env_kwargs["name"] = args.name + "_part-" + str(thread_num)
     else:
-        env_kwargs["name"] = args.save_name
+        env_kwargs["name"] = args.name
 
+    env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-    env.seed(args.seed + thread_num)
 
     frames = 0
     start_time = time.time()
     # divide evenly, then do an extra one for only some of them in order to get the right count
     for i_episode in range(args.num_episode // args.num_cpu + 1 * (args.num_episode % args.num_cpu > thread_num)):
+        # seed + position in this slice + size of slice (with reminder if uneven partitions)
+        seed = args.seed + i_episode + args.num_episode // args.num_cpu * thread_num + \
+               (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
+
+        env.seed(seed)
+        prng.seed(seed)  # this is for the sample() function from gym.space
         env.reset()
         done = False
         t = 0
@@ -90,23 +83,24 @@ def env_thread(args, thread_num, partition=True):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Environment tester (can be used to record datasets for SRL training)')
+    parser = argparse.ArgumentParser(description='Deteministic dataset generator for SRL training ' +
+                                                 '(can be used for environment testing)')
     parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to run on')
     parser.add_argument('--num-episode', type=int, default=50, help='number of episode to run')
-    parser.add_argument('--save-folder', type=str, default='srl_zoo/data/',
+    parser.add_argument('--save-path', type=str, default='srl_zoo/data/',
                         help='Folder where the environments will save the output')
-    parser.add_argument('--save-name', type=str, default='kuka_button', help='Folder name for the output')
+    parser.add_argument('--name', type=str, default='kuka_button', help='Folder name for the output')
     parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0', help='The environment wanted',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0",
-                                 "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0"])
-    parser.add_argument('--no-display', action='store_true', default=False)
-    parser.add_argument('--record-data', action='store_true', default=False)
+                        choices=list(registered_env.keys()))
+    parser.add_argument('--display', action='store_true', default=False)
+    parser.add_argument('--no-record-data', action='store_true', default=False)
     parser.add_argument('--max-distance', type=float, default=0.28,
                         help='Beyond this distance from the goal, the agent gets a negative reward')
     parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
     parser.add_argument('--seed', type=int, default=0, help='the seed')
     parser.add_argument('-f', '--force', action='store_true', default=False,
-                        help='Force the save, even if it overrides something else (including partial parts if they exist)')
+                        help='Force the save, even if it overrides something else,' +
+                             ' including partial parts if they exist')
     parser.add_argument('-r', '--relative', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
@@ -117,17 +111,23 @@ def main():
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
+    if args.num_cpu > args.num_episode:
+        args.num_cpu = args.num_episode
+        printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
+
+    # this is done so seed 0 and 1 are different and not simply offset of the same datasets.
+    args.seed = np.random.RandomState(args.seed).randint(int(1e10))
 
     # File exists, need to deal with it
-    if args.record_data and os.path.exists(args.save_folder + args.save_name):
-        assert args.force, "Error: save directory '{}' already exists".format(args.save_folder + args.save_name)
+    if not args.no_record_data and os.path.exists(args.save_path + args.name):
+        assert args.force, "Error: save directory '{}' already exists".format(args.save_path + args.name)
 
-        shutil.rmtree(args.save_folder + args.save_name)
-        for part in glob.glob(args.save_folder + args.save_name + "_part-[0-9]*"):
+        shutil.rmtree(args.save_path + args.name)
+        for part in glob.glob(args.save_path + args.name + "_part-[0-9]*"):
             shutil.rmtree(part)
-    elif args.record_data:
+    if not args.no_record_data:
         # create the output
-        os.mkdir(args.save_folder + args.save_name)
+        os.mkdir(args.save_path + args.name)
 
     if args.num_cpu == 1:
         env_thread(args, 0, partition=False)
@@ -153,16 +153,15 @@ def main():
             printRed("Error: unable to start thread")
             raise e
 
-    if args.record_data and args.num_cpu > 1:
-
+    if not args.no_record_data and args.num_cpu > 1:
+        # sleep 1 second, to avoid congruency issues from multiprocess (eg., files still writing)
+        time.sleep(1)
         # get all the parts
-        file_parts = glob.glob(args.save_folder + args.save_name + "_part-[0-9]*")
+        file_parts = sorted(glob.glob(args.save_path + args.name + "_part-[0-9]*"), key=lambda a: int(a.split("-")[-1]))
 
         # move the config files from any as they are identical
-        os.rename(file_parts[0] + "/dataset_config.json",
-                  args.save_folder + args.save_name + "/dataset_config.json")
-        os.rename(file_parts[0] + "/env_globals.json",
-                  args.save_folder + args.save_name + "/env_globals.json")
+        os.rename(file_parts[0] + "/dataset_config.json", args.save_path + args.name + "/dataset_config.json")
+        os.rename(file_parts[0] + "/env_globals.json", args.save_path + args.name + "/env_globals.json")
 
         ground_truth = None
         preprocessed_data = None
@@ -171,12 +170,11 @@ def main():
         record_id = 0
         for part in file_parts:
             # sort the record names alphabetically, then numerically
-            records = sorted(glob.glob(part + "/record_[0-9]*"),
-                             key=lambda a: int(a.split("_")[-1]))
+            records = sorted(glob.glob(part + "/record_[0-9]*"), key=lambda a: int(a.split("_")[-1]))
 
             record_id_start = record_id
             for record in records:
-                os.renames(record, args.save_folder + args.save_name + "/record_{:03d}".format(record_id))
+                os.renames(record, args.save_path + args.name + "/record_{:03d}".format(record_id))
                 record_id += 1
 
             # fuse the npz files together, in the right order
@@ -214,8 +212,8 @@ def main():
             shutil.rmtree(part)
 
         # save the fused outputs
-        np.savez(args.save_folder + args.save_name + "/ground_truth.npz", **ground_truth)
-        np.savez(args.save_folder + args.save_name + "/preprocessed_data.npz", **preprocessed_data)
+        np.savez(args.save_path + args.name + "/ground_truth.npz", **ground_truth)
+        np.savez(args.save_path + args.name + "/preprocessed_data.npz", **preprocessed_data)
 
 
 if __name__ == '__main__':

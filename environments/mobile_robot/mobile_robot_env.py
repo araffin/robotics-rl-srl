@@ -5,7 +5,6 @@ import numpy as np
 import torch as th
 import pybullet_data
 from gym import spaces
-from gym.utils import seeding
 
 from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
@@ -57,14 +56,14 @@ class MobileRobotGymEnv(SRLGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_model: (str) The SRL_model used
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
-                 name="mobile_robot", max_distance=1.6, shape_reward=False,
-                 use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
+                 name="mobile_robot", max_distance=1.6, shape_reward=False, record_data=False, srl_model="raw_pixels",
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_zoo/data/', env_rank=0, srl_pipe=None,  **_):
-        super(MobileRobotGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+        super(MobileRobotGymEnv, self).__init__(srl_model=srl_model,
                                                 relative_pos=RELATIVE_POS,
                                                 env_rank=env_rank,
                                                 srl_pipe=srl_pipe)
@@ -90,8 +89,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         self.debug = False
         self.n_contacts = 0
         self.state_dim = state_dim
-        self.use_srl = use_srl or use_ground_truth
-        self.use_ground_truth = use_ground_truth
         self.relative_pos = RELATIVE_POS
         self.cuda = th.cuda.is_available()
         self.saver = None
@@ -101,14 +98,13 @@ class MobileRobotGymEnv(SRLGymEnv):
         self.robot_uid = None
         self.target_pos = np.zeros(3)
         self.target_uid = None
-        self.np_random = None
         # Boundaries of the square env
         self._min_x, self._max_x = 0, 4
         self._min_y, self._max_y = 0, 4
         self.has_bumped = False  # Used for handling collisions
         self.collision_margin = 0.1
         self.walls = None
-        self.use_joints = False  # For compatibility
+        self.srl_model = srl_model
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -120,7 +116,6 @@ class MobileRobotGymEnv(SRLGymEnv):
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
-            # self.renderer = p.ER_BULLET_HARDWARE_OPENGL
             self.debug = True
             # Debug sliders for moving the camera
             self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
@@ -141,15 +136,13 @@ class MobileRobotGymEnv(SRLGymEnv):
         else:
             raise ValueError("Only discrete actions is supported")
 
-        self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        if self.srl_model == "ground_truth":
+            self.state_dim = self.getGroundTruthDim()
 
-        if self.use_srl:
-            if self.use_ground_truth:
-                self.state_dim = self.getGroundTruthDim()
+        if self.srl_model == "raw_pixels":
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        else:
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
-        # Create numpy random generator
-        # This seed can be changed later
-        self.seed(0)
 
     def getTargetPos(self):
         """
@@ -237,7 +230,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
@@ -245,15 +238,6 @@ class MobileRobotGymEnv(SRLGymEnv):
     def __del__(self):
         if CONNECTED_TO_SIMULATOR:
             p.disconnect()
-
-    def seed(self, seed=None):
-        """
-        Seed random generator
-        :param seed: (int)
-        :return: ([int])
-        """
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def getObservation(self):
         """
@@ -304,7 +288,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
@@ -347,10 +331,6 @@ class MobileRobotGymEnv(SRLGymEnv):
 
         rgb_array_res = rgb_array[:, :, :3]
         return rgb_array_res
-
-    def close(self):
-        # TODO: implement close function to close GUI
-        pass
 
     def _termination(self):
         """

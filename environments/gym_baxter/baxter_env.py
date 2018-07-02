@@ -6,7 +6,6 @@ import numpy as np
 import cv2
 import zmq
 from gym import spaces
-from gym.utils import seeding
 import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -76,8 +75,8 @@ class BaxterEnv(SRLGymEnv):
 
     def __init__(self, renders=False, is_discrete=True, log_folder="baxter_log_folder", state_dim=-1,
                  learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
-                 shape_reward=False, env_rank=0, srl_pipe=None):
-        super(BaxterEnv, self).__init__(use_ground_truth=use_ground_truth,
+                 shape_reward=False, env_rank=0, srl_pipe=None, srl_model="raw_pixels"):
+        super(BaxterEnv, self).__init__(srl_model=srl_model,
                                         relative_pos=RELATIVE_POS,
                                         env_rank=env_rank,
                                         srl_pipe=srl_pipe)
@@ -94,7 +93,6 @@ class BaxterEnv(SRLGymEnv):
         self.state_dim = state_dim
         self._renders = renders
         self._shape_reward = shape_reward
-        self.np_random = None
         self.cuda = th.cuda.is_available()
         self.button_pos = None
         self.saver = None
@@ -107,8 +105,8 @@ class BaxterEnv(SRLGymEnv):
             action_bounds = np.array([self._action_bound] * action_dim)
             self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
         # SRL model
-        if self.use_srl:
-            if use_ground_truth:
+        if self.srl_model != "raw_pixels":
+            if self.srl_model == "ground_truth":
                 self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
@@ -136,21 +134,10 @@ class BaxterEnv(SRLGymEnv):
         self.action = [0, 0, 0]
         self.reward = 0
         self.arm_pos = np.array([0, 0, 0])
-        # Create numpy random generator
-        # This seed can be changed later
-        self.seed(0)
 
         # Initialize the state
         if self._renders:
             self.image_plot = None
-
-    def seed(self, seed=None):
-        """
-        :seed: (int)
-        :return: (int array)
-        """
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def step(self, action):
         """
@@ -309,6 +296,3 @@ class BaxterEnv(SRLGymEnv):
             plt.pause(0.0001)
         return self.observation
 
-    def close(self):
-        # TODO: implement close function to close GUI
-        pass

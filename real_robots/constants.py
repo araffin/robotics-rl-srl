@@ -15,6 +15,8 @@ assert not (USING_ROBOBO and USING_REAL_BAXTER), "You can only use one real robo
 Move = None
 DELTA_POS = 0
 
+Z_TABLE, MAX_DISTANCE = 0, 0
+
 # Calibrated values for Real Baxter
 if USING_REAL_BAXTER:
     # Initial position of the arm
