@@ -4,7 +4,7 @@ import pickle as pkl
 import numpy as np
 import torch as th
 
-from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet, \
+from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, \
     ConvolutionalNetwork
 from srl_zoo.preprocessing import preprocessImage, N_CHANNELS
 from srl_zoo.utils import printGreen, printYellow
@@ -176,7 +176,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         # Channel first
         observation = np.transpose(observation, (0, 3, 2, 1))
         observation = th.from_numpy(observation).to(th.float).to(self.device)
- 
+
         with th.no_grad():
             state = self.model.getStates(observation)[0]
         return state.to(th.device("cpu")).detach().numpy()

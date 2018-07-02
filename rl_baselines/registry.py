@@ -8,6 +8,7 @@ from rl_baselines.rl_algorithm.ddpg import DDPGModel
 from rl_baselines.rl_algorithm.deepq import DeepQModel
 from rl_baselines.rl_algorithm.ppo2 import PPO2Model
 from rl_baselines.rl_algorithm.sac import SACModel
+from rl_baselines.rl_algorithm.sac2 import SAC2Model
 from rl_baselines.random_agent import RandomAgentModel
 
 # Register, name: (algo class, algo type, list of action types)
@@ -20,6 +21,7 @@ registered_rl = {
     "deepq":        (DeepQModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE]),
     "ppo2":         (PPO2Model, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
     "sac":         (SACModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
+    "sac2":         (SAC2Model, AlgoType.REINFORCEMENT_LEARNING, [ActionType.CONTINUOUS]),
     "random_agent": (RandomAgentModel, AlgoType.OTHER, [ActionType.DISCRETE, ActionType.CONTINUOUS])
 }
 

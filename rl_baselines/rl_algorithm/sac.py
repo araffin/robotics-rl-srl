@@ -1,5 +1,6 @@
 import time
 import pickle
+import random
 
 import numpy as np
 import torch as th
@@ -15,6 +16,11 @@ from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameS
 from srl_zoo.utils import printYellow
 
 def l2Loss(tensor):
+    """
+    L2 loss given a tensor
+    :param tensor: (th.Tensor)
+    :return: (th.Tensor)
+    """
     return (tensor.float() ** 2).mean()
 
 def encodeOneHot(tensor, n_dim):
@@ -48,6 +54,13 @@ def detachToNumpy(tensor):
 
 
 def softUpdate(*, source, target, factor):
+    """
+    Update (softly) the weights of target network towards the weights of a source network.
+    The amount of change is regulated by a factor.
+    :param source: (Pytorch Model)
+    :param target: (Pytorch Model)
+    :param factor: (float) soft update factor in [0, 1]
+    """
     for source_param, target_param in zip(source.parameters(), target.parameters()):
         target_param.data.copy_(
             source_param.data * factor + target_param.data * (1.0 - factor)
@@ -55,6 +68,11 @@ def softUpdate(*, source, target, factor):
 
 
 def hardUpdate(*, source, target):
+    """
+    Copy the weights from source network to target network
+    :param source: (Pytorch Model)
+    :param target: (Pytorch Model)
+    """
     for source_param, target_param in zip(source.parameters(), target.parameters()):
         target_param.data.copy_(source_param.data)
 
@@ -93,8 +111,8 @@ class SACModel(BaseRLObject):
         return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
     def customArguments(self, parser):
-        parser.add_argument('--cuda', action='store_true', default=False,
-                            help='use gpu for the neural network')
+        parser.add_argument('--no-cuda', action='store_true', default=False,
+                            help='Disable cuda for the neural network')
         parser.add_argument('--buffer-size', type=int, default=int(1e3), help="Replay buffer size")
         parser.add_argument('--reward-scale', type=float, default=int(1), help="Scaling factor for raw reward. (entropy factor)")
         parser.add_argument('--deterministic', action='store_true', default=False,
@@ -110,6 +128,9 @@ class SACModel(BaseRLObject):
     def train(self, args, callback, env_kwargs=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
+        self.device = th.device("cuda" if th.cuda.is_available() and not args.no_cuda else "cpu")
+        device = self.device
+
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)
         else:
@@ -119,15 +140,14 @@ class SACModel(BaseRLObject):
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
             input_dim = np.prod(env.observation_space.shape)
-            self.policy_net = MLPPolicy(input_dim, action_space)
-            self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions)
-            self.value_net = MLPValueNetwork(input_dim)
-            self.target_value_net = MLPValueNetwork(input_dim)
+            self.policy_net = MLPPolicy(input_dim, action_space).to(self.device)
+            self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions).to(self.device)
+            self.value_net = MLPValueNetwork(input_dim).to(self.device)
+            self.target_value_net = MLPValueNetwork(input_dim).to(self.device)
         else:
             raise ValueError()
             # net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
 
-        self.device = th.device("cuda" if th.cuda.is_available() and args.cuda else "cpu")
 
         self.policy = PytorchPolicy(self.policy_net, args.continuous_actions, device=self.device, srl_model=(args.srl_model != "raw_pixels"),
                                     stochastic=not args.deterministic)
@@ -140,12 +160,13 @@ class SACModel(BaseRLObject):
         gamma = 0.99
         learning_rate = 3e-4
         # mixture_components = 4
-        gradient_steps = 4
+        gradient_steps = 1
         print_freq = 500
         batch_size = 128
         soft_update_factor = 1e-2
         learn_start = 0
-        replay_buffer = ReplayBuffer(args.buffer_size)
+        replay_buffer_size = 1000000
+        replay_buffer = ReplayBuffer(replay_buffer_size)
 
         policy_optimizer = th.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         value_optimizer = th.optim.Adam(self.value_net.parameters(), lr=learning_rate)
@@ -158,7 +179,8 @@ class SACModel(BaseRLObject):
             action = self.policy.getAction(toTensor(obs[None], self.device))[0]
             new_obs, reward, done, info = env.step(action)
 
-            replay_buffer.add(obs, action, reward, new_obs, float(done))
+            # replay_buffer.add(obs, action, reward, new_obs, float(done))
+            replay_buffer.push(obs, action, reward, new_obs, done)
             obs = new_obs
 
             if callback is not None:
@@ -170,9 +192,18 @@ class SACModel(BaseRLObject):
             for _ in range(gradient_steps):
                 if step < learn_start or step < batch_size:
                     break
+
+                batch_obs, actions, rewards, batch_next_obs, dones = replay_buffer.sample(batch_size)
+
                 # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
-                batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: toTensor(x, self.device),
-                                                                         replay_buffer.sample(batch_size))
+                # batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: toTensor(x, self.device),
+                #                                                          replay_buffer.sample(batch_size))
+
+                batch_obs      = th.FloatTensor(batch_obs).to(device)
+                batch_next_obs = th.FloatTensor(batch_next_obs).to(device)
+                actions     = th.FloatTensor(actions).to(device)
+                rewards     = th.FloatTensor(rewards).unsqueeze(1).to(device)
+                dones       = th.FloatTensor(np.float32(dones)).unsqueeze(1).to(device)
 
                 value_pred = self.value_net(batch_obs)
                 q_value = self.q_value_net(batch_obs, actions)
@@ -181,19 +212,20 @@ class SACModel(BaseRLObject):
                 # Q-Value function loss
                 target_value_pred = self.target_value_net(batch_next_obs)
                 next_q_value = args.reward_scale * reward + (1 - done) * gamma * target_value_pred.detach()
-                loss_q_value = 0.5 * q_value_criterion(q_value, next_q_value.detach())
+                loss_q_value = q_value_criterion(q_value, next_q_value.detach())
 
                 # Value Function loss
                 q_value_new_actions = self.q_value_net(batch_obs, new_actions)
                 next_value = q_value_new_actions - log_pi
-                loss_value = 0.5 * value_criterion(value_pred, next_value.detach())
+                loss_value = value_criterion(value_pred, next_value.detach())
 
                 # Policy Loss
                 # why not log_pi.exp_() ?
                 loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
 
-                w_reg = 0
-                loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd, pre_tanh_value]))
+                w_reg = 1e-3
+                # pre_tanh_value
+                loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd]))
 
                 q_optimizer.zero_grad()
                 loss_q_value.backward()
@@ -213,6 +245,27 @@ class SACModel(BaseRLObject):
             if (step + 1) % print_freq == 0:
                 print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
 
+class ReplayBuffer:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.buffer = []
+        self.position = 0
+
+    def push(self, state, action, reward, next_state, done):
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(None)
+        self.buffer[self.position] = (state, action, reward, next_state, done)
+        self.position = (self.position + 1) % self.capacity
+
+    def sample(self, batch_size):
+        batch = random.sample(self.buffer, batch_size)
+        state, action, reward, next_state, done = map(np.stack, zip(*batch))
+        return state, action, reward, next_state, done
+
+    def __len__(self):
+        return len(self.buffer)
+
+
 
 class PytorchPolicy(object):
     """
@@ -231,8 +284,6 @@ class PytorchPolicy(object):
         self.srl_model = srl_model
         self.stochastic = stochastic
         self.device = device
-
-        self.model = self.model.to(self.device)
 
     # used to prevent pickling of pytorch device object, as they cannot be pickled
     def __getstate__(self):
