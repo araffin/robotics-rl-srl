@@ -57,7 +57,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             margin = 0.1 * self._max_x
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
             y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
-        self.button_uid.append(p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0], useFixedBase=True))
+        self.button_uid.append(p.loadURDF("/urdf/cylinder.urdf", [x_pos, y_pos, 0], useFixedBase=True))
         self.button_pos.append(np.array([x_pos, y_pos, 0]))
 
         x_pos = 0.1 * self._max_x
@@ -66,8 +66,10 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             margin = 0.1 * self._max_x
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
             y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
-        self.button_uid.append(p.loadURDF("/urdf/simple_button_2.urdf", [x_pos, y_pos, 0], useFixedBase=True))
+        self.button_uid.append(p.loadURDF("/urdf/cylinder.urdf", [x_pos, y_pos, 0], useFixedBase=True))
         self.button_pos.append(np.array([x_pos, y_pos, 0]))
+        # Change color to red for the second button
+        p.changeVisualShape(self.button_uid[-1], -1, rgbaColor=[0.8, 0, 0, 1])
 
         # Add walls
         # Path to the urdf file

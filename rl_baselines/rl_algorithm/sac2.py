@@ -224,12 +224,11 @@ class SAC2Model(BaseRLObject):
                     target_param.data * (1.0 - soft_tau) + param.data * soft_tau
                 )
 
-        max_frames  = 40000
         max_steps   = 500
         frame_idx   = 0
         batch_size  = 128
 
-        while frame_idx < max_frames:
+        while frame_idx < args.num_timesteps:
             state = env.reset()
             episode_reward = 0
 

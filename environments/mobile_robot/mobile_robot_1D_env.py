@@ -84,7 +84,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
             margin = 0.1 * self._max_x
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
 
-        self.target_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, 0, 0], useFixedBase=True)
+        self.target_uid = p.loadURDF("/urdf/cylinder.urdf", [x_pos, 0, 0], useFixedBase=True)
         self.target_pos = np.array([x_pos, 0, 0])
 
         # Add walls
