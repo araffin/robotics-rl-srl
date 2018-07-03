@@ -6,6 +6,7 @@ import torch as th
 
 from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
 from srl_zoo.preprocessing import preprocessImage, getNChannels
+import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -53,7 +54,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             exp_config = json.load(f)
         try:
             state_dim = exp_config['state-dim']
-            losses = exp_config['losses']
+            losses = exp_config.get('losses', None)
             n_actions = exp_config.get('n_actions',6)
             model_type = exp_config['model-type']
         except KeyError:

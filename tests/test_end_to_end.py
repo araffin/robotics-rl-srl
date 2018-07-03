@@ -16,6 +16,8 @@ DEFAULT_SRL_CONFIG_YAML = "config/srl_models_test.yaml"
 
 DATA_FOLDER_NAME = "RL_test"
 TEST_DATA_FOLDER = "data/" + DATA_FOLDER_NAME
+TEST_DATA_FOLDER_DUAL = "data/kuka_gym_dual_test"
+
 NUM_EPOCHS = 1
 STATE_DIM = 3
 TRAINING_SET_SIZE = 2000
@@ -26,7 +28,7 @@ SEED = 0
 
 def buildTestConfig():
     cfg = {
-        "batch-size": 128,
+        "batch-size": 32,
         "model-type": "custom_cnn",
         "epochs": NUM_EPOCHS,
         "knn-samples": KNN_SAMPLES,
@@ -101,20 +103,28 @@ def testBaselineTrain():
 
 def testPriorTrain():
 
-    for loss_type in ["priors", "inverse", "forward"]:
+    for loss_type in ["priors", "inverse", "forward", "triplet"]:
 
-        exp_name = loss_type + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS128'
+        exp_name = loss_type + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
         createFolders(log_name)
-        #if loss_type == "triplet":
-        #    args.extend(['--multi-view'])
-        args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
-                '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
-                '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 128,
+        exp_config = buildTestConfig()
+
+        args = ['--no-display-plots', '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
+                '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 32,
                 '--log-folder', log_name,'--losses', loss_type]
+
+        if loss_type == "triplet":
+            print("triplet learning")
+            exp_config["multi-view"] = True
+            args.extend(['--multi-view', '--data-folder', TEST_DATA_FOLDER_DUAL])
+        else:
+            args.extend(['--data-folder', TEST_DATA_FOLDER])
+
+
         args = list(map(str, args))
 
-        exp_config = buildTestConfig()
+
         exp_config["log-folder"] = log_name
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = loss_type
@@ -125,12 +135,12 @@ def testPriorTrain():
         assertEq(ok, 0)
 
     # Combining models
-    exp_name = 'vae_inverse_forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS128'
+    exp_name = 'vae_inverse_forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
     log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
     createFolders(log_name)
     args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
             '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
-            '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 128,
+            '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 32,
             '--log-folder', log_name, '--losses', "forward", "inverse", "vae"]
     args = list(map(str, args))
 
@@ -146,7 +156,7 @@ def testPriorTrain():
 
 
 def testRLSrlTrain():
-    for model_type in ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination"]:
+    for model_type in ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination", "multi_view_srl"]:
         args = ['--algo', DEFAULT_ALGO, '--env', DEFAULT_ENV, '--srl-model', model_type,
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
                 '--no-vis', '--srl-config-file', DEFAULT_SRL_CONFIG_YAML]

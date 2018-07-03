@@ -10,7 +10,7 @@ registered_srl = {
     "robotic_priors":  (SRLType.SRL, None),
     "inverse":         (SRLType.SRL, None),
     "forward":         (SRLType.SRL, None),
-    "triplet":         (SRLType.SRL, None),
+    "multi_view_srl":  (SRLType.SRL, None),
     "srl_combination": (SRLType.SRL, None),
     "supervised":      (SRLType.SRL, None),
     "autoencoder":     (SRLType.SRL, None),
