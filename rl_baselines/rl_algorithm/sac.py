@@ -180,48 +180,43 @@ class SACModel(BaseRLObject):
             action = self.policy.getAction(toTensor(obs[None], self.device))[0]
             new_obs, reward, done, info = env.step(action)
 
-            # replay_buffer.add(obs, action, reward, new_obs, float(done))
-            replay_buffer.push(obs, action, reward, new_obs, float(done))
+            replay_buffer.add(obs, action, reward, new_obs, float(done))
             obs = new_obs
 
             if callback is not None:
                 callback(locals(), globals())
 
+            if done:
+                obs = env.reset()
+
             for _ in range(gradient_steps):
                 if step < learn_start or step < batch_size:
                     break
 
-                # obs_batch, actions, rewards, next_obs_batch, dones = replay_buffer.sample(batch_size)
-
                 # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
-                obs_batch, actions, rewards, next_obs_batch, dones = map(lambda x: toTensor(x, device),
-                replay_buffer.sample(batch_size))
+                batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: toTensor(x, self.device).float(),
+                                                                         replay_buffer.sample(batch_size))
 
-                obs_batch = obs_batch.float()
-                next_obs_batch = obs_batch.float()
-                actions = actions.float()
-                rewards = rewards.float().unsqueeze(1)
-                dones = dones.float().unsqueeze(1)
-                # print(obs_batch.shape, next_obs_batch.shape, actions.shape, dones.shape)
+                rewards = rewards.unsqueeze(1)
+                dones = dones.unsqueeze(1)
 
-                value_pred = self.value_net(obs_batch)
-                q_value = self.q_value_net(obs_batch, actions)
-                new_actions, log_pi, pre_tanh_value, mean_policy, logstd = self.policy_net.evaluate(obs_batch)
+                value_pred = self.value_net(batch_obs)
+                q_value = self.q_value_net(batch_obs, actions)
+                new_actions, log_pi, pre_tanh_value, mean_policy, logstd = self.policy.sampleAction(batch_obs)
 
                 # Q-Value function loss
-                target_value_pred = self.target_value_net(next_obs_batch)
+                target_value_pred = self.target_value_net(batch_next_obs)
                 next_q_value = args.reward_scale * rewards + (1 - dones) * gamma * target_value_pred.detach()
-                loss_q_value = q_value_criterion(q_value, next_q_value.detach())
+                loss_q_value = 0.5 * q_value_criterion(q_value, next_q_value.detach())
 
                 # Value Function loss
-                q_value_new_actions = self.q_value_net(obs_batch, new_actions)
+                q_value_new_actions = self.q_value_net(batch_obs, new_actions)
                 next_value = q_value_new_actions - log_pi
-                loss_value = value_criterion(value_pred, next_value.detach())
+                loss_value = 0.5 * value_criterion(value_pred, next_value.detach())
 
                 # Policy Loss
                 # why not log_pi.exp_() ?
-                log_prob_target = q_value_new_actions - value_pred
-                loss_policy = (log_pi * (log_pi - log_prob_target).detach()).mean()
+                loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
 
                 # pre_tanh_value
                 loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd]))
@@ -238,40 +233,11 @@ class SACModel(BaseRLObject):
                 loss_policy.backward()
                 policy_optimizer.step()
 
-
                 # Update target value_pred network
-                # softUpdate(source=self.value_net, target=self.target_value_net, factor=soft_update_factor)
-                for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
-                    target_param.data.copy_(
-                        target_param.data * (1.0 - soft_update_factor) + param.data * soft_update_factor
-                    )
+                softUpdate(source=self.value_net, target=self.target_value_net, factor=soft_update_factor)
 
             if (step + 1) % print_freq == 0:
                 print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
-
-            if done:
-                obs = env.reset()
-
-class ReplayBuffer:
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.buffer = []
-        self.position = 0
-
-    def push(self, state, action, reward, next_state, done):
-        if len(self.buffer) < self.capacity:
-            self.buffer.append(None)
-        self.buffer[self.position] = (state, action, reward, next_state, done)
-        self.position = (self.position + 1) % self.capacity
-
-    def sample(self, batch_size):
-        batch = random.sample(self.buffer, batch_size)
-        state, action, reward, next_state, done = map(np.stack, zip(*batch))
-        return state, action, reward, next_state, done
-
-    def __len__(self):
-        return len(self.buffer)
-
 
 
 class PytorchPolicy(object):
@@ -327,7 +293,7 @@ class PytorchPolicy(object):
             action = distribution.sample().detach()
             pre_tanh_value = action * 0.0
             logstd = logstd * 0.0
-            log_pi = distribution.log_prob(action).unsqueeze(0)
+            log_pi = distribution.log_prob(action).unsqueeze(1)
 
         return action, log_pi, pre_tanh_value, mean_policy, logstd
 
@@ -346,9 +312,6 @@ class MLPPolicy(nn.Module):
     def __init__(self, input_dim, out_dim, hidden_dim=256):
         super(MLPPolicy, self).__init__()
 
-        self.log_std_min = -20
-        self.log_std_max = 2
-
         self.policy_net = nn.Sequential(
             nn.Linear(int(input_dim), hidden_dim),
             nn.ReLU(inplace=True),
@@ -361,20 +324,6 @@ class MLPPolicy(nn.Module):
     def forward(self, x):
         x = self.policy_net(x)
         return self.mean_head(x), self.logstd_head(x)
-
-    def evaluate(self, state, epsilon=1e-6):
-        mean, log_std = self.forward(state)
-        log_std = th.clamp(log_std, self.log_std_min, self.log_std_max)
-        std = log_std.exp()
-
-        normal = Normal(mean, std)
-        z = normal.sample()
-        action = th.tanh(z)
-
-        log_prob = normal.log_prob(z) - th.log(1 - action.pow(2) + epsilon)
-        log_prob = log_prob.sum(-1, keepdim=True)
-
-        return action, log_prob, z, mean, log_std
 
 
 class MLPValueNetwork(nn.Module):
@@ -417,6 +366,6 @@ class MLPQValueNetwork(nn.Module):
 
     def forward(self, obs, action):
         if not self.continuous_actions:
-            action = encodeOneHot(action.unsqueeze(0).long(), self.n_actions)
+            action = encodeOneHot(action.unsqueeze(1).long(), self.n_actions)
 
         return self.q_value_net(th.cat([obs, action], dim=1))
