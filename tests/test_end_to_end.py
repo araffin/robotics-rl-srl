@@ -23,21 +23,25 @@ KNN_SAMPLES = 1000
 
 SEED = 0
 
-exp_config = {
-    "batch-size": 128,
-    "model-type": "custom_cnn",
-    "epochs": NUM_EPOCHS,
-    "knn-samples": KNN_SAMPLES,
-    "knn-seed": 1,
-    "l1-reg": 0,
-    "training-set-size": TRAINING_SET_SIZE,
-    "learning-rate": 0.001,
-    "data-folder": TEST_DATA_FOLDER,
-    "relative-pos": False,
-    "seed": SEED,
-    "state-dim": STATE_DIM,
-    "use-continuous": False
-}
+
+def buildTestConfig():
+    cfg = {
+        "batch-size": 128,
+        "model-type": "custom_cnn",
+        "epochs": NUM_EPOCHS,
+        "knn-samples": KNN_SAMPLES,
+        "knn-seed": 1,
+        "l1-reg": 0,
+        "training-set-size": TRAINING_SET_SIZE,
+        "learning-rate": 0.001,
+        "data-folder": TEST_DATA_FOLDER,
+        "relative-pos": False,
+        "seed": SEED,
+        "state-dim": STATE_DIM,
+        "use-continuous": False
+    }
+    return cfg
+
 
 def assertEq(left, right):
     assert left == right, "{} != {}".format(left, right)
@@ -75,6 +79,7 @@ def testBaselineTrain():
         exp_name = baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         LOG_BASELINE = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
         createFolders(LOG_BASELINE)
+        exp_config = buildTestConfig()
         exp_config["log-folder"] = LOG_BASELINE
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = baseline
@@ -109,6 +114,7 @@ def testPriorTrain():
                 '--log-folder', log_name,'--losses', loss_type]
         args = list(map(str, args))
 
+        exp_config = buildTestConfig()
         exp_config["log-folder"] = log_name
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = loss_type
@@ -119,7 +125,7 @@ def testPriorTrain():
         assertEq(ok, 0)
 
     # Combining models
-    exp_name = 'vae_inverse_forward_custom_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS128'
+    exp_name = 'vae_inverse_forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS128'
     log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
     createFolders(log_name)
     args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
@@ -128,6 +134,7 @@ def testPriorTrain():
             '--log-folder', log_name, '--losses', "forward", "inverse", "vae"]
     args = list(map(str, args))
 
+    exp_config = buildTestConfig()
     exp_config["log-folder"] = log_name
     exp_config["experiment-name"] = exp_name
     exp_config["losses"] = ["forward", "inverse", "vae"]
