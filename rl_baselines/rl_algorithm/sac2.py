@@ -99,7 +99,7 @@ class SAC2Model(BaseRLObject):
         # Even though DeepQ is single core only, we need to use the pipe system to work
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
             srl_model = MultiprocessSRLModel(1, args.env, env_kwargs)
-            env_kwargs["state_dim"] = srl_model.state_dim
+            env_kwargs["obs_dim"] = srl_model.obs_dim
             env_kwargs["srl_pipe"] = srl_model.pipe
 
         env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
@@ -133,17 +133,16 @@ class SAC2Model(BaseRLObject):
         device = th.device("cuda" if th.cuda.is_available() and not args.no_cuda else "cpu")
 
         action_dim = env.action_space.shape[0]
-        state_dim  = env.observation_space.shape[0]
+        obs_dim  = env.observation_space.shape[0]
         hidden_dim = 256
 
-        value_net        = ValueNetwork(state_dim, hidden_dim).to(device)
-        target_value_net = ValueNetwork(state_dim, hidden_dim).to(device)
+        value_net        = ValueNetwork(obs_dim, hidden_dim).to(device)
+        target_value_net = ValueNetwork(obs_dim, hidden_dim).to(device)
 
-        soft_q_net = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
-        policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim).to(device)
+        soft_q_net = SoftQNetwork(obs_dim, action_dim, hidden_dim).to(device)
+        policy_net = PolicyNetwork(obs_dim, action_dim, hidden_dim).to(device)
 
-        for target_param, param in zip(target_value_net.parameters(), value_net.parameters()):
-            target_param.data.copy_(param.data)
+        hardUpdate(source=value_net, target=target_value_net)
 
 
         value_criterion  = nn.MSELoss()
@@ -162,95 +161,87 @@ class SAC2Model(BaseRLObject):
         # replay_buffer = ReplayBuffer(replay_buffer_size)
         replay_buffer = ReplayBuffer(replay_buffer_size)
 
-        def soft_q_update(batch_size,
-                   gamma=0.99,
-                   mean_l=1e-3,
-                   std_l=1e-3,
-                   z_l=0.0,
-                   soft_tau=1e-2):
-            state, action, reward, next_state, done = replay_buffer.sample(batch_size)
-            # state, action, reward, next_state, done = map(lambda x: toTensor(x, device),
-            #                                                          replay_buffer.sample(batch_size))
 
-            state      = th.FloatTensor(state).to(device)
-            next_state = th.FloatTensor(next_state).to(device)
-            action     = th.FloatTensor(action).to(device)
-            reward     = th.FloatTensor(reward).unsqueeze(1).to(device)
-            done       = th.FloatTensor(np.float32(done)).unsqueeze(1).to(device)
-            # state = state.float()
-            # next_state = state.float()
-            # action = action.float()
-            # reward = reward.float().unsqueeze(1)
-            # done = done.float().unsqueeze(1)
-
-            expected_q_value = soft_q_net(state, action)
-            expected_value   = value_net(state)
-            new_action, log_prob, z, mean, log_std = policy_net.evaluate(state)
-
-
-            target_value = target_value_net(next_state)
-            next_q_value = reward + (1 - done) * gamma * target_value
-            q_value_loss = soft_q_criterion(expected_q_value, next_q_value.detach())
-
-            expected_new_q_value = soft_q_net(state, new_action)
-            next_value = expected_new_q_value - log_prob
-            value_loss = value_criterion(expected_value, next_value.detach())
-
-            log_prob_target = expected_new_q_value - expected_value
-            policy_loss = (log_prob * (log_prob - log_prob_target).detach()).mean()
-
-
-            mean_loss = mean_l * mean.pow(2).mean()
-            std_loss  = std_l  * log_std.pow(2).mean()
-            z_loss    = z_l    * z.pow(2).sum(1).mean()
-
-            policy_loss += mean_loss + std_loss + z_loss
-
-            soft_q_optimizer.zero_grad()
-            q_value_loss.backward()
-            soft_q_optimizer.step()
-
-            value_optimizer.zero_grad()
-            value_loss.backward()
-            value_optimizer.step()
-
-            policy_optimizer.zero_grad()
-            policy_loss.backward()
-            policy_optimizer.step()
-
-
-            for target_param, param in zip(target_value_net.parameters(), value_net.parameters()):
-                target_param.data.copy_(
-                    target_param.data * (1.0 - soft_tau) + param.data * soft_tau
-                )
+        gamma=0.99
+        mean_l=1e-3
+        std_l=1e-3
+        z_l=0.0
+        soft_tau=1e-2
 
         max_steps   = 500
         frame_idx   = 0
         batch_size  = 128
+        print_freq = 500
+        start_time = time.time()
 
         while frame_idx < args.num_timesteps:
-            state = env.reset()
+            obs = env.reset()
             episode_reward = 0
 
             for step in range(max_steps):
-                action = policy_net.get_action(state)
-                next_state, reward, done, _ = env.step(action)
+                action = policy_net.get_action(obs)
+                next_obs, reward, done, _ = env.step(action)
 
                 if callback is not None:
                     callback(locals(), globals())
 
-                # replay_buffer.add(state, action, reward, next_state, float(done))
-                replay_buffer.push(state, action, reward, next_state, done)
+                # replay_buffer.add(obs, action, reward, next_obs, float(done))
+                replay_buffer.push(obs, action, reward, next_obs, float(done))
                 if len(replay_buffer) > batch_size:
-                    soft_q_update(batch_size)
+                    obs_batch, actions, rewards, next_obs_batch, dones = map(lambda x: toTensor(x, device),
+                    replay_buffer.sample(batch_size))
 
-                state = next_state
+                    obs_batch = obs_batch.float()
+                    next_obs_batch = obs_batch.float()
+                    actions = actions.float()
+                    rewards = rewards.float().unsqueeze(1)
+                    dones = dones.float().unsqueeze(1)
+
+                    expected_q_value = soft_q_net(obs_batch, actions)
+                    expected_value   = value_net(obs_batch)
+                    new_actions, log_prob, z, mean_pi, log_std = policy_net.evaluate(obs_batch)
+
+
+                    target_value = target_value_net(next_obs_batch)
+                    next_q_value = rewards + (1 - dones) * gamma * target_value
+                    q_value_loss = soft_q_criterion(expected_q_value, next_q_value.detach())
+
+                    expected_new_q_value = soft_q_net(obs_batch, new_actions)
+                    next_value = expected_new_q_value - log_prob
+                    value_loss = value_criterion(expected_value, next_value.detach())
+
+                    log_prob_target = expected_new_q_value - expected_value
+                    policy_loss = (log_prob * (log_prob - log_prob_target).detach()).mean()
+
+
+                    mean_pi_loss = mean_l * mean_pi.pow(2).mean()
+                    std_loss  = std_l  * log_std.pow(2).mean()
+                    z_loss    = z_l    * z.pow(2).sum(1).mean()
+
+                    policy_loss += mean_pi_loss + std_loss + z_loss
+
+                    soft_q_optimizer.zero_grad()
+                    q_value_loss.backward()
+                    soft_q_optimizer.step()
+
+                    value_optimizer.zero_grad()
+                    value_loss.backward()
+                    value_optimizer.step()
+
+                    policy_optimizer.zero_grad()
+                    policy_loss.backward()
+                    policy_optimizer.step()
+
+                    softUpdate(source=value_net, target=target_value_net, factor=soft_tau)
+
+                obs = next_obs
                 episode_reward += reward
                 frame_idx += 1
 
                 if done:
                     break
-
+                if (frame_idx + 1) % print_freq == 0:
+                    print("{} steps - {:.2f} FPS".format(frame_idx, frame_idx / (time.time() - start_time)))
 
 
 class ReplayBuffer:
@@ -259,103 +250,93 @@ class ReplayBuffer:
         self.buffer = []
         self.position = 0
 
-    def push(self, state, action, reward, next_state, done):
+    def push(self, obs, action, reward, next_obs, done):
         if len(self.buffer) < self.capacity:
             self.buffer.append(None)
-        self.buffer[self.position] = (state, action, reward, next_state, done)
+        self.buffer[self.position] = (obs, action, reward, next_obs, done)
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
-        state, action, reward, next_state, done = map(np.stack, zip(*batch))
-        return state, action, reward, next_state, done
+        obs, action, reward, next_obs, done = map(np.stack, zip(*batch))
+        return obs, action, reward, next_obs, done
 
     def __len__(self):
         return len(self.buffer)
 
 
 class ValueNetwork(nn.Module):
-    def __init__(self, state_dim, hidden_dim, init_w=3e-3):
+    def __init__(self, obs_dim, hidden_dim):
         super(ValueNetwork, self).__init__()
 
-        self.linear1 = nn.Linear(state_dim, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
+        self.value_net = nn.Sequential(
+            nn.Linear(obs_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, 1)
+        )
 
-        self.linear3.weight.data.uniform_(-init_w, init_w)
-        self.linear3.bias.data.uniform_(-init_w, init_w)
-
-    def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-        x = self.linear3(x)
-        return x
+    def forward(self, x):
+        return self.value_net(x)
 
 
 class SoftQNetwork(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
+    def __init__(self, num_inputs, num_actions, hidden_dim):
         super(SoftQNetwork, self).__init__()
+        self.continuous_actions = True
+        self.n_actions = num_actions
+        self.q_value_net = nn.Sequential(
+            nn.Linear(int(num_inputs) + int(num_actions), hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, 1)
+        )
 
-        self.linear1 = nn.Linear(num_inputs + num_actions, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, 1)
+    def forward(self, obs, action):
+        if not self.continuous_actions:
+            action = encodeOneHot(action.unsqueeze(0).long(), self.n_actions)
 
-        self.linear3.weight.data.uniform_(-init_w, init_w)
-        self.linear3.bias.data.uniform_(-init_w, init_w)
-
-    def forward(self, state, action):
-        x = th.cat([state, action], 1)
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        x = self.linear3(x)
-        return x
-
+        return self.q_value_net(th.cat([obs, action], dim=1))
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3, log_std_min=-20, log_std_max=2):
+    def __init__(self,  num_inputs, num_actions, hidden_dim, log_std_min=-20, log_std_max=2):
         super(PolicyNetwork, self).__init__()
 
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
-        self.linear1 = nn.Linear(num_inputs, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
+        self.policy_net = nn.Sequential(
+            nn.Linear(num_inputs, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+        )
+        self.mean_head = nn.Linear(hidden_dim, num_actions)
+        self.logstd_head = nn.Linear(hidden_dim, num_actions)
 
-        self.mean_linear = nn.Linear(hidden_size, num_actions)
-        self.mean_linear.weight.data.uniform_(-init_w, init_w)
-        self.mean_linear.bias.data.uniform_(-init_w, init_w)
+    def forward(self, x):
+        x = self.policy_net(x)
+        return self.mean_head(x), self.logstd_head(x)
 
-        self.log_std_linear = nn.Linear(hidden_size, num_actions)
-        self.log_std_linear.weight.data.uniform_(-init_w, init_w)
-        self.log_std_linear.bias.data.uniform_(-init_w, init_w)
-
-    def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-
-        mean    = self.mean_linear(x)
-        log_std = self.log_std_linear(x)
+    def evaluate(self, obs, epsilon=1e-6):
+        mean_pi, log_std = self.forward(obs)
         log_std = th.clamp(log_std, self.log_std_min, self.log_std_max)
-
-        return mean, log_std
-
-    def evaluate(self, state, epsilon=1e-6):
-        mean, log_std = self.forward(state)
         std = log_std.exp()
 
-        normal = Normal(mean, std)
+        normal = Normal(mean_pi, std)
         z = normal.sample()
         action = th.tanh(z)
 
         log_prob = normal.log_prob(z) - th.log(1 - action.pow(2) + epsilon)
         log_prob = log_prob.sum(-1, keepdim=True)
 
-        return action, log_prob, z, mean, log_std
+        return action, log_prob, z, mean_pi, log_std
 
-
-    def get_action(self, state):
-        state = th.FloatTensor(state).unsqueeze(0).to(device)
-        mean, log_std = self.forward(state)
+    def get_action(self, obs):
+        obs = th.FloatTensor(obs).unsqueeze(0).to(device)
+        mean, log_std = self.forward(obs)
         std = log_std.exp()
 
         normal = Normal(mean, std)
