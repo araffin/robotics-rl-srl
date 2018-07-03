@@ -57,7 +57,7 @@ def testBaselineTrain():
     assertEq(ok, 0)
 
     for baseline in ['vae', 'autoencoder']:
-        LOG_BASELINE = 'logs/' + DATA_FOLDER_NAME + '/' + baseline + '_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
+        LOG_BASELINE = 'logs/' + DATA_FOLDER_NAME + '/' + baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         createFolders(LOG_BASELINE)
         print("log baseline: ", LOG_BASELINE)
         args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
@@ -149,5 +149,3 @@ def testRLSrlTrain():
 
         ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
         assertEq(ok, 0)
-
-
