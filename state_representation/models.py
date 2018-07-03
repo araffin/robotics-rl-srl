@@ -54,7 +54,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         try:
             state_dim = exp_config['state-dim']
             losses = exp_config['losses']
-            n_actions = exp_config['n_actions']
+            n_actions = exp_config.get('n_actions',6)
             model_type = exp_config['model-type']
         except KeyError:
             # Old format
