@@ -80,7 +80,10 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     if model is None:
         model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
 
-    printGreen("\nSRL: Using {} \n".format(model_type + " with " + ", ".join(losses)))
+    model_name = model_type
+    if 'baselines' not in path:
+        model_name += " with " + ", ".join(losses)
+    printGreen("\nSRL: Using {} \n".format(model_name))
 
     if path is not None:
         printYellow("Loading trained model...{}".format(path))

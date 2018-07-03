@@ -18,17 +18,6 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-# def testSrlTrain():
-#     for model_type in ["ground_truth", "srl_priors", "vae"]:
-#         args = ['--algo', DEFAULT_ALGO, '--env', DEFAULT_ENV, '--srl-model', model_type, 
-#                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
-#                 '--no-vis']
-#         args = list(map(str, args))
-
-#         ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
-#         assertEq(ok, 0)
-
-
 def make_test_fun(algo):
     def testBaselineTrain():
         for model_type in ['ground_truth', 'raw_pixels']:
