@@ -248,6 +248,7 @@ class MobileRobotGymEnv(SRLGymEnv):
             dv = DELTA_POS
             # Add noise to action
             dv += self.np_random.normal(0.0, scale=NOISE_STD)
+            # scale action amplitude between -dv and dv
             real_action = np.maximum(np.minimum(action, 1), -1) * dv
 
         if self.verbose:
