@@ -1,6 +1,7 @@
 import time
 import pickle
 import random
+import itertools
 
 import numpy as np
 import torch as th
@@ -13,7 +14,9 @@ from environments.utils import makeEnv
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
     loadRunningAverage, MultiprocessSRLModel
+from rl_baselines.models.sac_models import *
 from srl_zoo.utils import printYellow
+
 
 def l2Loss(tensor):
     """
@@ -23,24 +26,14 @@ def l2Loss(tensor):
     """
     return (tensor.float() ** 2).mean()
 
-def encodeOneHot(tensor, n_dim):
-    """
-    One hot encoding for a given tensor
-    :param tensor: (th Tensor)
-    :param n_dim: (int) Number of dimensions
-    :return: (th.Tensor)
-    """
-    encoded_tensor = th.Tensor(tensor.shape[0], n_dim).zero_().to(tensor.device)
-    return encoded_tensor.scatter_(1, tensor, 1.)
-
 
 def toTensor(arr, device):
     """
     Returns a pytorch Tensor object from a numpy array
-    :param arr: ([float])
+    :param arr: (numpy array)
     :return: (Tensor)
     """
-    return th.from_numpy(arr).to(th.float).to(device)
+    return th.from_numpy(arr).to(device)
 
 
 def detachToNumpy(tensor):
@@ -129,7 +122,7 @@ class SACModel(BaseRLObject):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         self.device = th.device("cuda" if th.cuda.is_available() and not args.no_cuda else "cpu")
-        device = self.device
+        self.using_images = args.srl_model == "raw_pixels"
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)
@@ -140,14 +133,19 @@ class SACModel(BaseRLObject):
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
             input_dim = np.prod(env.observation_space.shape)
-            self.policy_net = MLPPolicy(input_dim, action_space).to(self.device)
-            self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions).to(self.device)
-            self.value_net = MLPValueNetwork(input_dim).to(self.device)
-            self.target_value_net = MLPValueNetwork(input_dim).to(self.device)
+            # Hack to prevent from duplicated code
+            # self.encoder_net = Identity().to(self.device)
         else:
-            raise ValueError()
-            # net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
+            n_channels = env.observation_space.shape[-1]
+            self.encoder_net = NatureCNN(n_channels).to(self.device)
+            # self.encoder_net = CustomCNN(n_channels).to(self.device)
+            input_dim = 512  # output dim of the encoder net
 
+
+        self.policy_net = MLPPolicy(input_dim, action_space).to(self.device)
+        self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions).to(self.device)
+        self.value_net = MLPValueNetwork(input_dim).to(self.device)
+        self.target_value_net = MLPValueNetwork(input_dim).to(self.device)
 
         self.policy = PytorchPolicy(self.policy_net, args.continuous_actions, device=self.device, srl_model=(args.srl_model != "raw_pixels"),
                                     stochastic=not args.deterministic)
@@ -166,18 +164,20 @@ class SACModel(BaseRLObject):
         soft_update_factor = 1e-2
         w_reg = 1e-3
         learn_start = 0
-        replay_buffer_size = 1000000
-        replay_buffer = ReplayBuffer(replay_buffer_size)
+        replay_buffer = ReplayBuffer(args.buffer_size)
 
-        policy_optimizer = th.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
-        value_optimizer = th.optim.Adam(self.value_net.parameters(), lr=learning_rate)
-        q_optimizer = th.optim.Adam(self.q_value_net.parameters(), lr=learning_rate)
+        optimizer = th.optim.Adam(itertools.chain(self.q_value_net.parameters(), self.value_net.parameters(), self.q_value_net.parameters()), lr=learning_rate)
 
         obs = env.reset()
         start_time = time.time()
 
         for step in range(args.num_timesteps):
-            action = self.policy.getAction(toTensor(obs[None], self.device))[0]
+            obs_tensor = toTensor(obs[None], self.device).float()
+            if self.using_images:
+                with th.no_grad():
+                    obs_tensor = channelFirst(obs_tensor)
+                    obs_tensor = self.encoder_net(obs_tensor)
+            action = self.policy.getAction(obs_tensor)[0]
             new_obs, reward, done, info = env.step(action)
 
             replay_buffer.add(obs, action, reward, new_obs, float(done))
@@ -196,6 +196,10 @@ class SACModel(BaseRLObject):
                 # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
                 batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: toTensor(x, self.device).float(),
                                                                          replay_buffer.sample(batch_size))
+
+                if self.using_images:
+                    batch_obs = self.encoder_net(channelFirst(batch_obs))
+                    batch_next_obs = self.encoder_net(channelFirst(batch_next_obs))
 
                 rewards = rewards.unsqueeze(1)
                 dones = dones.unsqueeze(1)
@@ -216,22 +220,15 @@ class SACModel(BaseRLObject):
 
                 # Policy Loss
                 # why not log_pi.exp_() ?
-                loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
+                loss_policy = (log_pi.exp_() * (log_pi - q_value_new_actions + value_pred).detach()).mean()
 
                 # pre_tanh_value
                 loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd]))
 
-                q_optimizer.zero_grad()
-                loss_q_value.backward()
-                q_optimizer.step()
-
-                value_optimizer.zero_grad()
-                loss_value.backward()
-                value_optimizer.step()
-
-                policy_optimizer.zero_grad()
-                loss_policy.backward()
-                policy_optimizer.step()
+                optimizer.zero_grad()
+                loss = loss_q_value + loss_value + loss_policy
+                loss.backward()
+                optimizer.step()
 
                 # Update target value_pred network
                 softUpdate(source=self.value_net, target=self.target_value_net, factor=soft_update_factor)
@@ -254,9 +251,6 @@ class PytorchPolicy(object):
         super(PytorchPolicy, self).__init__()
         self.continuous_actions = continuous_actions
         self.model = model
-        self.srl_model = srl_model
-        self.stochastic = stochastic
-        self.device = device
 
     # used to prevent pickling of pytorch device object, as they cannot be pickled
     def __getstate__(self):
@@ -300,72 +294,3 @@ class PytorchPolicy(object):
     def getAction(self, obs):
         action, _, _, _, _ = self.sampleAction(obs)
         return detachToNumpy(action)
-
-
-class MLPPolicy(nn.Module):
-    """
-    :param input_dim: (int)
-    :param hidden_dim: (int)
-    :param out_dim: (int)
-    """
-
-    def __init__(self, input_dim, out_dim, hidden_dim=256):
-        super(MLPPolicy, self).__init__()
-
-        self.policy_net = nn.Sequential(
-            nn.Linear(int(input_dim), hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-        )
-        self.mean_head = nn.Linear(hidden_dim, int(out_dim))
-        self.logstd_head = nn.Linear(hidden_dim, int(out_dim))
-
-    def forward(self, x):
-        x = self.policy_net(x)
-        return self.mean_head(x), self.logstd_head(x)
-
-
-class MLPValueNetwork(nn.Module):
-    """
-    :param input_dim: (int)
-    """
-
-    def __init__(self, input_dim, hidden_dim=256):
-        super(MLPValueNetwork, self).__init__()
-
-        self.value_net = nn.Sequential(
-            nn.Linear(int(input_dim), hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward(self, x):
-        return self.value_net(x)
-
-
-class MLPQValueNetwork(nn.Module):
-    """
-    :param input_dim: (int)
-    """
-
-    def __init__(self, input_dim, n_actions, continuous_actions, hidden_dim=256):
-        super(MLPQValueNetwork, self).__init__()
-
-        self.continuous_actions = continuous_actions
-        self.n_actions = n_actions
-        self.q_value_net = nn.Sequential(
-            nn.Linear(int(input_dim) + int(n_actions), hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward(self, obs, action):
-        if not self.continuous_actions:
-            action = encodeOneHot(action.unsqueeze(1).long(), self.n_actions)
-
-        return self.q_value_net(th.cat([obs, action], dim=1))
