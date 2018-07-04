@@ -174,7 +174,7 @@ def main():
 
     obs = envs.reset()
     if using_custom_vec_env:
-        obs = [obs]
+        obs = obs.reshape((1,) + obs.shape)
 
     # plotting init
     if load_args.plotting:

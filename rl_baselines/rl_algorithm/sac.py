@@ -177,12 +177,10 @@ class SACModel(BaseRLObject):
     def getActionProba(self, obs, dones=None):
         """
         Returns the action probability for the given observation
-        :param obs: (numpy float or numpy int)
+        :param obs: (numpy array)
         :param dones: ([bool])
         :return: (numpy float) the action probability
         """
-        obs = np.array(obs)
-
         with th.no_grad():
             obs = self.toFloatTensor(obs)
             if self.using_images:
@@ -200,12 +198,10 @@ class SACModel(BaseRLObject):
     def getAction(self, obs, dones=None):
         """
         From an observation returns the associated action
-        :param obs: (numpy float)
+        :param obs: (numpy array)
         :param dones: ([bool])
         :return: (numpy float)
         """
-        obs = np.array(obs)
-
         with th.no_grad():
             obs = self.toFloatTensor(obs)
             if self.using_images:
