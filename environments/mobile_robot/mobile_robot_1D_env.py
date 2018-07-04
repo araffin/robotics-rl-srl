@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 N_DISCRETE_ACTIONS = 2
 
+
 class MobileRobot1DGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for a 1D debug Mobile Robot environment
@@ -23,7 +24,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param fpv: (bool) enable first personne view camera
+    :param fpv: (bool) enable first person view camera
     :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_1D", **kwargs):
@@ -42,32 +43,18 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
             raise ValueError("Only discrete actions is supported")
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
-        # Return only the [x, y] coordinates
+        # Return only the [x] coordinates
         return self.target_pos[:1]
 
     @staticmethod
     def getGroundTruthDim():
-        """
-        :return: (int)
-        """
         return 1
 
     def getGroundTruth(self):
-        """
-        Alias for getArmPos for compatibility between envs
-        :return: (numpy array)
-        """
-        # Return only the [x, y] coordinates
+        # Return only the [x] coordinates
         return np.array(self.robot_pos)[:1]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -119,9 +106,6 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
         return np.array(self._observation)
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:
@@ -174,7 +158,6 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:

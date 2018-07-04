@@ -85,6 +85,10 @@ class ACERModel(BaseRLObject):
 
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
+        # get the associated policy for the architecture requested
+        if args.srl_model != "raw_pixels" and args.policy == "cnn":
+            args.policy = "mlp"
+
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
         self.policy = args.policy

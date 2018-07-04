@@ -76,19 +76,17 @@ class CMAESModel(BaseRLObject):
 
     def train(self, args, callback, env_kwargs=None):
         args.num_cpu = args.num_population
-        env = self.makeEnv(args, env_kwargs=env_kwargs)
+        envd = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if args.continuous_actions:
-            action_space = np.prod(env.action_space.shape)
+            action_space = np.prod(envd.action_space.shape)
         else:
-            action_space = env.action_space.n
+            action_space = envd.action_space.n
 
         if args.srl_model != "raw_pixels":
-            printYellow("Using MLP policy because working on state representation")
-            args.policy = "mlp"
-            net = MLPPolicyPytorch(np.prod(env.observation_space.shape), [100], action_space)
+            net = MLPPolicyPytorch(np.prod(envd.observation_space.shape), [100], action_space)
         else:
-            net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
+            net = CNNPolicyPytorch(envd.observation_space.shape[-1], action_space)
 
         self.policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"),
                                     cuda=args.cuda, deterministic=args.deterministic)
@@ -104,7 +102,7 @@ class CMAESModel(BaseRLObject):
         start_time = time.time()
         step = 0
         while step < num_updates:
-            obs = env.reset()
+            obs = envd.reset()
             r = np.zeros((self.n_population,))
             # here, CMAEvolutionStrategy will return a list of param for each of the population
             population = self.es.ask()
@@ -119,7 +117,7 @@ class CMAESModel(BaseRLObject):
                     else:
                         actions.append(None)  # do nothing, as we are done
 
-                obs, reward, new_done, info = env.step(actions)
+                obs, reward, new_done, info = envd.step(actions)
                 step += np.sum(~done)
 
                 done = np.bitwise_or(done, new_done)
@@ -162,7 +160,7 @@ class PytorchPolicy(Policy):
     :param continuous_actions: (bool)
     :param srl_model: (bool) if using an srl model or not
     :param cuda: (bool)
-    :param deterministic: (bool) for sampling from the policy output, this makes the policy non-deterministic
+    :param deterministic: (bool) Do a deterministic approach for the actions on the output of the policy
     """
 
     def __init__(self, model, continuous_actions, srl_model=True, cuda=False, deterministic=False):
@@ -195,13 +193,13 @@ class PytorchPolicy(Policy):
     def getActionProba(self, obs):
         """
         Returns the action probability for the given observation
-        :param obs: ([float])
-        :return: the action
+        :param obs: (numpy float or numpy int)
+        :return: (numpy float) the action probability
         """
         if not self.srl_model:
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
-        action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
+        action = detachToNumpy(F.softmax(self.model(self.toTensor(obs)), dim=-1))
         return action
 
     def getAction(self, obs):
@@ -215,9 +213,9 @@ class PytorchPolicy(Policy):
 
         with torch.no_grad():
             if self.continuous_actions:
-                action = detachToNumpy(self.model(self.makeVar(obs)))
+                action = detachToNumpy(self.model(self.toTensor(obs)))
             else:
-                action = detachToNumpy(F.softmax(self.model(self.makeVar(obs)), dim=-1))
+                action = detachToNumpy(F.softmax(self.model(self.toTensor(obs)), dim=-1))
                 if self.deterministic:
                     action = np.argmax(action, axis=1)
                 else:
@@ -225,7 +223,7 @@ class PytorchPolicy(Policy):
 
         return action
 
-    def makeVar(self, arr):
+    def toTensor(self, arr):
         """
         Returns a pytorch Tensor object from a numpy array
         :param arr: ([float])
@@ -245,7 +243,7 @@ class PytorchPolicy(Policy):
         Set the network bias and weights
         :param param: ([float])
         """
-        nn.utils.vector_to_parameters(self.makeVar(param).contiguous(), self.model.parameters())
+        nn.utils.vector_to_parameters(self.toTensor(param).contiguous(), self.model.parameters())
 
 
 class CNNPolicyPytorch(nn.Module):
@@ -256,6 +254,7 @@ class CNNPolicyPytorch(nn.Module):
 
     def __init__(self, in_dim, out_dim):
         super(CNNPolicyPytorch, self).__init__()
+        # Set bias to False, due to it being nullified and replaced by BatchNorm2d
         self.conv1 = nn.Conv2d(in_dim, 8, kernel_size=5, padding=2, stride=2, bias=False)
         self.norm1 = nn.BatchNorm2d(8)
         self.pool1 = nn.MaxPool2d(2)

@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 REWARD_DIST_THRESHOLD = 0.1
 
+
 class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot with a line target environment
@@ -23,24 +24,17 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param fpv: (bool) enable first personne view camera
+    :param fpv: (bool) enable first person view camera
     :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_line_target", **kwargs):
         super(MobileRobotLineTargetGymEnv, self).__init__(name=name, **kwargs)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.target_pos[:1]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -116,7 +110,6 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:

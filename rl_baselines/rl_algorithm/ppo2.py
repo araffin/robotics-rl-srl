@@ -99,6 +99,16 @@ class PPO2Model(BaseRLObject):
     def train(self, args, callback, env_kwargs=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
+        # get the associated policy for the architecture requested
+        if args.srl_model == "raw_pixels":
+            if args.policy == "linear":
+                args.policy = "cnn"
+            else:
+                args.policy = "cnn-" + args.policy
+        else:
+            if args.policy == "linear":
+                args.policy = "mlp"
+
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
         self.policy = args.policy

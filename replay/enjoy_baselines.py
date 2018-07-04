@@ -26,16 +26,17 @@ from environments.registry import registered_env
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 
-def fixStateDim(states):
+def fixStateDim(states, min_state_dim=3):
     """
-    Fix for plotting when state_dim < 2
+    Fix for plotting when state_dim < min_state_dim
     :param states: (numpy array or [float])
+    :param min_state_dim: (int) the minimal dim needed for the plotting of the states
     :return: (numpy array)
     """
     states = np.array(states)
     state_dim = states.shape[1]
-    if state_dim < 2:
-        tmp = np.zeros((states.shape[0], 2))
+    if state_dim < min_state_dim:
+        tmp = np.zeros((states.shape[0], min_state_dim))
         tmp[:, :state_dim] = states
         return tmp
     return states
@@ -95,7 +96,7 @@ def loadConfigAndSetup(load_args):
         "shape_reward": load_args.shape_reward,  # Reward sparse or shaped
         "action_joints": train_args["action_joints"],
         "is_discrete": not train_args["continuous_actions"],
-        "random_target": train_args.get('relative', False),
+        "random_target": train_args.get('random_target', False),
         "srl_model": train_args["srl_model"]
     }
 
@@ -187,6 +188,7 @@ def main():
             min_zone = [+np.inf, +np.inf, +np.inf]
             max_zone = [-np.inf, -np.inf, -np.inf]
             amplitude = [0, 0, 0]
+            min_state_dim = 3
         else:
             ax = fig.add_subplot(111)
             line, = ax.plot([], [], c=[1, 0, 0, 1], label="episode 0")
@@ -194,6 +196,7 @@ def main():
             min_zone = [+np.inf, +np.inf]
             max_zone = [-np.inf, -np.inf]
             amplitude = [0, 0]
+            min_state_dim = 2
         fig.legend()
 
         if train_args["srl_model"] in ["ground_truth", "supervised"]:
@@ -205,17 +208,18 @@ def main():
                 srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
 
-            X = fixStateDim(X)
+            X = fixStateDim(X, min_state_dim=min_state_dim)
 
-            # train the PCA and et the limits
+            # estimate the PCA
             if registered_env[train_args["env"]][2] == PlottingType.PLOT_3D:
                 pca = PCA(n_components=3)
             else:
                 pca = PCA(n_components=2)
-            X_new = pca.fit_transform(X)
-            delta_obs = [pca.transform(fixStateDim([obs[0]]))[0]]
+            pca.fit(X)
+            delta_obs = [pca.transform(fixStateDim([obs[0]], min_state_dim=min_state_dim))[0]]
         plt.pause(0.00001)
 
+    # check if the algorithm has a defined getActionProba function before allowing action_proba plotting
     if load_args.action_proba and hasattr(method, "getActionProba"):
         fig_prob = plt.figure()
         ax_prob = fig_prob.add_subplot(111)
@@ -246,7 +250,7 @@ def main():
             if train_args["srl_model"] in ["ground_truth", "supervised"]:
                 ajusted_obs = envs.getOriginalObs()[0]
             else:
-                ajusted_obs = pca.transform(fixStateDim([obs[0]]))[0]
+                ajusted_obs = pca.transform(fixStateDim([obs[0]], min_state_dim=min_state_dim))[0]
 
             # create a new line, if the episode is finished
             if np.sum(dones) > 0:
@@ -262,7 +266,7 @@ def main():
             else:
                 delta_obs.append(ajusted_obs)
 
-            coor_plt = fixStateDim(np.array(delta_obs))[1:]
+            coor_plt = fixStateDim(np.array(delta_obs), min_state_dim=min_state_dim)[1:]
             unstack_val = coor_plt.shape[1] // train_args.get("num_stack", 1)
             coor_plt = coor_plt[:, -unstack_val:]
 
@@ -307,9 +311,6 @@ def main():
                 rect.set_color(plt.get_cmap('viridis')(int(color_val * 255)))
                 ax_prob.draw_artist(rect)
             fig_prob.canvas.blit(ax_prob.bbox)
-
-            # if i % 5 == 0:
-            #     plt.pause(0.000001)
 
         if using_custom_vec_env:
             if dones:

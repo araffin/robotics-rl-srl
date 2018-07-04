@@ -51,7 +51,6 @@ class SRLGymEnv(gym.Env):
         """
         :return (numpy array): Position of the target (button)
         """
-        # Return only the [x, y] coordinates
         raise NotImplementedError()
 
     @staticmethod
@@ -66,7 +65,6 @@ class SRLGymEnv(gym.Env):
         Alias for getArmPos for compatibility between envs
         :return: (numpy array)
         """
-        # Return only the [x, y] coordinates
         raise NotImplementedError()
 
     def seed(self, seed=None):
@@ -83,10 +81,22 @@ class SRLGymEnv(gym.Env):
         pass
 
     def step(self, action):
+        """
+        :param action: (int)
+        """
         raise NotImplementedError()
 
     def reset(self):
+        """
+        Reset the environment
+        :return: (numpy tensor) first observation of the env
+        """
         raise NotImplementedError()
 
     def render(self, mode='human'):
+        """
+        :param mode: (str)
+        :param close: (bool)
+        :return: (numpy array)
+        """
         raise NotImplementedError()

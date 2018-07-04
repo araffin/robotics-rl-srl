@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 MAX_STEPS = 1500
 
+
 class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot environment with 2 targets
@@ -23,7 +24,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param fpv: (bool) enable first personne view camera
+    :param fpv: (bool) enable first person view camera
     :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_2target", **kwargs):
@@ -32,10 +33,6 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         self.current_target = 0
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.current_target = 0
         self.terminated = False
         p.resetSimulation()
@@ -113,16 +110,10 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         return np.array(self._observation)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.button_pos[self.current_target][:2]
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:

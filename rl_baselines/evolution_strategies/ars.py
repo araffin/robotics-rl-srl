@@ -12,7 +12,7 @@ from srl_zoo.utils import printYellow
 
 class ARSModel(BaseRLObject):
     """
-    Implementation of Augmented Random Search algorithm for gym enviroment
+    Implementation of Augmented Random Search algorithm for gym environment
     https://arxiv.org/abs/1803.07055
     """
     def __init__(self):
@@ -55,11 +55,25 @@ class ARSModel(BaseRLObject):
         return parser
 
     def getActionProba(self, observation, dones=None, delta=0):
+        """
+        returns the action probability distribution, from a given observation.
+        :param observation: (numpy int or numpy float)
+        :param dones: ([bool])
+        :param delta: (numpy float or float) The exploration noise applied to the policy, set to 0 for no noise.
+        :return: (numpy float)
+        """
         assert self.M is not None, "Error: must train or load model before use"
         action = np.dot(observation, self.M + delta)
         return softmax(action)
 
     def getAction(self, observation, dones=None, delta=0):
+        """
+        From an observation returns the associated action
+        :param observation: (numpy int or numpy float)
+        :param dones: ([bool])
+        :param delta: (numpy float or float) The exploration noise applied to the policy, set to 0 for no noise.
+        :return: (numpy float)
+        """
         assert self.M is not None, "Error: must train or load model before use"
         action = np.dot(observation, self.M + delta)
 
@@ -95,24 +109,20 @@ class ARSModel(BaseRLObject):
             "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
         assert args.num_population > 1, "The population cannot be less than 2."
 
-        env = self.makeEnv(args, env_kwargs)
-
-        if args.srl_model != "raw_pixels":
-            printYellow("Using MLP policy because working on state representation")
-            args.policy = "mlp"
+        envs = self.makeEnv(args, env_kwargs)
 
         if args.continuous_actions:
-            action_space = np.prod(env.action_space.shape)
+            action_space = np.prod(envs.action_space.shape)
         else:
-            action_space = env.action_space.n
+            action_space = envs.action_space.n
 
-        self.M = np.zeros((np.prod(env.observation_space.shape), action_space))
+        self.M = np.zeros((np.prod(envs.observation_space.shape), action_space))
         self.n_population = args.num_population
-        self.top_population = args.top_population,
-        self.step_size = args.step_size,
-        self.exploration_noise = args.exploration_noise,
-        self.continuous_actions = args.continuous_actions,
-        self.max_step_amplitude = args.max_step_amplitude,
+        self.top_population = args.top_population
+        self.step_size = args.step_size
+        self.exploration_noise = args.exploration_noise
+        self.continuous_actions = args.continuous_actions
+        self.max_step_amplitude = args.max_step_amplitude
         self.deterministic = args.deterministic
         num_updates = (int(args.num_timesteps) // args.num_population * 2)
 
@@ -122,7 +132,7 @@ class ARSModel(BaseRLObject):
             r = np.zeros((self.n_population, 2))
             delta = np.random.normal(size=(self.n_population,) + self.M.shape)
             done = np.full((self.n_population * 2,), False)
-            obs = env.reset()
+            obs = envs.reset()
             while not done.all():
                 actions = []
                 for k in range(self.n_population):
@@ -138,7 +148,7 @@ class ARSModel(BaseRLObject):
                         else:
                             actions.append(None)  # do nothing, as we are done
 
-                obs, reward, new_done, info = env.step(actions)
+                obs, reward, new_done, info = envs.step(actions)
                 step += self.n_population
 
                 done = np.bitwise_or(done, new_done)

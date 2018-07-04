@@ -327,19 +327,8 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
     if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
-        # set the value MLP for any RL model that dont define a policy (or askes for CNN policy)
-        # and are not using raw_pixels, or asked for a linear policy.
-        if not hasattr(args, "policy") or args.policy == "linear" or args.policy == "cnn":
-            args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
         envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
-    else:
-        # set the value CNN for any RL model that dont define it
-        # and are using raw_pixels, or asked for a linear policy.
-        if not hasattr(args, "policy") or args.policy == "linear":
-            args.policy = "cnn"
-        elif "cnn" not in args.policy:  # extend for those who have something else with CNN (eg: cnn-lstm)
-            args.policy = "cnn-" + args.policy
 
     return envs
 
@@ -357,7 +346,11 @@ def loadRunningAverage(envs, load_path_normalise=None):
 
 
 def softmax(x):
-    """Compute softmax values for each set of scores in x."""
+    """
+    Numerically stable implementation of softmax.
+    :param x: (numpy float)
+    :return: (numpy float)
+    """
     e_x = np.exp(x.T - np.max(x.T, axis=0))
     return (e_x / e_x.sum(axis=0)).T
 

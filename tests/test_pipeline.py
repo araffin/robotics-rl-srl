@@ -18,7 +18,7 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-def make_test_fun(algo):
+def makeTestFun(algo):
     """
     returns a test function for the given RL algorithm
     :param algo: (str) RL algorithm name
@@ -51,7 +51,7 @@ def make_test_fun(algo):
 
 for baseline in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars']:
     if baseline != DEFAULT_ALGO:
-        globals()["test{}Train".format(baseline)] = make_test_fun(baseline)
+        globals()["test{}Train".format(baseline)] = makeTestFun(baseline)
 
 
 def testEnvSRLTrain():

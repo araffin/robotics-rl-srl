@@ -101,7 +101,7 @@ def main():
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else,' +
                              ' including partial parts if they exist')
-    parser.add_argument('-r', '--random_target', action='store_true', default=False,
+    parser.add_argument('-r', '--random-target', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
     parser.add_argument('--shape-reward', action='store_true', default=False,
@@ -220,11 +220,11 @@ def main():
         np.savez(args.save_path + args.name + "/preprocessed_data.npz", **preprocessed_data)
 
     if args.reward_dist:
-        rewards, count = np.unique(np.load(args.save_path + args.name + "/preprocessed_data.npz")['rewards'],
-                                   return_counts=True)
-        count = ["{:.2f}%".format(val * 100) for val in count / np.sum(count)]
+        rewards, counts = np.unique(np.load(args.save_path + args.name + "/preprocessed_data.npz")['rewards'],
+                                    return_counts=True)
+        counts = ["{:.2f}%".format(val * 100) for val in counts / np.sum(counts)]
         print("reward distribution:")
-        [print(" ", val[0], val[1]) for val in list(zip(rewards, count))]
+        [print(" ", reward, count) for reward, count in list(zip(rewards, counts))]
 
 
 if __name__ == '__main__':
