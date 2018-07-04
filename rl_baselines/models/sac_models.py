@@ -2,6 +2,7 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 def encodeOneHot(tensor, n_dim):
     """
     One hot encoding for a given tensor
@@ -11,6 +12,7 @@ def encodeOneHot(tensor, n_dim):
     """
     encoded_tensor = th.Tensor(tensor.shape[0], n_dim).zero_().to(tensor.device)
     return encoded_tensor.scatter_(1, tensor, 1.)
+
 
 def channelFirst(tensor):
     """
@@ -22,6 +24,7 @@ def channelFirst(tensor):
 
 class NatureCNN(nn.Module):
     """CNN from Nature paper."""
+
     def __init__(self, n_channels):
         super(NatureCNN, self).__init__()
         self.conv_layers = nn.Sequential(
@@ -51,6 +54,7 @@ def conv3x3(in_planes, out_planes, stride=1):
     """
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
+
 
 class CustomCNN(nn.Module):
     """
@@ -156,81 +160,3 @@ class MLPQValueNetwork(nn.Module):
             action = encodeOneHot(action.unsqueeze(1).long(), self.n_actions)
 
         return self.q_value_net(th.cat([obs, action], dim=1))
-
-
-
-class CNNPolicy(nn.Module):
-    """
-    :param input_dim: (int)
-    :param hidden_dim: (int)
-    :param out_dim: (int)
-    """
-
-    def __init__(self, input_dim, out_dim, hidden_dim=128):
-        super(CNNPolicy, self).__init__()
-
-        self.nature_cnn = NatureCNN()
-
-        self.policy_net = nn.Sequential(
-            nn.Linear(int(input_dim), hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-        )
-        self.mean_head = nn.Linear(hidden_dim, int(out_dim))
-        self.logstd_head = nn.Linear(hidden_dim, int(out_dim))
-
-    def forward(self, x):
-        x = self.nature_cnn(x)
-        x = self.policy_net(x)
-        return self.mean_head(x), self.logstd_head(x)
-
-
-class CNNValueNetwork(nn.Module):
-    """
-    :param input_dim: (int)
-    """
-
-    def __init__(self, input_dim, hidden_dim=128):
-        super(CNNValueNetwork, self).__init__()
-
-        self.nature_cnn = NatureCNN()
-
-        self.value_net = nn.Sequential(
-            nn.Linear(int(input_dim), hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward(self, x):
-        x = self.nature_cnn(x)
-        return self.value_net(x)
-
-
-class CNNQValueNetwork(nn.Module):
-    """
-    :param input_dim: (int)
-    """
-
-    def __init__(self, input_dim, n_actions, continuous_actions, hidden_dim=128):
-        super(CNNQValueNetwork, self).__init__()
-
-        self.continuous_actions = continuous_actions
-        self.n_actions = n_actions
-        self.q_value_net = nn.Sequential(
-            nn.Linear(int(input_dim) + int(n_actions), hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward(self, obs, action):
-        x = self.nature_cnn(obs)
-
-        if not self.continuous_actions:
-            action = encodeOneHot(action.unsqueeze(1).long(), self.n_actions)
-
-        return self.q_value_net(th.cat([x, action], dim=1))

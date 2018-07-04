@@ -1,20 +1,18 @@
 import time
 import pickle
-import random
-import itertools
 
 import numpy as np
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Categorical, Normal, Uniform
+from torch.distributions import Categorical, Normal
 from baselines.deepq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 
 from environments.utils import makeEnv
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
     loadRunningAverage, MultiprocessSRLModel
-from rl_baselines.models.sac_models import *
+from rl_baselines.models.sac_models import MLPPolicy, MLPQValueNetwork, MLPValueNetwork, channelFirst, NatureCNN
 from srl_zoo.utils import printYellow
 
 
@@ -31,6 +29,7 @@ def toTensor(arr, device):
     """
     Returns a pytorch Tensor object from a numpy array
     :param arr: (numpy array)
+    :param device: (th.Device)
     :return: (Tensor)
     """
     return th.from_numpy(arr).to(device)
@@ -77,13 +76,28 @@ class SACModel(BaseRLObject):
 
     def __init__(self):
         super(SACModel, self).__init__()
+        self.device = None
+        self.cuda = False
+        self.policy_net, self.q_value_net, self.value_net, self.target_value_net = None, None, None, None
+        self.deterministic = False
+        self.continuous_actions = False
+        self.encoder_net = None
+        self.using_images = False
 
     def save(self, save_path, _locals=None):
-        pass
+        assert self.policy_net is not None, "Error: must train or load model before use"
+        with open(save_path, "wb") as f:
+            pickle.dump(self.__getstate__(), f)
+        # Move networks back to the right device
+        self.__setstate__(self.__dict__)
 
     @classmethod
     def load(cls, load_path, args=None):
-        pass
+        with open(load_path, "rb") as f:
+            class_dict = pickle.load(f)
+        loaded_model = SACModel()
+        loaded_model.__dict__ = class_dict
+        return loaded_model
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
@@ -107,22 +121,111 @@ class SACModel(BaseRLObject):
         parser.add_argument('--no-cuda', action='store_true', default=False,
                             help='Disable cuda for the neural network')
         parser.add_argument('--buffer-size', type=int, default=int(1e3), help="Replay buffer size")
-        parser.add_argument('--reward-scale', type=float, default=int(1), help="Scaling factor for raw reward. (entropy factor)")
-        parser.add_argument('--deterministic', action='store_true', default=False,
-                            help='deterministic policy for the actions on the output of the policy')
+        parser.add_argument('--reward-scale', type=float, default=int(1),
+                            help="Scaling factor for raw reward. (entropy factor)")
         return parser
 
-    def getActionProba(self, observation, dones=None):
-        pass
+    def moveToDevice(self, device, d):
+        keys = ['value_net', 'target_value_net', 'q_value_net', 'policy_net']
+        if self.using_images:
+            keys += ['encoder_net']
 
-    def getAction(self, observation, dones=None):
-        pass
+        for key in keys:
+            d[key] = d[key].to(device)
+
+    # used to prevent pickling of pytorch device object, as they cannot be pickled
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        self.moveToDevice(th.device('cpu'), d)
+
+        if 'device' in d:
+            d['device'] = 'cpu'
+        return d
+
+    # restore torch device from a pickle using the same config, if cuda is available
+    def __setstate__(self, d):
+        if 'device' in d:
+            d['device'] = th.device("cuda" if th.cuda.is_available() and d['cuda'] else "cpu")
+
+        self.moveToDevice(d['device'], d)
+        self.__dict__.update(d)
+
+    def sampleAction(self, obs):
+        if self.continuous_actions:
+            mean_policy, logstd = self.policy_net(obs)
+            # log_std_min=-20, log_std_max=2
+            logstd = th.clamp(logstd, -20, 2)
+            std = th.exp(logstd)
+            distribution = Normal(mean_policy, std)
+            pre_tanh_value = distribution.sample().detach()
+            # Squash the value
+            action = F.tanh(pre_tanh_value)
+            # Correction to the log prob because of the squasing function
+            epsilon = 1e-6
+            log_pi = distribution.log_prob(pre_tanh_value) - th.log(1 - action ** 2 + epsilon)
+            log_pi = log_pi.sum(-1, keepdim=True)
+        else:
+            mean_policy, logstd = self.policy_net(obs)
+            distribution = Categorical(logits=mean_policy)
+            action = distribution.sample().detach()
+            pre_tanh_value = action * 0.0
+            logstd = logstd * 0.0
+            log_pi = distribution.log_prob(action).unsqueeze(1)
+
+        return action, log_pi, pre_tanh_value, mean_policy, logstd
+
+    def getActionProba(self, obs, dones=None):
+        """
+        Returns the action probability for the given observation
+        :param obs: (numpy float or numpy int)
+        :param dones: ([bool])
+        :return: (numpy float) the action probability
+        """
+        obs = np.array(obs)
+
+        with th.no_grad():
+            obs = self.toFloatTensor(obs)
+            if self.using_images:
+                obs = channelFirst(obs)
+                obs = self.encoder_net(obs)
+
+            mean_policy, _ = self.policy_net(obs)
+
+            if self.continuous_actions:
+                action = mean_policy
+            else:
+                action = F.softmax(mean_policy, dim=-1)
+        return detachToNumpy(action)
+
+    def getAction(self, obs, dones=None):
+        """
+        From an observation returns the associated action
+        :param obs: (numpy float)
+        :param dones: ([bool])
+        :return: (numpy float)
+        """
+        obs = np.array(obs)
+
+        with th.no_grad():
+            obs = self.toFloatTensor(obs)
+            if self.using_images:
+                obs = channelFirst(obs)
+                obs = self.encoder_net(obs)
+            # TODO: deterministic policy for test
+            action, _, _, _, _ = self.sampleAction(obs)
+
+        return detachToNumpy(action)[0]
+
+    def toFloatTensor(self, x):
+        return toTensor(x, self.device).float()
 
     def train(self, args, callback, env_kwargs=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
-        self.device = th.device("cuda" if th.cuda.is_available() and not args.no_cuda else "cpu")
+        self.cuda = th.cuda.is_available() and not args.no_cuda
+        self.device = th.device("cuda" if self.cuda else "cpu")
         self.using_images = args.srl_model == "raw_pixels"
+        self.continuous_actions = args.continuous_actions
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)
@@ -133,26 +236,21 @@ class SACModel(BaseRLObject):
             printYellow("Using MLP policy because working on state representation")
             args.policy = "mlp"
             input_dim = np.prod(env.observation_space.shape)
-            # Hack to prevent from duplicated code
-            # self.encoder_net = Identity().to(self.device)
         else:
             n_channels = env.observation_space.shape[-1]
             self.encoder_net = NatureCNN(n_channels).to(self.device)
             # self.encoder_net = CustomCNN(n_channels).to(self.device)
             input_dim = 512  # output dim of the encoder net
 
-
         self.policy_net = MLPPolicy(input_dim, action_space).to(self.device)
         self.q_value_net = MLPQValueNetwork(input_dim, action_space, args.continuous_actions).to(self.device)
         self.value_net = MLPValueNetwork(input_dim).to(self.device)
         self.target_value_net = MLPValueNetwork(input_dim).to(self.device)
 
-        self.policy = PytorchPolicy(self.policy_net, args.continuous_actions, device=self.device, srl_model=(args.srl_model != "raw_pixels"),
-                                    stochastic=not args.deterministic)
         # Make sure target net has the same weights
         hardUpdate(source=self.value_net, target=self.target_value_net)
 
-        value_criterion  = nn.MSELoss()
+        value_criterion = nn.MSELoss()
         q_value_criterion = nn.MSELoss()
 
         gamma = 0.99
@@ -166,18 +264,15 @@ class SACModel(BaseRLObject):
         learn_start = 0
         replay_buffer = ReplayBuffer(args.buffer_size)
 
-        optimizer = th.optim.Adam(itertools.chain(self.q_value_net.parameters(), self.value_net.parameters(), self.q_value_net.parameters()), lr=learning_rate)
+        policy_optimizer = th.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
+        value_optimizer = th.optim.Adam(self.value_net.parameters(), lr=learning_rate)
+        q_optimizer = th.optim.Adam(self.q_value_net.parameters(), lr=learning_rate)
 
         obs = env.reset()
         start_time = time.time()
 
         for step in range(args.num_timesteps):
-            obs_tensor = toTensor(obs[None], self.device).float()
-            if self.using_images:
-                with th.no_grad():
-                    obs_tensor = channelFirst(obs_tensor)
-                    obs_tensor = self.encoder_net(obs_tensor)
-            action = self.policy.getAction(obs_tensor)[0]
+            action = self.getAction(obs[None])
             new_obs, reward, done, info = env.step(action)
 
             replay_buffer.add(obs, action, reward, new_obs, float(done))
@@ -194,7 +289,7 @@ class SACModel(BaseRLObject):
                     break
 
                 # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
-                batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: toTensor(x, self.device).float(),
+                batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: self.toFloatTensor(x),
                                                                          replay_buffer.sample(batch_size))
 
                 if self.using_images:
@@ -206,7 +301,7 @@ class SACModel(BaseRLObject):
 
                 value_pred = self.value_net(batch_obs)
                 q_value = self.q_value_net(batch_obs, actions)
-                new_actions, log_pi, pre_tanh_value, mean_policy, logstd = self.policy.sampleAction(batch_obs)
+                new_actions, log_pi, pre_tanh_value, mean_policy, logstd = self.sampleAction(batch_obs)
 
                 # Q-Value function loss
                 target_value_pred = self.target_value_net(batch_next_obs)
@@ -225,72 +320,22 @@ class SACModel(BaseRLObject):
                 # pre_tanh_value
                 loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd]))
 
-                optimizer.zero_grad()
-                loss = loss_q_value + loss_value + loss_policy
-                loss.backward()
-                optimizer.step()
+                q_optimizer.zero_grad()
+                # Retain graph if we are using a CNN for extracting features
+                # TODO: check that the zero_grad() doesn't affect that
+                loss_q_value.backward(retain_graph=self.using_images)
+                q_optimizer.step()
+
+                value_optimizer.zero_grad()
+                loss_value.backward(retain_graph=self.using_images)
+                value_optimizer.step()
+
+                policy_optimizer.zero_grad()
+                loss_policy.backward()
+                policy_optimizer.step()
 
                 # Update target value_pred network
                 softUpdate(source=self.value_net, target=self.target_value_net, factor=soft_update_factor)
 
             if (step + 1) % print_freq == 0:
                 print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
-
-
-class PytorchPolicy(object):
-    """
-    The policy object for genetic algorithms, using Pytorch networks
-    :param model: (Pytorch nn.Module) make sure there is no Sequential, as it breaks .shape function
-    :param continuous_actions: (bool)
-    :param srl_model: (bool) if using an srl model or not
-    :param cuda: (bool)
-    :param sampling: (bool) for sampling from the policy output, this makes the policy non-deterministic
-    """
-
-    def __init__(self, model, continuous_actions, device, srl_model=True, stochastic=True):
-        super(PytorchPolicy, self).__init__()
-        self.continuous_actions = continuous_actions
-        self.model = model
-
-    # used to prevent pickling of pytorch device object, as they cannot be pickled
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        d['model'] = d['model'].to(th.device('cpu'))
-        if 'device' in d:
-            d['device'] = 'cpu'
-        return d
-
-    # restore torch device from a pickle using the same config, if cuda is available
-    def __setstate__(self, d):
-        if 'device' in d:
-            d['device'] = th.device("cuda" if th.cuda.is_available() and d['cuda'] else "cpu")
-        d['model'] = d['model'].to(d['device'])
-        self.__dict__.update(d)
-
-    def sampleAction(self, obs):
-        if self.continuous_actions:
-            mean_policy, logstd = self.model(obs)
-            # log_std_min=-20, log_std_max=2
-            logstd = th.clamp(logstd, -20, 2)
-            std = th.exp(logstd)
-            distribution = Normal(mean_policy, std)
-            pre_tanh_value = distribution.sample().detach()
-            # Squash the value
-            action = F.tanh(pre_tanh_value)
-            # Correction to the log prob because of the squasing function
-            epsilon = 1e-6
-            log_pi = distribution.log_prob(pre_tanh_value) - th.log(1 - action ** 2 + epsilon)
-            log_pi = log_pi.sum(-1, keepdim=True)
-        else:
-            mean_policy, logstd = self.model(obs)
-            distribution = Categorical(logits=mean_policy)
-            action = distribution.sample().detach()
-            pre_tanh_value = action * 0.0
-            logstd = logstd * 0.0
-            log_pi = distribution.log_prob(action).unsqueeze(1)
-
-        return action, log_pi, pre_tanh_value, mean_policy, logstd
-
-    def getAction(self, obs):
-        action, _, _, _, _ = self.sampleAction(obs)
-        return detachToNumpy(action)
