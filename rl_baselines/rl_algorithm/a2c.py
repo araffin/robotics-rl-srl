@@ -75,8 +75,8 @@ class A2CModel(BaseRLObject):
 
     def customArguments(self, parser):
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-        parser.add_argument('--policy', help='Policy architecture', choices=['linear', 'lstm', 'lnlstm'],
-                            default='linear')
+        parser.add_argument('--policy', help='Policy architecture', choices=['feedforward', 'lstm', 'lnlstm'],
+                            default='feedforward')
         parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
                             default='constant')
         return parser
@@ -95,12 +95,12 @@ class A2CModel(BaseRLObject):
 
         # get the associated policy for the architecture requested
         if args.srl_model == "raw_pixels":
-            if args.policy == "linear":
+            if args.policy == "feedforward":
                 args.policy = "cnn"
             else:
                 args.policy = "cnn-" + args.policy
         else:
-            if args.policy == "linear":
+            if args.policy == "feedforward":
                 args.policy = "mlp"
 
         self.policy = args.policy

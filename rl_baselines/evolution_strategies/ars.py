@@ -64,7 +64,10 @@ class ARSModel(BaseRLObject):
         """
         assert self.M is not None, "Error: must train or load model before use"
         action = np.dot(observation, self.M + delta)
-        return softmax(action)
+        if self.continuous_actions:
+            return action
+        else:
+            return softmax(action)
 
     def getAction(self, observation, dones=None, delta=0):
         """

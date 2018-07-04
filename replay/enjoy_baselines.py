@@ -220,21 +220,25 @@ def main():
         plt.pause(0.00001)
 
     # check if the algorithm has a defined getActionProba function before allowing action_proba plotting
-    if load_args.action_proba and hasattr(method, "getActionProba"):
-        fig_prob = plt.figure()
-        ax_prob = fig_prob.add_subplot(111)
-        old_obs = []
-        if train_args["continuous_actions"]:
-            ax_prob.set_ylim(np.min(envs.action_space.low), np.max(envs.action_space.high))
-            bar = ax_prob.bar(np.arange(np.prod(envs.action_space.shape)),
-                              np.array([0] * np.prod(envs.action_space.shape)),
-                              color=plt.get_cmap('viridis')(int(1 / np.prod(envs.action_space.shape) * 255)))
+    if load_args.action_proba:
+        if not hasattr(method, "getActionProba"):
+            printYellow("Warning: requested flag --action-proba, "
+                        "but the algorihtm {} does not implement 'getActionProba'".format(algo_name))
         else:
-            ax_prob.set_ylim(0, 1)
-            bar = ax_prob.bar(np.arange(envs.action_space.n), np.array([0] * envs.action_space.n),
-                              color=plt.get_cmap('viridis')(int(1 / envs.action_space.n * 255)))
-        plt.pause(1)
-        background_prob = fig_prob.canvas.copy_from_bbox(ax_prob.bbox)
+            fig_prob = plt.figure()
+            ax_prob = fig_prob.add_subplot(111)
+            old_obs = []
+            if train_args["continuous_actions"]:
+                ax_prob.set_ylim(np.min(envs.action_space.low), np.max(envs.action_space.high))
+                bar = ax_prob.bar(np.arange(np.prod(envs.action_space.shape)),
+                                  np.array([0] * np.prod(envs.action_space.shape)),
+                                  color=plt.get_cmap('viridis')(int(1 / np.prod(envs.action_space.shape) * 255)))
+            else:
+                ax_prob.set_ylim(0, 1)
+                bar = ax_prob.bar(np.arange(envs.action_space.n), np.array([0] * envs.action_space.n),
+                                  color=plt.get_cmap('viridis')(int(1 / envs.action_space.n * 255)))
+            plt.pause(1)
+            background_prob = fig_prob.canvas.copy_from_bbox(ax_prob.bbox)
 
     n_done = 0
     last_n_done = 0
@@ -243,7 +247,7 @@ def main():
         actions = method.getAction(obs, dones)
         obs, rewards, dones, _ = envs.step(actions)
         if using_custom_vec_env:
-            obs = [obs]
+            obs = obs.reshape((1,) + obs.shape)
 
         # plotting
         if load_args.plotting:
@@ -314,7 +318,8 @@ def main():
 
         if using_custom_vec_env:
             if dones:
-                obs = [envs.reset()]
+                obs = envs.reset()
+                obs = obs.reshape((1,) + obs.shape)
 
         n_done += np.sum(dones)
         if (n_done - last_n_done) > 1:
