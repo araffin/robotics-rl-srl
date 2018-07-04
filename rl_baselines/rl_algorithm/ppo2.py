@@ -84,8 +84,8 @@ class PPO2Model(BaseRLObject):
 
     def customArguments(self, parser):
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-        parser.add_argument('--policy', help='Policy architecture', default='linear',
-                            choices=['linear', 'lstm', 'lnlstm'])
+        parser.add_argument('--policy', help='Policy architecture', default='feedforward',
+                            choices=['feedforward', 'lstm', 'lnlstm'])
 
         return parser
 
@@ -103,12 +103,12 @@ class PPO2Model(BaseRLObject):
 
         # get the associated policy for the architecture requested
         if args.srl_model == "raw_pixels":
-            if args.policy == "linear":
+            if args.policy == "feedforward":
                 args.policy = "cnn"
             else:
                 args.policy = "cnn-" + args.policy
         else:
-            if args.policy == "linear":
+            if args.policy == "feedforward":
                 args.policy = "mlp"
 
         self.ob_space = envs.observation_space
