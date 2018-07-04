@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 REWARD_DIST_THRESHOLD = 0.1
 
+
 class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot with a line target environment
@@ -12,7 +13,7 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     :param name: (str) name of the folder where recorded data will be stored
     :param max_distance: (float) Max distance between end effector and the button (for negative reward)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
-    :param srl_model: (bool) Set to true, use srl_models
+    :param use_srl: (bool) Set to true, use srl_models
     :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
@@ -24,22 +25,16 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
     :param fpv: (bool) enable first person view camera
+    :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_line_target", **kwargs):
         super(MobileRobotLineTargetGymEnv, self).__init__(name=name, **kwargs)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.target_pos[:1]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -115,7 +110,6 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:

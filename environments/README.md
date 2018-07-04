@@ -9,11 +9,11 @@ As such, we have created a few robotic environments, using OpenAI's Gym environm
 - Kuka arm: Here we have a Kuka arm which must reach a target, here a button.
     - KukaButtonGymEnv-v0: Kuka arm with a single button in front.
     - KukaRandButtonGymEnv-v0: Kuka arm with a single button in front, and some randomly positioned objects
-    - Kuka2ButtonGymEnv-v0: Kuka arm with 2 buttons next to each others, they must be pressed in the correct order.
+    - Kuka2ButtonGymEnv-v0: Kuka arm with 2 buttons next to each others, they must be pressed in the correct order (lighter button, then darker button).
     - KukaMovingButtonGymEnv-v0: Kuka arm with a single button in front, slowly moving left to right.
 - Mobile robot: Here we have a mobile robot which reach a target position
     - MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a target position.
-    - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order.
+    - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order (lighter target, then darker target).
     - MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can only go up and down, it must reach a target position.
     - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a colored band going across the terrain.
 - Baxter: A baxter robot that must reach a target, with its arms.

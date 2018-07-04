@@ -56,7 +56,7 @@ class MobileRobotGymEnv(SRLGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param fpv: (bool) enable first personne vue camera
+    :param fpv: (bool) enable first person view camera
     :param srl_model: (str) The SRL_model used
     """
 
@@ -118,7 +118,6 @@ class MobileRobotGymEnv(SRLGymEnv):
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
-            # self.renderer = p.ER_BULLET_HARDWARE_OPENGL
             self.debug = True
             # Debug sliders for moving the camera
             self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
@@ -148,32 +147,18 @@ class MobileRobotGymEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.target_pos[:2]
 
     @staticmethod
     def getGroundTruthDim():
-        """
-        :return: (int)
-        """
         return 2
 
     def getGroundTruth(self):
-        """
-        Alias for getArmPos for compatibility between envs
-        :return: (numpy array)
-        """
         # Return only the [x, y] coordinates
         return np.array(self.robot_pos)[:2]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -250,9 +235,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         return self._observation
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:
@@ -266,7 +248,7 @@ class MobileRobotGymEnv(SRLGymEnv):
             dv = DELTA_POS
             # Add noise to action
             dv += self.np_random.normal(0.0, scale=NOISE_STD)
-            real_action = action * dv
+            real_action = np.maximum(np.minimum(action, 1), -1) * dv
 
         if self.verbose:
             print(np.array2string(np.array(real_action), precision=2))
@@ -300,12 +282,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
-        """
-        :param mode: (str)
-        :param close: (bool)
-        :return: (numpy array)
-        """
-
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos
@@ -337,7 +313,9 @@ class MobileRobotGymEnv(SRLGymEnv):
 
         rgb_array_res = rgb_array[:, :, :3]
 
+        # if first person view, then stack the obersvation from the car camera
         if self.fpv:
+            # move camera
             view_matrix = p.computeViewMatrixFromYawPitchRoll(
                 cameraTargetPosition=(self.robot_pos[0]-0.25, self.robot_pos[1], 0.15),
                 distance=0.3,
@@ -348,6 +326,7 @@ class MobileRobotGymEnv(SRLGymEnv):
             proj_matrix = p.computeProjectionMatrixFOV(
                 fov=90, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
                 nearVal=0.1, farVal=100.0)
+            # get and stack image
             (_, _, px1, _, _) = p.getCameraImage(
                 width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
                 projectionMatrix=proj_matrix, renderer=self.renderer)

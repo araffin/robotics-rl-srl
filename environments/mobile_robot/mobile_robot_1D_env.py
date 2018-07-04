@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 N_DISCRETE_ACTIONS = 2
 
+
 class MobileRobot1DGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for a 1D debug Mobile Robot environment
@@ -12,7 +13,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
     :param name: (str) name of the folder where recorded data will be stored
     :param max_distance: (float) Max distance between end effector and the button (for negative reward)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
-    :param srl_model: (bool) Set to true, use srl_models
+    :param use_srl: (bool) Set to true, use srl_models
     :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
@@ -24,6 +25,7 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
     :param fpv: (bool) enable first person view camera
+    :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_1D", **kwargs):
         super(MobileRobot1DGymEnv, self).__init__(name=name, **kwargs)
@@ -41,32 +43,18 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
             raise ValueError("Only discrete actions is supported")
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
-        # Return only the [x, y] coordinates
+        # Return only the [x] coordinates
         return self.target_pos[:1]
 
     @staticmethod
     def getGroundTruthDim():
-        """
-        :return: (int)
-        """
         return 1
 
     def getGroundTruth(self):
-        """
-        Alias for getArmPos for compatibility between envs
-        :return: (numpy array)
-        """
-        # Return only the [x, y] coordinates
+        # Return only the [x] coordinates
         return np.array(self.robot_pos)[:1]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -118,9 +106,6 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
         return np.array(self._observation)
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:
@@ -173,7 +158,6 @@ class MobileRobot1DGymEnv(MobileRobotGymEnv):
 
         if distance <= REWARD_DIST_THRESHOLD:
             reward = 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:

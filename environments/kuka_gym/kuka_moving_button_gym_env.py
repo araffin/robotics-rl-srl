@@ -36,10 +36,6 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         self.max_steps = MAX_STEPS
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         # random initial direction
         self.button_speed = BUTTON_SPEED * self.np_random.choice([-1, 1])
         self.terminated = False
@@ -111,9 +107,6 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         return np.array(self._observation)
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # should the button hit the edge of the table, switch direction
         if (self.button_pos[1] > BUTTON_YMAX) or (self.button_pos[1] < BUTTON_YMIN):
             self.button_speed = -self.button_speed

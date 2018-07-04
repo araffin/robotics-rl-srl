@@ -3,6 +3,7 @@ from __future__ import print_function, division, absolute_import
 import subprocess
 import glob
 import shutil
+import os
 
 DEFAULT_ALGO = "ppo2"
 DEFAULT_ENV = "KukaButtonGymEnv-v0"
@@ -34,7 +35,9 @@ def assertNeq(left, right):
 
 def testBaselineTrain():
     # cleanup to remove the cluter
-    shutil.rmtree(DEFAULT_LOG_DIR)
+    if os.path.exists(DEFAULT_LOG_DIR):
+        shutil.rmtree(DEFAULT_LOG_DIR)
+
     for algo in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars']:
         args = ['--algo', algo, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TRAIN_TIMESTEP, '--seed', SEED,
                 '--num-iteration', NUM_ITERATION, '--no-vis', '--log-dir', DEFAULT_LOG_DIR, '--env', DEFAULT_ENV]
