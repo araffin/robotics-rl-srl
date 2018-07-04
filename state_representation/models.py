@@ -70,10 +70,6 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             if 'pca' in path:
                 model_type = 'pca'
                 model = SRLPCA(state_dim)
-            elif 'supervised' in path and 'cnn' in path:
-                model_type = 'supervised_custom_cnn'
-            elif 'supervised' in path and 'resnet' in path:
-                model_type = 'supervised_resnet'
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
@@ -126,10 +122,11 @@ class SRLNeuralNetwork(SRLBaseClass):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
-        if model_type == "supervised_custom_cnn":
-            self.model = CustomCNN(state_dim)
-        elif model_type == "supervised_resnet":
-            self.model = ConvolutionalNetwork(state_dim)
+        if "supervised" in losses:
+            if model_type == "cnn":
+                self.model = CustomCNN(state_dim)
+            elif model_type == "resnet":
+                self.model = ConvolutionalNetwork(state_dim)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                     cuda=self.cuda, losses=losses)
