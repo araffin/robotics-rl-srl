@@ -109,14 +109,14 @@ class ARSModel(BaseRLObject):
             "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
         assert args.num_population > 1, "The population cannot be less than 2."
 
-        envs = self.makeEnv(args, env_kwargs)
+        env = self.makeEnv(args, env_kwargs)
 
         if args.continuous_actions:
-            action_space = np.prod(envs.action_space.shape)
+            action_space = np.prod(env.action_space.shape)
         else:
-            action_space = envs.action_space.n
+            action_space = env.action_space.n
 
-        self.M = np.zeros((np.prod(envs.observation_space.shape), action_space))
+        self.M = np.zeros((np.prod(env.observation_space.shape), action_space))
         self.n_population = args.num_population
         self.top_population = args.top_population
         self.step_size = args.step_size
@@ -132,7 +132,7 @@ class ARSModel(BaseRLObject):
             r = np.zeros((self.n_population, 2))
             delta = np.random.normal(size=(self.n_population,) + self.M.shape)
             done = np.full((self.n_population * 2,), False)
-            obs = envs.reset()
+            obs = env.reset()
             while not done.all():
                 actions = []
                 for k in range(self.n_population):
@@ -148,7 +148,7 @@ class ARSModel(BaseRLObject):
                         else:
                             actions.append(None)  # do nothing, as we are done
 
-                obs, reward, new_done, info = envs.step(actions)
+                obs, reward, new_done, info = env.step(actions)
                 step += self.n_population
 
                 done = np.bitwise_or(done, new_done)

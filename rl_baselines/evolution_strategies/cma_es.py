@@ -76,17 +76,17 @@ class CMAESModel(BaseRLObject):
 
     def train(self, args, callback, env_kwargs=None):
         args.num_cpu = args.num_population
-        envd = self.makeEnv(args, env_kwargs=env_kwargs)
+        env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if args.continuous_actions:
-            action_space = np.prod(envd.action_space.shape)
+            action_space = np.prod(env.action_space.shape)
         else:
-            action_space = envd.action_space.n
+            action_space = env.action_space.n
 
         if args.srl_model != "raw_pixels":
-            net = MLPPolicyPytorch(np.prod(envd.observation_space.shape), [100], action_space)
+            net = MLPPolicyPytorch(np.prod(env.observation_space.shape), [100], action_space)
         else:
-            net = CNNPolicyPytorch(envd.observation_space.shape[-1], action_space)
+            net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
 
         self.policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"),
                                     cuda=args.cuda, deterministic=args.deterministic)
@@ -102,7 +102,7 @@ class CMAESModel(BaseRLObject):
         start_time = time.time()
         step = 0
         while step < num_updates:
-            obs = envd.reset()
+            obs = env.reset()
             r = np.zeros((self.n_population,))
             # here, CMAEvolutionStrategy will return a list of param for each of the population
             population = self.es.ask()
@@ -117,7 +117,7 @@ class CMAESModel(BaseRLObject):
                     else:
                         actions.append(None)  # do nothing, as we are done
 
-                obs, reward, new_done, info = envd.step(actions)
+                obs, reward, new_done, info = env.step(actions)
                 step += np.sum(~done)
 
                 done = np.bitwise_or(done, new_done)

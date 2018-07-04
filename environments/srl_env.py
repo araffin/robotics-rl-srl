@@ -82,7 +82,7 @@ class SRLGymEnv(gym.Env):
 
     def step(self, action):
         """
-        :param action: (int)
+        :param action: (int or [float])
         """
         raise NotImplementedError()
 

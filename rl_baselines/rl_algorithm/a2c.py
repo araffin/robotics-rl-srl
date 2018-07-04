@@ -28,6 +28,7 @@ class A2CModel(BaseRLObject):
         self.ac_space = None
         self.policy = None
         self.model = None
+        self.states = None
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -61,6 +62,7 @@ class A2CModel(BaseRLObject):
                   'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[loaded_model.policy]
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
+        loaded_model.states = loaded_model.model.initial_state
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "/a2c_weights.pkl")
@@ -81,11 +83,11 @@ class A2CModel(BaseRLObject):
 
     def getActionProba(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.probaStep(observation, None, dones)
+        return self.model.probaStep(observation, self.states, dones)
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, self.states, _ = self.model.step(observation, self.states, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):
@@ -136,6 +138,7 @@ class A2CModel(BaseRLObject):
                            max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon,
                            total_timesteps=total_timesteps,
                            lrschedule=lrschedule)
+        self.states = self.model.initial_state
         runner = _Runner(env, self.model, nsteps=nsteps, gamma=gamma)
 
         nbatch = nenvs * nsteps

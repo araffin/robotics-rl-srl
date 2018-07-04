@@ -169,7 +169,6 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             reward = 1
             if self.current_target < len(self.button_pos) - 1:
                 self.current_target += 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:

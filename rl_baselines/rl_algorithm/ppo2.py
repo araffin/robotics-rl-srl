@@ -30,6 +30,7 @@ class PPO2Model(BaseRLObject):
         self.policy = None
         self.model = None
         self.continuous_actions = None
+        self.states = None
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -70,6 +71,7 @@ class PPO2Model(BaseRLObject):
 
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
+        loaded_model.states = loaded_model.model.initial_state
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "/ppo2_weights.pkl")
@@ -89,11 +91,11 @@ class PPO2Model(BaseRLObject):
 
     def getActionProba(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.probaStep(observation, None, dones)
+        return self.model.probaStep(observation, self.states, dones)
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, self.states, _ = self.model.step(observation, self.states, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):
@@ -189,6 +191,7 @@ class PPO2Model(BaseRLObject):
             with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
                 fh.write(cloudpickle.dumps(make_model))
         self.model = make_model()
+        self.states = self.model.initial_state
         runner = Runner(env=env, model=self.model, nsteps=nsteps, gamma=gamma, lam=lam)
 
         epinfobuf = deque(maxlen=100)
