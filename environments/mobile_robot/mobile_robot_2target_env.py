@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 MAX_STEPS = 1500
 
+
 class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot environment with 2 targets
@@ -12,7 +13,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     :param name: (str) name of the folder where recorded data will be stored
     :param max_distance: (float) Max distance between end effector and the button (for negative reward)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
-    :param srl_model: (bool) Set to true, use srl_models
+    :param use_srl: (bool) Set to true, use srl_models
     :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
@@ -22,7 +23,9 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param fpv: (bool) enable first person view camera
+    :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_2target", **kwargs):
         super(MobileRobot2TargetGymEnv, self).__init__(name=name, **kwargs)
@@ -30,10 +33,6 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         self.current_target = 0
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.current_target = 0
         self.terminated = False
         p.resetSimulation()
@@ -74,7 +73,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         # Add walls
         # Path to the urdf file
         wall_urdf = "/urdf/wall.urdf"
-        # Rgba colors
+        # RGBA (red, green, blue, alpha) colors
         red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
 
         wall_left = p.loadURDF(wall_urdf, [self._max_x / 2, 0, 0], useFixedBase=True)
@@ -113,16 +112,10 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         return np.array(self._observation)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.button_pos[self.current_target][:2]
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:
@@ -178,7 +171,6 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             reward = 1
             if self.current_target < len(self.button_pos) - 1:
                 self.current_target += 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:

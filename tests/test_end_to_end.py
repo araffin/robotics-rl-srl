@@ -40,7 +40,8 @@ def createFolders():
 
 
 def testDataGen():
-    args = ['--num-cpu', 4, '--num-episode', 8, '--name', DATA_FOLDER_NAME, '--force', '--env', DEFAULT_ENV]
+    args = ['--num-cpu', 4, '--num-episode', 8, '--name', DATA_FOLDER_NAME, '--force', '--env', DEFAULT_ENV,
+            '--reward-dist']
     args = list(map(str, args))
 
     ok = subprocess.call(['python', '-m', 'environments.dataset_generator'] + args)

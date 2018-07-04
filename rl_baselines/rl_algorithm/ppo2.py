@@ -20,8 +20,8 @@ class PPO2Model(BaseRLObject):
     PPO2: Proximal Policy Optimization (GPU Implementation)
     """
 
-    LOG_INTERVAL = 10
-    SAVE_INTERVAL = 1
+    LOG_INTERVAL = 10  # log RL model performance every 10 steps
+    SAVE_INTERVAL = 1  # Save RL model every 1 steps
 
     def __init__(self):
         super(PPO2Model, self).__init__()
@@ -30,6 +30,7 @@ class PPO2Model(BaseRLObject):
         self.policy = None
         self.model = None
         self.continuous_actions = None
+        self.states = None
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -52,11 +53,14 @@ class PPO2Model(BaseRLObject):
         loaded_model = PPO2Model()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
-        # LN-LSTM: Layer Normalization LSTM
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
         continuous = loaded_model.continuous_actions
         policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnnlnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
+                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
                   'mlp': PPO2MLPPolicy(continuous=continuous),
                   'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
                   'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[loaded_model.policy]
@@ -67,6 +71,7 @@ class PPO2Model(BaseRLObject):
 
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
+        loaded_model.states = loaded_model.model.initial_state
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "/ppo2_weights.pkl")
@@ -86,15 +91,25 @@ class PPO2Model(BaseRLObject):
 
     def getActionProba(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        return self.model.probaStep(observation, None, dones)
+        return self.model.probaStep(observation, self.states, dones)
 
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, self.states, _ = self.model.step(observation, self.states, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
+
+        # get the associated policy for the architecture requested
+        if args.srl_model == "raw_pixels":
+            if args.policy == "linear":
+                args.policy = "cnn"
+            else:
+                args.policy = "cnn-" + args.policy
+        else:
+            if args.policy == "linear":
+                args.policy = "mlp"
 
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
@@ -135,10 +150,14 @@ class PPO2Model(BaseRLObject):
         config.gpu_options.allow_growth = True
         tf.Session(config=config).__enter__()
 
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
         continuous = args.continuous_actions
         policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnnlnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
+                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
                   'mlp': PPO2MLPPolicy(continuous=continuous),
                   'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
                   'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[args.policy]
@@ -172,6 +191,7 @@ class PPO2Model(BaseRLObject):
             with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
                 fh.write(cloudpickle.dumps(make_model))
         self.model = make_model()
+        self.states = self.model.initial_state
         runner = Runner(env=env, model=self.model, nsteps=nsteps, gamma=gamma, lam=lam)
 
         epinfobuf = deque(maxlen=100)

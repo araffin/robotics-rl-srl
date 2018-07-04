@@ -28,8 +28,7 @@ DELTA_V = 0.03  # velocity per physics step.
 DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = True  # Use relative position for ground truth
-# NOISE_STD = DELTA_V / 3 # Add noise to actions, so the env is not fully deterministic
-NOISE_STD = 0.01
+NOISE_STD = 0.01  # Add noise to actions, so the env is not fully deterministic
 NOISE_STD_CONTINUOUS = 0.0001
 NOISE_STD_JOINTS = 0.002
 N_RANDOM_ACTIONS_AT_INIT = 5  # Randomize init arm pos: take 5 random actions
@@ -132,7 +131,6 @@ class KukaButtonGymEnv(SRLGymEnv):
                 p.connect(p.GUI)
             p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
 
-            # self.renderer = p.ER_BULLET_HARDWARE_OPENGL
             self.debug = True
             # Debug sliders for moving the camera
             self.x_slider = p.addUserDebugParameter("x_slider", -10, 10, self.camera_target_pos[0])
@@ -175,11 +173,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getSRLState(self, observation):
-        """
-        get the SRL state for this environement with a given observation
-        :param observation: (numpy float) image
-        :return: (numpy float)
-        """
         state = []
         if self.srl_model in ["ground_truth", "joints_position"]:
             if self.relative_pos:
@@ -196,9 +189,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             return self.srl_pipe[1][self.env_rank].get()
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         return self.button_pos
 
     @staticmethod
@@ -210,16 +200,9 @@ class KukaButtonGymEnv(SRLGymEnv):
 
     @staticmethod
     def getGroundTruthDim():
-        """
-        :return: (int)
-        """
         return 3
 
     def getGroundTruth(self):
-        """
-        Alias for getArmPos for compatibility between envs
-        :return: (numpy array)
-        """
         return np.array(self.getArmPos())
 
     def getArmPos(self):
@@ -229,10 +212,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         self.n_contacts = 0
         self.n_steps_outside = 0
@@ -297,8 +276,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
         if self.srl_model != "raw_pixels":
-            # if len(self.saver.srl_model_path) > 0:
-            # self.srl_model.load(self.saver.srl_model_path))
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
@@ -314,9 +291,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         return self._observation
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # if you choose to do nothing
         if action is None:
             if self.action_joints:
@@ -394,7 +368,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
-
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos

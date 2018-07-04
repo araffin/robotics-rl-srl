@@ -34,10 +34,6 @@ class Kuka2ButtonGymEnv(KukaButtonGymEnv):
         self.n_contacts = [0, 0]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         self.n_contacts = [0, 0]
         self.button_all_pos = []

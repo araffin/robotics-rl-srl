@@ -8,6 +8,14 @@ from baselines.ppo2.policies import nature_cnn
 
 
 def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
+    """
+    Generates an MLP policy for PPO2 and A2C
+    :param continuous: (bool) If the output of the policy is continuous actions
+    :param reccurent: (bool) If the policy uses a reccurent neural network
+    :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
+    :param nlstm: (int) Number of lstm cells to use
+    :return: (Policy)
+    """
     class Policy(object):
         def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
             """
@@ -109,6 +117,14 @@ def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64)
 
 
 def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
+    """
+    Generates an CNN policy for PPO2 and A2C
+    :param continuous: (bool) If the output of the policy is continuous actions
+    :param reccurent: (bool) If the policy uses a reccurent neural network
+    :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
+    :param nlstm: (int) Number of lstm cells to use
+    :return: (Policy)
+    """
     class Policy(object):
         def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
             """
