@@ -1,13 +1,12 @@
 Table of Contents
 =================
-
-    * [Baxter Robot with Gazebo and ROS](#baxter-robot-with-gazebo-and-ros)
-    * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
-      * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
-      * [RL on a Real Baxter Robot](#rl-on-a-real-baxter-robot)
-    * [Working With a Real Robobo](#working-with-a-real-robobo)
-      * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl-1)
-      * [RL on a Real Robobo](#rl-on-a-real-robobo)
+  * [Baxter Robot with Gazebo and ROS](#baxter-robot-with-gazebo-and-ros)
+  * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
+    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
+    * [RL on a Real Baxter Robot](#rl-on-a-real-baxter-robot)
+  * [Working With a Real Robobo](#working-with-a-real-robobo)
+    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl-1)
+    * [RL on a Real Robobo](#rl-on-a-real-robobo)
 
 
 ## Baxter Robot with Gazebo and ROS
