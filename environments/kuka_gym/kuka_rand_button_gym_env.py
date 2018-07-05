@@ -25,8 +25,7 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param srl_model: (str) The SRL_model used
+    :param pipe: (tuple) contains the input and output of the SRL model
     """
     
     def __init__(self, name="kuka_rand_button_gym", **kwargs):
