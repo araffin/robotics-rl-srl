@@ -173,7 +173,7 @@ def main():
     parser.add_argument('-joints', '--action-joints',
                         help='set actions to the joints of the arm directly, instead of inverse kinematics',
                         action='store_true', default=False)
-    parser.add_argument('-r', '--relative', action='store_true', default=False,
+    parser.add_argument('-r', '--random-target', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
@@ -235,7 +235,7 @@ def main():
 
     env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
-    env_kwargs["random_target"] = args.relative
+    env_kwargs["random_target"] = args.random_target
     # Allow up action
     # env_kwargs["force_down"] = False
 
@@ -258,7 +258,7 @@ def main():
 
     super_class = registered_env[args.env][1]
     # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
-    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class) in
+    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _) in
                               registered_env.items()}
     while super_class != SRLGymEnv:
         assert super_class in rec_super_class_lookup, "Error: could not find super class of {}".format(super_class) + \

@@ -16,7 +16,7 @@ from srl_zoo.utils import printRed, printYellow
 
 def convertImagePath(args, path, record_id_start):
     """
-    Used to convert an image path, from one location, to an other
+    Used to convert an image path, from one location, to another
     :param args: (ArgumentParser object)
     :param path: (str)
     :param record_id_start: (int) where does the current part start counting its records
@@ -38,7 +38,7 @@ def env_thread(args, thread_num, partition=True):
     """
     env_kwargs = {
         "max_distance": args.max_distance,
-        "random_target": args.relative,
+        "random_target": args.random_target,
         "force_down": True,
         "is_discrete": not args.continuous_actions,
         "renders": thread_num == 0 and args.display,
@@ -101,16 +101,20 @@ def main():
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='Force the save, even if it overrides something else,' +
                              ' including partial parts if they exist')
-    parser.add_argument('-r', '--relative', action='store_true', default=False,
+    parser.add_argument('-r', '--random-target', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--multi-view', action='store_true', default=False, help='Set a second camera to the scene')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
+    parser.add_argument('--reward-dist', action='store_true', default=False,
+                        help='Prints out the reward distribution when the dataset generation is finished')
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
+    assert not args.reward_dist or not args.shape_reward, \
+        "Error: cannot display the reward distribution for continuous reward"
     if args.num_cpu > args.num_episode:
         args.num_cpu = args.num_episode
         printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
@@ -214,6 +218,13 @@ def main():
         # save the fused outputs
         np.savez(args.save_path + args.name + "/ground_truth.npz", **ground_truth)
         np.savez(args.save_path + args.name + "/preprocessed_data.npz", **preprocessed_data)
+
+    if args.reward_dist:
+        rewards, counts = np.unique(np.load(args.save_path + args.name + "/preprocessed_data.npz")['rewards'],
+                                    return_counts=True)
+        counts = ["{:.2f}%".format(val * 100) for val in counts / np.sum(counts)]
+        print("reward distribution:")
+        [print(" ", reward, count) for reward, count in list(zip(rewards, counts))]
 
 
 if __name__ == '__main__':
