@@ -43,4 +43,3 @@ for name, (env_class, _, _) in registered_env.items():
         timestep_limit=None,  # This limit is changed in the file
         reward_threshold=None  # Threshold at which the environment is considered as solved
     )
-

@@ -29,7 +29,7 @@ def toTensor(arr, device):
     """
     Returns a pytorch Tensor object from a numpy array
     :param arr: (numpy array)
-    :param device: (th.Device)
+    :param device: (th.device)
     :return: (Tensor)
     """
     return th.from_numpy(arr).to(device)
@@ -83,6 +83,8 @@ class SACModel(BaseRLObject):
         self.continuous_actions = False
         self.encoder_net = None
         self.using_images = False
+        self.log_std_min = -20
+        self.log_std_max = 2
 
     def save(self, save_path, _locals=None):
         assert self.policy_net is not None, "Error: must train or load model before use"
@@ -101,7 +103,7 @@ class SACModel(BaseRLObject):
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
-        # Even though DeepQ is single core only, we need to use the pipe system to work
+        # Even though SAC is single core only, we need to use the pipe system to work
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
             srl_model = MultiprocessSRLModel(1, args.env, env_kwargs)
             env_kwargs["state_dim"] = srl_model.state_dim
@@ -126,6 +128,11 @@ class SACModel(BaseRLObject):
         return parser
 
     def moveToDevice(self, device, d):
+        """
+        Move the different networks to a given device (cpu|cuda)
+        :param device: (th.device)
+        :param d: (dict) the class dictionnary
+        """
         keys = ['value_net', 'target_value_net', 'q_value_net', 'policy_net']
         if self.using_images:
             keys += ['encoder_net']
@@ -151,10 +158,17 @@ class SACModel(BaseRLObject):
         self.__dict__.update(d)
 
     def sampleAction(self, obs):
+        """
+        Sample action from Normal or Categorical distribution
+        (continuous vs discrete actions) and return the log probability
+        + policy parameters for regularization
+        :param obs: (th.Tensor)
+        :return: (tuple(th.Tensor))
+        """
         if self.continuous_actions:
             mean_policy, logstd = self.policy_net(obs)
-            # log_std_min=-20, log_std_max=2
-            logstd = th.clamp(logstd, -20, 2)
+            # Clip the value of the standard deviation
+            logstd = th.clamp(logstd, self.log_std_min, self.log_std_max)
             std = th.exp(logstd)
             distribution = Normal(mean_policy, std)
             pre_tanh_value = distribution.sample().detach()
@@ -166,8 +180,10 @@ class SACModel(BaseRLObject):
             log_pi = log_pi.sum(-1, keepdim=True)
         else:
             mean_policy, logstd = self.policy_net(obs)
+            # Here mean policy is the energy of each action
             distribution = Categorical(logits=mean_policy)
             action = distribution.sample().detach()
+            # Only valid for continuous actions
             pre_tanh_value = action * 0.0
             logstd = logstd * 0.0
             log_pi = distribution.log_prob(action).unsqueeze(1)
@@ -190,8 +206,14 @@ class SACModel(BaseRLObject):
             mean_policy, _ = self.policy_net(obs)
 
             if self.continuous_actions:
+                # In the case of continuous action
+                # we return the mean of the gaussian policy
+                # instead of probability
                 action = mean_policy
             else:
+                # In the case of discrete actions
+                # mean_policy correspond to the energy|logits for each action
+                # we need to apply a softmax in ordy to get a probability
                 action = F.softmax(mean_policy, dim=-1)
         return detachToNumpy(action)
 
@@ -301,6 +323,7 @@ class SACModel(BaseRLObject):
 
                 # Q-Value function loss
                 target_value_pred = self.target_value_net(batch_next_obs)
+                # TD error
                 next_q_value = args.reward_scale * rewards + (1 - dones) * gamma * target_value_pred.detach()
                 loss_q_value = 0.5 * q_value_criterion(q_value, next_q_value.detach())
 
@@ -311,7 +334,7 @@ class SACModel(BaseRLObject):
 
                 # Policy Loss
                 # why not log_pi.exp_() ?
-                loss_policy = (log_pi.exp_() * (log_pi - q_value_new_actions + value_pred).detach()).mean()
+                loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
 
                 # pre_tanh_value
                 loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd]))
