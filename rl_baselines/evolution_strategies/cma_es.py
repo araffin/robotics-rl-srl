@@ -205,13 +205,16 @@ class PytorchPolicy(Policy):
         if not self.srl_model:
             obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
 
-        action = detachToNumpy(F.softmax(self.model(self.toTensor(obs)), dim=-1))
+        if self.continuous_actions:
+            action = detachToNumpy(self.model(self.toTensor(obs)))
+        else:
+            action = detachToNumpy(F.softmax(self.model(self.toTensor(obs)), dim=-1))
         return action
 
     def getAction(self, obs):
         """
         Returns an action for the given observation
-        :param obs: ([float])
+        :param obs: (numpy float or numpy int)
         :return: the action
         """
         if not self.srl_model:
