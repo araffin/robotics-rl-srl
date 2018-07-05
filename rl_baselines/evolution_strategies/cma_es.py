@@ -71,6 +71,12 @@ class CMAESModel(BaseRLObject):
         return self.policy.getAction(observation)
 
     @classmethod
+    def getOptParam(cls):
+        return {
+            "sigma": (float, (0, 2))
+        }
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         return createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
 
@@ -92,7 +98,7 @@ class CMAESModel(BaseRLObject):
                                     cuda=args.cuda, deterministic=args.deterministic)
         self.n_population = args.num_population
         self.mu = args.mu
-        self.sigma = args.sigma
+        self.sigma = hyperparam.get("sigma", args.sigma)
         self.continuous_actions = args.continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [self.mu], self.sigma,
                                            {'popsize': self.n_population})
