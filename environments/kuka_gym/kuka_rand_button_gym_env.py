@@ -25,7 +25,8 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_model: (str) The SRL_model used
     """
     
     def __init__(self, name="kuka_rand_button_gym", **kwargs):
@@ -34,10 +35,6 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         self.max_steps = MAX_STEPS
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         self.n_contacts = 0
         self.n_steps_outside = 0
@@ -118,9 +115,6 @@ class KukaRandButtonGymEnv(KukaButtonGymEnv):
         return np.array(self._observation)
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # force applied to the ball
         if self._env_step_counter == 10:
             force = np.random.normal(size=(3,))

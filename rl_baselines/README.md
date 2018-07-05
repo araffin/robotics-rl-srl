@@ -33,6 +33,7 @@ You will need to define specifically:
     * ```makeEnv(self, args, env_kwargs=None, load_path_normalise=None)```: override if you need to change 
     the environment wrappers (static function).
     * ```train(args, callback, env_kwargs=None)```: to create the environment, and train your algorithm on said environment.
+    * (OPTIONAL) ```getActionProba(observation, dones=None)```: to get the action probabilities from a given observation. This is used for the action probability plotting in ```replay.enjoy_baselines```.
 2. Add your class to the ```registered_rl``` dictionary in ```rl_baselines/registry.py```, 
 using this format ```NAME: (CLASS, ALGO_TYPE, [ACTION_TYPE])```, where:
     * ```NAME```: is your algorithm's name.

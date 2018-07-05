@@ -3,6 +3,7 @@ import time
 import environments.mobile_robot.mobile_robot_env as mobile_env
 
 env = mobile_env.MobileRobotGymEnv(renders=True, is_discrete=True, log_folder="mobile_robot", record_data=False, random_target=False)
+
 timesteps = 1000  # must be greater than MAX_STEPS
 episodes = 100
 env.seed(1)

@@ -8,10 +8,9 @@ from baselines.acer.acer_simple import find_trainable_variables, joblib
 from baselines.common import tf_util
 from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
 from baselines import logger
-from baselines.ppo2.policies import CnnPolicy, LstmPolicy, LnLstmPolicy
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import MlpPolicyDiscrete
+from rl_baselines.policies import PPO2MLPPolicy, PPO2CNNPolicy
 from rl_baselines.utils import createTensorflowSession
 
 
@@ -20,12 +19,16 @@ class A2CModel(BaseRLObject):
     object containing the interface between baselines.a2c and this code base
     A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C)
     """
+
+    SAVE_INTERVAL = 10  # Save RL model every 10 steps
+
     def __init__(self):
         super(A2CModel, self).__init__()
         self.ob_space = None
         self.ac_space = None
         self.policy = None
         self.model = None
+        self.states = None
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -47,9 +50,19 @@ class A2CModel(BaseRLObject):
         loaded_model = A2CModel()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
-        policy = {'cnn': CnnPolicy, 'mlp': MlpPolicyDiscrete}[loaded_model.policy]
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
+        policy = {'cnn': PPO2CNNPolicy(),
+                  'cnn-lstm': PPO2CNNPolicy(reccurent=True),
+                  'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+                  'mlp': PPO2MLPPolicy(),
+                  'lstm': PPO2MLPPolicy(reccurent=True),
+                  'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[loaded_model.policy]
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
+        loaded_model.states = loaded_model.model.initial_state
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "/a2c_weights.pkl")
@@ -62,23 +75,37 @@ class A2CModel(BaseRLObject):
 
     def customArguments(self, parser):
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-        parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm', 'mlp'],
-                            default='cnn')
+        parser.add_argument('--policy', help='Policy architecture', choices=['feedforward', 'lstm', 'lnlstm'],
+                            default='feedforward')
         parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
                             default='constant')
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        return self.model.probaStep(observation, self.states, dones)
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
-        actions, _, _, _ = self.model.step(observation, None, dones)
+        actions, _, self.states, _ = self.model.step(observation, self.states, dones)
         return actions
 
     def train(self, args, callback, env_kwargs=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
+        # get the associated policy for the architecture requested
+        if args.srl_model == "raw_pixels":
+            if args.policy == "feedforward":
+                args.policy = "cnn"
+            else:
+                args.policy = "cnn-" + args.policy
+        else:
+            if args.policy == "feedforward":
+                args.policy = "mlp"
+
+        self.policy = args.policy
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
-        self.policy = args.policy
 
         logger.configure()
         self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
@@ -91,16 +118,16 @@ class A2CModel(BaseRLObject):
         tf.reset_default_graph()
         createTensorflowSession()
 
-        if policy == 'cnn':
-            policy_fn = CnnPolicy
-        elif policy == 'lstm':
-            policy_fn = LstmPolicy
-        elif policy == 'lnlstm':
-            policy_fn = LnLstmPolicy
-        elif policy == 'mlp':
-            policy_fn = MlpPolicyDiscrete
-        else:
-            raise ValueError("Policy {} not implemented".format(policy))
+        # MLP: multi layer perceptron
+        # CNN: convolutional neural netwrok
+        # LSTM: Long Short Term Memory
+        # LNLSTM: Layer Normalization LSTM
+        policy_fn = {'cnn': PPO2CNNPolicy(),
+                     'cnn-lstm': PPO2CNNPolicy(reccurent=True),
+                     'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+                     'mlp': PPO2MLPPolicy(),
+                     'lstm': PPO2MLPPolicy(reccurent=True),
+                     'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[policy]
 
         nenvs = env.num_envs
         ob_space = env.observation_space
@@ -111,6 +138,7 @@ class A2CModel(BaseRLObject):
                            max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon,
                            total_timesteps=total_timesteps,
                            lrschedule=lrschedule)
+        self.states = self.model.initial_state
         runner = _Runner(env, self.model, nsteps=nsteps, gamma=gamma)
 
         nbatch = nenvs * nsteps

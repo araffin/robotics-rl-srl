@@ -173,11 +173,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getSRLState(self, observation):
-        """
-        get the SRL state for this environement with a given observation
-        :param observation: (numpy float) image
-        :return: (numpy float)
-        """
         state = []
         if self.srl_model in ["ground_truth", "joints_position"]:
             if self.relative_pos:
@@ -194,9 +189,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             return self.srl_pipe[1][self.env_rank].get()
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         return self.button_pos
 
     @staticmethod
@@ -208,16 +200,9 @@ class KukaButtonGymEnv(SRLGymEnv):
 
     @staticmethod
     def getGroundTruthDim():
-        """
-        :return: (int)
-        """
         return 3
 
     def getGroundTruth(self):
-        """
-        Alias for getArmPos for compatibility between envs
-        :return: (numpy array)
-        """
         return np.array(self.getArmPos())
 
     def getArmPos(self):
@@ -227,10 +212,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         self.n_contacts = 0
         self.n_steps_outside = 0
@@ -310,9 +291,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         return self._observation
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # if you choose to do nothing
         if action is None:
             if self.action_joints:
@@ -390,7 +368,6 @@ class KukaButtonGymEnv(SRLGymEnv):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
-
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos

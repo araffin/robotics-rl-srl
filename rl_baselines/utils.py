@@ -327,9 +327,9 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
     if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
-        args.policy = "mlp"
         envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
         envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
+
     return envs
 
 
@@ -343,4 +343,14 @@ def loadRunningAverage(envs, load_path_normalise=None):
             envs.training = True
             printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
     return envs
+
+
+def softmax(x):
+    """
+    Numerically stable implementation of softmax.
+    :param x: (numpy float)
+    :return: (numpy float)
+    """
+    e_x = np.exp(x.T - np.max(x.T, axis=0))
+    return (e_x / e_x.sum(axis=0)).T
 

@@ -56,14 +56,15 @@ class MobileRobotGymEnv(SRLGymEnv):
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
     :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
-    :param fpv: (bool) enable first personne vue camera
+    :param fpv: (bool) enable first person view camera
+    :param srl_model: (str) The SRL_model used
     """
 
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True,
                  name="mobile_robot", max_distance=1.6, shape_reward=False, record_data=False, srl_model="raw_pixels",
                  random_target=False, force_down=True, state_dim=-1, learn_states=False, verbose=False,
                  save_path='srl_zoo/data/', env_rank=0, srl_pipe=None, fpv=False,  **_):
-        super(MobileRobotGymEnv, self).__init__(use_ground_truth=use_ground_truth,
+        super(MobileRobotGymEnv, self).__init__(srl_model=srl_model,
                                                 relative_pos=RELATIVE_POS,
                                                 env_rank=env_rank,
                                                 srl_pipe=srl_pipe)
@@ -104,8 +105,8 @@ class MobileRobotGymEnv(SRLGymEnv):
         self.has_bumped = False  # Used for handling collisions
         self.collision_margin = 0.1
         self.walls = None
-        self.use_joints = False  # For compatibility
         self.fpv = fpv
+        self.srl_model = srl_model
 
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
@@ -135,7 +136,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
-            raise ValueError("Only discrete actions is supported")
+            self.action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
         if self.srl_model == "ground_truth":
             self.state_dim = self.getGroundTruthDim()
@@ -146,32 +147,18 @@ class MobileRobotGymEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.target_pos[:2]
 
     @staticmethod
     def getGroundTruthDim():
-        """
-        :return: (int)
-        """
         return 2
 
     def getGroundTruth(self):
-        """
-        Alias for getArmPos for compatibility between envs
-        :return: (numpy array)
-        """
         # Return only the [x, y] coordinates
         return np.array(self.robot_pos)[:2]
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.terminated = False
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
@@ -248,9 +235,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         return self._observation
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:
@@ -261,7 +245,11 @@ class MobileRobotGymEnv(SRLGymEnv):
             dy = [0, 0, -dv, dv][action]
             real_action = np.array([dx, dy])
         else:
-            raise ValueError("Only discrete actions is supported")
+            dv = DELTA_POS
+            # Add noise to action
+            dv += self.np_random.normal(0.0, scale=NOISE_STD)
+            # scale action amplitude between -dv and dv
+            real_action = np.maximum(np.minimum(action, 1), -1) * dv
 
         if self.verbose:
             print(np.array2string(np.array(real_action), precision=2))
@@ -295,12 +283,6 @@ class MobileRobotGymEnv(SRLGymEnv):
         return np.array(self._observation), reward, done, {}
 
     def render(self, mode='human', close=False):
-        """
-        :param mode: (str)
-        :param close: (bool)
-        :return: (numpy array)
-        """
-
         if mode != "rgb_array":
             return np.array([])
         camera_target_pos = self.camera_target_pos
@@ -332,7 +314,9 @@ class MobileRobotGymEnv(SRLGymEnv):
 
         rgb_array_res = rgb_array[:, :, :3]
 
+        # if first person view, then stack the obersvation from the car camera
         if self.fpv:
+            # move camera
             view_matrix = p.computeViewMatrixFromYawPitchRoll(
                 cameraTargetPosition=(self.robot_pos[0]-0.25, self.robot_pos[1], 0.15),
                 distance=0.3,
@@ -343,6 +327,7 @@ class MobileRobotGymEnv(SRLGymEnv):
             proj_matrix = p.computeProjectionMatrixFOV(
                 fov=90, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
                 nearVal=0.1, farVal=100.0)
+            # get and stack image
             (_, _, px1, _, _) = p.getCameraImage(
                 width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
                 projectionMatrix=proj_matrix, renderer=self.renderer)

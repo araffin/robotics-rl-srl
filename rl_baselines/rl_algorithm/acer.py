@@ -20,8 +20,8 @@ class ACERModel(BaseRLObject):
     ACER: Sample Efficient Actor-Critic with Experience Replay
     """
 
-    LOG_INTERVAL = 1
-    SAVE_INTERVAL = 20
+    LOG_INTERVAL = 1  # log RL model performance every 1 steps
+    SAVE_INTERVAL = 20  # Save RL model every 20 steps
 
     def __init__(self):
         super(ACERModel, self).__init__()
@@ -70,6 +70,11 @@ class ACERModel(BaseRLObject):
                             default='constant')
         return parser
 
+    def getActionProba(self, observation, dones=None):
+        assert self.model is not None, "Error: must train or load model before use"
+        _, pi, _ = self.model.step(observation, state=None, mask=dones)
+        return pi
+
     def getAction(self, observation, dones=None):
         assert self.model is not None, "Error: must train or load model before use"
         actions, _, _ = self.model.step(observation, state=None, mask=dones)
@@ -79,6 +84,10 @@ class ACERModel(BaseRLObject):
         assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
 
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
+
+        # get the associated policy for the architecture requested
+        if args.srl_model != "raw_pixels" and args.policy == "cnn":
+            args.policy = "mlp"
 
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
@@ -96,7 +105,7 @@ class ACERModel(BaseRLObject):
 
         if policy == 'cnn':
             policy_fn = AcerCnnPolicy
-        elif policy == 'lstm':
+        elif policy == 'cnnlstm':
             policy_fn = AcerLstmPolicy
         elif policy == 'mlp':
             policy_fn = AcerMlpPolicy

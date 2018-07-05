@@ -78,7 +78,7 @@ dependencies:
   - opencv3=3.1.0=py35_0
   - cuda90=1.0=h6433d27_0
   - pytorch=0.4.0=py35_cuda9.0.176_cudnn7.1.2_1
-  - torchvision=0.2.0=py35heaa392f_1
+  - torchvision=0.2.1=py35_1
   - pip:
     - absl-py==0.1.9
     - atari-py==0.1.1
@@ -129,7 +129,6 @@ dependencies:
     - scipy==1.0.0
     - tensorflow==1.4.1
     - termcolor==1.1.0
-    - torch==0.3.1.post2
     - torchfile==0.1.0
     - tornado==4.5.3
     - tqdm==4.19.5

@@ -1,99 +1,220 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib as tc
-from baselines.a2c.utils import fc, sample
+from baselines.a2c.utils import fc, sample, batch_to_seq, seq_to_batch, lstm, lnlstm
 from baselines.common.distributions import make_pdtype
 from baselines.ddpg.models import Model
 from baselines.ppo2.policies import nature_cnn
 
 
-class MlpPolicyDiscrete(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
-        """
-        Modified version of OpenAI PPO2 MLP so it can support discrete actions
-        :param sess: (tf Session)
-        :param ob_space: (tuple)
-        :param ac_space: (gym action space)
-        :param nbatch: (int)
-        :param nsteps: (int)
-        :param reuse: (bool) for tensorflow
-        """
-        ob_shape = (nbatch,) + ob_space.shape
-        actdim = ac_space.n
-        X = tf.placeholder(tf.float32, ob_shape, name='Ob')  # obs
-        with tf.variable_scope("model", reuse=reuse):
-            activ = tf.tanh
-            h1 = activ(fc(X, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
-            h2 = activ(fc(h1, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
-            pi = fc(h2, 'pi', actdim, init_scale=0.01)
-            h1 = activ(fc(X, 'vf_fc1', nh=64, init_scale=np.sqrt(2)))
-            h2 = activ(fc(h1, 'vf_fc2', nh=64, init_scale=np.sqrt(2)))
-            vf = fc(h2, 'vf', 1)[:, 0]
+def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
+    """
+    Generates an MLP policy for PPO2 and A2C
+    :param continuous: (bool) If the output of the policy is continuous actions
+    :param reccurent: (bool) If the policy uses a reccurent neural network
+    :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
+    :param nlstm: (int) Number of lstm cells to use
+    :return: (Policy)
+    """
+    class Policy(object):
+        def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
+            """
+            Modified version of OpenAI PPO2 policies, to support continous actions and returning pi.
+            :param sess: (tf Session)
+            :param ob_space: (tuple)
+            :param ac_space: (gym action space)
+            :param nbatch: (int)
+            :param nsteps: (int)
+            :param reuse: (bool) for tensorflow
+            """
+            assert reccurent or not normalised, "Must be reccurent policy to be normalised."
 
-        self.pdtype = make_pdtype(ac_space)
-        self.pd = self.pdtype.pdfromflat(pi)
+            nenv = nbatch // nsteps
+            if continuous:
+                actdim = ac_space.shape[0]
+            else:
+                actdim = ac_space.n
+            ob_shape = (nbatch,) + ob_space.shape
+            X = tf.placeholder(tf.float32, ob_shape, name='Ob')  # obs
+            M = None
+            S = None
+            if reccurent:
+                M = tf.placeholder(tf.float32, [nbatch])  # mask (done t-1)
+                S = tf.placeholder(tf.float32, [nenv, nlstm * 2])  # states
 
-        a0 = self.pd.sample()
-        neglogp0 = self.pd.neglogp(a0)
-        self.initial_state = None
+            # Layers
+            with tf.variable_scope("model", reuse=reuse):
+                activ = tf.tanh
+                # input layers
+                decoder = X
+                if reccurent:
+                    h1 = activ(fc(X, 'lstm_fc1', nh=64, init_scale=np.sqrt(2)))
+                    decoder = activ(fc(h1, 'lstm_fc2', nh=64, init_scale=np.sqrt(2)))
 
-        def step(ob, *_args, **_kwargs):
-            a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
-            return a, v, self.initial_state, neglogp
+                # Reccurent layer
+                if reccurent:
+                    xs = batch_to_seq(decoder, nenv, nsteps)
+                    ms = batch_to_seq(M, nenv, nsteps)
+                    if normalised:
+                        h5, snew = lnlstm(xs, ms, S, 'lstm1', nh=nlstm)
+                    else:
+                        h5, snew = lstm(xs, ms, S, 'lstm1', nh=nlstm)
+                    decoder = seq_to_batch(h5)
+                # output layer
+                h_pi = activ(fc(decoder, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
+                h_pi = activ(fc(h_pi, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
+                h_vf = activ(fc(decoder, 'vf_fc1', nh=64, init_scale=np.sqrt(2)))
+                h_vf = activ(fc(h_vf, 'vf_fc2', nh=64, init_scale=np.sqrt(2)))
 
-        def value(ob, *_args, **_kwargs):
-            return sess.run(vf, {X: ob})
+                pi = fc(h_pi, 'pi', actdim, init_scale=0.01)
+                vf = fc(h_vf, 'vf', 1)[:, 0]
+                if continuous:
+                    logstd = tf.get_variable(name="logstd", shape=[1, actdim], initializer=tf.zeros_initializer())
 
-        self.X = X
-        self.pi = pi
-        self.vf = vf
-        self.step = step
-        self.value = value
+            # parameters
+            self.pdtype = make_pdtype(ac_space)
+            if continuous:
+                pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
+                self.pd = self.pdtype.pdfromflat(pdparam)
+            else:
+                self.pd = self.pdtype.pdfromflat(pi)
+            a0 = self.pd.sample()
+            neglogp0 = self.pd.neglogp(a0)
+            self.initial_state = None
+            if reccurent:
+                self.initial_state = np.zeros((nenv, nlstm * 2), dtype=np.float32)
+
+            # functions
+            def step(ob, state, mask):
+                if reccurent:
+                    return sess.run([a0, vf, snew, neglogp0], {X: ob, S: state, M: mask})
+                else:
+                    a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
+                    return a, v, self.initial_state, neglogp
+
+            def probaStep(ob, state, mask):
+                if reccurent:
+                    return sess.run(pi, {X: ob, S: state, M: mask})
+                else:
+                    return sess.run(pi, {X: ob})
+
+            def value(ob, state, mask):
+                if reccurent:
+                    return sess.run(vf, {X: ob, S: state, M: mask})
+                else:
+                    return sess.run(vf, {X: ob})
+
+            self.X = X
+            self.M = M
+            self.S = S
+            self.pi = pi
+            self.vf = vf
+            self.step = step
+            self.probaStep = probaStep
+            self.value = value
+
+    return Policy
 
 
-class CNNPolicyContinuous(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
-        """
-        Modified version of OpenAI PPO2 CNN so it can support continuous actions
-        :param sess: (tf Session)
-        :param ob_space: (tuple)
-        :param ac_space: (gym action space)
-        :param nbatch: (int)
-        :param nsteps: (int)
-        :param reuse: (bool) for tensorflow
-        """
-        nh, nw, nc = ob_space.shape
-        ob_shape = (nbatch, nh, nw, nc)
-        actdim = ac_space.shape[0]
-        X = tf.placeholder(tf.uint8, ob_shape)  # obs
-        with tf.variable_scope("model", reuse=reuse):
-            h = nature_cnn(X)
-            pi = fc(h, 'pi', actdim, init_scale=0.01)
-            vf = fc(h, 'v', 1)[:, 0]
-            logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                                     initializer=tf.zeros_initializer())
+def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
+    """
+    Generates an CNN policy for PPO2 and A2C
+    :param continuous: (bool) If the output of the policy is continuous actions
+    :param reccurent: (bool) If the policy uses a reccurent neural network
+    :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
+    :param nlstm: (int) Number of lstm cells to use
+    :return: (Policy)
+    """
+    class Policy(object):
+        def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
+            """
+            Modified version of OpenAI PPO2 policies, to support continous actions and returning pi.
+            :param sess: (tf Session)
+            :param ob_space: (tuple)
+            :param ac_space: (gym action space)
+            :param nbatch: (int)
+            :param nsteps: (int)
+            :param reuse: (bool) for tensorflow
+            """
+            assert reccurent or not normalised, "Must be reccurent policy to be normalised."
 
-        pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
+            nenv = nbatch // nsteps
+            if continuous:
+                actdim = ac_space.shape[0]
+            else:
+                actdim = ac_space.n
+            nh, nw, nc = ob_space.shape
+            ob_shape = (nbatch, nh, nw, nc)
+            X = tf.placeholder(tf.uint8, ob_shape)
+            M = None
+            S = None
+            if reccurent:
+                M = tf.placeholder(tf.float32, [nbatch])  # mask (done t-1)
+                S = tf.placeholder(tf.float32, [nenv, nlstm * 2])  # states
 
-        self.pdtype = make_pdtype(ac_space)
-        self.pd = self.pdtype.pdfromflat(pdparam)
+            # Layers
+            with tf.variable_scope("model", reuse=reuse):
+                activ = tf.tanh
+                # input layers
+                decoder = nature_cnn(X)
+                # Reccurent layer
+                if reccurent:
+                    xs = batch_to_seq(decoder, nenv, nsteps)
+                    ms = batch_to_seq(M, nenv, nsteps)
+                    if normalised:
+                        h5, snew = lnlstm(xs, ms, S, 'lstm1', nh=nlstm)
+                    else:
+                        h5, snew = lstm(xs, ms, S, 'lstm1', nh=nlstm)
+                    decoder = seq_to_batch(h5)
+                # output layer
+                pi = fc(decoder, 'pi', actdim, init_scale=0.01)
+                vf = fc(decoder, 'vf', 1)[:, 0]
+                if continuous:
+                    logstd = tf.get_variable(name="logstd", shape=[1, actdim], initializer=tf.zeros_initializer())
 
-        a0 = self.pd.sample()
-        neglogp0 = self.pd.neglogp(a0)
-        self.initial_state = None
+            # parameters
+            self.pdtype = make_pdtype(ac_space)
+            if continuous:
+                pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
+                self.pd = self.pdtype.pdfromflat(pdparam)
+            else:
+                self.pd = self.pdtype.pdfromflat(pi)
+            a0 = self.pd.sample()
+            neglogp0 = self.pd.neglogp(a0)
+            self.initial_state = None
+            if reccurent:
+                self.initial_state = np.zeros((nenv, nlstm * 2), dtype=np.float32)
 
-        def step(ob, *_args, **_kwargs):
-            a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
-            return a, v, self.initial_state, neglogp
+            # functions
+            def step(ob, state, mask):
+                if reccurent:
+                    return sess.run([a0, vf, snew, neglogp0], {X: ob, S: state, M: mask})
+                else:
+                    a, v, neglogp = sess.run([a0, vf, neglogp0], {X: ob})
+                    return a, v, self.initial_state, neglogp
 
-        def value(ob, *_args, **_kwargs):
-            return sess.run(vf, {X: ob})
+            def probaStep(ob, state, mask):
+                if reccurent:
+                    return sess.run(pi, {X: ob, S: state, M: mask})
+                else:
+                    return sess.run(pi, {X: ob})
 
-        self.X = X
-        self.pi = pi
-        self.vf = vf
-        self.step = step
-        self.value = value
+            def value(ob, state, mask):
+                if reccurent:
+                    return sess.run(vf, {X: ob, S: state, M: mask})
+                else:
+                    return sess.run(vf, {X: ob})
+
+            self.X = X
+            self.M = M
+            self.S = S
+            self.pi = pi
+            self.vf = vf
+            self.step = step
+            self.probaStep = probaStep
+            self.value = value
+
+    return Policy
 
 
 class AcerMlpPolicy(object):

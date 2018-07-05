@@ -26,7 +26,8 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param srl_model: (str) The SRL_model used
     """
 
     def __init__(self, name="kuka_moving_button_gym", **kwargs):
@@ -35,10 +36,6 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         self.max_steps = MAX_STEPS
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         # random initial direction
         self.button_speed = BUTTON_SPEED * self.np_random.choice([-1, 1])
         self.terminated = False
@@ -110,9 +107,6 @@ class KukaMovingButtonGymEnv(KukaButtonGymEnv):
         return np.array(self._observation)
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # should the button hit the edge of the table, switch direction
         if (self.button_pos[1] > BUTTON_YMAX) or (self.button_pos[1] < BUTTON_YMIN):
             self.button_speed = -self.button_speed

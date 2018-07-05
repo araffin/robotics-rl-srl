@@ -7,8 +7,8 @@ class BaseRLObject:
     """
 
     # if callback frequency needs to be changed, overwrite this.
-    LOG_INTERVAL = 100
-    SAVE_INTERVAL = 500
+    LOG_INTERVAL = 100  # log RL model performance every 100 steps
+    SAVE_INTERVAL = 200  # Save RL model every 200 steps
 
     def __init__(self):
         pass

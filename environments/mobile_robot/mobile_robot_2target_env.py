@@ -2,6 +2,7 @@ from .mobile_robot_env import *
 
 MAX_STEPS = 1500
 
+
 class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     """
     Gym wrapper for Mobile Robot environment with 2 targets
@@ -22,7 +23,9 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
     :param verbose: (bool) Whether to print some debug info
     :param save_path: (str) location where the saved data should go
     :param env_rank: (int) the number ID of the environment
-    :param pipe: (tuple) contains the input and output of the SRL model
+    :param pipe: (Queue, [Queue]) contains the input and output of the SRL model
+    :param fpv: (bool) enable first person view camera
+    :param srl_model: (str) The SRL_model used
     """
     def __init__(self, name="mobile_robot_2target", **kwargs):
         super(MobileRobot2TargetGymEnv, self).__init__(name=name, **kwargs)
@@ -30,10 +33,6 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         self.current_target = 0
 
     def reset(self):
-        """
-        Reset the environment
-        :return: (numpy tensor) first observation of the env
-        """
         self.current_target = 0
         self.terminated = False
         p.resetSimulation()
@@ -72,7 +71,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         # Add walls
         # Path to the urdf file
         wall_urdf = "/urdf/wall.urdf"
-        # Rgba colors
+        # RGBA (red, green, blue, alpha) colors
         red, green, blue = [0.8, 0, 0, 1], [0, 0.8, 0, 1], [0, 0, 0.8, 1]
 
         wall_left = p.loadURDF(wall_urdf, [self._max_x / 2, 0, 0], useFixedBase=True)
@@ -105,22 +104,16 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
 
         return np.array(self._observation)
 
     def getTargetPos(self):
-        """
-        :return (numpy array): Position of the target (button)
-        """
         # Return only the [x, y] coordinates
         return self.button_pos[self.current_target][:2]
 
     def step(self, action):
-        """
-        :param action: (int)
-        """
         # True if it has bumped against a wall
         self.has_bumped = False
         if self._is_discrete:
@@ -159,7 +152,7 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         if self.saver is not None:
             self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
 
-        if self.use_srl:
+        if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
 
         return np.array(self._observation), reward, done, {}
@@ -176,7 +169,6 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
             reward = 1
             if self.current_target < len(self.button_pos) - 1:
                 self.current_target += 1
-            # self.terminated = True
 
         # Negative reward when it bumps into a wall
         if self.has_bumped:
@@ -185,4 +177,3 @@ class MobileRobot2TargetGymEnv(MobileRobotGymEnv):
         if self._shape_reward:
             return -distance
         return reward
-

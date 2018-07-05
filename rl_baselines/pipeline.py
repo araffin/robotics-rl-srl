@@ -24,9 +24,7 @@ def main():
     parser.add_argument('--algo', type=str, default='ppo2', help='OpenAI baseline to use',
                         choices=list(registered_rl.keys()))
     parser.add_argument('--env', type=str, nargs='+', default=["KukaButtonGymEnv-v0"], help='environment ID(s)',
-                        choices=["KukaButtonGymEnv-v0", "KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0",
-                                 "KukaMovingButtonGymEnv-v0", "MobileRobotGymEnv-v0", "MobileRobot2TargetGymEnv-v0",
-                                 "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"])
+                        choices=list(registered_env.keys()))
     parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], help='SRL model(s) to use',
                         choices=list(registered_srl.keys()))
     parser.add_argument('--num-timesteps', type=int, default=1e6, help='number of timesteps the baseline should run')
