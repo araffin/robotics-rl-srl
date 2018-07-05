@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 viz = Visdom()
 
-env_globals = json.load(open(args.log_dir + "kuka_env_globals.json", 'r'))
+env_globals = json.load(open(args.log_dir + "env_globals.json", 'r'))
 train_args = json.load(open(args.log_dir + "args.json", 'r'))
 
 srl_model = train_args['srl_model'] if train_args['srl_model'] != "" else "raw pixels"
