@@ -163,7 +163,7 @@ if __name__ == '__main__':
     folders = []
     for folder in os.listdir(args.log_dir):
         path = "{}/{}/".format(args.log_dir, folder)
-        env_globals = json.load(open(path + "kuka_env_globals.json", 'r'))
+        env_globals = json.load(open(path + "env_globals.json", 'r'))
         train_args = json.load(open(path + "args.json", 'r'))
         if train_args["shape_reward"] == args.shape_reward:
             folders.append(path)

@@ -57,6 +57,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             losses = exp_config.get('losses', None)
             n_actions = exp_config.get('n_actions',6)
             model_type = exp_config['model-type']
+            use_multi_view = exp_config.get('multi-view', False)
         except KeyError:
             # Old format
             state_dim = exp_config['state_dim']
@@ -75,6 +76,12 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
 
     if model is None:
+        if use_multi_view:
+            if "triplet" in losses:
+                preprocessing.preprocess.N_CHANNELS = 9
+            else:
+                preprocessing.preprocess.N_CHANNELS = 6
+
         model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
 
     model_name = model_type

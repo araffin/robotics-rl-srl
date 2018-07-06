@@ -239,6 +239,8 @@ def main():
     # Allow up action
     # env_kwargs["force_down"] = False
 
+    # allow multi-view
+    env_kwargs['multi_view'] = args.srl_model == "multi_view_srl"
     parser = algo.customArguments(parser)
     args = parser.parse_args()
 
