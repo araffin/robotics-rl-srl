@@ -42,8 +42,8 @@ class NatureCNN(nn.Module):
 class MLPPolicy(nn.Module):
     """
     :param input_dim: (int)
-    :param hidden_dim: (int)
     :param out_dim: (int)
+    :param hidden_dim: (int)
     """
 
     def __init__(self, input_dim, out_dim, hidden_dim=128):
@@ -66,6 +66,7 @@ class MLPPolicy(nn.Module):
 class MLPValueNetwork(nn.Module):
     """
     :param input_dim: (int)
+    :param hidden_dim: (int)
     """
 
     def __init__(self, input_dim, hidden_dim=128):
@@ -86,6 +87,9 @@ class MLPValueNetwork(nn.Module):
 class MLPQValueNetwork(nn.Module):
     """
     :param input_dim: (int)
+    :param n_actions: (int)
+    :param continuous_actions: (bool)
+    :param hidden_dim: (int)
     """
 
     def __init__(self, input_dim, n_actions, continuous_actions, hidden_dim=128):
@@ -102,6 +106,11 @@ class MLPQValueNetwork(nn.Module):
         )
 
     def forward(self, obs, action):
+        """
+        :param obs: (th.Tensor)
+        :param action: (th.Tensor)
+        :return: (th.Tensor)
+        """
         if not self.continuous_actions:
             action = encodeOneHot(action.unsqueeze(1).long(), self.n_actions)
 
