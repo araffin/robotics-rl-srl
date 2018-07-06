@@ -97,7 +97,7 @@ If you want to integrate your own RL algorithm, please read `rl_baselines/README
 
 ## Environments
 
-All the enviroments we propose follow the OpenAI Gym interface. We added some extra method in order to work with SRL methods (see [State Representation Learning Models](#state-representation-learning-models)).
+All the environments we propose follow the OpenAI Gym interface. We also extended this interface (adding extra methods) to work with SRL methods (see [State Representation Learning Models](#state-representation-learning-models)).
 
 ### Available Environments
 

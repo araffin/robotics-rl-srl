@@ -137,7 +137,14 @@ class SACModel(BaseRLObject):
         parser.add_argument('--no-cuda', action='store_true', default=False,
                             help='Disable cuda for the neural network')
         parser.add_argument('--buffer-size', type=int, default=int(1e3), help="Replay buffer size")
-        parser.add_argument('--reward-scale', type=float, default=int(1),
+        parser.add_argument('-lr', '--learning-rate', type=float, default=3e-4, help="Learning rate")
+        parser.add_argument('--gamma', type=float, default=0.99, help="Discount factor")
+        parser.add_argument('--w-reg', type=float, default=1e-3, help="Weight for policy network regularization")
+        parser.add_argument('--soft-update-factor', type=float, default=1e-2, help="Rate for updating target net weights")
+        parser.add_argument('--print-freq', type=int, default=500, help="Print Frequency (every n steps)")
+        parser.add_argument('--batch-size', type=int, default=128, help="Minibatch size for each gradient update")
+        parser.add_argument('--gradient-steps', type=int, default=1, help="How many gradient update after each step")
+        parser.add_argument('--reward-scale', type=float, default=1.0,
                             help="Scaling factor for raw reward. (entropy factor)")
         return parser
 
@@ -270,8 +277,6 @@ class SACModel(BaseRLObject):
             action_space = env.action_space.n
 
         if args.srl_model != "raw_pixels":
-            printYellow("Using MLP policy because working on state representation")
-            args.policy = "mlp"
             input_dim = np.prod(env.observation_space.shape)
         else:
             n_channels = env.observation_space.shape[-1]
@@ -291,19 +296,11 @@ class SACModel(BaseRLObject):
         value_criterion = nn.MSELoss()
         q_value_criterion = nn.MSELoss()
 
-
-        gamma = 0.99  # Discount factor for reward
-        learning_rate = 3e-4
-        gradient_steps = 1  # How many gradient update after each step
-        batch_size = 128
-        soft_update_factor = 1e-2  # Rate for updating target net weights
-        w_reg = 1e-3  # Weight for the regularization of the policy
-        print_freq = 500
         replay_buffer = ReplayBuffer(args.buffer_size)
 
-        policy_optimizer = th.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
-        value_optimizer = th.optim.Adam(self.value_net.parameters(), lr=learning_rate)
-        q_optimizer = th.optim.Adam(self.q_value_net.parameters(), lr=learning_rate)
+        policy_optimizer = th.optim.Adam(self.policy_net.parameters(), lr=args.learning_rate)
+        value_optimizer = th.optim.Adam(self.value_net.parameters(), lr=args.learning_rate)
+        q_optimizer = th.optim.Adam(self.q_value_net.parameters(), lr=args.learning_rate)
 
         obs = env.reset()
         start_time = time.time()
@@ -324,14 +321,14 @@ class SACModel(BaseRLObject):
                 obs = env.reset()
 
             # Update the different networks
-            for _ in range(gradient_steps):
+            for _ in range(args.gradient_steps):
                 # Check that there is enough data in the buffer replay
-                if step < batch_size:
+                if step < args.batch_size:
                     break
 
                 # Sample a minibatch from the replay buffer
                 batch_obs, actions, rewards, batch_next_obs, dones = map(lambda x: self.toFloatTensor(x),
-                                                                         replay_buffer.sample(batch_size))
+                                                                         replay_buffer.sample(args.batch_size))
 
                 if self.using_images:
                     # Extract features from the images
@@ -350,7 +347,7 @@ class SACModel(BaseRLObject):
                 # Q-Value function loss
                 target_value_pred = self.target_value_net(batch_next_obs)
                 # TD error with reward scaling
-                next_q_value = args.reward_scale * rewards + (1 - dones) * gamma * target_value_pred.detach()
+                next_q_value = args.reward_scale * rewards + (1 - dones) * args.gamma * target_value_pred.detach()
                 loss_q_value = 0.5 * q_value_criterion(q_value, next_q_value.detach())
 
                 # Value Function loss
@@ -362,7 +359,7 @@ class SACModel(BaseRLObject):
                 # why not log_pi.exp_() ?
                 loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
                 # Regularization
-                loss_policy += w_reg * sum(map(l2Loss, [mean_policy, logstd]))
+                loss_policy += args.w_reg * sum(map(l2Loss, [mean_policy, logstd]))
 
                 q_optimizer.zero_grad()
                 # Retain graph if we are using a CNN for extracting features
@@ -379,7 +376,7 @@ class SACModel(BaseRLObject):
                 policy_optimizer.step()
 
                 # Softly update target value_pred network
-                softUpdate(source=self.value_net, target=self.target_value_net, factor=soft_update_factor)
+                softUpdate(source=self.value_net, target=self.target_value_net, factor=args.soft_update_factor)
 
-            if (step + 1) % print_freq == 0:
+            if (step + 1) % args.print_freq == 0:
                 print("{} steps - {:.2f} FPS".format(step, step / (time.time() - start_time)))
