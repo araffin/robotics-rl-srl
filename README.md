@@ -62,9 +62,9 @@ Several algorithms from [Open AI baselines](https://github.com/openai/baselines)
 - CMA-ES: Covariance Matrix Adaptation Evolution Strategy
 - SAC: Soft Actor Critic
 
-To train an agent:
+To train an agent (without visualization with visdom):
 ```
-python -m rl_baselines.train --algo ppo2 --log-dir logs/
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --no-vis
 ```
 
 To load a trained agent and see the result:
@@ -72,7 +72,7 @@ To load a trained agent and see the result:
 python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
 ```
 
-Continuous actions have been implemented for DDPG, PPO2, ARS, CMA-ES and random agent.
+Continuous actions have been implemented for DDPG, PPO2, ARS, CMA-ES, SAC and random agent.
 To use continuous actions in the position space:
 ```
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c
@@ -87,9 +87,10 @@ To run multiple enviroments with multiple SRL models for a given algorithm (you 
 ```
 python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --env env1 env2 [...] --srl-model model1 model2 [...]
 ```
-for example, ppo2 with 4 cpus and relative button position, in the default environment using VAE and ground_truth:
+
+For example, ppo2 with 4 cpus and randomly initialized target position, in the default environment using VAE and ground_truth:
 ```
-python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --srl-model vae ground_truth --relative --num-cpu 4
+python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --srl-model vae ground_truth --random-target --num-cpu 4
 ```
 
 If you want to integrate your own RL algorithm, please read `rl_baselines/README.md`.
@@ -127,7 +128,7 @@ python -m environments.dataset_generator --no-record-data --display
 ```
 Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
 
-To **record data** (i.e. generate a dataset) from the environment for **SRL training**, using random actions:
+To **record data** (i.e. generate a dataset) from the environment for **training a SRL model**, using random actions:
 ```bash
 python -m environments.dataset_generator --num-cpu 4 --name folder_name
 ```
@@ -153,9 +154,7 @@ The available state representation models are:
 - joints: the arm's joints angles
 - joints_position: the arm's x,y,z position and joints angles
 
-In the case of a custom_cnn (SRL priors model) trained with views of two cameras,
-set the global variable N_CHANNELS to 6 in srl_zoo/preprocessing/preprocess.py
-to perform the inference.
+If you have trained a SRL model with views of two cameras, you need to set the global variable N_CHANNELS to 6 in `srl_zoo/preprocessing/preprocess.py` to perform the inference.
 
 ### Plot Learning Curve
 
