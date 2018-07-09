@@ -2,8 +2,10 @@
 Train script for openAI RL Baselines
 """
 import argparse
+import glob
 import json
 import os
+import re
 from datetime import datetime
 from pprint import pprint
 import inspect
@@ -55,6 +57,20 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
         json.dump(params, f)
 
 
+def latestPath(path):
+    """
+    :param path: usual path till a model (from default config) (str)
+    :return: path till latest learned model in the same dataset folder (str)
+    """
+    possible_paths = "/".join(path.split('/')[:-2]) + '/*'
+    all_paths = glob.glob(possible_paths)
+    all_timestamps = [re.search("\d{2}-\d{2}-\d{2}_\d{2}h\d{2}_\d{2}", k).group(0) for k in all_paths]
+    # Latest timestamp
+    pre_path = max(all_timestamps)
+    index = all_timestamps.index(pre_path)
+    return all_paths[index] + '/srl_model.pth'
+
+
 def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
     :param args: (ArgumentParser object)
@@ -77,8 +93,9 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["srl_model"] = args.srl_model
     if path is not None:
         env_kwargs["use_srl"] = True
-        env_kwargs["srl_model_path"] = models['log_folder'] + path
-
+        srl_model_path = models['log_folder'] + path
+        # load latest model or not
+        env_kwargs["srl_model_path"] = latestPath(srl_model_path) if args.latest else srl_model_path
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
@@ -177,6 +194,8 @@ def main():
                         help='Set the button to a random position')
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
+    parser.add_argument('--latest', action='store_true', default=False,
+                        help='load the latest learned model')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()

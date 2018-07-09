@@ -69,6 +69,9 @@ def testDataGen():
 
 
 def testBaselineTrain():
+    """
+    Testing baseline models
+    """
 
     args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
             '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
@@ -79,7 +82,7 @@ def testBaselineTrain():
     assertEq(ok, 0)
 
     for baseline in ['vae', 'autoencoder']:
-        exp_name = 'baseline_'+ baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
+        exp_name = baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         LOG_BASELINE = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
         createFolders(LOG_BASELINE)
         exp_config = buildTestConfig()
@@ -102,9 +105,12 @@ def testBaselineTrain():
         assertEq(ok, 0)
 
 
-def testPriorTrain():
+def testSrlTrain():
+    """
+    Testing the training of srl models to be later used for RL
+    """
 
-    for loss_type in ["priors", "inverse", "forward", "vae"]:
+    for loss_type in ["priors", "inverse", "forward", "triplet"]:
 
         exp_name = loss_type + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
@@ -115,7 +121,8 @@ def testPriorTrain():
                 '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 32,
                 '--log-folder', log_name,'--losses', loss_type]
 
-        if loss_type == "vae":
+        # Testing multi-view
+        if loss_type == "triplet":
             exp_config["multi-view"] = True
             args.extend(['--multi-view', '--data-folder', TEST_DATA_FOLDER_DUAL])
         else:
@@ -155,6 +162,10 @@ def testPriorTrain():
 
 
 def testRLSrlTrain():
+    """
+    Testing RL pipeline on previously learned models
+    """
+
     for model_type in ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination", "multi_view_srl"]:
         args = ['--algo', DEFAULT_ALGO, '--env', DEFAULT_ENV, '--srl-model', model_type,
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,

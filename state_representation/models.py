@@ -3,6 +3,7 @@ import pickle as pkl
 
 import numpy as np
 import torch as th
+import cv2
 
 from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
 from srl_zoo.preprocessing import preprocessImage, getNChannels
@@ -43,10 +44,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     :param env_object: (gym env object)
     :return: (srl model)
     """
-    model_type = None
-    losses = None
-    n_actions = None
-    model = None
+
+    model_type, losses, n_actions, model = None, None, None, None
+
     if path is not None:
         # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
@@ -55,7 +55,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         try:
             state_dim = exp_config['state-dim']
             losses = exp_config.get('losses', None)
-            n_actions = exp_config.get('n_actions',6)
+            n_actions = exp_config.get('n_actions', 6)
             model_type = exp_config['model-type']
             use_multi_view = exp_config.get('multi-view', False)
         except KeyError:
@@ -126,6 +126,13 @@ class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
     def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None):
+        """
+        :param state_dim: (int)
+        :param cuda: (bool)
+        :param model_type: (string)
+        :param n_actions: action space dimensions (int)
+        :param losses: list of optimized losses defining the model (list of string)
+        """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
@@ -155,16 +162,20 @@ class SRLNeuralNetwork(SRLBaseClass):
         :return: (numpy matrix)
         """
         if getNChannels() > 3:
+            observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
+            observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
             observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
         else:
+            # preprocessImage expects a BGR image
+            observation = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
             observation = preprocessImage(observation)
 
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
         # Channel first
         observation = np.transpose(observation, (0, 3, 2, 1))
-        observation = th.from_numpy(observation).to(th.float).to(self.device)
- 
+        observation = th.from_numpy(observation).float().to(self.device)
+
         with th.no_grad():
             state = self.model.getStates(observation)[0]
         return state.to(th.device("cpu")).detach().numpy()
