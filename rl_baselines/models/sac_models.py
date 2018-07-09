@@ -23,7 +23,6 @@ class NatureCNN(nn.Module):
     def __init__(self, n_channels):
         super(NatureCNN, self).__init__()
         self.conv_layers = nn.Sequential(
-            # TODO: check the padding
             nn.Conv2d(n_channels, 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),

@@ -92,7 +92,7 @@ class SACModel(BaseRLObject):
         self.device = None
         self.cuda = False
         self.policy_net, self.q_value_net, self.value_net, self.target_value_net = None, None, None, None
-        self.deterministic = False  # not supported yet
+        self.deterministic = False  # Only available during testing
         self.continuous_actions = False
         self.encoder_net = None
         self.using_images = False
@@ -192,7 +192,11 @@ class SACModel(BaseRLObject):
             logstd = th.clamp(logstd, self.log_std_min, self.log_std_max)
             std = th.exp(logstd)
             distribution = Normal(mean_policy, std)
-            pre_tanh_value = distribution.sample().detach()
+            # Used only during testing
+            if self.deterministic:
+                pre_tanh_value = mean_policy
+            else:
+                pre_tanh_value = distribution.sample().detach()
             # Squash the value
             action = F.tanh(pre_tanh_value)
             # Correction to the log prob because of the squasing function
@@ -203,13 +207,28 @@ class SACModel(BaseRLObject):
             mean_policy, logstd = self.policy_net(obs)
             # Here mean policy is the energy of each action
             distribution = Categorical(logits=mean_policy)
-            action = distribution.sample().detach()
+            if self.deterministic:
+                action = th.argmax(F.softmax(mean_policy, dim=1), dim=1)
+            else:
+                action = distribution.sample().detach()
             # Only valid for continuous actions
             pre_tanh_value = action * 0.0
             logstd = logstd * 0.0
             log_pi = distribution.log_prob(action).unsqueeze(1)
 
         return action, log_pi, pre_tanh_value, mean_policy, logstd
+
+    def encodeObservation(self, obs):
+        """
+        Convert observation to pytorch tensor
+        and encode it (extract features) if needed using a CNN
+        :param obs:(numpy array)
+        :return: (th.Tensor)
+        """
+        obs = self.toFloatTensor(obs)
+        if self.using_images:
+            obs = self.encoder_net(channelFirst(obs))
+        return obs
 
     def getActionProba(self, obs, dones=None):
         """
@@ -219,11 +238,7 @@ class SACModel(BaseRLObject):
         :return: (numpy float) the action probability
         """
         with th.no_grad():
-            obs = self.toFloatTensor(obs)
-            if self.using_images:
-                obs = channelFirst(obs)
-                obs = self.encoder_net(obs)
-
+            obs = self.encodeObservation(obs)
             mean_policy, _ = self.policy_net(obs)
 
             if self.continuous_actions:
@@ -246,11 +261,7 @@ class SACModel(BaseRLObject):
         :return: (numpy float)
         """
         with th.no_grad():
-            obs = self.toFloatTensor(obs)
-            if self.using_images:
-                obs = channelFirst(obs)
-                obs = self.encoder_net(obs)
-            # TODO: deterministic policy for test
+            obs = self.encodeObservation(obs)
             action, _, _, _, _ = self.sampleAction(obs)
 
         return detachToNumpy(action)[0]
