@@ -13,6 +13,7 @@ from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
     loadRunningAverage, MultiprocessSRLModel
 from rl_baselines.models.sac_models import MLPPolicy, MLPQValueNetwork, MLPValueNetwork, NatureCNN
+from state_representation.episode_saver import LogRLStates
 from srl_zoo.utils import printYellow
 
 
@@ -280,6 +281,8 @@ class SACModel(BaseRLObject):
         self.cuda = th.cuda.is_available() and not args.no_cuda
         self.device = th.device("cuda" if self.cuda else "cpu")
         self.using_images = args.srl_model == "raw_pixels"
+
+        srl_logger = LogRLStates(args.log_dir)
         self.continuous_actions = args.continuous_actions
 
         if args.continuous_actions:
@@ -315,10 +318,13 @@ class SACModel(BaseRLObject):
 
         obs = env.reset()
         start_time = time.time()
+        srl_logger.reset(obs, env.getOriginalObs())
 
         for step in range(args.num_timesteps):
             action = self.getAction(obs[None])
             new_obs, reward, done, info = env.step(action)
+            # Log states
+            srl_logger.step(new_obs, env.getOriginalObs(), action, reward, done)
 
             # Fill the replay buffer
             replay_buffer.add(obs, action, reward, new_obs, float(done))
@@ -330,7 +336,7 @@ class SACModel(BaseRLObject):
 
             if done:
                 obs = env.reset()
-
+                srl_logger.reset(obs, env.getOriginalObs())
             # Update the different networks
             for _ in range(args.gradient_steps):
                 # Check that there is enough data in the buffer replay

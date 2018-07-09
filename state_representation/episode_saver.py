@@ -17,6 +17,7 @@ class EpisodeSaver(object):
     :param name: (str)
     :param max_dist: (float)
     :param state_dim: (int)
+    :param _globals: (dict) Environments globals
     :param learn_every: (int)
     :param learn_states: (bool)
     :param path: (str)
@@ -52,7 +53,6 @@ class EpisodeSaver(object):
         self.n_steps = 0
         self.max_steps = 10000
 
-        # TODO: convert max dist (to button) to lower/upper bound
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
         with open("{}/dataset_config.json".format(self.data_folder), "w") as f:
             json.dump(self.dataset_config, f)
@@ -158,3 +158,81 @@ class EpisodeSaver(object):
         print("Saving preprocessed data...")
         np.savez('{}/preprocessed_data.npz'.format(self.data_folder), **data)
         np.savez('{}/ground_truth.npz'.format(self.data_folder), **ground_truth)
+
+
+
+class LogRLStates(object):
+    """
+    Save the experience data (states, normalized states, actions, rewards) from a gym env to a file
+    during RL training. It is useful to debug SRL.
+    :param log_folder: (str)
+    """
+
+    def __init__(self, log_folder):
+        super(LogRLStates, self).__init__()
+
+        self.log_folder = log_folder + 'log_srl/'
+        try:
+            os.makedirs(self.log_folder)
+        except OSError:
+            printYellow("Folder already exist")
+
+        self.actions = []
+        self.rewards = []
+        self.states = []
+        self.normalized_states = []
+        # self.episode_starts = []
+
+
+    def reset(self, normalized_state, state):
+        """
+        Called when starting a new episode
+        :param observation: (numpy matrix) BGR Image
+        :param target_pos: (numpy array)
+        :param ground_truth: (numpy array)
+        """
+        # self.episode_starts.append(True)
+        self.normalized_states.append(normalized_state)
+        self.states.append(np.squeeze(state))
+
+    def step(self, normalized_state, state, action, reward, done):
+        """
+        :param observation: (numpy matrix) BGR Image
+        :param action: (int)
+        :param reward: (float)
+        :param done: (bool) whether the episode is done or not
+        :param ground_truth_state: (numpy array)
+        """
+        self.rewards.append(reward)
+        self.actions.append(action)
+
+        if not done:
+            # self.episode_starts.append(False)
+            self.normalized_states.append(normalized_state)
+            self.states.append(np.squeeze(state))
+        else:
+            # Save the gathered data at the end of each episode
+            self.save()
+
+    def save(self):
+        """
+        Write data and ground truth to disk
+        """
+        # Sanity checks
+        assert len(self.actions) == len(self.rewards)
+        # assert len(self.actions) == len(self.episode_starts)
+        assert len(self.actions) == len(self.normalized_states)
+        assert len(self.actions) == len(self.states)
+
+        data = {
+            'rewards': np.array(self.rewards),
+            'actions': np.array(self.actions),
+            # 'episode_starts': np.array(self.episode_starts)
+            'states': np.array(self.states),
+            'normalized_states': np.array(self.normalized_states),
+        }
+
+        np.savez('{}/full_log.npz'.format(self.log_folder), **data)
+        np.savez('{}/states_rewards.npz'.format(self.log_folder), **{'states': data['states'], 'rewards': data['rewards']})
+        np.savez('{}/normalized_states_rewards.npz'.format(self.log_folder),
+                **{'states': data['normalized_states'], 'rewards': data['rewards']})
