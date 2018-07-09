@@ -16,13 +16,33 @@ DEFAULT_SRL_CONFIG_YAML = "config/srl_models_test.yaml"
 
 DATA_FOLDER_NAME = "RL_test"
 TEST_DATA_FOLDER = "data/" + DATA_FOLDER_NAME
-LOG_FOLDER = "logs/RL_test/test_priors_custom_cnn/"
+TEST_DATA_FOLDER_DUAL = "data/kuka_gym_dual_test"
+
 NUM_EPOCHS = 1
 STATE_DIM = 3
 TRAINING_SET_SIZE = 2000
 KNN_SAMPLES = 1000
 
 SEED = 0
+
+
+def buildTestConfig():
+    cfg = {
+        "batch-size": 32,
+        "model-type": "custom_cnn",
+        "epochs": NUM_EPOCHS,
+        "knn-samples": KNN_SAMPLES,
+        "knn-seed": 1,
+        "l1-reg": 0,
+        "training-set-size": TRAINING_SET_SIZE,
+        "learning-rate": 0.001,
+        "data-folder": TEST_DATA_FOLDER,
+        "relative-pos": False,
+        "seed": SEED,
+        "state-dim": STATE_DIM,
+        "use-continuous": False
+    }
+    return cfg
 
 
 def assertEq(left, right):
@@ -33,9 +53,9 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-def createFolders():
-    createFolder("srl_zoo/" + LOG_FOLDER, "Test log folder already exist")
-    folder_path = 'srl_zoo/{}/NearestNeighbors/'.format(LOG_FOLDER)
+def createFolders(log_folder_name):
+    createFolder("srl_zoo/" + log_folder_name, "Test log folder already exist")
+    folder_path = 'srl_zoo/{}/NearestNeighbors/'.format(log_folder_name)
     createFolder(folder_path, "NearestNeighbors folder already exist")
 
 
@@ -49,63 +69,93 @@ def testDataGen():
 
 
 def testBaselineTrain():
-    for baseline in ['vae', 'autoencoder', 'supervised']:
-        args = ['--no-plots', '--data-folder', TEST_DATA_FOLDER,
+
+    args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
+            '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
+            '--seed', SEED, '--model-type', 'cnn']
+    args = list(map(str, args))
+
+    ok = subprocess.call(['python', '-m', 'baselines.supervised'] + args,  cwd=os.getcwd() + "/srl_zoo")
+    assertEq(ok, 0)
+
+    for baseline in ['vae', 'autoencoder']:
+        exp_name = 'baseline_'+ baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
+        LOG_BASELINE = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
+        createFolders(LOG_BASELINE)
+        exp_config = buildTestConfig()
+        exp_config["log-folder"] = LOG_BASELINE
+        exp_config["experiment-name"] = exp_name
+        exp_config["losses"] = baseline
+        exp_config["batch-size"] = 32
+        print("log baseline: ", LOG_BASELINE)
+        args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
                 '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
-                '--seed', SEED, '--model-type', 'cnn']
-        if baseline != 'supervised':
-            args += ['--state-dim', STATE_DIM]
+                '--seed', SEED, '--model-type', 'custom_cnn',
+                '--state-dim', STATE_DIM, '-bs', 32,
+                '--losses', baseline,
+                '--log-folder', LOG_BASELINE]
         args = list(map(str, args))
 
-        ok = subprocess.call(['python', '-m', 'baselines.{}'.format(baseline)] + args,  cwd=os.getcwd() + "/srl_zoo")
+        with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
+            json.dump(exp_config, f)
+        ok = subprocess.call(['python', 'train.py'] + args, cwd=os.getcwd() + "/srl_zoo")
         assertEq(ok, 0)
 
 
 def testPriorTrain():
-    createFolders()
-    for model_type in ['custom_cnn']:
-        args = ['--no-plots', '--data-folder', TEST_DATA_FOLDER,
-                '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
-                '--seed', SEED, '--val-size', 0.1, '--log-folder', LOG_FOLDER,
-                '--state-dim', STATE_DIM, '--model-type', model_type, '-bs', 128]
+
+    for loss_type in ["priors", "inverse", "forward", "vae"]:
+
+        exp_name = loss_type + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
+        log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
+        createFolders(log_name)
+        exp_config = buildTestConfig()
+
+        args = ['--no-display-plots', '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
+                '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 32,
+                '--log-folder', log_name,'--losses', loss_type]
+
+        if loss_type == "vae":
+            exp_config["multi-view"] = True
+            args.extend(['--multi-view', '--data-folder', TEST_DATA_FOLDER_DUAL])
+        else:
+            args.extend(['--data-folder', TEST_DATA_FOLDER])
+
+
         args = list(map(str, args))
 
-        ok = subprocess.call(['python', 'train.py'] + args,  cwd=os.getcwd() + "/srl_zoo")
-        assertEq(ok, 0)
-
-        exp_config = {
-            "batch-size": 128,
-            "epochs": NUM_EPOCHS,
-            "knn-samples": KNN_SAMPLES,
-            "knn-seed": 1,
-            "l1-reg": 0,
-            "training-set-size": TRAINING_SET_SIZE,
-            "learning-rate": 0.001,
-            "model-approach": "priors",
-            "model-type": model_type,
-            "n-neighbors": 5,
-            "n-to-plot": 5,
-            "priors": [
-                "Proportionality",
-                "Temporal",
-                "Causality",
-                "Repeatability"
-            ],
-            "data-folder": TEST_DATA_FOLDER,
-            "relative-pos": False,
-            "seed": SEED,
-            "state-dim": STATE_DIM,
-            "log-folder": LOG_FOLDER,
-            "experiment-name": "test_priors_custom_cnn",
-            "use-continuous": False
-        }
+        exp_config["log-folder"] = log_name
+        exp_config["experiment-name"] = exp_name
+        exp_config["losses"] = loss_type
         exp_config = OrderedDict(sorted(exp_config.items()))
         with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
             json.dump(exp_config, f)
+        ok = subprocess.call(['python', 'train.py'] + args, cwd=os.getcwd() + "/srl_zoo")
+        assertEq(ok, 0)
+
+    # Combining models
+    exp_name = 'vae_inverse_forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
+    log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
+    createFolders(log_name)
+    args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
+            '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
+            '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 32,
+            '--log-folder', log_name, '--losses', "forward", "inverse", "vae"]
+    args = list(map(str, args))
+
+    exp_config = buildTestConfig()
+    exp_config["log-folder"] = log_name
+    exp_config["experiment-name"] = exp_name
+    exp_config["losses"] = ["forward", "inverse", "vae"]
+    exp_config = OrderedDict(sorted(exp_config.items()))
+    with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
+        json.dump(exp_config, f)
+    ok = subprocess.call(['python', 'train.py'] + args, cwd=os.getcwd() + "/srl_zoo")
+    assertEq(ok, 0)
 
 
 def testRLSrlTrain():
-    for model_type in ['vae', 'autoencoder', 'supervised', 'robotic_priors']:
+    for model_type in ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination", "multi_view_srl"]:
         args = ['--algo', DEFAULT_ALGO, '--env', DEFAULT_ENV, '--srl-model', model_type,
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
                 '--no-vis', '--srl-config-file', DEFAULT_SRL_CONFIG_YAML]

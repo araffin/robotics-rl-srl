@@ -5,9 +5,9 @@ import numpy as np
 import torch as th
 import cv2
 
-from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, \
-    ConvolutionalNetwork
-from srl_zoo.preprocessing import preprocessImage, N_CHANNELS
+from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
+from srl_zoo.preprocessing import preprocessImage, getNChannels
+import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -45,15 +45,20 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     :return: (srl model)
     """
     model_type = None
+    losses = None
+    n_actions = None
     model = None
     if path is not None:
         # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
-
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
         try:
             state_dim = exp_config['state-dim']
+            losses = exp_config.get('losses', None)
+            n_actions = exp_config.get('n_actions',6)
+            model_type = exp_config['model-type']
+            use_multi_view = exp_config.get('multi-view', False)
         except KeyError:
             # Old format
             state_dim = exp_config['state_dim']
@@ -67,29 +72,23 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             if 'pca' in path:
                 model_type = 'pca'
                 model = SRLPCA(state_dim)
-            elif 'supervised' in path and 'cnn' in path:
-                model_type = 'supervised_custom_cnn'
-            elif 'supervised' in path and 'resnet' in path:
-                model_type = 'supervised_resnet'
-            elif 'autoencoder' in path:
-                model_type = 'autoencoder'
-            elif 'vae' in path:
-                model_type = 'vae'
-        else:
-            if 'custom_cnn' in path:
-                model_type = 'custom_cnn'
-            elif 'triplet' in path:
-                model_type = "triplet_cnn"
-            else:
-                model_type = 'resnet'
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
 
     if model is None:
-        model = SRLNeuralNetwork(state_dim, cuda, model_type)
+        if use_multi_view:
+            if "triplet" in losses:
+                preprocessing.preprocess.N_CHANNELS = 9
+            else:
+                preprocessing.preprocess.N_CHANNELS = 6
 
-    printGreen("\nSRL: Using {} \n".format(model_type))
+        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
+
+    model_name = model_type
+    if 'baselines' not in path:
+        model_name += " with " + ", ".join(losses)
+    printGreen("\nSRL: Using {} \n".format(model_name))
 
     if path is not None:
         printYellow("Loading trained model...{}".format(path))
@@ -127,29 +126,18 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn"):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
-
-        if model_type == "custom_cnn":
-            self.model = SRLCustomCNN(state_dim, self.cuda, noise_std=NOISE_STD)
-        elif model_type == "supervised_custom_cnn":
-            self.model = CustomCNN(state_dim)
-        elif model_type == "supervised_resnet":
-            self.model = ConvolutionalNetwork(state_dim)
-        elif model_type == "resnet":
-            self.model = SRLConvolutionalNetwork(state_dim, self.cuda, noise_std=NOISE_STD)
-        # TODO: support mlp models
-        elif model_type == "autoencoder":
-            self.model = CNNAutoEncoder(self.state_dim)
-        elif model_type == "triplet_cnn":
-            self.model = TripletNet(state_dim)
-        elif model_type == "vae":
-            self.model = CNNVAE(self.state_dim)
+        if "supervised" in losses:
+            if model_type == "cnn":
+                self.model = CustomCNN(state_dim)
+            elif model_type == "resnet":
+                self.model = ConvolutionalNetwork(state_dim)
         else:
-            raise ValueError("Model type not supported: {}".format(model_type))
-
+            self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+                                    cuda=self.cuda, losses=losses)
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
@@ -167,7 +155,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param observation: (numpy tensor)
         :return: (numpy matrix)
         """
-        if N_CHANNELS > 3:
+        if getNChannels() > 3:
             observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
             observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
             observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
