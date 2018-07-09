@@ -103,7 +103,7 @@ class CustomVecNormalize(VecEnvWrapper):
         self.training = training
         self.norm_obs = norm_obs
         self.norm_rewards = norm_rewards
-        self.old_obs = np.array([])
+        self.unnormalized_obs = np.array([])
 
     def step_wait(self):
         """
@@ -114,7 +114,7 @@ class CustomVecNormalize(VecEnvWrapper):
         """
         obs, rews, news, infos = self.venv.step_wait()
         self.ret = self.ret * self.gamma + rews
-        self.old_obs = obs
+        self.unnormalized_obs = obs
         obs = self._normalizeObservation(obs)
         if self.norm_rewards:
             if self.training:
@@ -140,7 +140,7 @@ class CustomVecNormalize(VecEnvWrapper):
         returns the unnormalized observation
         :return: (numpy float)
         """
-        return self.old_obs
+        return self.unnormalized_obs
 
     def reset(self):
         """
@@ -148,9 +148,9 @@ class CustomVecNormalize(VecEnvWrapper):
         """
         obs = self.venv.reset()
         if len(np.array(obs).shape) == 1:  # for when num_cpu is 1
-            self.old_obs = [obs]
+            self.unnormalized_obs = [obs]
         else:
-            self.old_obs = obs
+            self.unnormalized_obs = obs
         return self._normalizeObservation(obs)
 
     def saveRunningAverage(self, path):
