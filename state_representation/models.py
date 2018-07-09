@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 import cv2
 
-from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
+from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
 from srl_zoo.preprocessing import preprocessImage, getNChannels
 import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
@@ -53,6 +53,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
+        split_index = exp_config.get('split-index', None)
         try:
             state_dim = exp_config['state-dim']
             losses = exp_config.get('losses', None)
@@ -83,7 +84,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             else:
                 preprocessing.preprocess.N_CHANNELS = 6
 
-        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
+        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses, split_index=split_index)
 
     model_name = model_type
     if 'baselines' not in path:
@@ -126,7 +127,7 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None):
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
@@ -135,6 +136,9 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
+        elif split_index is not None and split_index > 0:
+            self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+                                    cuda=self.cuda, losses=losses, split_index=split_index)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                     cuda=self.cuda, losses=losses)
