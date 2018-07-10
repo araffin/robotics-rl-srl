@@ -159,18 +159,19 @@ python -m rl_baselines.train --algo ppo2 --log-dir logs/ --srl-model model_name
 ```
 
 The available state representation models are:
-- autoencoder: an autoencoder from the raw pixels
 - ground_truth: the arm's x,y,z position
-- srl_priors: SRL priors model
+- robotic_priors: SRL Robotic priors model
 - supervised: a supervised model from the raw pixels to the arm's x,y,z position
 - pca: pca applied to the raw pixels
+- autoencoder: an autoencoder from the raw pixels
 - vae: a variational autoencoder from the raw pixels
+- inverse: an inverse dynamics model
+- forward: a forward dynamics model
+- srl_combination: a model combining several losses (e.g. vae + forward + inverse...) for SRL
+- multi_view_srl: a SRL model using views from multiple cameras as input, with any of the above losses (e.g triplet and others)
 - joints: the arm's joints angles
 - joints_position: the arm's x,y,z position and joints angles
 
-In the case of a custom_cnn (SRL priors model) trained with views of two cameras,
-set the global variable N_CHANNELS to 6 in srl_zoo/preprocessing/preprocess.py
-to perform the inference.
 
 ## Baxter Robot with Gazebo and ROS
 Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).

@@ -74,7 +74,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
-    assert not ((n_actions is None or losses is None) and not (model_type == 'pca' or model_type == 'supervised')), \
+    assert not (losses is None and not model_type == 'pca'), \
+        "Please make sure you are loading an up to date model with a conform exp_config file."
+    assert not (n_actions is None and not (model_type == 'pca' or 'supervised' in losses)), \
         "Please make sure you are loading an up to date model with a conform exp_config file."
 
     if model is None:
