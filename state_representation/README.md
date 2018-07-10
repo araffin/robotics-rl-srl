@@ -12,6 +12,10 @@ This learned representation can be used instead of learning a policy directly fr
 - supervised: a supervised model from the raw pixels to the agent's position
 - pca: pca applied to the raw pixels
 - vae: a variational autoencoder from the raw pixels
+- inverse: an inverse dynamics model
+- forward: a forward dynamics model
+- srl_combination: a model combining several losses (e.g. vae + forward + inverse...) for SRL
+- multi_view_srl: a SRL model using views from multiple cameras as input, with any of the above losses (e.g triplet and others)
 - joints: the arm's joints angles (kuka environments only)
 - joints_position: the arm's x,y,z position and joints angles (kuka environments only)
 

@@ -183,7 +183,7 @@ def testRLSrlTrain():
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
                 '--no-vis', '--srl-config-file', DEFAULT_SRL_CONFIG_YAML]
         if algo == "ddpg":
-            mem_limit = 100 if model_type == 'raw_pixels' else 100000
+            mem_limit = 100000
             args.extend(['-c', '--memory-limit', mem_limit])
         elif algo == "acer":
             args.extend(['--num-stack', 4])
