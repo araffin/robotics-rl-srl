@@ -62,14 +62,7 @@ def latestPath(path):
     :param path: usual path till a model (from default config) (str)
     :return: path till latest learned model in the same dataset folder (str)
     """
-    possible_paths = "/".join(path.split('/')[:-2]) + '/*'
-    all_paths = glob.glob(possible_paths)
-    all_timestamps = [re.search("\d{2}-\d{2}-\d{2}_\d{2}h\d{2}_\d{2}", k).group(0) for k in all_paths]
-    # Latest timestamp
-    pre_path = max(all_timestamps)
-    index = all_timestamps.index(pre_path)
-    return all_paths[index] + '/srl_model.pth'
-
+    return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
 
 def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
@@ -95,7 +88,7 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
         env_kwargs["use_srl"] = True
         srl_model_path = models['log_folder'] + path
         # load latest model or not
-        env_kwargs["srl_model_path"] = latestPath(srl_model_path) if args.latest else srl_model_path
+        env_kwargs["srl_model_path"] = latestPath(models['log_folder']) if args.latest else srl_model_path
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir

@@ -90,6 +90,7 @@ def testBaselineTrain():
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = baseline
         exp_config["batch-size"] = 32
+        exp_config["n_actions"] = 6
         print("log baseline: ", LOG_BASELINE)
         args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
                 '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
@@ -134,6 +135,7 @@ def testSrlTrain():
         exp_config["log-folder"] = log_name
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = loss_type
+        exp_config["n_actions"] = 6
         exp_config = OrderedDict(sorted(exp_config.items()))
         with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
             json.dump(exp_config, f)
@@ -154,6 +156,7 @@ def testSrlTrain():
     exp_config["log-folder"] = log_name
     exp_config["experiment-name"] = exp_name
     exp_config["losses"] = ["forward", "inverse", "vae"]
+    exp_config["n_actions"] = 6
     exp_config = OrderedDict(sorted(exp_config.items()))
     with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
         json.dump(exp_config, f)

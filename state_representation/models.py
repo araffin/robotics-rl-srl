@@ -52,15 +52,15 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
-        try:
-            state_dim = exp_config['state-dim']
-            losses = exp_config.get('losses', None)
-            n_actions = exp_config.get('n_actions', 6)
-            model_type = exp_config['model-type']
-            use_multi_view = exp_config.get('multi-view', False)
-        except KeyError:
-            # Old format
-            state_dim = exp_config['state_dim']
+
+        state_dim = exp_config.get('state-dim', None)
+        losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
+        n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
+        model_type = exp_config.get('model-type', None)
+        use_multi_view = exp_config.get('multi-view', False)
+
+        assert state_dim is not None, \
+            "Please make sure you are loading an up to date model with a conform exp_config file."
     else:
         assert env_object is not None or state_dim > 0, \
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
@@ -74,6 +74,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
+    assert not ((n_actions is None or losses is None) and not (model_type == 'pca' or model_type == 'supervised')), \
+        "Please make sure you are loading an up to date model with a conform exp_config file."
 
     if model is None:
         if use_multi_view:
