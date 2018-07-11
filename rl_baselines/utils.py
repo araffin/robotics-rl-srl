@@ -354,3 +354,50 @@ def softmax(x):
     e_x = np.exp(x.T - np.max(x.T, axis=0))
     return (e_x / e_x.sum(axis=0)).T
 
+
+class AddCoords(th.nn.Module):
+    """
+    Pytorch module that implements coord adding to the tensor channels.
+    Used in CoordConv: https://arxiv.org/pdf/1807.03247.pdf
+    """
+    def __init__(self):
+        super(AddCoords, self).__init__()
+
+    def forward(self, x):
+        i_layer = th.range(0, x.shape[3] - 1).view(1, -1).repeat(x.shape[2], 1)\
+            .view(x.shape[2], -1).repeat(x.shape[0], 1, 1, 1)
+        i_layer = i_layer / (x.shape[3] - 1) * 2 - 1
+        j_layer = th.range(0, x.shape[2] - 1).view(-1, 1).repeat(1, x.shape[3])\
+            .view(-1, x.shape[3]).repeat(x.shape[0], 1, 1, 1)
+        j_layer = j_layer / (x.shape[2] - 1) * 2 - 1
+        return th.cat([i_layer, j_layer, x], dim=1)
+
+
+def add_coords(x, data_format='NHWC'):
+    """
+    adds coordinate layer to a TensorFlow Tensor
+    CoordConv: https://arxiv.org/pdf/1807.03247.pdf
+    :param x: (TensorFlow Tensor) the input tensor
+    :param data_format: (str) The data format for the convolution weights
+    :return: (TensorFlow Tensor) the input tensor with the concatenated coordinate layers on the channels
+    """
+    if data_format == 'NHWC':
+        channel_ax = 3
+        h_img = tf.shape(x)[1]
+        w_img = tf.shape(x)[2]
+        n_batch = tf.shape(x)[0]
+        pos_layer_shape = [n_batch, h_img, w_img, 1]
+    elif data_format == 'NCHW':
+        channel_ax = 1
+        h_img = tf.shape(x)[2]
+        w_img = tf.shape(x)[3]
+        n_batch = tf.shape(x)[0]
+        pos_layer_shape = [n_batch, 1, h_img, w_img]
+    else:
+        raise NotImplementedError
+
+    i_layer = tf.reshape(tf.tile(tf.reshape(tf.range(w_img), [1, 1, -1]), [n_batch, h_img, 1]), pos_layer_shape)
+    i_layer = i_layer / (w_img - 1) * 2 - 1
+    j_layer = tf.reshape(tf.tile(tf.reshape(tf.range(h_img), [1, -1, 1]), [n_batch, 1, w_img]), pos_layer_shape)
+    j_layer = j_layer / (h_img - 1) * 2 - 1
+    return tf.concat([tf.to_float(i_layer), tf.to_float(j_layer), x], channel_ax)

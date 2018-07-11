@@ -31,6 +31,7 @@ class PPO2Model(BaseRLObject):
         self.model = None
         self.continuous_actions = None
         self.states = None
+        self.use_coordconv = None
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -58,9 +59,11 @@ class PPO2Model(BaseRLObject):
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
         continuous = loaded_model.continuous_actions
-        policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+        coordconv = loaded_model.use_coordconv
+        policy = {'cnn': PPO2CNNPolicy(continuous=continuous, use_coordconv=coordconv),
+                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, use_coordconv=coordconv),
+                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True,
+                                              normalised=True, use_coordconv=coordconv),
                   'mlp': PPO2MLPPolicy(continuous=continuous),
                   'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
                   'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[loaded_model.policy]
@@ -86,6 +89,8 @@ class PPO2Model(BaseRLObject):
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
         parser.add_argument('--policy', help='Policy architecture', default='feedforward',
                             choices=['feedforward', 'lstm', 'lnlstm'])
+        parser.add_argument('--use-coordconv', help='use coordConv layer for the CNN policies',
+                            action='store_true', default=False)
 
         return parser
 
@@ -115,6 +120,7 @@ class PPO2Model(BaseRLObject):
         self.ac_space = envs.action_space
         self.policy = args.policy
         self.continuous_actions = args.continuous_actions
+        self.use_coordconv = args.use_coordconv
 
         assert not (self.policy in ['lstm', 'lnlstm'] and args.num_cpu % 4 != 0), \
             "Error: Reccurent policies must have num cpu at a multiple of 4."
@@ -155,9 +161,11 @@ class PPO2Model(BaseRLObject):
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
         continuous = args.continuous_actions
-        policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
+        coordconv = args.use_coordconv
+        policy = {'cnn': PPO2CNNPolicy(continuous=continuous, use_coordconv=coordconv),
+                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, use_coordconv=coordconv),
+                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True,
+                                              normalised=True, use_coordconv=coordconv),
                   'mlp': PPO2MLPPolicy(continuous=continuous),
                   'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
                   'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[args.policy]

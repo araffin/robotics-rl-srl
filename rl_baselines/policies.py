@@ -1,10 +1,28 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib as tc
-from baselines.a2c.utils import fc, sample, batch_to_seq, seq_to_batch, lstm, lnlstm
+from baselines.a2c.utils import fc, sample, batch_to_seq, seq_to_batch, lstm, lnlstm, conv_to_fc, conv
 from baselines.common.distributions import make_pdtype
 from baselines.ddpg.models import Model
 from baselines.ppo2.policies import nature_cnn
+
+from rl_baselines.utils import add_coords
+
+
+def nature_cnn_coordconv(unscaled_images):
+    """
+    CNN from Nature paper + coordconv.
+    CoordConv: https://arxiv.org/pdf/1807.03247.pdf
+    :param unscaled_images: (TensorFlow Tensor) Image input placeholder
+    :return: (TensorFlow Tensor) The CNN output layer
+    """
+    scaled_images = tf.cast(unscaled_images, tf.float32) / 255. * 2 - 1
+    activ = tf.nn.relu
+    h = activ(conv(add_coords(scaled_images), 'c1', nf=32, rf=8, stride=4, init_scale=np.sqrt(2)))
+    h2 = activ(conv(add_coords(h), 'c2', nf=64, rf=4, stride=2, init_scale=np.sqrt(2)))
+    h3 = activ(conv(add_coords(h2), 'c3', nf=64, rf=3, stride=1, init_scale=np.sqrt(2)))
+    h3 = conv_to_fc(h3)
+    return activ(fc(h3, 'fc1', nh=512, init_scale=np.sqrt(2)))
 
 
 def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
@@ -116,13 +134,14 @@ def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64)
     return Policy
 
 
-def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
+def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64, use_coordconv=False):
     """
     Generates an CNN policy for PPO2 and A2C
     :param continuous: (bool) If the output of the policy is continuous actions
     :param reccurent: (bool) If the policy uses a reccurent neural network
     :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
     :param nlstm: (int) Number of lstm cells to use
+    :param use_coordconv: (bool) if CoordConv CNN should be used
     :return: (Policy)
     """
     class Policy(object):
@@ -156,7 +175,10 @@ def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64)
             with tf.variable_scope("model", reuse=reuse):
                 activ = tf.tanh
                 # input layers
-                decoder = nature_cnn(X)
+                if use_coordconv:
+                    decoder = nature_cnn_coordconv(X)
+                else:
+                    decoder = nature_cnn(X)
                 # Reccurent layer
                 if reccurent:
                     xs = batch_to_seq(decoder, nenv, nsteps)

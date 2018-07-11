@@ -29,6 +29,7 @@ class A2CModel(BaseRLObject):
         self.policy = None
         self.model = None
         self.states = None
+        self.use_coordconv = None
 
     def save(self, save_path, _locals=None):
         assert self.model is not None, "Error: must train or load model before use"
@@ -54,9 +55,10 @@ class A2CModel(BaseRLObject):
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
-        policy = {'cnn': PPO2CNNPolicy(),
-                  'cnn-lstm': PPO2CNNPolicy(reccurent=True),
-                  'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+        coordconv = loaded_model.use_coordconv
+        policy = {'cnn': PPO2CNNPolicy(use_coordconv=coordconv),
+                  'cnn-lstm': PPO2CNNPolicy(reccurent=True, use_coordconv=coordconv),
+                  'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True, use_coordconv=coordconv),
                   'mlp': PPO2MLPPolicy(),
                   'lstm': PPO2MLPPolicy(reccurent=True),
                   'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[loaded_model.policy]
@@ -79,6 +81,8 @@ class A2CModel(BaseRLObject):
                             default='feedforward')
         parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
                             default='constant')
+        parser.add_argument('--use-coordconv', help='use coordConv layer for the CNN policies',
+                            action='store_true', default=False)
         return parser
 
     def getActionProba(self, observation, dones=None):
@@ -106,13 +110,14 @@ class A2CModel(BaseRLObject):
         self.policy = args.policy
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
+        self.use_coordconv = args.use_coordconv
 
         logger.configure()
         self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
                     lrschedule=args.lr_schedule, callback=callback)
         envs.close()
 
-    def _learn(self, policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
+    def _learn(self, args, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
                max_grad_norm=0.5, lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100,
                callback=None):
         tf.reset_default_graph()
@@ -122,12 +127,13 @@ class A2CModel(BaseRLObject):
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
-        policy_fn = {'cnn': PPO2CNNPolicy(),
-                     'cnn-lstm': PPO2CNNPolicy(reccurent=True),
-                     'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
+        coordconv = args.use_coordconv
+        policy_fn = {'cnn': PPO2CNNPolicy(use_coordconv=coordconv),
+                     'cnn-lstm': PPO2CNNPolicy(reccurent=True, use_coordconv=coordconv),
+                     'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True, use_coordconv=coordconv),
                      'mlp': PPO2MLPPolicy(),
                      'lstm': PPO2MLPPolicy(reccurent=True),
-                     'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[policy]
+                     'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[args.policy]
 
         nenvs = env.num_envs
         ob_space = env.observation_space

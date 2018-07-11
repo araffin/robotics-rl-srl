@@ -8,8 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.utils import createEnvs
-from srl_zoo.utils import printYellow
+from rl_baselines.utils import createEnvs, AddCoords
 
 
 def detachToNumpy(tensor):
@@ -60,6 +59,8 @@ class CMAESModel(BaseRLObject):
                             help='use gpu for the neural network')
         parser.add_argument('--deterministic', action='store_true', default=False,
                             help='do a deterministic approach for the actions on the output of the policy')
+        parser.add_argument('--use-coordconv', help='use coordConv layer for the CNN policies',
+                            action='store_true', default=False)
         return parser
 
     def getActionProba(self, observation, dones=None):
@@ -86,7 +87,10 @@ class CMAESModel(BaseRLObject):
         if args.srl_model != "raw_pixels":
             net = MLPPolicyPytorch(np.prod(env.observation_space.shape), [100], action_space)
         else:
-            net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
+            if args.use_coordconv:
+                net = CNNCoordConvPolicyPytorch(env.observation_space.shape[-1], action_space)
+            else:
+                net = CNNPolicyPytorch(env.observation_space.shape[-1], action_space)
 
         self.policy = PytorchPolicy(net, args.continuous_actions, srl_model=(args.srl_model != "raw_pixels"),
                                     cuda=args.cuda, deterministic=args.deterministic)
@@ -197,7 +201,7 @@ class PytorchPolicy(Policy):
         :return: (numpy float) the action probability
         """
         if not self.srl_model:
-            obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
+            obs = np.transpose(obs / 255.0, (0, 3, 1, 2)) * 2 - 1
 
         if self.continuous_actions:
             action = detachToNumpy(self.model(self.toTensor(obs)))
@@ -212,7 +216,7 @@ class PytorchPolicy(Policy):
         :return: the action
         """
         if not self.srl_model:
-            obs = np.transpose(obs / 255.0, (0, 3, 1, 2))
+            obs = np.transpose(obs / 255.0, (0, 3, 1, 2)) * 2 - 1
 
         with torch.no_grad():
             if self.continuous_actions:
@@ -252,6 +256,7 @@ class PytorchPolicy(Policy):
 class CNNPolicyPytorch(nn.Module):
     """
     A simple CNN policy using pytorch
+    :param in_dim: (int)
     :param out_dim: (int)
     """
 
@@ -283,6 +288,56 @@ class CNNPolicyPytorch(nn.Module):
         x = F.relu(x)
         x = self.pool2(x)
 
+        x = self.conv3(x)
+        x = self.norm3(x)
+        x = F.relu(x)
+        x = self.pool3(x)
+
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+
+class CNNCoordConvPolicyPytorch(nn.Module):
+    """
+    A simple CNN policy using pytorch with CoordConv
+    CoordConv: https://arxiv.org/pdf/1807.03247.pdf
+    :param in_dim: (int)
+    :param out_dim: (int)
+    """
+
+    def __init__(self, in_dim, out_dim):
+        super(CNNCoordConvPolicyPytorch, self).__init__()
+        # Set bias to False, due to it being nullified and replaced by BatchNorm2d
+        self.conv1 = nn.Conv2d(in_dim + 2, 8, kernel_size=5, padding=2, stride=2, bias=False)
+        self.norm1 = nn.BatchNorm2d(8)
+        self.pool1 = nn.MaxPool2d(2)
+
+        self.conv2 = nn.Conv2d(10, 16, kernel_size=3, padding=1, stride=2, bias=False)
+        self.norm2 = nn.BatchNorm2d(16)
+        self.pool2 = nn.MaxPool2d(2)
+
+        self.conv3 = nn.Conv2d(18, 32, kernel_size=3, padding=1, stride=2, bias=False)
+        self.norm3 = nn.BatchNorm2d(32)
+        self.pool3 = nn.MaxPool2d(2)
+
+        self.fc = nn.Linear(288, out_dim)
+        self.addcoord = AddCoords()
+
+    def forward(self, x):
+        x = self.addcoord(x)
+        x = self.conv1(x)
+        x = self.norm1(x)
+        x = F.relu(x)
+        x = self.pool1(x)
+
+        x = self.addcoord(x)
+        x = self.conv2(x)
+        x = self.norm2(x)
+        x = F.relu(x)
+        x = self.pool2(x)
+
+        x = self.addcoord(x)
         x = self.conv3(x)
         x = self.norm3(x)
         x = F.relu(x)
