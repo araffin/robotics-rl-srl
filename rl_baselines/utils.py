@@ -76,21 +76,20 @@ def filterJSONSerializableObjects(input_dict):
 
 
 class CustomVecNormalize(VecEnvWrapper):
-    """
-    Custom vectorized environment, it adds support for saving/loading moving average
-    It can normalize observation and reward by computing a moving average
-    :param venv: (VecEnv Object)
-    :param training: (bool) Whether to update or not the moving average
-    :param norm_obs: (bool) Whether to normalize observation or not (default: True)
-    :param norm_rewards: (bool) Whether to normalize rewards or not (default: False)
-    :param clip_obs: (float) Max absolute value for observation
-    :param clip_reward: (float) Max value absolute for discounted reward
-    :param gamma: (float) discount factor
-    :param epsilon: (float) To avoid division by zero
-    """
-
     def __init__(self, venv, training=True, norm_obs=True, norm_rewards=False,
                  clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
+        """
+        Custom vectorized environment, it adds support for saving/loading moving average
+        It can normalize observation and reward by computing a moving average
+        :param venv: (VecEnv Object)
+        :param training: (bool) Whether to update or not the moving average
+        :param norm_obs: (bool) Whether to normalize observation or not (default: True)
+        :param norm_rewards: (bool) Whether to normalize rewards or not (default: False)
+        :param clip_obs: (float) Max absolute value for observation
+        :param clip_reward: (float) Max value absolute for discounted reward
+        :param gamma: (float) discount factor
+        :param epsilon: (float) To avoid division by zero
+        """
         VecEnvWrapper.__init__(self, venv)
         self.obs_rms = RunningMeanStd(shape=self.observation_space.shape)
         self.ret_rms = RunningMeanStd(shape=())

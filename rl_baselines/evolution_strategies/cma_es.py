@@ -54,7 +54,7 @@ class CMAESModel(BaseRLObject):
         parser.add_argument('--num-population', help='Number of population', type=int, default=20)
         parser.add_argument('--mu', type=float, default=0,
                             help='inital location for gaussian sampling of network parameters')
-        parser.add_argument('--sigma', type=float, default=0.2,
+        parser.add_argument('--sigma', type=float, default=0.14,
                             help='inital scale for gaussian sampling of network parameters')
         parser.add_argument('--cuda', action='store_true', default=False,
                             help='use gpu for the neural network')
@@ -73,7 +73,7 @@ class CMAESModel(BaseRLObject):
     @classmethod
     def getOptParam(cls):
         return {
-            "sigma": (float, (0, 2))
+            "sigma": (float, (0, 0.2))
         }
 
     @classmethod
