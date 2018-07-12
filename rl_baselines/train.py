@@ -59,7 +59,7 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
 
 def latestPath(path):
     """
-    :param path: usual path till a model (from default config) (str)
+    :param path: path to the log folder (from exp_config) (str)
     :return: path till latest learned model in the same dataset folder (str)
     """
     return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
