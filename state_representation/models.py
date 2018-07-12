@@ -81,7 +81,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     if model is None:
         if use_multi_view:
-                preprocessing.preprocess.N_CHANNELS = 6
+            preprocessing.preprocess.N_CHANNELS = 6
 
         model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
 
