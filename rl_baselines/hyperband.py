@@ -9,6 +9,7 @@ import time
 
 import pandas as pd
 import numpy as np
+import hyperopt
 
 from rl_baselines.registry import registered_rl
 from environments.registry import registered_env
@@ -19,16 +20,77 @@ ITERATION_SCALE = 10000
 MIN_ITERATION = 30000
 
 
-class Hyperband(object):
-    def __init__(self, param_sampler, train, max_iter=100, eta=3.0):
-        self.param_sampler = param_sampler
+class HyperParameterOptimizer(object):
+    def __init__(self, opt_param, train, seed=0):
+        """
+        the base class for hyper parameter optimizer
+
+        :param opt_param: (dict) the parameters to optimize
+        :param train: (function (dict, int, int): float) the function that take:
+
+            - params: (dict) the hyper parameters to train with
+            - num_iters (int) the number of itterations to train (can be None)
+            - train_id: (int) the training number (can be None)
+            - returns: (float) the score of the training to minimize
+
+        :param seed: (int) the initial seed for the random number generator
+        """
+        self.opt_param = opt_param
         self.train = train
+        self.seed = seed
+
+        self.history = []
+
+    def run(self):
+        """
+        run the hyper parameter search
+        """
+        raise NotImplementedError
+
+
+class Hyperband(HyperParameterOptimizer):
+    def __init__(self, opt_param, train, seed=0, max_iter=100, eta=3.0):
+        """
+        A Hyperband implementation, it is similar to a targeted random search
+
+        Hyperband: https://arxiv.org/abs/1603.06560
+
+        :param opt_param: (dict) the parameters to optimize
+        :param train: (function (dict, int, int): float) the function that take:
+
+            - params: (dict) the hyper parameters to train with
+            - num_iters (int) the number of itterations to train (can be None)
+            - train_id: (int) the training number (can be None)
+            - returns: (float) the score of the training to minimize
+
+        :param seed: (int) the initial seed for the random number generator
+        :param max_iter: (int) the maximum budget for hyperband's search
+        :param eta: (float) the reduction factor of the search
+        """
+        super(Hyperband, self).__init__(opt_param, train, seed=seed)
         self.max_iter = max_iter
         self.eta = eta
         self.s_max = int(math.floor(math.log(self.max_iter) / math.log(self.eta)))
         self.B = (self.s_max + 1) * self.max_iter
 
-        self.history = []
+        self.rng = np.random.RandomState(seed)
+        self.param_sampler = self._generate_sampler()
+
+    def _generate_sampler(self):
+        def _sample():
+            params = {}
+            for name, (param_type, val) in self.opt_param.items():
+                if param_type == int:
+                    params[name] = self.rng.randint(val[0], val[1])
+                elif param_type == float:
+                    params[name] = self.rng.uniform(val[0], val[1])
+                elif param_type == list:
+                    params[name] = val[self.rng.randint(len(val))]
+                else:
+                    raise AssertionError("Error: unknown type {}".format(param_type))
+
+            return params
+        return _sample
 
     def run(self):
         for s in reversed(range(self.s_max + 1)):
@@ -49,8 +111,123 @@ class Hyperband(object):
         return self.history[int(np.argmin([val[1] for val in self.history]))]
 
 
+class Hyperopt(HyperParameterOptimizer):
+    def __init__(self, opt_param, train, seed=0, num_eval=100):
+        """
+        A Hyperopt implementation, it is similar to a bayesien search
+
+        Hyperopt: https://www.lri.fr/~kegl/research/PDFs/BeBaBeKe11.pdf
+
+        :param opt_param: (dict) the parameters to optimize
+        :param train: (function (dict, int, int): float) the function that take:
+
+            - params: (dict) the hyper parameters to train with
+            - num_iters (int) the number of itterations to train (can be None)
+            - train_id: (int) the training number (can be None)
+            - returns: (float) the score of the training to minimize
+
+        :param seed: (int) the initial seed for the random number generator
+        :param num_eval: (int) the number of evaluation to do
+        """
+        super(Hyperopt, self).__init__(opt_param, train, seed=seed)
+        self.num_eval = num_eval
+        self.search_space = []
+        for name, (param_type, val) in self.opt_param.items():
+            if param_type == int:
+                self.search_space.append(hyperopt.hp.quniform(name, val[0], val[1], 1))
+            elif param_type == float:
+                self.search_space.append(hyperopt.hp.uniform(name, val[0], val[1]))
+            elif param_type == list:
+                self.search_space.append(hyperopt.hp.choice(name, val))
+            else:
+                raise AssertionError("Error: unknown type {}".format(param_type))
+
+    def run(self):
+        trials = hyperopt.Trials()
+        hyperopt.fmin(lambda **kwargs: {'loss': self.train(kwargs), 'status': hyperopt.STATUS_OK},
+                      space=self.search_space,
+                      algo=hyperopt.tpe.suggest,
+                      max_evals=self.num_eval,
+                      trials=trials)
+        self.history.extend(zip(trials.trials, trials.losses()))
+        return self.history[int(np.argmin([val[1] for val in self.history]))]
+
+
+def make_rl_training_function(args, train_args):
+    """
+    makes a training function for the hyperparam optimizers
+
+    :param args: (ArgumentParser) the optimizer arguments
+    :param train_args: (ArgumentParser) the remaining arguments
+    :return: (function (dict, int, int): float) the function that take:
+
+        - params: (dict) the hyper parameters to train with
+        - num_iters (int) the number of itterations to train (can be None)
+        - train_id: (int) the training number (can be None)
+        - returns: (float) the score of the training to minimize
+    """
+    if args.verbose:
+        # None here means stdout of terminal for subprocess.call
+        stdout = None
+    else:
+        stdout = open(os.devnull, 'w')
+
+    def _train(params, num_iters=None, train_id=None):
+        # generate a print string
+        print_str = "\n"
+        format_args = []
+        if train_id is not None:
+            print_str += "ID_num={}, "
+            format_args.append(train_id)
+        if num_iters is not None:
+            print_str += "Num-timesteps={}, "
+            format_args.append(int(max(MIN_ITERATION, num_iters * ITERATION_SCALE)))
+
+        print_str += "Param:"
+        printGreen(print_str.format(*format_args))
+        pprint.pprint(params)
+
+        # cleanup old files
+        if os.path.exists("logs/_hyperband_search/"):
+            shutil.rmtree("logs/_hyperband_search/")
+
+        # add the training args that where parsed for the hyperparam optimizers
+        if num_iters is not None:
+            loop_args = ['--num-timesteps', str(int(max(MIN_ITERATION, num_iters * ITERATION_SCALE)))]
+        else:
+            loop_args = ['--num-timesteps', str(int(args.num_timesteps))]
+
+        # redefine the hyperparam args for rl_baselines.train
+        if len(params) > 0:
+            loop_args.append("--hyperparam")
+            for param_name, param_val in params.items():
+                loop_args.append("{}:{}".format(param_name, param_val))
+
+        # call the training
+        ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
+        if ok != 0:
+            # throw the error down to the terminal
+            raise ChildProcessError("An error occured, error code: {}".format(ok))
+
+        # load the logging of the training, and extract the reward
+        folders = glob.glob("logs/_hyperband_search/{}/{}/{}/*".format(args.env, args.srl_model, args.algo))
+        assert len(folders) != 0, "Error: Could not find generated directory, halting hyperband search."
+        rewards = []
+        for montior_path in glob.glob(folders[0] + "/*.monitor.csv"):
+            rewards.append(np.mean(pd.read_csv(montior_path, skiprows=1)["r"][-10:]))
+        if np.isnan(rewards).any():
+            rewards = -np.inf
+        print("reward: ", np.mean(rewards))
+
+        # negative reward, as we are minimizing with hyperparameter search
+        return -np.mean(rewards)
+    return _train
+
+
 def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
+    parser.add_argument('--optimizer', default='hyperband', choices=['hyperband', 'hyperopt'], type=str,
+                        help='The hyperparameter optimizer to choose from')
     parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',
                         type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0',
@@ -67,69 +244,18 @@ def main():
     train_args.extend(['--srl-model', args.srl_model, '--seed', str(args.seed), '--algo', args.algo, '--env', args.env,
                        '--log-dir', "logs/_hyperband_search/", '--no-vis'])
 
-    if args.verbose:
-        # None here means stdout of terminal for subprocess.call
-        stdout = None
-    else:
-        stdout = open(os.devnull, 'w')
-
     opt_param = registered_rl[args.algo][0].getOptParam()
     if opt_param is None:
         raise AssertionError("Error: {} algo does not support Hyperband search.".format(args.algo))
 
-    rng = np.random.RandomState(args.seed)
+    if args.optimizer == "hyperband":
+        opt = Hyperband(opt_param, make_rl_training_function(args, train_args), seed=args.seed,
+                        max_iter=args.num_timesteps // ITERATION_SCALE)
+    elif args.optimizer == "hyperopt":
+        opt = Hyperopt(opt_param, make_rl_training_function(args, train_args), seed=args.seed)
+    else:
+        raise ValueError("Error: optimizer {} was defined but not implemented, Halting.".format(args.optimizer))
 
-    def sample():
-        params = {}
-        for name, (param_type, val) in opt_param.items():
-            if param_type == int:
-                params[name] = rng.randint(val[0], val[1])
-            elif param_type == float:
-                params[name] = rng.uniform(val[0], val[1])
-            elif param_type == list:
-                params[name] = val[rng.randint(len(val))]
-            else:
-                raise AssertionError("Error: unknown type {}".format(param_type))
-
-        return params
-
-    def train(params, num_iters, train_id):
-        printGreen("\nID_num={}, Num-timesteps={}, Param:"
-                   .format(train_id, int(max(MIN_ITERATION, num_iters * ITERATION_SCALE))))
-        pprint.pprint(params)
-
-        # cleanup old files
-        if os.path.exists("logs/_hyperband_search/"):
-            shutil.rmtree("logs/_hyperband_search/")
-
-        loop_args = ['--num-timesteps', str(int(max(MIN_ITERATION, num_iters * ITERATION_SCALE)))]
-
-        # redefine the parsed args for rl_baselines.train
-        if len(params) > 0:
-            loop_args.append("--hyperparam")
-            for param_name, param_val in params.items():
-                loop_args.append("{}:{}".format(param_name, param_val))
-
-        ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
-
-        if ok != 0:
-            # throw the error down to the terminal
-            raise ChildProcessError("An error occured, error code: {}".format(ok))
-
-        folders = glob.glob("logs/_hyperband_search/{}/{}/{}/*".format(args.env, args.srl_model, args.algo))
-        assert len(folders) != 0, "Error: Could not find generated directory, halting hyperband search."
-        rewards = []
-        for montior_path in glob.glob(folders[0] + "/*.monitor.csv"):
-            rewards.append(np.mean(pd.read_csv(montior_path, skiprows=1)["r"][-10:]))
-
-        if np.isnan(rewards).any():
-            rewards = -np.inf
-
-        print("reward: ", np.mean(rewards))
-
-        return -np.mean(rewards)
-
-    opt = Hyperband(sample, train, max_iter=args.num_timesteps // ITERATION_SCALE)
     t_start = time.time()
     opt.run()
     all_params, loss = zip(*opt.history)
