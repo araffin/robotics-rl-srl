@@ -114,6 +114,8 @@ class PPO2Model(BaseRLObject):
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
+        if hyperparam is None:
+            hyperparam = {}
 
         # get the associated policy for the architecture requested
         if args.srl_model == "raw_pixels":

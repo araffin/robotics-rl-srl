@@ -84,6 +84,9 @@ class CMAESModel(BaseRLObject):
         args.num_cpu = args.num_population
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
+        if hyperparam is None:
+            hyperparam = {}
+
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)
         else:

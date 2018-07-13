@@ -90,8 +90,25 @@ class A2CModel(BaseRLObject):
         actions, _, self.states, _ = self.model.step(observation, self.states, dones)
         return actions
 
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "nsteps": (int, (1, 100)),
+            "vf_coef": (float, (0, 1)),
+            "ent_coef": (float, (0, 1)),
+            "max_grad_norm": (float, (0.1, 5)),
+            "lr": (float, (0, 0.1)),
+            "epsilon": (float, (0, 0.01)),
+            "alpha": (float, (0.5, 1)),
+            "gamma": (float, (0.5, 1)),
+            "lrschedule": (list, ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+        }
+
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
+
+        if hyperparam is None:
+            hyperparam = {}
 
         # get the associated policy for the architecture requested
         if args.srl_model == "raw_pixels":
@@ -109,12 +126,32 @@ class A2CModel(BaseRLObject):
 
         logger.configure()
         self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
-                    lrschedule=args.lr_schedule, callback=callback)
+                    lrschedule=args.lr_schedule, callback=callback, **hyperparam)
         envs.close()
 
     def _learn(self, policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
                max_grad_norm=0.5, lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100,
                callback=None):
+        """
+        Return a trained A2C model.
+
+        :param policy: (A2CPolicy) The policy model to use (MLP, CNN, LSTM, ...)
+        :param env: (Gym environment) The environment to learn from
+        :param seed: (int) The initial seed for training
+        :param nsteps: (int) The number of steps to run for each environment
+        :param total_timesteps: (int) The total number of samples
+        :param vf_coef: (float) Value function coefficient for the loss calculation
+        :param ent_coef: (float) Entropy coefficient for the loss caculation
+        :param max_grad_norm: (float) The maximum value for the gradiant clipping
+        :param lr: (float) The learning rate
+        :param lrschedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
+                                     'double_linear_con', 'middle_drop' or 'double_middle_drop')
+        :param epsilon: (float) RMS prop optimizer epsilon
+        :param alpha: (float) RMS prop optimizer decay
+        :param gamma: (float) Discount factor
+        :param log_interval: (int) The number of timesteps before logging.
+        :return: (Model) A2C model
+        """
         tf.reset_default_graph()
         createTensorflowSession()
 

@@ -89,6 +89,15 @@ class ARSModel(BaseRLObject):
         return action
 
     @classmethod
+    def getOptParam(cls):
+        return {
+            "top_population": (int, (1, 5)),
+            "exploration_noise": (float, (0, 0.1)),
+            "step_size": (float, (0, 0.1)),
+            "max_step_amplitude": (float, (1, 100))
+        }
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         if "num_population" in args.__dict__:
             args.num_cpu = args.num_population * 2
@@ -113,6 +122,8 @@ class ARSModel(BaseRLObject):
         assert args.num_population > 1, "The population cannot be less than 2."
 
         env = self.makeEnv(args, env_kwargs)
+        if hyperparam is None:
+            hyperparam = {}
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)
@@ -121,11 +132,11 @@ class ARSModel(BaseRLObject):
 
         self.M = np.zeros((np.prod(env.observation_space.shape), action_space))
         self.n_population = args.num_population
-        self.top_population = args.top_population
-        self.step_size = args.step_size
-        self.exploration_noise = args.exploration_noise
+        self.top_population = hyperparam.get("top_population", args.top_population)
+        self.step_size = hyperparam.get("step_size", args.step_size)
+        self.exploration_noise = hyperparam.get("exploration_noise", args.exploration_noise)
         self.continuous_actions = args.continuous_actions
-        self.max_step_amplitude = args.max_step_amplitude
+        self.max_step_amplitude = hyperparam.get("max_step_amplitude", args.max_step_amplitude)
         self.deterministic = args.deterministic
         num_updates = (int(args.num_timesteps) // args.num_population * 2)
 

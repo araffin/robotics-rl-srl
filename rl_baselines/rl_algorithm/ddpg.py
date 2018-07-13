@@ -115,9 +115,33 @@ class DDPGModel(BaseRLObject):
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
         return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
+    @classmethod
+    def getOptParam(cls):
+        return {
+            # ddpg param
+            "nb_epochs": (int, (1, 100)),
+            "nb_epoch_cycles": (float, (0, 1)),
+            "reward_scale": (float, (0, 1)),
+            "critic_l2_reg": (float, (0, 0.1)),
+            "actor_lr": (float, (0, 0.01)),
+            "critic_lr": (float, (0.5, 1)),
+            "gamma": (float, (0.5, 1)),
+            "nb_train_steps": (float, (0.5, 1)),
+            "nb_rollout_steps": (int, (0, 10)),
+            "nb_eval_steps": (float, (1, 10)),
+            "batch_size": (float, (0.1, 10)),
+            "tau": (float, (0, 1)),
+
+            # noise param
+            "noise_action_sigma": (float, (0, 1)),
+            "noise_action": (list, ["none", "normal", "ou"])
+        }
+
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
         logger.configure()
         env = self.makeEnv(args, env_kwargs)
+        if hyperparam is None:
+            hyperparam = {}
 
         createTensorflowSession()
         layer_norm = not args.no_layer_norm
@@ -130,11 +154,14 @@ class DDPGModel(BaseRLObject):
             param_noise = AdaptiveParamNoiseSpec(initial_stddev=args.noise_param_sigma,
                                                  desired_action_stddev=args.noise_param_sigma)
 
-        if args.noise_action == 'normal':
-            action_noise = NormalActionNoise(mu=np.zeros(n_actions), sigma=args.noise_action_sigma * np.ones(n_actions))
-        elif args.noise_action == 'ou':
-            action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(n_actions),
-                                                        sigma=args.noise_action_sigma * np.ones(n_actions))
+        if hyperparam.get("noise_action", args.noise_action) == 'normal':
+            action_noise = NormalActionNoise(
+                mu=np.zeros(n_actions),
+                sigma=hyperparam.get("noise_action_sigma", args.noise_action_sigma) * np.ones(n_actions))
+        elif hyperparam.get("noise_action", args.noise_action) == 'ou':
+            action_noise = OrnsteinUhlenbeckActionNoise(
+                mu=np.zeros(n_actions),
+                sigma=hyperparam.get("noise_action_sigma", args.noise_action_sigma) * np.ones(n_actions))
 
         # Configure components.
         if args.srl_model != "raw_pixels":
@@ -147,36 +174,44 @@ class DDPGModel(BaseRLObject):
         memory = Memory(limit=args.memory_limit, action_shape=env.action_space.shape,
                         observation_shape=env.observation_space.shape)
 
+        # filter the hyperparam, and set default values in case no hyperparam
+        hyperparam = {k: v for k, v in hyperparam.items() if k not in ["noise_action_sigma", "noise_action"]}
+        ddpg_param = {
+            "nb_epochs": 500,
+            "nb_epoch_cycles": 20,
+            "reward_scale": 1.,
+            "critic_l2_reg": 1e-2,
+            "actor_lr": 1e-4,
+            "critic_lr": 1e-3,
+            "gamma": 0.99,
+            "nb_train_steps": 100,
+            "nb_rollout_steps": 100,
+            "nb_eval_steps": 50,
+            "batch_size": args.batch_size,
+            "tau": 0.01,
+            **hyperparam
+        }
+
         # add save and load functions to DDPG
         DDPG.save = saveDDPG
         DDPG.load = loadDDPG
 
         self._train_ddpg(
             env=env,
-            nb_epochs=500,
-            nb_epoch_cycles=20,
             render_eval=False,
             render=False,
-            reward_scale=1.,
             param_noise=param_noise,
             actor=actor,
             critic=critic,
             normalize_returns=False,
             normalize_observations=(args.srl_model == "raw_pixels"),
-            critic_l2_reg=1e-2,
-            actor_lr=1e-4,
-            critic_lr=1e-3,
             action_noise=action_noise,
             popart=False,
-            gamma=0.99,
             clip_norm=None,
-            nb_train_steps=100,
-            nb_rollout_steps=100,
-            nb_eval_steps=50,
-            batch_size=args.batch_size,
             memory=memory,
             callback=callback,
-            num_max_step=args.num_timesteps
+            num_max_step=args.num_timesteps,
+            **ddpg_param
         )
 
         env.close()
@@ -187,6 +222,39 @@ class DDPGModel(BaseRLObject):
                     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
                     tau=0.01, eval_env=None, param_noise_adaption_interval=50, callback=None,
                     num_max_step=int(1e6*1.1)):
+        """
+        Runs the training of the Deep Deterministic Policy Gradien (DDPG) model
+
+        DDPG: https://arxiv.org/pdf/1509.02971.pdf
+
+        :param env: (Gym Environment) the environment
+        :param nb_epochs: (int) the number of training epochs
+        :param nb_epoch_cycles: (int) the number cycles within each epoch
+        :param render_eval: (bool) enable rendering of the evalution environment
+        :param reward_scale: (float) the value the reward should be scaled by
+        :param render: (bool) enable rendering of the environment
+        :param param_noise: (AdaptiveParamNoiseSpec) the parameter noise type (can be None)
+        :param actor: (TensorFlow Tensor) the actor model
+        :param critic: (TensorFlow Tensor) the critic model
+        :param normalize_returns: (bool) should the critic output be normalized
+        :param normalize_observations: (bool) should the observation be normalized
+        :param critic_l2_reg: (float) l2 regularizer coefficient
+        :param actor_lr: (float) the actor learning rate
+        :param critic_lr: (float) the critic learning rate
+        :param action_noise: (ActionNoise) the action noise type (can be None)
+        :param popart: (bool) enable pop-art normalization of the critic output
+            (https://arxiv.org/pdf/1602.07714.pdf)
+        :param gamma: (float) the discount rate
+        :param clip_norm: (float) clip the gradiants (disabled if None)
+        :param nb_train_steps: (int) the number of training steps
+        :param nb_rollout_steps: (int) the number of rollout steps
+        :param nb_eval_steps: (int) the number of evalutation steps
+        :param batch_size: (int) the size of the batch for learning the policy
+        :param memory: (Memory) the replay buffer
+        :param tau: (float) the soft update coefficient (keep old values, between 0 and 1)
+        :param eval_env: (Gym Environment) the evaluation environment (can be None)
+        :param param_noise_adaption_interval: (int) apply param noise every N steps
+        """
         rank = MPI.COMM_WORLD.Get_rank()
 
         assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
