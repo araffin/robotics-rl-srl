@@ -294,7 +294,8 @@ class MultiprocessSRLModel:
         # this is to control the number of CPUs that torch is allowed to use.
         # By default it will use all CPUs, even with GPU acceleration
         th.set_num_threads(1)
-        self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim, None)
+        self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim,
+                                  env_object=None)
         # run until the end of the caller thread
         while True:
             # pop an item, get state, and return to sender.
