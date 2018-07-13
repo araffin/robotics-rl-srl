@@ -3,6 +3,7 @@ import pickle as pkl
 
 import numpy as np
 import torch as th
+import cv2
 
 from srl_zoo.models import SRLCustomCNN, SRLConvolutionalNetwork, CNNAutoEncoder, CustomCNN, CNNVAE, TripletNet, \
     ConvolutionalNetwork
@@ -167,16 +168,20 @@ class SRLNeuralNetwork(SRLBaseClass):
         :return: (numpy matrix)
         """
         if N_CHANNELS > 3:
+            observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
+            observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
             observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
         else:
+            # preprocessImage expects a BGR image
+            observation = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
             observation = preprocessImage(observation)
 
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
         # Channel first
         observation = np.transpose(observation, (0, 3, 2, 1))
-        observation = th.from_numpy(observation).to(th.float).to(self.device)
- 
+        observation = th.from_numpy(observation).float().to(self.device)
+
         with th.no_grad():
             state = self.model.getStates(observation)[0]
         return state.to(th.device("cpu")).detach().numpy()
