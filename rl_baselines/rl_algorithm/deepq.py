@@ -76,12 +76,6 @@ class DeepQModel(BaseRLObject):
             "target_network_update_freq": (int, (10, 10000)),
             "gamma": (float, (0, 1)),
             "batch_size": (int, (8, 128)),
-            "prioritized_replay_alpha": (),
-            "prioritized_replay_beta0": (),
-            "prioritized_replay_beta_iters": (),
-            "prioritized_replay_eps": (),
-
-
         }
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
@@ -112,10 +106,6 @@ class DeepQModel(BaseRLObject):
             "target_network_update_freq": 500,
             "gamma": 0.99,
             "batch_size": 32,
-            "prioritized_replay_alpha": 0.6,
-            "prioritized_replay_beta0": 0.4,
-            "prioritized_replay_beta_iters": None,
-            "prioritized_replay_eps": 1e-6,
             **hyperparam
         }
 

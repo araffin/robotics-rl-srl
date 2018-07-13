@@ -225,7 +225,7 @@ def make_rl_training_function(args, train_args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
+    parser = argparse.ArgumentParser(description="OpenAI RL Baselines hyperparameter search")
     parser.add_argument('--optimizer', default='hyperband', choices=['hyperband', 'hyperopt'], type=str,
                         help='The hyperparameter optimizer to choose from')
     parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',
@@ -237,22 +237,25 @@ def main():
                         help='SRL model to use')
     parser.add_argument('--num-timesteps', type=int, default=1e6, help='number of timesteps the baseline should run')
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Display baseline STDOUT')
-    parser.add_argument('--max_iter', type=int, default=100, help='Number of iteration to try')
+    parser.add_argument('--max-eval', type=int, default=100, help='Number of evalutation to try for hyperopt')
 
     args, train_args = parser.parse_known_args()
 
     train_args.extend(['--srl-model', args.srl_model, '--seed', str(args.seed), '--algo', args.algo, '--env', args.env,
                        '--log-dir', "logs/_hyperband_search/", '--no-vis'])
 
-    opt_param = registered_rl[args.algo][0].getOptParam()
-    if opt_param is None:
+    # verify the algorithm has defined it, and that it returnes an expected value
+    try:
+        opt_param = registered_rl[args.algo][0].getOptParam()
+        assert opt_param is not None
+    except AttributeError or AssertionError:
         raise AssertionError("Error: {} algo does not support Hyperband search.".format(args.algo))
 
     if args.optimizer == "hyperband":
         opt = Hyperband(opt_param, make_rl_training_function(args, train_args), seed=args.seed,
                         max_iter=args.num_timesteps // ITERATION_SCALE)
     elif args.optimizer == "hyperopt":
-        opt = Hyperopt(opt_param, make_rl_training_function(args, train_args), seed=args.seed)
+        opt = Hyperopt(opt_param, make_rl_training_function(args, train_args), seed=args.seed, num_eval=args.num_eval)
     else:
         raise ValueError("Error: optimizer {} was defined but not implemented, Halting.".format(args.optimizer))
 
