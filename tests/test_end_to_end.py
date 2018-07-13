@@ -69,6 +69,9 @@ def testDataGen():
 
 
 def testBaselineTrain():
+    """
+    Testing baseline models
+    """
 
     args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
             '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
@@ -79,7 +82,7 @@ def testBaselineTrain():
     assertEq(ok, 0)
 
     for baseline in ['vae', 'autoencoder']:
-        exp_name = 'baseline_'+ baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
+        exp_name = baseline + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         LOG_BASELINE = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
         createFolders(LOG_BASELINE)
         exp_config = buildTestConfig()
@@ -87,6 +90,7 @@ def testBaselineTrain():
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = baseline
         exp_config["batch-size"] = 32
+        exp_config["n_actions"] = 6
         print("log baseline: ", LOG_BASELINE)
         args = ['--no-display-plots', '--data-folder', TEST_DATA_FOLDER,
                 '--epochs', NUM_EPOCHS, '--training-set-size', TRAINING_SET_SIZE,
@@ -102,9 +106,12 @@ def testBaselineTrain():
         assertEq(ok, 0)
 
 
-def testPriorTrain():
+def testSrlTrain():
+    """
+    Testing the training of srl models to be later used for RL
+    """
 
-    for loss_type in ["priors", "inverse", "forward", "vae"]:
+    for loss_type in ["priors", "inverse", "forward", "triplet"]:
 
         exp_name = loss_type + '_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
         log_name = 'logs/' + DATA_FOLDER_NAME + '/' + exp_name
@@ -115,7 +122,8 @@ def testPriorTrain():
                 '--seed', SEED, '--val-size', 0.1, '--state-dim', STATE_DIM, '--model-type', 'custom_cnn', '-bs', 32,
                 '--log-folder', log_name,'--losses', loss_type]
 
-        if loss_type == "vae":
+        # Testing multi-view
+        if loss_type == "triplet":
             exp_config["multi-view"] = True
             args.extend(['--multi-view', '--data-folder', TEST_DATA_FOLDER_DUAL])
         else:
@@ -127,6 +135,7 @@ def testPriorTrain():
         exp_config["log-folder"] = log_name
         exp_config["experiment-name"] = exp_name
         exp_config["losses"] = loss_type
+        exp_config["n_actions"] = 6
         exp_config = OrderedDict(sorted(exp_config.items()))
         with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
             json.dump(exp_config, f)
@@ -147,6 +156,7 @@ def testPriorTrain():
     exp_config["log-folder"] = log_name
     exp_config["experiment-name"] = exp_name
     exp_config["losses"] = ["forward", "inverse", "vae"]
+    exp_config["n_actions"] = 6
     exp_config = OrderedDict(sorted(exp_config.items()))
     with open("{}/exp_config.json".format("srl_zoo/" + exp_config['log-folder']), "w") as f:
         json.dump(exp_config, f)
@@ -155,6 +165,10 @@ def testPriorTrain():
 
 
 def testRLSrlTrain():
+    """
+    Testing RL pipeline on previously learned models
+    """
+
     for model_type in ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination", "multi_view_srl"]:
         args = ['--algo', DEFAULT_ALGO, '--env', DEFAULT_ENV, '--srl-model', model_type,
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
@@ -169,7 +183,7 @@ def testRLSrlTrain():
                 '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
                 '--no-vis', '--srl-config-file', DEFAULT_SRL_CONFIG_YAML]
         if algo == "ddpg":
-            mem_limit = 100 if model_type == 'raw_pixels' else 100000
+            mem_limit = 100 if DEFAULT_SRL == 'raw_pixels' else 100000
             args.extend(['-c', '--memory-limit', mem_limit])
         elif algo == "acer":
             args.extend(['--num-stack', 4])

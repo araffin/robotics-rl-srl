@@ -44,25 +44,24 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
     :param env_object: (gym env object)
     :return: (srl model)
     """
-    model_type = None
-    losses = None
-    n_actions = None
-    model = None
+
+    model_type, losses, n_actions, model = None, None, None, None
+
     if path is not None:
         # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
+
         split_index = exp_config.get('split-index', None)
-        try:
-            state_dim = exp_config['state-dim']
-            losses = exp_config.get('losses', None)
-            n_actions = exp_config.get('n_actions',6)
-            model_type = exp_config['model-type']
-            use_multi_view = exp_config.get('multi-view', False)
-        except KeyError:
-            # Old format
-            state_dim = exp_config['state_dim']
+        state_dim = exp_config.get('state-dim', None)
+        losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
+        n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
+        model_type = exp_config.get('model-type', None)
+        use_multi_view = exp_config.get('multi-view', False)
+
+        assert state_dim is not None, \
+            "Please make sure you are loading an up to date model with a conform exp_config file."
     else:
         assert env_object is not None or state_dim > 0, \
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
@@ -76,13 +75,14 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     assert model_type is not None or model is not None, \
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
+    assert not (losses is None and not model_type == 'pca'), \
+        "Please make sure you are loading an up to date model with a conform exp_config file."
+    assert not (n_actions is None and not (model_type == 'pca' or 'supervised' in losses)), \
+        "Please make sure you are loading an up to date model with a conform exp_config file."
 
     if model is None:
         if use_multi_view:
-            if "triplet" in losses:
-                preprocessing.preprocess.N_CHANNELS = 9
-            else:
-                preprocessing.preprocess.N_CHANNELS = 6
+            preprocessing.preprocess.N_CHANNELS = 6
 
         model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses, split_index=split_index)
 
@@ -128,6 +128,14 @@ class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
     def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None):
+        """
+        :param state_dim: (int)
+        :param cuda: (bool)
+        :param model_type: (string)
+        :param n_actions: action space dimensions (int)
+        :param losses: list of optimized losses defining the model (list of string)
+        :param split_index: (int) Number of dimensions for the first split
+        """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type

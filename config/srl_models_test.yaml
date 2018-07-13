@@ -2,12 +2,12 @@ KukaButtonGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/RL_test/
   # Path to the different trained SRL models
-  autoencoder: baseline_autoencoder_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
-  vae: baseline_vae_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
+  autoencoder: autoencoder_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
+  vae: vae_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
   supervised: baselines/supervised_cnn_SEED0_EPOCHS1_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM5/pca.pkl
   robotic_priors: priors_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
   inverse: inverse_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
   forward: forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
-  multi_view_srl: vae_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
+  multi_view_srl: triplet_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
   srl_combination: vae_inverse_forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32/srl_model.pth
