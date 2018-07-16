@@ -12,7 +12,6 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
 
 from environments import ThreadingType
-from environments.registry import registered_env
 from environments.utils import makeEnv, dynamicEnvLoad
 from rl_baselines.visualize import loadCsv
 from srl_zoo.utils import printYellow, printGreen
@@ -311,6 +310,8 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
     :param load_path_normalise: (str) the path to loading the rolling average, None if not available or wanted.
     :return: (Gym VecEnv)
     """
+    # imported here to prevent cyclic imports
+    from environments.registry import registered_env
     assert not (registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
         "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
     if env_kwargs is not None and env_kwargs.get("use_srl", False):
