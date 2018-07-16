@@ -9,7 +9,7 @@ from gym import spaces
 
 from environments.srl_env import SRLGymEnv
 from state_representation.episode_saver import EpisodeSaver
-from srl_zoo.preprocessing import N_CHANNELS
+from srl_zoo.preprocessing import getNChannels
 
 from environments.kuka_gym import kuka
 
@@ -285,7 +285,7 @@ class KukaButtonGymEnv(SRLGymEnv):
             p.disconnect()
 
     def getExtendedObservation(self):
-        if N_CHANNELS > 3:
+        if getNChannels() > 3:
             self.multi_view = True
         self._observation = self.render("rgb_array")
         return self._observation
