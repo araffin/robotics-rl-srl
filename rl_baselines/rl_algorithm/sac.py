@@ -38,10 +38,11 @@ def toTensor(arr, device):
 def detachToNumpy(tensor):
     """
     Gets a pytorch tensor and returns a numpy array
+    Detach creates a new Tensor,
+    detached from the current graph whose node will never require gradient.
     :param tensor: (th.Tensor)
     :return: (numpy float)
     """
-    # detach means to seperate the gradient from the data of the tensor
     return tensor.to(th.device('cpu')).detach().numpy()
 
 
@@ -187,10 +188,10 @@ class SACModel(BaseRLObject):
         :return: (tuple(th.Tensor))
         """
         if self.continuous_actions:
-            mean_policy, logstd = self.policy_net(obs)
+            mean_policy, log_std = self.policy_net(obs)
             # Clip the value of the standard deviation
-            logstd = th.clamp(logstd, self.log_std_min, self.log_std_max)
-            std = th.exp(logstd)
+            log_std = th.clamp(log_std, self.log_std_min, self.log_std_max)
+            std = th.exp(log_std)
             distribution = Normal(mean_policy, std)
             # Used only during testing
             if self.deterministic:
@@ -199,12 +200,12 @@ class SACModel(BaseRLObject):
                 pre_tanh_value = distribution.sample().detach()
             # Squash the value
             action = F.tanh(pre_tanh_value)
-            # Correction to the log prob because of the squasing function
+            # Correction to the log prob because of the squashing function
             epsilon = 1e-6
             log_pi = distribution.log_prob(pre_tanh_value) - th.log(1 - action ** 2 + epsilon)
             log_pi = log_pi.sum(-1, keepdim=True)
         else:
-            mean_policy, logstd = self.policy_net(obs)
+            mean_policy, log_std = self.policy_net(obs)
             # Here mean policy is the energy of each action
             distribution = Categorical(logits=mean_policy)
             if self.deterministic:
@@ -213,10 +214,10 @@ class SACModel(BaseRLObject):
                 action = distribution.sample().detach()
             # Only valid for continuous actions
             pre_tanh_value = action * 0.0
-            logstd = logstd * 0.0
+            log_std = log_std * 0.0
             log_pi = distribution.log_prob(action).unsqueeze(1)
 
-        return action, log_pi, pre_tanh_value, mean_policy, logstd
+        return action, log_pi, pre_tanh_value, mean_policy, log_std
 
     def encodeObservation(self, obs):
         """
@@ -352,8 +353,8 @@ class SACModel(BaseRLObject):
                 value_pred = self.value_net(batch_obs)
                 q_value = self.q_value_net(batch_obs, actions)
                 # Sample actions and retrieve log proba
-                # pre_tanh_value, mean_policy and logstd are only used for regularization
-                new_actions, log_pi, pre_tanh_value, mean_policy, logstd = self.sampleAction(batch_obs)
+                # pre_tanh_value, mean_policy and log_std are only used for regularization
+                new_actions, log_pi, pre_tanh_value, mean_policy, log_std = self.sampleAction(batch_obs)
 
                 # Q-Value function loss
                 target_value_pred = self.target_value_net(batch_next_obs)
@@ -370,11 +371,11 @@ class SACModel(BaseRLObject):
                 # why not log_pi.exp_() ?
                 loss_policy = (log_pi * (log_pi - q_value_new_actions + value_pred).detach()).mean()
                 # Regularization
-                loss_policy += args.w_reg * sum(map(l2Loss, [mean_policy, logstd]))
+                if self.continuous_actions:
+                    loss_policy += args.w_reg * sum(map(l2Loss, [mean_policy, log_std]))
 
                 q_optimizer.zero_grad()
                 # Retain graph if we are using a CNN for extracting features
-                # TODO: check that the zero_grad() doesn't affect that
                 loss_q_value.backward(retain_graph=self.using_images)
                 q_optimizer.step()
 
