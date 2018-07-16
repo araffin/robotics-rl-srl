@@ -49,7 +49,7 @@ def makeTestFun(algo):
     return testBaselineTrain
 
 
-for baseline in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars']:
+for baseline in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars', 'sac']:
     if baseline != DEFAULT_ALGO:
         globals()["test{}Train".format(baseline)] = makeTestFun(baseline)
 
@@ -81,9 +81,12 @@ def testEnvTrain():
 
 def testContinousEnvTrain():
     for env in ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"]:
-        args = ['--algo', 'ppo2', '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
-                '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '--num-cpu', 4, '-c']
-        args = list(map(str, args))
+        for algo in ['ppo2', 'sac']:
+            args = ['--algo', algo, '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
+                    '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '-c']
+            if algo in ['ppo2']:
+                args.extend(['--num-cpu', 4,])
+            args = list(map(str, args))
 
-        ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
-        assertEq(ok, 0)
+            ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
+            assertEq(ok, 0)

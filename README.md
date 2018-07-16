@@ -1,27 +1,20 @@
 # Reinforcement Learning (RL) and State Representation Learning (SRL) for Robotics
 
-This repository was made to evaluate State Representation Learning methods using Reinforcement Learning. It integrates (automatic logging, plotting, saving, loading of trained agent) various RL algorithms (PPO, A2C, ARS, DDPG, DQN, ACER, CMA-ES) along with different SRL methods (see [SRL Repo](https://github.com/araffin/srl-zoo)) in an efficient way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
+This repository was made to evaluate State Representation Learning methods using Reinforcement Learning. It integrates (automatic logging, plotting, saving, loading of trained agent) various RL algorithms (PPO, A2C, ARS, DDPG, DQN, ACER, CMA-ES, SAC) along with different SRL methods (see [SRL Repo](https://github.com/araffin/srl-zoo)) in an efficient way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
 
 We also release customizable Gym environments for working with simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
 
-
 Table of Contents
 =================
-
   * [Installation](#installation)
-  * [Kuka Arm \w PyBullet](#kuka-arm-w-pybullet)
   * [Reinforcement Learning](#reinforcement-learning)
-    * [OpenAI Baselines](#openai-baselines)
-    * [Plot Learning Curve](#plot-learning-curve)
+    * [RL Algorithms: OpenAI Baselines and More](#rl-algorithms-openai-baselines-and-more)
   * [Environments](#environments)
+    * [Available Environments](#available-environments)
+    * [Generating Data](#generating-data)
   * [State Representation Learning Models](#state-representation-learning-models)
-  * [Baxter Robot with Gazebo and ROS](#baxter-robot-with-gazebo-and-ros)
-  * [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)
-    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl)
-    * [RL on a Real Robot](#rl-on-a-real-robot)
-  * [Working With a Real Robobo](#working-with-a-real-robobo)
-    * [Recording Data With a Random Agent for SRL](#recording-data-with-a-random-agent-for-srl-1)
-    * [RL on a Real Robobo](#rl-on-a-real-robobo)
+    * [Plot Learning Curve](#plot-learning-curve)
+  * [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo)
   * [Troubleshooting](#troubleshooting)
   * [Known issues](#known-issues)
 
@@ -30,7 +23,6 @@ Table of Contents
 
 - Python 3 is required (python 2 is not supported because of OpenAI baselines)
 - [OpenAI Baselines](https://github.com/openai/baselines) (latest version, install from source (at least commit 3cc7df0))
-- [OpenAI Gym](https://github.com/openai/gym/) (version >= 0.10.3)
 - install the swig library (for Ubuntu 14.04: ```apt-get install swig```)
 - Install the dependencies using `environment.yml` file (for conda users)
 
@@ -43,27 +35,6 @@ How to download the project (note the `--recursive` argument because we are usin
 git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
 
-## Kuka Arm \w PyBullet
-
-Before you start a RL experiment, you have to make sure that a visdom server is running, unless you deactivate visualization.
-
-Launch visdom server:
-```
-python -m visdom.server
-```
-
-
-To test the environment with random actions:
-```
-python -m environments.dataset_generator --no-record-data --display
-```
-Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
-
-To **record data** (i.e. generate a dataset) from the environment for **SRL training**, using random actions:
-```bash
-python -m environments.dataset_generator --num-cpu 4 --name folder_name
-```
-
 ## Reinforcement Learning
 
 Note: All CNN policies normalize input, dividing it by 255.
@@ -72,9 +43,16 @@ For SRL, states are normalized using a running mean/std average.
 
 About frame-stacking, action repeat (frameskipping) please read this blog post: [Frame Skipping and Pre-Processing for DQN on Atari](https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/)
 
-### OpenAI Baselines
+Before you start a RL experiment, you have to make sure that a visdom server is running, unless you deactivate visualization.
 
-Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with some evolution strategies:
+Launch visdom server:
+```
+python -m visdom.server
+```
+
+### RL Algorithms: OpenAI Baselines and More
+
+Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with some evolution strategies and SAC:
 
 - DQN and variants (Double, Dueling, prioritized experience replay)
 - ACER: Sample Efficient Actor-Critic with Experience Replay
@@ -83,10 +61,11 @@ Several algorithms from [Open AI baselines](https://github.com/openai/baselines)
 - DDPG: Deep Deterministic Policy Gradients
 - ARS: Augmented Random Search
 - CMA-ES: Covariance Matrix Adaptation Evolution Strategy
+- SAC: Soft Actor Critic
 
-To train an agent:
+To train an agent (without visualization with visdom):
 ```
-python -m rl_baselines.train --algo ppo2 --log-dir logs/
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --no-vis
 ```
 
 You can train an agent on the latest learned model (knowing it's type) located at `log_folder: srl_zoo/logs/DatasetName/` (defined for each environment in `config/srl_models.yaml`) :
@@ -99,7 +78,7 @@ To load a trained agent and see the result:
 python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
 ```
 
-Contiuous actions have been implemented for DDPG, PPO2, ARS, CMA-ES and random agent.
+Continuous actions have been implemented for DDPG, PPO2, ARS, CMA-ES, SAC and random agent.
 To use continuous actions in the position space:
 ```
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ -c
@@ -114,10 +93,79 @@ To run multiple enviroments with multiple SRL models for a given algorithm (you 
 ```
 python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --env env1 env2 [...] --srl-model model1 model2 [...]
 ```
-for example, ppo2 with 4 cpus and relative button position, in the default environment using VAE and ground_truth:
+
+For example, ppo2 with 4 cpus and randomly initialized target position, in the default environment using VAE and ground_truth:
 ```
-python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --srl-model vae ground_truth --relative --num-cpu 4
+python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --srl-model vae ground_truth --random-target --num-cpu 4
 ```
+
+If you want to integrate your own RL algorithm, please read `rl_baselines/README.md`.
+
+## Environments
+
+All the environments we propose follow the OpenAI Gym interface. We also extended this interface (adding extra methods) to work with SRL methods (see [State Representation Learning Models](#state-representation-learning-models)).
+
+### Available Environments
+
+If you want to add your own environment, please read `enviroments/README.md`.
+
+the available environments are:
+- Kuka arm: Here we have a Kuka arm which must reach a target, here a button.
+    - KukaButtonGymEnv-v0: Kuka arm with a single button in front.
+    - KukaRandButtonGymEnv-v0: Kuka arm with a single button in front, and some randomly positioned objects
+    - Kuka2ButtonGymEnv-v0: Kuka arm with 2 buttons next to each others, they must be pressed in the correct order (lighter button, then darker button).
+    - KukaMovingButtonGymEnv-v0: Kuka arm with a single button in front, slowly moving left to right.
+- Mobile robot: Here we have a mobile robot which reach a target position
+    - MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a target position.
+    - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order (lighter target, then darker target).
+    - MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can only go up and down, it must reach a target position.
+    - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a colored band going across the terrain.
+- Racing car: Here we have the interface for the Gym racing car environment. It must complete a racing course in the least time possible
+    - CarRacingGymEnv-v0: A racing car on a racing course, it must complete the racing course in the least time possible.
+- Baxter: A baxter robot that must reach a target, with its arms. (see [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo))
+    - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
+- Robobo: A Robobo robot that must reach a target position.
+    - RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
+
+
+### Generating Data
+
+To test the environment with random actions:
+```
+python -m environments.dataset_generator --no-record-data --display
+```
+Can be as well used to render views (or dataset) with two cameras if `multi_view=True`.
+
+To **record data** (i.e. generate a dataset) from the environment for **training a SRL model**, using random actions:
+```bash
+python -m environments.dataset_generator --num-cpu 4 --name folder_name
+```
+
+
+## State Representation Learning Models
+
+Please look the [SRL Repo](https://github.com/araffin/srl-zoo) to learn how to train a state representation model.
+Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
+
+To train the Reinforcement learning baselines on a specific SRL model:
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --srl-model model_name
+```
+
+The available state representation models are:
+- ground_truth: the arm's x,y,z position
+- robotic_priors: Robotic Priors model
+- supervised: a supervised model from the raw pixels to the arm's x,y,z position
+- pca: pca applied to the raw pixels
+- autoencoder: an autoencoder from the raw pixels
+- vae: a variational autoencoder from the raw pixels
+- inverse: an inverse dynamics model
+- forward: a forward dynamics model
+- srl_combination: a model combining several losses (e.g. vae + forward + inverse...) for SRL
+- multi_view_srl: a SRL model using views from multiple cameras as input, with any of the above losses (e.g triplet and others)
+- joints: the arm's joints angles
+- joints_position: the arm's x,y,z position and joints angles
+
 
 ### Plot Learning Curve
 
@@ -138,222 +186,9 @@ To create a comparison plots from saved plots (.npz files), you need to pass a p
 python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timesteps
 ```
 
-## Environments
+## Working With Real Robots: Baxter and Robobo
 
-When starting a baseline, you can choose from different environments:
-```bash
-python -m rl_baselines.train --algo ppo2 --log-dir logs/ --env env_name
-```
-
-the available environments are:
-- KukaButtonGymEnv-v0 (default): a single button in front of the arm
-- Kuka2ButtonGymEnv-v0: 2 buttons next to each others, they must be pressed in order
-- KukaRandButtonGymEnv-v0: a single button in front of the arm, with some randomly positioned objects
-- KukaMovingButtonGymEnv-v0: a single button in front of the arm, slowly moving left to right
-- MobileRobotGymEnv-v0:
-- Baxter-v0: real baxter robot (see [Working With a Real Baxter Robot](#working-with-a-real-baxter-robot)), can be also used to work with gazebo
-- RoboboGymEnv-v0: real robobo (see [Working With a Real Robobo](#working-with-a-real-robobo))
-
-## State Representation Learning Models
-
-Please look the [SRL Repo](https://github.com/araffin/srl-zoo) to learn how to train a state representation model.
-Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
-
-To train the Reinforcement learning baselines on a specific SRL model:
-```
-python -m rl_baselines.train --algo ppo2 --log-dir logs/ --srl-model model_name
-```
-
-The available state representation models are:
-- ground_truth: the arm's x,y,z position
-- robotic_priors: SRL Robotic priors model
-- supervised: a supervised model from the raw pixels to the arm's x,y,z position
-- pca: pca applied to the raw pixels
-- autoencoder: an autoencoder from the raw pixels
-- vae: a variational autoencoder from the raw pixels
-- inverse: an inverse dynamics model
-- forward: a forward dynamics model
-- srl_combination: a model combining several losses (e.g. vae + forward + inverse...) for SRL
-- multi_view_srl: a SRL model using views from multiple cameras as input, with any of the above losses (e.g triplet and others)
-- joints: the arm's joints angles
-- joints_position: the arm's x,y,z position and joints angles
-
-
-## Baxter Robot with Gazebo and ROS
-Gym Wrapper for baxter environment, more details in the dedicated README (environments/gym_baxter/README.md).
-
-**Important Note**: ROS (and Gazebo + Baxter) only works with python2, whereas this repo (except the ROS scripts) works with python3.
-For Ros/Baxter installation, please look at the [Official Tutorial](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
-Also, ROS comes with its own version of OpenCV, so when running the python3 scripts, you need to deactivate ROS. In the same vein, if you use Anaconda, you need to disable it when you want to run ROS scripts (denoted as python 2 in the following instructions).
-
-1. Start ros nodes (Python 2):
-```
-roslaunch arm_scenario_simulator baxter_world.launch
-rosrun arm_scenario_simulator spawn_objects_example
-
-python -m real_robots.gazebo_server
-```
-
-Then, you can either try to teleoperate the robot (python 3):
-```
-python -m real_robots.teleop_client
-```
-or test the environment with random actions (using the gym wrapper):
-
-```
-python -m environments.gym_baxter.test_baxter_env
-```
-
-If the port is already used, you can see the program pid using the following command:
-```
-sudo netstat -lpn | grep :7777
-```
-and then kill it (with `kill -9 program_pid`)
-
-or in one line:
-```
-kill -9 `sudo lsof -t -i:7777`
-```
-
-## Working With a Real Baxter Robot
-
-WARNING: Please read COMPLETELY the following instructions before running and experiment on a real baxter.
-
-### Recording Data With a Random Agent for SRL
-
-1. Change you environment to match baxter ROS settings (usually using the `baxter.sh` script from RethinkRobotics)
-or in your .bashrc:
-```
-# NB: This is only an example
-export ROS_HOSTNAME=192.168.0.211  # Your IP
-export ROS_MASTER_URI=http://baxter.local:11311 # Baxter IP
-```
-
-2. Calibrate the different values in `real_robots/constants.py` using `real_robots/real_baxter_debug.py`:
-- Set USING_REAL_BAXTER to True
-- Position of the target: BUTTON_POS
-- Init position and orientation: LEFT_ARM_INIT_POS, LEFT_ARM_ORIENTATION
-- Position of the table (minimum z): Z_TABLE
-- Distance below which the target is considered to be reached: DIST_TO_TARGET_THRESHOLD
-- Distance above which the agent will get a negative reward: MAX_DISTANCE
-- Maximum number of steps per episode: MAX_STEPS
-
-3. Configure images topics in `real_robots/constants.py`:
-- IMAGE_TOPIC: main camera
-- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
-- DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
-
-4. Launch ROS bridge server (python 2):
-```
-python -m real_robots.real_baxter_server
-```
-
-5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
-
-6. Set the number of episodes you want to record, name of the experiment and random seed in `environments/gym_baxter/test_baxter_env.py`
-
-7. Record data using a random agent:
-```
-python -m environments.gym_baxter.test_baxter_env
-```
-8. Wait until the end... Note: the real robot runs at approximately 0.6 FPS.
-
-NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/gym_baxter/baxter_env.py`
-
-### RL on a Real Baxter Robot
-
-1. Update the settings in `rl_baselines/train.py`, so it saves and log the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
-
-2. Make sure that USING_REAL_BAXTER is set to True in `real_robots/constants.py`.
-
-3. Launch ROS bridge server (python 2):
-```
-python -m real_robots.real_baxter_server
-```
-
-4. Start visdom for visualizing the training
-```
-python -m visdom.server
-```
-
-4. Train the agent (python 3)
-```
-python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --shape-reward --algo ppo2 --env Baxter-v0
-```
-
-## Working With a Real Robobo
-
-[Robobo Documentation](https://bitbucket.org/mytechia/robobo-programming/wiki/Home)
-
-Note: the Robobo is controlled using time (the feedback frequency is too low to do closed-loop control)
-The robot was calibrated for a constant speed of 10.
-
-### Recording Data With a Random Agent for SRL
-
-1. Change you environment to match Robobo ROS settings or in your .bashrc:
-NOTE: Robobo is using ROS Java, if you encounter any problem with the cameras (e.g. with a xtion), you should create the master node on your computer and change the settings in the robobo dev app.
-```
-# NB: This is only an example
-export ROS_HOSTNAME=192.168.0.211  # Your IP
-export ROS_MASTER_URI=http://robobo.local:11311 # Robobo IP
-```
-
-2. Calibrate the different values in `real_robots/constants.py` using `real_robots/real_robobo_server.py` and `real_robots/teleop_client.py` (Client for teleoperation):
-- Set USING_ROBOBO to True
-- Area of the target: TARGET_INITIAL_AREA
-- Boundaries of the enviroment: (MIN_X, MAX_X, MIN_Y, MAX_Y)
-- Maximum number of steps per episode: MAX_STEPS
-IMPORTANT NOTE: if you use color detection to detect the target, you need to calibrate the HSV thresholds `LOWER_RED` and `UPPER_RED` in `real_robots/constants.py` (for instance, using [this script](https://github.com/sergionr2/RacingRobot/blob/v0.3/opencv/dev/threshold.py)). Be careful, you may have to change the color conversion (`cv2.COLOR_BGR2HSV` instead of `cv2.COLOR_RGB2HSV`)
-
-3. Configure images topics in `real_robots/constants.py`:
-- IMAGE_TOPIC: main camera
-- SECOND_CAM_TOPIC: second camera (set it to None if you don't want to use a second camera)
-- DATA_FOLDER_SECOND_CAM: folder where the images of the second camera will be saved
-
-NOTE: If you want to use robobo's camera (phone camera), you need to republish the image to the raw format:
-```
-rosrun image_transport republish compressed in:=/camera/image raw out:=/camera/image_repub
-```
-
-4. Launch ROS bridge server (python 2):
-```
-python -m real_robots.real_robobo_server
-```
-
-5. Deactivate ROS from your environment and switch to python 3 environment (for using this repo)
-
-6. Set the number of episodes you want to record, name of the experiment and random seed in `environments/robobo_gym/test_robobo_env.py`
-
-7. Record data using a random agent:
-```
-python -m environments.robobo_gym.test_robobo_env
-```
-
-8. Wait until the end... Note: the real robobo runs at approximately 0.1 FPS.
-
-NB: If you want to save the image without resizing, you need to comment the line in the method `getObservation()` in `environments/robobo_gym/robobo_env.py`
-
-### RL on a Real Robobo
-
-1. Update the settings in `rl_baselines/train.py`, so it saves and logs the training more often (LOG_INTERVAL, SAVE_INTERVAL, ...)
-
-2. Make sure that USING_ROBOBO is set to True in `real_robots/constants.py`.
-
-3. Launch ROS bridge server (python 2):
-```
-python -m real_robots.real_robobo_server
-```
-
-4. Start visdom for visualizing the training
-```
-python -m visdom.server
-```
-
-4. Train the agent (python 3)
-```
-python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --algo ppo2 --env RoboboGymEnv-v0
-```
-
+The instructions for working with a real robot are availables here : `real_robots/README.md`.
 
 ## Troubleshooting
 If a submodule is not downloaded:

@@ -12,17 +12,19 @@ As such, we have created a few robotic environments, using OpenAI's Gym environm
     - Kuka2ButtonGymEnv-v0: Kuka arm with 2 buttons next to each others, they must be pressed in the correct order (lighter button, then darker button).
     - KukaMovingButtonGymEnv-v0: Kuka arm with a single button in front, slowly moving left to right.
 - Mobile robot: Here we have a mobile robot which reach a target position
-    - MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a target position.
-    - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order (lighter target, then darker target).
+    - MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a target position (yellow cylinder).
+    - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order (yellow target, then red target).
     - MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can only go up and down, it must reach a target position.
     - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a colored band going across the terrain.
+- Racing car: Here we have the interface for the Gym racing car environment. It must complete a racing course in the least time possible
+    - CarRacingGymEnv-v0: A racing car on a racing course, it must complete the racing course in the least time possible.
 - Baxter: A baxter robot that must reach a target, with its arms.
     - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
 - Robobo: A Robobo robot that must reach a target position.
     - RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
-    
+
 ## Add your own
-1. Create a class that inherits ```environments.srl_env.SRLGymEnv``` which implements your environment. 
+1. Create a class that inherits ```environments.srl_env.SRLGymEnv``` which implements your environment.
 You will need to define specifically:
     * ```getTargetPos()```: returns the position of the target.
     * ```getGroundTruthDim()```: returns the number of dimensions used to encode the ground truth.
@@ -31,7 +33,7 @@ You will need to define specifically:
     * ```reset()```: re-initialise the environment.
     * ```render(mode='human')```: returns an observation of the environment.
     * ```close()```: closes the environment, override if you need to change it.
-2. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```, 
+2. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```,
 using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, where:
     * ```NAME```: is your environment's name.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
@@ -44,4 +46,4 @@ using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, wher
     can be (from most restricive to less restricive) 
     ```PROCESS```, ```TRHEAD``` or ```NONE``` (use ```NONE``` if unsure).
 3. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
-4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```dataset_generator.py```. 
+4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```dataset_generator.py```.
