@@ -88,6 +88,8 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
+        return self._observation
+
     def step(self, action):
         if action is not None:
             if self._is_discrete:

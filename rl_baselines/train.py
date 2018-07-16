@@ -255,7 +255,7 @@ def main():
 
     super_class = registered_env[args.env][1]
     # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
-    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _) in
+    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _, _) in
                               registered_env.items()}
     while super_class != SRLGymEnv:
         assert super_class in rec_super_class_lookup, "Error: could not find super class of {}".format(super_class) + \

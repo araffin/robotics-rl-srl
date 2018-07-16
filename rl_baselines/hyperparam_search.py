@@ -255,7 +255,7 @@ def main():
         opt = Hyperband(opt_param, make_rl_training_function(args, train_args), seed=args.seed,
                         max_iter=args.num_timesteps // ITERATION_SCALE)
     elif args.optimizer == "hyperopt":
-        opt = Hyperopt(opt_param, make_rl_training_function(args, train_args), seed=args.seed, num_eval=args.num_eval)
+        opt = Hyperopt(opt_param, make_rl_training_function(args, train_args), seed=args.seed, num_eval=args.max_eval)
     else:
         raise ValueError("Error: optimizer {} was defined but not implemented, Halting.".format(args.optimizer))
 

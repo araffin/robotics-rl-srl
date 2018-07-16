@@ -5,6 +5,8 @@ import numpy as np
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from rl_baselines.base_classes import BaseRLObject
+from environments import ThreadingType
+from environments.registry import registered_env
 from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultiprocessSRLModel, softmax
 from srl_zoo.utils import printYellow
@@ -102,6 +104,8 @@ class ARSModel(BaseRLObject):
         if "num_population" in args.__dict__:
             args.num_cpu = args.num_population * 2
 
+        assert not (registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
+            "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
             srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
             env_kwargs["state_dim"] = srl_model.state_dim

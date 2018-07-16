@@ -32,12 +32,16 @@ You will need to define specifically:
     * ```render(mode='human')```: returns an observation of the environment.
     * ```close()```: closes the environment, override if you need to change it.
 2. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```, 
-using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE)```, where:
+using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, where:
     * ```NAME```: is your environment's name.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
     * ```SUPER_CLASS```: is the super class of your class, this is for saving all the globals and parameters.
     * ```PLOT_TYPE```: is the type of plotting for ```replay.enjoy_baselines```,
     defined by the enumerator ```PlottingType``` in ```environments/__init__.py```,
     can be ```PLOT_2D``` or ```PLOT_3D``` (use ```PLOT_3D``` if unsure).
+    * ```THREAD_TYPE```: is the type of mutlithreading supported by the environment,
+    defined by the enumerator ```ThreadingType``` in ```environments/__init__.py```,
+    can be (from most restricive to less restricive) 
+    ```PROCESS```, ```TRHEAD``` or ```NONE``` (use ```NONE``` if unsure).
 3. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
 4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```dataset_generator.py```. 
