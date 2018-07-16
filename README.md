@@ -88,6 +88,11 @@ To train an agent:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/
 ```
 
+You can train an agent on the latest learned model located at "srl_zoo/logs/DatasetName/" (knowing it's type):
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --latest --srl-model srl_combination
+```
+
 To load a trained agent and see the result:
 ```
 python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
