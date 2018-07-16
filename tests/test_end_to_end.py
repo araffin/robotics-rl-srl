@@ -16,7 +16,7 @@ DEFAULT_SRL_CONFIG_YAML = "config/srl_models_test.yaml"
 
 DATA_FOLDER_NAME = "RL_test"
 TEST_DATA_FOLDER = "data/" + DATA_FOLDER_NAME
-TEST_DATA_FOLDER_DUAL = "data/kuka_gym_dual_test"
+TEST_DATA_FOLDER_DUAL_CAMERA = "data/kuka_gym_dual_test"
 
 NUM_EPOCHS = 1
 STATE_DIM = 3
@@ -125,7 +125,7 @@ def testSrlTrain():
         # Testing multi-view
         if loss_type == "triplet":
             exp_config["multi-view"] = True
-            args.extend(['--multi-view', '--data-folder', TEST_DATA_FOLDER_DUAL])
+            args.extend(['--multi-view', '--data-folder', TEST_DATA_FOLDER_DUAL_CAMERA])
         else:
             args.extend(['--data-folder', TEST_DATA_FOLDER])
 
