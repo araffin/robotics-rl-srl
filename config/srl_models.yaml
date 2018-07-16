@@ -2,51 +2,71 @@ KukaButtonGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/kuka_test/
   # Path to the different trained SRL models
-  autoencoder: baselines/autoencoder_cnn_ST_DIM6_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
-  vae: baselines/vae_cnn_ST_DIM6_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
+  autoencoder: 18-07-04_11h08_38_mlp_ST_DIM2_autoencoder/srl_model.pth
+  vae: 18-07-04_11h08_56_mlp_ST_DIM2_vae/srl_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM5/pca.pkl
-  robotic_priors: 07-03-18_13h55_31_custom_cnn_ProTemCauRep_ST_DIM3_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 Kuka2ButtonGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/kuka_2_button/
   # Path to the different trained SRL models
-  autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
-  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
+  autoencoder: 18-07-04_11h08_38_mlp_ST_DIM2_autoencoder/srl_model.pth
+  vae: 18-07-04_11h08_56_mlp_ST_DIM2_vae/srl_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  robotic_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 KukaRandButtonGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/kuka_rand_button/
   # Path to the different trained SRL models
-  autoencoder: baselines/autoencoder_cnn_ST_DIM32_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
-  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
+  autoencoder: 18-07-04_11h08_38_mlp_ST_DIM2_autoencoder/srl_model.pth
+  vae: 18-07-04_11h08_56_mlp_ST_DIM2_vae/srl_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM10/pca.pkl
-  robotic_priors: 18-04-11_13h03_10_custom_cnn_ProTemCauRep_ST_DIM4_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 KukaMovingButtonGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/kuka_moving_button_big/
   # Path to the different trained SRL models
-  autoencoder: baselines/autoencoder_cnn_ST_DIM12_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
-  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS5_BS32/srl_vae_model.pth
+  autoencoder: 18-07-04_11h08_38_mlp_ST_DIM2_autoencoder/srl_model.pth
+  vae: 18-07-04_11h08_56_mlp_ST_DIM2_vae/srl_model.pth
   supervised: baselines/supervised_custom_cnn_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  robotic_priors: custom_cnn_ST_DIM10_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 MobileRobotGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/mobile_robot_walls/
   # Path to the different trained SRL models
-  autoencoder: baselines/autoencoder_cnn_ST_DIM32_SEED1_NOISE0_1_EPOCHS25_BS32/srl_ae_model.pth
-  vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
+  autoencoder: 18-07-04_11h08_38_mlp_ST_DIM2_autoencoder/srl_model.pth
+  vae: 18-07-04_11h08_56_mlp_ST_DIM2_vae/srl_model.pth
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  robotic_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
@@ -56,7 +76,11 @@ MobileRobot2TargetGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  robotic_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 MobileRobot1DGymEnv-v0:
   # Base path to SRL log folder
@@ -66,7 +90,11 @@ MobileRobot1DGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  robotic_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
 
 MobileRobotLineTargetGymEnv-v0:
   # Base path to SRL log folder
@@ -76,4 +104,8 @@ MobileRobotLineTargetGymEnv-v0:
   vae: baselines/vae_cnn_ST_DIM32_SEED1_NOISE0_EPOCHS25_BS32/srl_vae_model.pth
   supervised: baselines/supervised_resnet_SEED1_EPOCHS25_BS32/srl_supervised_model.pth
   pca: baselines/pca_ST_DIM32/pca.pkl
-  robotic_priors: 18-05-22_15h47_12_custom_cnn_ProTemCauRep_ST_DIM2_SEED0_priors/srl_model.pth
+  robotic_priors: 18-07-04_11h01_51_custom_cnn_ST_DIM3_priors/srl_model.pth
+  inverse: 18-06-20_16h36_48_custom_cnnST_DIM2_inverse/srl_model.pth
+  forward: 18-06-20_16h36_48_custom_cnnST_DIM2_forward/srl_model.pth
+  multi_view_srl: 18-07-04_11h06_09_custom_cnn_ST_DIM10_priors/srl_model.pth
+  srl_combination: 18-06-20_16h36_48_custom_cnnST_DIM2_forward_reward_inverse_autoencoder/srl_model.pth
