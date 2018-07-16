@@ -88,9 +88,9 @@ To train an agent:
 python -m rl_baselines.train --algo ppo2 --log-dir logs/
 ```
 
-You can train an agent on the latest learned model located at `srl_zoo/logs/DatasetName/` (knowing it's type):
+You can train an agent on the latest learned model (knowing it's type) located at `log_folder: srl_zoo/logs/DatasetName/` (defined for each environment in `config/srl_models.yaml`) :
 ```
-python -m rl_baselines.train --algo ppo2 --log-dir logs/ --latest --srl-model srl_combination
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --latest --srl-model srl_combination --env MobileRobotGymEnv-v0
 ```
 
 To load a trained agent and see the result:
