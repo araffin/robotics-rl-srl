@@ -31,6 +31,7 @@ Table of Contents
 - Python 3 is required (python 2 is not supported because of OpenAI baselines)
 - [OpenAI Baselines](https://github.com/openai/baselines) (latest version, install from source (at least commit 3cc7df0))
 - [OpenAI Gym](https://github.com/openai/gym/) (version >= 0.10.3)
+- install the swig library (for Ubuntu 14.04: ```apt-get install swig```)
 - Install the dependencies using `environment.yml` file (for conda users)
 
 Note: The save method of ACER of baselines is currently buggy, you need to manually add an import (see [pull request #312](https://github.com/openai/baselines/pull/312))

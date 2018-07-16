@@ -138,3 +138,4 @@ dependencies:
     - zmq==0.0.0
     - cma==2.5.3
     - h5py==2.8.0rc1
+    - Box2D==2.3.2

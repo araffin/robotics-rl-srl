@@ -13,6 +13,7 @@ from environments.mobile_robot.mobile_robot_1D_env import MobileRobot1DGymEnv
 from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLineTargetGymEnv
 from environments.gym_baxter.baxter_env import BaxterEnv
 from environments.robobo_gym.robobo_env import RoboboEnv
+from environments.car_racing.car_env import CarRacingEnv
 
 
 def register(_id, **kvargs):
@@ -32,7 +33,8 @@ registered_env = {
     "MobileRobot1DGymEnv-v0":         (MobileRobot1DGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D),
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D),
     "Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D),
-    "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D)
+    "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D),
+    "CarRacingGymEnv-v0":             (CarRacingEnv, SRLGymEnv, PlottingType.PLOT_2D)
 }
 
 
