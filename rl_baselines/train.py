@@ -2,8 +2,10 @@
 Train script for openAI RL Baselines
 """
 import argparse
+import glob
 import json
 import os
+import re
 from datetime import datetime
 from pprint import pprint
 import inspect
@@ -55,6 +57,13 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
         json.dump(params, f)
 
 
+def latestPath(path):
+    """
+    :param path: path to the log folder (defined in srl_model.yaml) (str)
+    :return: path till latest learned model in the same dataset folder (str)
+    """
+    return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
+
 def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
     :param args: (ArgumentParser object)
@@ -77,8 +86,9 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["srl_model"] = args.srl_model
     if path is not None:
         env_kwargs["use_srl"] = True
-        env_kwargs["srl_model_path"] = models['log_folder'] + path
-
+        srl_model_path = models['log_folder'] + path
+        # Path depending on whether to load the latest model or not
+        env_kwargs["srl_model_path"] = latestPath(models['log_folder']) if args.latest else srl_model_path
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
@@ -177,6 +187,8 @@ def main():
                         help='Set the button to a random position')
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
+    parser.add_argument('--latest', action='store_true', default=False,
+                        help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -239,6 +251,8 @@ def main():
     # Allow up action
     # env_kwargs["force_down"] = False
 
+    # allow multi-view
+    env_kwargs['multi_view'] = args.srl_model == "multi_view_srl"
     parser = algo.customArguments(parser)
     args = parser.parse_args()
 
