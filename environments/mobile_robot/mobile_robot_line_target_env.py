@@ -1,6 +1,7 @@
 from .mobile_robot_env import *
 
 REWARD_DIST_THRESHOLD = 0.1
+ROBOT_OFFSET = 0.2  # Take into account the robot length for computing distance to target
 
 
 class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
@@ -31,8 +32,11 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
         super(MobileRobotLineTargetGymEnv, self).__init__(name=name, **kwargs)
 
     def getTargetPos(self):
-        # Return only the [x, y] coordinates
-        return self.target_pos[:1]
+        """
+        :return (numpy array): Position of the target (button)
+        """
+        # Return only the x-coordinate plus an offset to account for the robot length
+        return self.target_pos[:1] - ROBOT_OFFSET
 
     def reset(self):
         self.terminated = False

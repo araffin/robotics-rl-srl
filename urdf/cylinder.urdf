@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<robot name="cylinder">
+  <link name="cylinder_button">
+    <inertial>
+      <mass value="0.1"/>
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <inertia ixx="0.0008175" ixy="0" ixz="0" iyy="0.0008175" iyz="0" izz="0.00162"/>
+    </inertial>
+    <collision name="cylinder_button_collision">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/button.dae" scale="2.0 2.0 1.0"/>
+      </geometry>
+    </collision>
+    <visual name="cylinder_button_visual">
+      <origin rpy="0  0  0" xyz="0  0  0"/>
+      <geometry>
+        <mesh filename="meshes/button.dae" scale="2.0 2.0 1.0"/>
+      </geometry>
+      <material name="yellow">
+        <color rgba="1 1 0 1"/>
+      </material>
+    </visual>
+  </link>
+</robot>

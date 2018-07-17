@@ -137,8 +137,8 @@ class CustomVecNormalize(VecEnvWrapper):
 
     def getOriginalObs(self):
         """
-        retruns the unnormalized observation
-        :return: (numpy float) 
+        returns the unnormalized observation
+        :return: (numpy float)
         """
         return self.old_obs
 
@@ -354,4 +354,3 @@ def softmax(x):
     """
     e_x = np.exp(x.T - np.max(x.T, axis=0))
     return (e_x / e_x.sum(axis=0)).T
-
