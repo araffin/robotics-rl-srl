@@ -67,6 +67,11 @@ To train an agent (without visualization with visdom):
 python -m rl_baselines.train --algo ppo2 --log-dir logs/ --no-vis
 ```
 
+You can train an agent on the latest learned model (knowing it's type) located at `log_folder: srl_zoo/logs/DatasetName/` (defined for each environment in `config/srl_models.yaml`) :
+```
+python -m rl_baselines.train --algo ppo2 --log-dir logs/ --latest --srl-model srl_combination --env MobileRobotGymEnv-v0
+```
+
 To load a trained agent and see the result:
 ```
 python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
