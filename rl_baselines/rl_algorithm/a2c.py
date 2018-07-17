@@ -4,14 +4,14 @@ import time
 
 import numpy as np
 import tensorflow as tf
-from baselines.acer.acer_simple import find_trainable_variables, joblib
-from baselines.common import tf_util
-from baselines.a2c.a2c import discount_with_dones, explained_variance, Model
-from baselines import logger
+from stable_baselines.acer.acer_simple import find_trainable_variables, joblib
+from stable_baselines.common import set_global_seeds, tf_util
+from stable_baselines.common.runners import AbstractEnvRunner
+from stable_baselines.a2c.a2c import discount_with_dones, explained_variance, Model
+from stable_baselines import logger
 
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.policies import PPO2MLPPolicy, PPO2CNNPolicy
-from rl_baselines.utils import createTensorflowSession
 
 
 class A2CModel(BaseRLObject):
@@ -113,10 +113,30 @@ class A2CModel(BaseRLObject):
         envs.close()
 
     def _learn(self, policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
-               max_grad_norm=0.5, lr=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99, log_interval=100,
-               callback=None):
-        tf.reset_default_graph()
-        createTensorflowSession()
+               max_grad_norm=0.5, learning_rate=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99,
+               log_interval=100, callback=None):
+        """
+        Return a trained A2C model.
+
+        :param policy: (A2CPolicy) The policy model to use (MLP, CNN, LSTM, ...)
+        :param env: (Gym environment) The environment to learn from
+        :param seed: (int) The initial seed for training
+        :param nsteps: (int) The number of steps to run for each environment
+        :param total_timesteps: (int) The total number of samples
+        :param vf_coef: (float) Value function coefficient for the loss calculation
+        :param ent_coef: (float) Entropy coefficient for the loss caculation
+        :param max_grad_norm: (float) The maximum value for the gradient clipping
+        :param learning_rate: (float) The learning rate
+        :param lrschedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
+                                     'double_linear_con', 'middle_drop' or 'double_middle_drop')
+        :param epsilon: (float) RMS prop optimizer epsilon
+        :param alpha: (float) RMS prop optimizer decay
+        :param gamma: (float) Discount factor
+        :param log_interval: (int) The number of timesteps before logging.
+        :param callback: (function)
+        :return: (Model) A2C model
+        """
+        set_global_seeds(seed)
 
         # MLP: multi layer perceptron
         # CNN: convolutional neural netwrok
@@ -134,12 +154,11 @@ class A2CModel(BaseRLObject):
         ac_space = env.action_space
         self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps,
                            ent_coef=ent_coef,
-                           vf_coef=vf_coef,
-                           max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon,
-                           total_timesteps=total_timesteps,
+                           vf_coef=vf_coef, max_grad_norm=max_grad_norm, learning_rate=learning_rate,
+                           alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps,
                            lrschedule=lrschedule)
         self.states = self.model.initial_state
-        runner = _Runner(env, self.model, nsteps=nsteps, gamma=gamma)
+        runner = _Runner(env, self.model, n_steps=nsteps, gamma=gamma)
 
         nbatch = nenvs * nsteps
         tstart = time.time()
@@ -153,44 +172,57 @@ class A2CModel(BaseRLObject):
                 callback(locals(), globals())
 
             if update % log_interval == 0 or update == 1:
-                ev = explained_variance(values, rewards)
+                explained_var = explained_variance(values, rewards)
                 logger.record_tabular("nupdates", update)
                 logger.record_tabular("total_timesteps", update * nbatch)
                 logger.record_tabular("fps", fps)
                 logger.record_tabular("policy_entropy", float(policy_entropy))
                 logger.record_tabular("value_loss", float(value_loss))
-                logger.record_tabular("explained_variance", float(ev))
+                logger.record_tabular("explained_variance", float(explained_var))
                 logger.dump_tabular()
+        env.close()
+        return self.model
 
 
 # Redefine runner to add support for srl models
-class _Runner(object):
-    def __init__(self, env, model, nsteps=5, gamma=0.99):
-        self.env = env
-        self.model = model
+class _Runner(AbstractEnvRunner):
+    def __init__(self, env, model, n_steps=5, gamma=0.99):
+        """
+        A runner to learn the policy of an environment for a model
+
+        :param env: (Gym environment) The environment to learn from
+        :param model: (Model) The model to learn
+        :param n_steps: (int) The number of steps to run for each environment
+        :param gamma: (float) Discount factor
+        """
+        super(_Runner, self).__init__(env=env, model=model, nsteps=n_steps)
+        self.gamma = gamma
+
         nenv = env.num_envs
         if len(env.observation_space.shape) > 1:
             nh, nw, nc = env.observation_space.shape
-            self.batch_ob_shape = (nenv * nsteps, nh, nw, nc)
+            self.batch_ob_shape = (nenv * n_steps, nh, nw, nc)
             self.obs_dtype = np.uint8
             self.obs = np.zeros((nenv, nh, nw, nc), dtype=self.obs_dtype)
             self.nc = nc
         else:
             obs_dim = env.observation_space.shape[0]
-            self.batch_ob_shape = (nenv * nsteps, obs_dim)
+            self.batch_ob_shape = (nenv * n_steps, obs_dim)
             self.obs_dtype = np.float32
             self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
 
-        env.reset()
-        self.gamma = gamma
-        self.nsteps = nsteps
-        self.states = model.initial_state
-        self.dones = [False for _ in range(nenv)]
+        self.obs[:] = env.reset()
 
     def run(self):
+        """
+        Run a learning step of the model
+
+        :return: ([float], [float], [float], [bool], [float], [float])
+                 observations, states, rewards, masks, actions, values
+        """
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
         mb_states = self.states
-        for n in range(self.nsteps):
+        for _ in range(self.nsteps):
             actions, values, states, _ = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(np.copy(self.obs))
             mb_actions.append(actions)
@@ -199,9 +231,9 @@ class _Runner(object):
             obs, rewards, dones, _ = self.env.step(actions)
             self.states = states
             self.dones = dones
-            for k, done in enumerate(dones):
+            for n, done in enumerate(dones):
                 if done:
-                    self.obs[k] = self.obs[k] * 0
+                    self.obs[n] = self.obs[n] * 0
             self.obs = obs
             mb_rewards.append(rewards)
         mb_dones.append(self.dones)

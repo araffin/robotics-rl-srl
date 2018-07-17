@@ -4,10 +4,10 @@ import time
 
 import numpy as np
 import joblib
-from baselines.common import tf_util
-from baselines.acer.acer_simple import find_trainable_variables
-from baselines.ppo2.ppo2 import Model, constfn, Runner, deque, explained_variance, safemean, osp
-from baselines import logger
+from stable_baselines.common import tf_util
+from stable_baselines.acer.acer_simple import find_trainable_variables
+from stable_baselines.ppo2.ppo2 import Model, constfn, Runner, deque, explained_variance, safe_mean
+from stable_baselines import logger
 import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
@@ -124,31 +124,31 @@ class PPO2Model(BaseRLObject):
                     callback=callback)
 
     # Modified version of OpenAI to work with SRL models
-    def _learn(self, args, env, nsteps, total_timesteps, ent_coef, lr, vf_coef=0.5, max_grad_norm=0.5, gamma=0.99,
-               lam=0.95, log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2, save_interval=0, callback=None):
+    def learn(self, *, args, env, n_steps, total_timesteps, ent_coef, learning_rate, vf_coef=0.5, max_grad_norm=0.5,
+              gamma=0.99, lam=0.95, log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2, save_interval=0,
+              load_path=None, callback=None):
         """
+        Return a trained PPO2 model.
+
         :param args: (Arguments object)
-        :param env: (gym VecEnv)
-        :param nsteps: (int)
-        :param total_timesteps: (int)
-        :param ent_coef: (float) entropy coefficient
-        :param lr: (float or function) learning rate
-        :param vf_coef: (float)
-        :param gamma: (float) discount factor
-        :param lam: (float) lambda ?
-        :param log_interval: (int)
-        :param nminibatches: (int)
-        :param noptepochs: (int)
-        :param cliprange: (float or function)
-        :param save_interval: (int)
-        :param max_grad_norm: (float)
+        :param env: (Gym environment) The environment to learn from
+        :param n_steps: (int) The number of steps to run for each environment
+        :param total_timesteps: (int) The total number of samples
+        :param ent_coef: (float) Entropy coefficient for the loss caculation
+        :param learning_rate: (float or callable) The learning rate, it can be a function
+        :param vf_coef: (float) Value function coefficient for the loss calculation
+        :param max_grad_norm: (float) The maximum value for the gradient clipping
+        :param gamma: (float) Discount factor
+        :param lam: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator
+        :param nminibatches: (int) Number of minibatches for the policies
+        :param noptepochs: (int) Number of epoch when optimizing the surrogate
+        :param cliprange: (float or callable) Clipping parameter, it can be a function
+        :param log_interval: (int) The number of timesteps before logging.
+        :param save_interval: (int) The number of timesteps before saving.
+        :param load_path: (str) Path to a trained ppo2 model, set to None, it will learn from scratch
         :param callback: (function)
+        :return: (Model) PPO2 model
         """
-        config = tf.ConfigProto(allow_soft_placement=True,
-                                intra_op_parallelism_threads=args.num_cpu,
-                                inter_op_parallelism_threads=args.num_cpu)
-        config.gpu_options.allow_growth = True
-        tf.Session(config=config).__enter__()
 
         # MLP: multi layer perceptron
         # CNN: convolutional neural netwrok
@@ -166,33 +166,34 @@ class PPO2Model(BaseRLObject):
             raise ValueError(args.policy + " not implemented for " + (
                 "discrete" if args.continuous_actions else "continuous") + " action space.")
 
-        if isinstance(lr, float):
-            lr = constfn(lr)
+        if isinstance(learning_rate, float):
+            learning_rate = constfn(learning_rate)
         else:
-            assert callable(lr)
+            assert callable(learning_rate)
         if isinstance(cliprange, float):
             cliprange = constfn(cliprange)
         else:
             assert callable(cliprange)
         total_timesteps = int(total_timesteps)
 
-        nenvs = env.num_envs
+        n_envs = env.num_envs
         ob_space = env.observation_space
         ac_space = env.action_space
-        nbatch = nenvs * nsteps
+        nbatch = n_envs * n_steps
         nbatch_train = nbatch // nminibatches
 
-        make_model = lambda: Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs,
-                                   nbatch_train=nbatch_train,
-                                   nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
+        make_model = lambda: Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=n_envs,
+                                   nbatch_train=nbatch_train, nsteps=n_steps, ent_coef=ent_coef, vf_coef=vf_coef,
                                    max_grad_norm=max_grad_norm)
         if save_interval and logger.get_dir():
             import cloudpickle
-            with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
-                fh.write(cloudpickle.dumps(make_model))
+            with open(os.path.join(logger.get_dir(), 'make_model.pkl'), 'wb') as file_handler:
+                file_handler.write(cloudpickle.dumps(make_model))
         self.model = make_model()
         self.states = self.model.initial_state
-        runner = Runner(env=env, model=self.model, nsteps=nsteps, gamma=gamma, lam=lam)
+        if load_path is not None:
+            self.model.load(load_path)
+        runner = Runner(env=env, model=self.model, nsteps=n_steps, gamma=gamma, lam=lam)
 
         epinfobuf = deque(maxlen=100)
         tfirststart = time.time()
@@ -203,7 +204,7 @@ class PPO2Model(BaseRLObject):
             nbatch_train = nbatch // nminibatches
             tstart = time.time()
             frac = 1.0 - (update - 1.0) / nupdates
-            lrnow = lr(frac)
+            lr_now = learning_rate(frac)
             cliprangenow = cliprange(frac)
             obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run()  # pylint: disable=E0632
             epinfobuf.extend(epinfos)
@@ -216,22 +217,21 @@ class PPO2Model(BaseRLObject):
                         end = start + nbatch_train
                         mbinds = inds[start:end]
                         slices = (arr[mbinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
-                        mblossvals.append(self.model.train(lrnow, cliprangenow, *slices))
+                        mblossvals.append(self.model.train(lr_now, cliprangenow, *slices))
             else:  # recurrent version
-                assert nenvs % nminibatches == 0
-                envsperbatch = nenvs // nminibatches
-                envinds = np.arange(nenvs)
-                flatinds = np.arange(nenvs * nsteps).reshape(nenvs, nsteps)
-                envsperbatch = nbatch_train // nsteps
+                assert n_envs % nminibatches == 0
+                envinds = np.arange(n_envs)
+                flatinds = np.arange(n_envs * n_steps).reshape(n_envs, n_steps)
+                envsperbatch = nbatch_train // n_steps
                 for _ in range(noptepochs):
                     np.random.shuffle(envinds)
-                    for start in range(0, nenvs, envsperbatch):
+                    for start in range(0, n_envs, envsperbatch):
                         end = start + envsperbatch
                         mbenvinds = envinds[start:end]
                         mbflatinds = flatinds[mbenvinds].ravel()
                         slices = (arr[mbflatinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
                         mbstates = states[mbenvinds]
-                        mblossvals.append(self.model.train(lrnow, cliprangenow, *slices, mbstates))
+                        mblossvals.append(self.model.train(lr_now, cliprangenow, *slices, mbstates))
 
             lossvals = np.mean(mblossvals, axis=0)
 
@@ -241,16 +241,23 @@ class PPO2Model(BaseRLObject):
             tnow = time.time()
             fps = int(nbatch / (tnow - tstart))
             if update % log_interval == 0 or update == 1:
-                ev = explained_variance(values, returns)
-                logger.logkv("serial_timesteps", update * nsteps)
+                explained_var = explained_variance(values, returns)
+                logger.logkv("serial_timesteps", update * n_steps)
                 logger.logkv("nupdates", update)
                 logger.logkv("total_timesteps", update * nbatch)
                 logger.logkv("fps", fps)
-                logger.logkv("explained_variance", float(ev))
-                logger.logkv('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
-                logger.logkv('eplenmean', safemean([epinfo['l'] for epinfo in epinfobuf]))
+                logger.logkv("explained_variance", float(explained_var))
+                logger.logkv('eprewmean', safe_mean([epinfo['r'] for epinfo in epinfobuf]))
+                logger.logkv('eplenmean', safe_mean([epinfo['l'] for epinfo in epinfobuf]))
                 logger.logkv('time_elapsed', tnow - tfirststart)
                 for (lossval, lossname) in zip(lossvals, self.model.loss_names):
                     logger.logkv(lossname, lossval)
                 logger.dumpkvs()
+            if save_interval and (update % save_interval == 0 or update == 1) and logger.get_dir():
+                checkdir = os.path.join(logger.get_dir(), 'checkpoints')
+                os.makedirs(checkdir, exist_ok=True)
+                savepath = os.path.join(checkdir, '%.5i' % update)
+                print('Saving to', savepath)
+                self.model.save(savepath)
         env.close()
+        return self.model
