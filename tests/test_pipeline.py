@@ -2,6 +2,9 @@ from __future__ import print_function, division, absolute_import
 
 import subprocess
 
+from environments import ThreadingType
+from environments.registry import registered_env
+
 DEFAULT_ALGO = "ppo2"
 DEFAULT_ENV = "MobileRobotGymEnv-v0"
 DEFAULT_SRL = "ground_truth"
@@ -27,16 +30,12 @@ def makeTestFun(algo):
     def testBaselineTrain():
         for model_type in ['raw_pixels']:
             args = ['--algo', algo, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP, '--seed', SEED,
-                    '--num-iteration', NUM_ITERATION, '--no-vis']
+                    '--num-iteration', NUM_ITERATION, '--no-vis', '--env', DEFAULT_ENV]
             if algo == "ddpg":
                 mem_limit = 100 if model_type == 'raw_pixels' else 100000
                 args.extend(['-c', '--memory-limit', mem_limit])
-                args.extend(['--env', "KukaButtonGymEnv-v0"])
             elif algo == "acer":
                 args.extend(['--num-stack', 4])
-                args.extend(['--env', DEFAULT_ENV])
-            else:
-                args.extend(['--env', DEFAULT_ENV])
 
             if algo in ["acer", "a2c", "ppo2"]:
                 args.extend(["--num-cpu", 4])
@@ -61,7 +60,9 @@ def testEnvSRLTrain():
                 continue
 
             args = ['--algo', DEFAULT_ALGO, '--env', env, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP,
-                    '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '--num-cpu', 4]
+                    '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis']
+            if registered_env[env][3] != ThreadingType.NONE:
+                args.extend(['--num-cpu', 4])
             args = list(map(str, args))
 
             ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
@@ -72,7 +73,9 @@ def testEnvTrain():
     for env in ["KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0",
                 "MobileRobot2TargetGymEnv-v0", "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"]:
         args = ['--algo', DEFAULT_ALGO, '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
-                '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '--num-cpu', 4]
+                '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis']
+        if registered_env[env][3] != ThreadingType.NONE:
+            args.extend(['--num-cpu', 4])
         args = list(map(str, args))
 
         ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
@@ -84,8 +87,8 @@ def testContinousEnvTrain():
         for algo in ['ppo2', 'sac']:
             args = ['--algo', algo, '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
                     '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '-c']
-            if algo in ['ppo2']:
-                args.extend(['--num-cpu', 4,])
+            if algo in ['ppo2'] and registered_env[env][3] != ThreadingType.NONE:
+                args.extend(['--num-cpu', 4])
             args = list(map(str, args))
 
             ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)

@@ -10,7 +10,7 @@ omit =
     environments/gym_baxter/*
     environments/mobile_robot/test_env.py
     environments/robobo_gym/*
-    rl_baselines/hyperband.py
+    rl_baselines/hyperparam_search.py
     rl_baselines/visualize.py
     state_representation/client.py
 
@@ -28,7 +28,7 @@ omit =
     environments/gym_baxter/*
     environments/mobile_robot/test_env.py
     environments/robobo_gym/*
-    rl_baselines/hyperband.py
+    rl_baselines/hyperparam_search.py
     rl_baselines/visualize.py
     state_representation/client.py
 
