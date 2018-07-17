@@ -42,8 +42,9 @@ class SRLGymEnv(gym.Env):
             return self.getGroundTruth()
         else:
             # srl_pipe is a tuple that contains:
-            #  Queue: input to the SRL model, send origin and observation
-            #  [Queue]: input for all the envs, send observation
+            #  Queue: input to the SRL model, sends origin (where does the message comes from, here the rank of the environment)
+            #  and observation that needs to be transformed into a state
+            #  [Queue]: input for all the envs, sends state associated to the observation
             self.srl_pipe[0].put((self.env_rank, observation))
             return self.srl_pipe[1][self.env_rank].get()
 
