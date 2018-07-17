@@ -88,6 +88,9 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
 
+        if self.srl_model != "raw_pixels":
+            return self.getSRLState(self._observation)
+
         return self._observation
 
     def step(self, action):

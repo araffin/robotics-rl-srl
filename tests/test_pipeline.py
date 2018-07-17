@@ -56,7 +56,7 @@ for baseline in ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es
 def testEnvSRLTrain():
     for model_type in ['ground_truth', 'raw_pixels', 'joints', 'joints_position']:
         for env in ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"]:
-            if model_type in ['joints', 'joints_position'] and env == "MobileRobotGymEnv-v0":
+            if model_type in ['joints', 'joints_position'] and env != "KukaButtonGymEnv-v0":
                 continue
 
             args = ['--algo', DEFAULT_ALGO, '--env', env, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP,
