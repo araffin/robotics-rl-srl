@@ -250,7 +250,7 @@ class SACModel(BaseRLObject):
             else:
                 # In the case of discrete actions
                 # mean_policy correspond to the energy|logits for each action
-                # we need to apply a softmax in ordy to get a probability
+                # we need to apply a softmax in order to get a probability
                 action = F.softmax(mean_policy, dim=-1)
         return detachToNumpy(action)
 

@@ -88,5 +88,5 @@ def testContinousEnvTrain():
                 args.extend(['--num-cpu', 4,])
             args = list(map(str, args))
 
-        ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
-        assertEq(ok, 0)
+            ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)
+            assertEq(ok, 0)
