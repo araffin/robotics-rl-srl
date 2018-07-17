@@ -188,7 +188,7 @@ def main():
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
     parser.add_argument('--latest', action='store_true', default=False,
-                        help='load the latest learned model')
+                        help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
