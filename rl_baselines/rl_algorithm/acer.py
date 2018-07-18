@@ -127,10 +127,9 @@ class ACERModel(BaseRLObject):
         :param trust_region: (bool) Enable Trust region policy optimization loss
         :param alpha: (float) The decay rate for the Exponential moving average of the parameters
         :param delta: (float) trust region delta value
-        :param callback: (function)
+        :param callback: (function (dict, dict)) function called at every steps with state of the algorithm.
+            It takes the local and global variables.
         """
-        set_global_seeds(seed)
-
         if policy == 'cnn':
             policy_fn = AcerCnnPolicy
         elif policy == 'cnnlstm':

@@ -146,10 +146,10 @@ class PPO2Model(BaseRLObject):
         :param log_interval: (int) The number of timesteps before logging.
         :param save_interval: (int) The number of timesteps before saving.
         :param load_path: (str) Path to a trained ppo2 model, set to None, it will learn from scratch
-        :param callback: (function)
+        :param callback: (function (dict, dict)) function called at every steps with state of the algorithm.
+            It takes the local and global variables.
         :return: (Model) PPO2 model
         """
-
         # MLP: multi layer perceptron
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory

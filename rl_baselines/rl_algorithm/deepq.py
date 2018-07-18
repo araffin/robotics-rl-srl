@@ -1,5 +1,5 @@
-from baselines import deepq
-from baselines import logger
+from stable_baselines import deepq
+from stable_baselines import logger
 import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
@@ -70,8 +70,6 @@ class DeepQModel(BaseRLObject):
 
         env = self.makeEnv(args, env_kwargs)
 
-        createTensorflowSession()
-
         if args.srl_model != "raw_pixels":
             model = deepq.models.mlp([64, 64])
         else:
@@ -83,21 +81,12 @@ class DeepQModel(BaseRLObject):
             )
 
         # TODO: tune params
-        self.model = deepq.learn(
-            env,
-            q_func=model,
-            lr=1e-4,
-            max_timesteps=args.num_timesteps,
-            buffer_size=args.buffer_size,
-            exploration_fraction=0.1,
-            exploration_final_eps=0.01,
-            train_freq=4,
-            learning_starts=500,
-            target_network_update_freq=500,
-            gamma=0.99,
-            prioritized_replay=bool(args.prioritized),
-            print_freq=10,  # Print every 10 episodes
-            callback=callback
-        )
+        self.model = deepq.learn(env, q_func=model, learning_rate=1e-4, max_timesteps=args.num_timesteps,
+                                 buffer_size=args.buffer_size, exploration_fraction=0.1, exploration_final_eps=0.01,
+                                 train_freq=4, learning_starts=500, target_network_update_freq=500, gamma=0.99,
+                                 prioritized_replay=bool(args.prioritized), prioritized_replay_alpha=0.6,
+                                 print_freq=10,  # Print every 10 episodes
+                                 callback=callback)
+
         self.model.save(args.log_dir + "deepq_model_end.pkl")
         env.close()

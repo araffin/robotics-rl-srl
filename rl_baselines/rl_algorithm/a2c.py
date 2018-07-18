@@ -133,11 +133,10 @@ class A2CModel(BaseRLObject):
         :param alpha: (float) RMS prop optimizer decay
         :param gamma: (float) Discount factor
         :param log_interval: (int) The number of timesteps before logging.
-        :param callback: (function)
+        :param callback: (function (dict, dict)) function called at every steps with state of the algorithm.
+            It takes the local and global variables.
         :return: (Model) A2C model
         """
-        set_global_seeds(seed)
-
         # MLP: multi layer perceptron
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
