@@ -4,12 +4,12 @@ import time
 
 import tensorflow as tf
 import numpy as np
-from baselines.common import tf_util
-from baselines.acer.acer_simple import Model, Acer, find_trainable_variables, joblib
-from baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
+from stable_baselines.common import tf_util, set_global_seeds
+from stable_baselines.common.runners import AbstractEnvRunner
+from stable_baselines.acer.acer_simple import Model, Acer, find_trainable_variables, joblib
+from stable_baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.utils import createTensorflowSession
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer
 
@@ -97,11 +97,39 @@ class ACERModel(BaseRLObject):
                     lrschedule=args.lr_schedule, callback=callback)
 
     def _learn(self, policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
-               max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
-               log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000, c=10.0,
-               trust_region=True, alpha=0.99, delta=1, callback=None):
-        tf.reset_default_graph()
-        createTensorflowSession()
+               max_grad_norm=10, learning_rate=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99,
+               gamma=0.99, log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000,
+               correction_term=10.0, trust_region=True, alpha=0.99, delta=1, callback=None):
+        """
+        Train an ACER model.
+
+        :param policy: (ACERPolicy) The policy model to use (MLP, CNN, LSTM, ...)
+        :param env: (Gym environment) The environment to learn from
+        :param seed: (int) The initial seed for training
+        :param nsteps: (int) The number of steps to run for each environment
+        :param nstack: (int) The number of stacked frames
+        :param total_timesteps: (int) The total number of samples
+        :param q_coef: (float) Q function coefficient for the loss calculation
+        :param ent_coef: (float) Entropy coefficient for the loss caculation
+        :param max_grad_norm: (float) The maximum value for the gradient clipping
+        :param learning_rate: (float) The learning rate
+        :param lrschedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
+                                     'double_linear_con', 'middle_drop' or 'double_middle_drop')
+        :param rprop_epsilon: (float) RMS prop optimizer epsilon
+        :param rprop_alpha: (float) RMS prop optimizer decay
+        :param gamma: (float) Discount factor
+        :param log_interval: (int) The number of timesteps before logging.
+        :param buffer_size: (int) The buffer size in number of steps
+        :param replay_ratio: (float) The number of replay learning per on policy learning on average,
+                                     using a poisson distribution
+        :param replay_start: (int) The minimum number of steps in the buffer, before learning replay
+        :param correction_term: (float) The correction term for the weights
+        :param trust_region: (bool) Enable Trust region policy optimization loss
+        :param alpha: (float) The decay rate for the Exponential moving average of the parameters
+        :param delta: (float) trust region delta value
+        :param callback: (function)
+        """
+        set_global_seeds(seed)
 
         if policy == 'cnn':
             policy_fn = AcerCnnPolicy
@@ -115,20 +143,20 @@ class ACERModel(BaseRLObject):
         nenvs = env.num_envs
         ob_space = env.observation_space
         ac_space = env.action_space
-        num_procs = nenvs
-        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps,
+        num_procs = len(env.remotes)  # HACK
+        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, n_envs=nenvs, n_steps=nsteps,
                            nstack=nstack, num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
-                           max_grad_norm=max_grad_norm, lr=lr, rprop_alpha=rprop_alpha, rprop_epsilon=rprop_epsilon,
-                           total_timesteps=total_timesteps, lrschedule=lrschedule, c=c,
-                           trust_region=trust_region, alpha=alpha, delta=delta)
+                           max_grad_norm=max_grad_norm, learning_rate=learning_rate, rprop_alpha=rprop_alpha,
+                           rprop_epsilon=rprop_epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule,
+                           correction_term=correction_term, trust_region=trust_region, alpha=alpha, delta=delta)
 
         runner = _Runner(env=env, model=self.model, nsteps=nsteps, nstack=nstack)
         if replay_ratio > 0:
-            _buffer = Buffer(env=env, nsteps=nsteps, nstack=nstack, size=buffer_size)
+            buffer = Buffer(env=env, nsteps=nsteps, nstack=nstack, size=buffer_size)
         else:
-            _buffer = None
+            buffer = None
         nbatch = nenvs * nsteps
-        acer = Acer(runner, self.model, _buffer, log_interval)
+        acer = Acer(runner, self.model, buffer, log_interval)
         acer.tstart = time.time()
 
         # nbatch samples, 1 on_policy call and multiple off-policy calls
@@ -137,14 +165,26 @@ class ACERModel(BaseRLObject):
             if callback is not None:
                 callback(locals(), globals())
 
-            if replay_ratio > 0 and _buffer.has_atleast(replay_start):
-                n = np.random.poisson(replay_ratio)
-                for _ in range(n):
+            if replay_ratio > 0 and buffer.has_atleast(replay_start):
+                samples_number = np.random.poisson(replay_ratio)
+                for _ in range(samples_number):
                     acer.call(on_policy=False)  # no simulation steps in this
 
+        env.close()
 
-class _Runner(object):
+
+class _Runner(AbstractEnvRunner):
     def __init__(self, env, model, nsteps, nstack):
+        """
+        A runner to learn the policy of an environment for a model
+
+        :param env: (Gym environment) The environment to learn from
+        :param model: (Model) The model to learn
+        :param nsteps: (int) The number of steps to run for each environment
+        :param nstack: (int) The number of stacked frames
+        """
+
+        super(_Runner, self).__init__(env=env, model=model, nsteps=nsteps)
         self.env = env
         self.nstack = nstack
         self.model = model
@@ -154,31 +194,37 @@ class _Runner(object):
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
-            nh, nw, nc = env.observation_space.shape
-            self.batch_ob_shape = (nenv * (nsteps + 1), nh, nw, nc * nstack)
+            obs_height, obs_width, obs_num_channels = env.observation_space.shape
+            self.batch_ob_shape = (nenv * (nsteps + 1), obs_height, obs_width, obs_num_channels * nstack)
             self.obs_dtype = np.uint8
-            self.obs = np.zeros((nenv, nh, nw, nc * nstack), dtype=self.obs_dtype)
-            self.nc = nc
+            self.obs = np.zeros((nenv, obs_height, obs_width, obs_num_channels), dtype=self.obs_dtype)
+            self.num_channels = obs_num_channels
         else:
             self.raw_pixels = False
             obs_dim = env.observation_space.shape[0]
             self.batch_ob_shape = (nenv * (nsteps + 1), obs_dim * nstack)
             self.obs_dtype = np.float32
-            self.obs = np.zeros((nenv, obs_dim * nstack), dtype=self.obs_dtype)
+            self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
             self.obs_dim = obs_dim
 
-        obs = env.reset()
-        self.update_obs(obs)
+        self.obs[:] = env.reset()
+        self.update_obs(self.obs)
         self.nsteps = nsteps
         self.states = model.initial_state
         self.dones = [False for _ in range(nenv)]
 
     def update_obs(self, obs, dones=None):
+        """
+        Update the observation for rolling observation with stacking
+
+        :param obs: ([int] or [float]) The input observation
+        :param dones: ([bool])
+        """
         if self.raw_pixels:
             if dones is not None:
                 self.obs *= (1 - dones.astype(np.uint8))[:, None, None, None]
-            self.obs = np.roll(self.obs, shift=-self.nc, axis=3)
-            self.obs[:, :, :, -self.nc:] = obs[:, :, :, :]
+            self.obs = np.roll(self.obs, shift=-self.num_channels, axis=3)
+            self.obs[:, :, :, -self.num_channels:] = obs[:, :, :, :]
         else:
             if dones is not None:
                 self.obs *= (1 - dones.astype(np.float32))[:, None]
@@ -186,6 +232,12 @@ class _Runner(object):
             self.obs[:, -self.obs_dim:] = obs[:, :]
 
     def run(self):
+        """
+        Run a step leaning of the model
+
+        :return: ([float], [float], [float], [float], [float], [bool], [float])
+                 encoded observation, observations, actions, rewards, mus, dones, masks
+        """
         if self.raw_pixels:
             enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
         else:

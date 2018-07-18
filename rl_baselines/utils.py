@@ -5,11 +5,11 @@ from multiprocessing import Queue, Process
 import numpy as np
 import tensorflow as tf
 import torch as th
-from baselines.common.running_mean_std import RunningMeanStd
-from baselines.common.vec_env import VecEnvWrapper, VecEnv
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
+from stable_baselines.common.running_mean_std import RunningMeanStd
+from stable_baselines.common.vec_env import VecEnvWrapper, VecEnv
+from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 from environments.utils import makeEnv, dynamicEnvLoad
 from rl_baselines.visualize import loadCsv
@@ -168,30 +168,6 @@ class CustomVecNormalize(VecEnvWrapper):
         for name in ['obs_rms', 'ret_rms']:
             with open("{}/{}.pkl".format(path, name), 'rb') as f:
                 setattr(self, name, pickle.load(f))
-
-
-class VecFrameStack(OpenAIVecFrameStack):
-    """
-    Vectorized environment class, fixed from OpenAIVecFrameStack
-    :param venv: (Gym env)
-    :param nstack: (int)
-    """
-
-    def __init__(self, venv, nstack):
-        super(VecFrameStack, self).__init__(venv, nstack)
-
-    def step_wait(self):
-        """
-        Step for each env
-        :return: ([float], [float], [bool], dict) obs, reward, done, info
-        """
-        obs, rews, news, infos = self.venv.step_wait()
-        self.stackedobs = np.roll(self.stackedobs, shift=-obs.shape[-1], axis=-1)
-        for (i, new) in enumerate(news):
-            if new:
-                self.stackedobs[i] = 0
-        self.stackedobs[..., -obs.shape[-1]:] = obs
-        return self.stackedobs, rews, news, infos
 
 
 class CustomDummyVecEnv(VecEnv):

@@ -2,11 +2,12 @@ import time
 import pickle
 
 import numpy as np
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 from rl_baselines.base_classes import BaseRLObject
 from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultiprocessSRLModel, softmax
+from rl_baselines.utils import CustomVecNormalize, loadRunningAverage, MultiprocessSRLModel, softmax
 from srl_zoo.utils import printYellow
 
 
