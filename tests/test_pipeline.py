@@ -85,7 +85,7 @@ def testContinousEnvTrain():
             args = ['--algo', algo, '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
                     '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '-c']
             if algo in ['ppo2']:
-                args.extend(['--num-cpu', 4,])
+                args.extend(['--num-cpu', 4])
             args = list(map(str, args))
 
             ok = subprocess.call(['python', '-m', 'rl_baselines.pipeline'] + args)

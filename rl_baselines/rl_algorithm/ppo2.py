@@ -7,11 +7,12 @@ import joblib
 from stable_baselines.common import tf_util
 from stable_baselines.acer.acer_simple import find_trainable_variables
 from stable_baselines.ppo2.ppo2 import Model, constfn, Runner, deque, explained_variance, safe_mean
+from stable_baselines.a2c.policies import CnnPolicy, MlpPolicy
 from stable_baselines import logger
 import tensorflow as tf
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import PPO2MLPPolicy, PPO2CNNPolicy
+from rl_baselines.policies import CnnLstmPolicy, CnnLnLstmPolicy, MlpLstmPolicy, MlpLnLstmPolicy
 
 
 class PPO2Model(BaseRLObject):
@@ -57,17 +58,12 @@ class PPO2Model(BaseRLObject):
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
-        continuous = loaded_model.continuous_actions
-        policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
-                  'mlp': PPO2MLPPolicy(continuous=continuous),
-                  'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
-                  'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[loaded_model.policy]
-
-        if policy is None:
-            raise ValueError(loaded_model.policy + " not implemented for " + (
-                "discrete" if loaded_model.continuous_actions else "continuous") + " action space.")
+        policy = {'cnn': CnnPolicy,
+                  'cnn-lstm': CnnLstmPolicy,
+                  'cnn-lnlstm': CnnLnLstmPolicy,
+                  'mlp': MlpPolicy,
+                  'lstm': MlpLstmPolicy,
+                  'lnlstm': MlpLnLstmPolicy}[loaded_model.policy]
 
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
@@ -120,11 +116,11 @@ class PPO2Model(BaseRLObject):
             "Error: Reccurent policies must have num cpu at a multiple of 4."
 
         logger.configure()
-        self._learn(args, envs, nsteps=128, ent_coef=.01, lr=lambda f: f * 2.5e-4, total_timesteps=args.num_timesteps,
-                    callback=callback)
+        self._learn(args=args, env=envs, n_steps=128, ent_coef=.01, learning_rate=lambda f: f * 2.5e-4,
+                    total_timesteps=args.num_timesteps, callback=callback)
 
     # Modified version of OpenAI to work with SRL models
-    def learn(self, *, args, env, n_steps, total_timesteps, ent_coef, learning_rate, vf_coef=0.5, max_grad_norm=0.5,
+    def _learn(self, *, args, env, n_steps, total_timesteps, ent_coef, learning_rate, vf_coef=0.5, max_grad_norm=0.5,
               gamma=0.99, lam=0.95, log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2, save_interval=0,
               load_path=None, callback=None):
         """
@@ -154,17 +150,12 @@ class PPO2Model(BaseRLObject):
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
-        continuous = args.continuous_actions
-        policy = {'cnn': PPO2CNNPolicy(continuous=continuous),
-                  'cnn-lstm': PPO2CNNPolicy(continuous=continuous, reccurent=True),
-                  'cnn-lnlstm': PPO2CNNPolicy(continuous=continuous, reccurent=True, normalised=True),
-                  'mlp': PPO2MLPPolicy(continuous=continuous),
-                  'lstm': PPO2MLPPolicy(continuous=continuous, reccurent=True),
-                  'lnlstm': PPO2MLPPolicy(continuous=continuous, reccurent=True, normalised=True)}[args.policy]
-
-        if policy is None:
-            raise ValueError(args.policy + " not implemented for " + (
-                "discrete" if args.continuous_actions else "continuous") + " action space.")
+        policy = {'cnn': CnnPolicy,
+                  'cnn-lstm': CnnLstmPolicy,
+                  'cnn-lnlstm': CnnLnLstmPolicy,
+                  'mlp': MlpPolicy,
+                  'lstm': MlpLstmPolicy,
+                  'lnlstm': MlpLnLstmPolicy}[args.policy]
 
         if isinstance(learning_rate, float):
             learning_rate = constfn(learning_rate)

@@ -93,17 +93,17 @@ class ACERModel(BaseRLObject):
         self.ac_space = envs.action_space
         self.policy = args.policy
 
-        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1,
+        self._learn(args, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1,
                     lrschedule=args.lr_schedule, callback=callback)
 
-    def _learn(self, policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
+    def _learn(self, args, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
                max_grad_norm=10, learning_rate=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99,
                gamma=0.99, log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000,
                correction_term=10.0, trust_region=True, alpha=0.99, delta=1, callback=None):
         """
         Train an ACER model.
 
-        :param policy: (ACERPolicy) The policy model to use (MLP, CNN, LSTM, ...)
+        :param args: (ArgumentParser) The arguments to learn the model
         :param env: (Gym environment) The environment to learn from
         :param seed: (int) The initial seed for training
         :param nsteps: (int) The number of steps to run for each environment
@@ -130,19 +130,19 @@ class ACERModel(BaseRLObject):
         :param callback: (function (dict, dict)) function called at every steps with state of the algorithm.
             It takes the local and global variables.
         """
-        if policy == 'cnn':
+        if args.policy == 'cnn':
             policy_fn = AcerCnnPolicy
-        elif policy == 'cnnlstm':
+        elif args.policy == 'cnnlstm':
             policy_fn = AcerLstmPolicy
-        elif policy == 'mlp':
+        elif args.policy == 'mlp':
             policy_fn = AcerMlpPolicy
         else:
-            raise ValueError("Policy {} not implemented".format(policy))
+            raise ValueError("Policy {} not implemented".format(args.policy))
 
         nenvs = env.num_envs
         ob_space = env.observation_space
         ac_space = env.action_space
-        num_procs = len(env.remotes)  # HACK
+        num_procs = args.num_cpu
         self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, n_envs=nenvs, n_steps=nsteps,
                            nstack=nstack, num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
                            max_grad_norm=max_grad_norm, learning_rate=learning_rate, rprop_alpha=rprop_alpha,
@@ -206,7 +206,6 @@ class _Runner(AbstractEnvRunner):
             self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
             self.obs_dim = obs_dim
 
-        self.obs[:] = env.reset()
         self.update_obs(self.obs)
         self.nsteps = nsteps
         self.states = model.initial_state

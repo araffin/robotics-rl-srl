@@ -8,10 +8,11 @@ from stable_baselines.acer.acer_simple import find_trainable_variables, joblib
 from stable_baselines.common import set_global_seeds, tf_util
 from stable_baselines.common.runners import AbstractEnvRunner
 from stable_baselines.a2c.a2c import discount_with_dones, explained_variance, Model
+from stable_baselines.a2c.policies import CnnPolicy, MlpPolicy
 from stable_baselines import logger
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.policies import PPO2MLPPolicy, PPO2CNNPolicy
+from rl_baselines.policies import CnnLstmPolicy, CnnLnLstmPolicy, MlpLstmPolicy, MlpLnLstmPolicy
 
 
 class A2CModel(BaseRLObject):
@@ -54,12 +55,12 @@ class A2CModel(BaseRLObject):
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
-        policy = {'cnn': PPO2CNNPolicy(),
-                  'cnn-lstm': PPO2CNNPolicy(reccurent=True),
-                  'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
-                  'mlp': PPO2MLPPolicy(),
-                  'lstm': PPO2MLPPolicy(reccurent=True),
-                  'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[loaded_model.policy]
+        policy = {'cnn': CnnPolicy,
+                  'cnn-lstm': CnnLstmPolicy,
+                  'cnn-lnlstm': CnnLnLstmPolicy,
+                  'mlp': MlpPolicy,
+                  'lstm': MlpLstmPolicy,
+                  'lnlstm': MlpLnLstmPolicy}[loaded_model.policy]
         loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
                                     reuse=False)
         loaded_model.states = loaded_model.model.initial_state
@@ -141,12 +142,12 @@ class A2CModel(BaseRLObject):
         # CNN: convolutional neural netwrok
         # LSTM: Long Short Term Memory
         # LNLSTM: Layer Normalization LSTM
-        policy_fn = {'cnn': PPO2CNNPolicy(),
-                     'cnn-lstm': PPO2CNNPolicy(reccurent=True),
-                     'cnn-lnlstm': PPO2CNNPolicy(reccurent=True, normalised=True),
-                     'mlp': PPO2MLPPolicy(),
-                     'lstm': PPO2MLPPolicy(reccurent=True),
-                     'lnlstm': PPO2MLPPolicy(reccurent=True, normalised=True)}[policy]
+        policy_fn = {'cnn': CnnPolicy,
+                     'cnn-lstm': CnnLstmPolicy,
+                     'cnn-lnlstm': CnnLnLstmPolicy,
+                     'mlp': MlpPolicy,
+                     'lstm': MlpLstmPolicy,
+                     'lnlstm': MlpLnLstmPolicy}[policy]
 
         nenvs = env.num_envs
         ob_space = env.observation_space

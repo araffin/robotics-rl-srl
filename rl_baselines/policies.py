@@ -3,140 +3,13 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 from stable_baselines.a2c.utils import linear, sample, batch_to_seq, seq_to_batch, lstm
 from stable_baselines.ddpg.models import Model
-from stable_baselines.a2c.policies import nature_cnn
-from stable_baselines.common.distributions import make_proba_dist_type
-from stable_baselines.common.input import observation_input
-
-
-def PPO2MLPPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
-    """
-    Generates an MLP policy for PPO2 and A2C
-    :param continuous: (bool) If the output of the policy is continuous actions
-    :param reccurent: (bool) If the policy uses a reccurent neural network
-    :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
-    :param nlstm: (int) Number of lstm cells to use
-    :return: (Policy)
-    """
-    super_policy = FeedForwardPolicy if not reccurent else LstmPolicy
-
-    class MlpPolicy(super_policy):
-        def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False, **_kwargs):
-            super(MlpPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse, _type="mlp",
-                                            layer_norm=normalised, continuous=continuous)
-
-    return MlpPolicy
-
-
-def PPO2CNNPolicy(continuous=False, reccurent=False, normalised=False, nlstm=64):
-    """
-    Generates an CNN policy for PPO2 and A2C
-    :param continuous: (bool) If the output of the policy is continuous actions
-    :param reccurent: (bool) If the policy uses a reccurent neural network
-    :param normalised: (bool) If the policy uses layer normalisation for a reccurent policy
-    :param nlstm: (int) Number of lstm cells to use
-    :return: (Policy)
-    """
-    super_policy = FeedForwardPolicy if not reccurent else LstmPolicy
-
-    class CnnPolicy(super_policy):
-        def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False, **_kwargs):
-            super(CnnPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse, _type="cnn",
-                                            layer_norm=normalised, continuous=continuous)
-
-    return CnnPolicy
-
-
-class A2CPolicy(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False, continuous=False):
-        """
-        Policy object for A2C
-
-        :param sess: (TensorFlow session) The current TensorFlow session
-        :param ob_space: (Gym Space) The observation space of the environment
-        :param ac_space: (Gym Space) The action space of the environment
-        :param nbatch: (int) The number of batch to run (nenvs * nsteps)
-        :param nsteps: (int) The number of steps to run for each environment
-        :param nlstm: (int) The number of LSTM cells (for reccurent policies)
-        :param reuse: (bool) If the policy is reusable or not
-        :param continuous: (bool) enable continuous action
-        """
-        if continuous:
-            self.actdim = ac_space.shape[0]
-        else:
-            self.actdim = ac_space.n
-        self.nenv = nbatch // nsteps
-        self.obs_ph, self.processed_x = observation_input(ob_space, nbatch)
-        self.masks_ph = tf.placeholder(tf.float32, [nbatch])  # mask (done t-1)
-        self.states_ph = tf.placeholder(tf.float32, [self.nenv, nlstm * 2])  # states
-        self.pdtype = make_proba_dist_type(self.actdim)
-        self.sess = sess
-        self.reuse = reuse
-
-    def step(self, obs, state=None, mask=None):
-        """
-        Returns the policy for a single step
-
-        :param obs: ([float] or [int]) The current observation of the environment
-        :param state: ([float]) The last states (used in reccurent policies)
-        :param mask: ([float]) The last masks (used in reccurent policies)
-        :return: ([float], [float], [float], [float]) actions, values, states, neglogp0
-        """
-        raise NotImplementedError
-
-    def value(self, obs, state=None, mask=None):
-        """
-        Returns the value for a single step
-
-        :param obs: ([float] or [int]) The current observation of the environment
-        :param state: ([float]) The last states (used in reccurent policies)
-        :param mask: ([float]) The last masks (used in reccurent policies)
-        :return: ([float]) The associated value of the action
-        """
-        raise NotImplementedError
-
-
-class FeedForwardPolicy(A2CPolicy):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False, _type="cnn", continuous=False,
-                 **kwargs):
-        super(FeedForwardPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse,
-                                                continuous=continuous)
-        with tf.variable_scope("model", reuse=reuse):
-            if _type == "cnn":
-                extracted_features = nature_cnn(self.processed_x, **kwargs)
-                value_fn = linear(extracted_features, 'v', 1)[:, 0]
-            else:
-                activ = tf.tanh
-                processed_x = tf.layers.flatten(self.processed_x)
-                pi_h1 = activ(linear(processed_x, 'pi_fc1', n_hidden=64, init_scale=np.sqrt(2)))
-                pi_h2 = activ(linear(pi_h1, 'pi_fc2', n_hidden=64, init_scale=np.sqrt(2)))
-                vf_h1 = activ(linear(processed_x, 'vf_fc1', n_hidden=64, init_scale=np.sqrt(2)))
-                vf_h2 = activ(linear(vf_h1, 'vf_fc2', n_hidden=64, init_scale=np.sqrt(2)))
-                value_fn = linear(vf_h2, 'vf', 1)[:, 0]
-                extracted_features = pi_h2
-
-            if continuous:
-                logstd = tf.get_variable(name="logstd", shape=[1, self.actdim], initializer=tf.zeros_initializer())
-                extracted_features = tf.concat([extracted_features, extracted_features * 0.0 + logstd], axis=1)
-
-            self.proba_distribution, self.policy = self.pdtype.proba_distribution_from_latent(extracted_features,
-                                                                                              init_scale=0.01)
-        self.action_0 = self.proba_distribution.sample()
-        self.neglogp0 = self.proba_distribution.neglogp(self.action_0)
-        self.initial_state = None
-        self.value_fn = value_fn
-
-    def step(self, obs, state=None, mask=None):
-        action, value, neglogp = self.sess.run([self.action_0, self.value_fn, self.neglogp0], {self.obs_ph: obs})
-        return action, value, self.initial_state, neglogp
-
-    def value(self, obs, state=None, mask=None):
-        return self.sess.run(self.value_fn, {self.obs_ph: obs})
+from stable_baselines.a2c.policies import nature_cnn, A2CPolicy
 
 
 class LstmPolicy(A2CPolicy):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False, layer_norm=False, _type="cnn",
-                 continuous=False, **kwargs):
-        super(LstmPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse, continuous=continuous)
+                 **kwargs):
+        super(LstmPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse)
         with tf.variable_scope("model", reuse=reuse):
             if _type == "cnn":
                 extracted_features = nature_cnn(self.obs_ph, **kwargs)
@@ -151,10 +24,6 @@ class LstmPolicy(A2CPolicy):
                                          layer_norm=layer_norm)
             rnn_output = seq_to_batch(rnn_output)
             value_fn = linear(rnn_output, 'v', 1)
-
-            if continuous:
-                logstd = tf.get_variable(name="logstd", shape=[1, self.actdim], initializer=tf.zeros_initializer())
-                rnn_output = tf.concat([rnn_output, rnn_output * 0.0 + logstd], axis=1)
 
             self.proba_distribution, self.policy = self.pdtype.proba_distribution_from_latent(rnn_output)
 
@@ -172,10 +41,30 @@ class LstmPolicy(A2CPolicy):
         return self.sess.run(self.value_0, {self.obs_ph: obs, self.states_ph: state, self.masks_ph: mask})
 
 
-class LnLstmPolicy(LstmPolicy):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False, continuous=False, **_):
-        super(LnLstmPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse, layer_norm=True,
-                                           continuous=continuous)
+class CnnLstmPolicy(LstmPolicy):
+    def __init__(self, sess, ob_space, ac_space, n_batch, n_steps, n_lstm=256, reuse=False, **_kwargs):
+        super(CnnLstmPolicy, self).__init__(sess, ob_space, ac_space, n_batch, n_steps, n_lstm, reuse, layer_norm=False,
+                                            _type="cnn")
+
+
+class CnnLnLstmPolicy(LstmPolicy):
+    def __init__(self, sess, ob_space, ac_space, n_batch, n_steps, n_lstm=256, reuse=False, **_kwargs):
+        super(CnnLnLstmPolicy, self).__init__(sess, ob_space, ac_space, n_batch, n_steps, n_lstm, reuse,
+                                              layer_norm=True,
+                                              _type="cnn")
+
+
+class MlpLstmPolicy(LstmPolicy):
+    def __init__(self, sess, ob_space, ac_space, n_batch, n_steps, n_lstm=256, reuse=False, **_kwargs):
+        super(MlpLstmPolicy, self).__init__(sess, ob_space, ac_space, n_batch, n_steps, n_lstm, reuse, layer_norm=False,
+                                            _type="mlp")
+
+
+class MlpLnLstmPolicy(LstmPolicy):
+    def __init__(self, sess, ob_space, ac_space, n_batch, n_steps, n_lstm=256, reuse=False, **_kwargs):
+        super(MlpLnLstmPolicy, self).__init__(sess, ob_space, ac_space, n_batch, n_steps, n_lstm, reuse,
+                                              layer_norm=True,
+                                              _type="mlp")
 
 
 class AcerMlpPolicy(object):
