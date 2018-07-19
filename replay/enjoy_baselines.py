@@ -67,11 +67,8 @@ def loadConfigAndSetup(load_args):
     """
     Get the training config and setup the parameters
     :param load_args: (Arguments)
-    :return: (dict, str, str, dict, dict)
+    :return: (dict, str, str, str, dict)
     """
-    with open('config/srl_models.yaml', 'rb') as f:
-        srl_models = yaml.load(f)
-
     algo_name = ""
     for algo in list(registered_rl.keys()):
         if algo in load_args.log_dir:
@@ -86,10 +83,6 @@ def loadConfigAndSetup(load_args):
 
     env_globals = json.load(open(load_args.log_dir + "env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
-    # choose the right paths for the environment
-    assert train_args["env"] in srl_models, \
-        "Error: environment '{}', is not defined in 'config/srl_models.yaml'".format(train_args["env"])
-    srl_models = srl_models[train_args["env"]]
 
     env_kwargs = {
         "renders": load_args.render,
@@ -110,15 +103,19 @@ def loadConfigAndSetup(load_args):
     else:
         env_kwargs["force_down"] = env_globals.get('force_down', False)
 
-    if train_args["srl_model"] != "":
+    srl_model_path = None
+    if train_args["srl_model"] != "raw_pixels":
         train_args["policy"] = "mlp"
-        path = srl_models.get(train_args["srl_model"])
+        path = env_globals.get('srl_model_path')
 
         if path is not None:
             env_kwargs["use_srl"] = True
-            env_kwargs["srl_model_path"] = srl_models['log_folder'] + path
+            # Check that the srl saved model exists on the disk
+            assert os.path.isfile(env_globals['srl_model_path']), "{} does not exist".format(env_globals['srl_model_path'])
+            srl_model_path = env_globals['srl_model_path']
+            env_kwargs["srl_model_path"] = srl_model_path
 
-    return train_args, load_path, algo_name, algo_class, srl_models, env_kwargs
+    return train_args, load_path, algo_name, algo_class, srl_model_path, env_kwargs
 
 
 def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir="/tmp/gym/test/"):
@@ -153,7 +150,7 @@ def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir=
 
 def main():
     load_args = parseArguments()
-    train_args, load_path, algo_name, algo_class, srl_models, env_kwargs = loadConfigAndSetup(load_args)
+    train_args, load_path, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(load_args)
     log_dir, envs, algo_args = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
 
     assert (not load_args.plotting and not load_args.action_proba)\
@@ -204,8 +201,7 @@ def main():
         else:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
-            path = srl_models['log_folder'] + "/".join(
-                srl_models.get(train_args["srl_model"]).split("/")[:-1]) + "/image_to_state.json"
+            path = srl_model_path.split("/")[:-1] + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
 
             X = fixStateDim(X, min_state_dim=min_state_dim)
