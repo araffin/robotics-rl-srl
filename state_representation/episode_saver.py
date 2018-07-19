@@ -164,7 +164,7 @@ class EpisodeSaver(object):
 class LogRLStates(object):
     """
     Save the experience data (states, normalized states, actions, rewards) from a gym env to a file
-    during RL training. It is useful to debug SRL.
+    during RL training. It is useful to debug SRL models.
     :param log_folder: (str)
     """
 
@@ -181,15 +181,13 @@ class LogRLStates(object):
         self.rewards = []
         self.states = []
         self.normalized_states = []
-        # self.episode_starts = []
 
 
     def reset(self, normalized_state, state):
         """
         Called when starting a new episode
-        :param observation: (numpy matrix) BGR Image
-        :param target_pos: (numpy array)
-        :param ground_truth: (numpy array)
+        :param normalized_state: (numpy array)
+        :param state: (numpy array)
         """
         # self.episode_starts.append(True)
         self.normalized_states.append(normalized_state)
@@ -197,17 +195,16 @@ class LogRLStates(object):
 
     def step(self, normalized_state, state, action, reward, done):
         """
-        :param observation: (numpy matrix) BGR Image
+        :param normalized_state: (numpy array)
+        :param state: (numpy array)
         :param action: (int)
         :param reward: (float)
         :param done: (bool) whether the episode is done or not
-        :param ground_truth_state: (numpy array)
         """
         self.rewards.append(reward)
         self.actions.append(action)
 
         if not done:
-            # self.episode_starts.append(False)
             self.normalized_states.append(normalized_state)
             self.states.append(np.squeeze(state))
         else:
@@ -216,18 +213,16 @@ class LogRLStates(object):
 
     def save(self):
         """
-        Write data and ground truth to disk
+        Write data to disk
         """
         # Sanity checks
         assert len(self.actions) == len(self.rewards)
-        # assert len(self.actions) == len(self.episode_starts)
         assert len(self.actions) == len(self.normalized_states)
         assert len(self.actions) == len(self.states)
 
         data = {
             'rewards': np.array(self.rewards),
             'actions': np.array(self.actions),
-            # 'episode_starts': np.array(self.episode_starts)
             'states': np.array(self.states),
             'normalized_states': np.array(self.normalized_states),
         }
