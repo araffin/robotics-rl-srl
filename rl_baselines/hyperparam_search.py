@@ -70,13 +70,14 @@ class Hyperband(HyperParameterOptimizer):
         super(Hyperband, self).__init__(opt_param, train, seed=seed)
         self.max_iter = max_iter
         self.eta = eta
-        self.s_max = int(math.floor(math.log(self.max_iter) / math.log(self.eta)))
-        self.B = (self.s_max + 1) * self.max_iter
+        self.max_steps = int(math.floor(math.log(self.max_iter) / math.log(self.eta)))
+        self.budget = (self.max_steps + 1) * self.max_iter
 
         self.rng = np.random.RandomState(seed)
         self.param_sampler = self._generate_sampler()
 
     def _generate_sampler(self):
+        # will generate a hyperparameter sampler for Hyperband
         def _sample():
             params = {}
             for name, (param_type, val) in self.opt_param.items():
@@ -93,20 +94,20 @@ class Hyperband(HyperParameterOptimizer):
         return _sample
 
     def run(self):
-        for s in reversed(range(self.s_max + 1)):
-            n = int(math.ceil(self.B / self.max_iter * self.eta**s / (s + 1)))
-            r = self.max_iter * self.eta**(-s)
+        for step in reversed(range(self.max_steps + 1)):
+            max_n_param_sampled = int(math.ceil(self.budget / self.max_iter * self.eta**step / (step + 1)))
+            max_iters = self.max_iter * self.eta**(-step)
 
-            all_parameters = np.array([self.param_sampler() for _ in range(n)])
-            for i in range(s+1):
-                printGreen("\npop_itt:{}/{}, itt:{}/{}, pop_size:{}".format(s, self.s_max + 1, i, s+1,
-                                                                            len(all_parameters)))
-                n_i = int(math.floor(n * self.eta**(-i)))
-                r_i = r * self.eta**i
-                losses = [self.train(t, r_i, k) for k, t in enumerate(all_parameters)]
+            all_parameters = np.array([self.param_sampler() for _ in range(max_n_param_sampled)])
+            for i in range(step + 1):
+                printGreen("\npop_itt:{}/{}, itt:{}/{}, pop_size:{}".format(self.max_steps - step, self.max_steps + 1,
+                                                                            i, step+1, len(all_parameters)))
+                n_param_sampled = int(math.floor(max_n_param_sampled * self.eta**(-i)))
+                num_iters = max_iters * self.eta**i
+                losses = [self.train(params, num_iters, train_id) for train_id, params in enumerate(all_parameters)]
 
-                self.history.extend(zip([(t, r_i) for t in all_parameters], losses))
-                all_parameters = all_parameters[np.argsort(losses)[:int(math.floor(n_i / self.eta))]]
+                self.history.extend(zip([(params, num_iters) for params in all_parameters], losses))
+                all_parameters = all_parameters[np.argsort(losses)[:int(math.floor(n_param_sampled / self.eta))]]
 
         return self.history[int(np.argmin([val[1] for val in self.history]))]
 
@@ -114,7 +115,7 @@ class Hyperband(HyperParameterOptimizer):
 class Hyperopt(HyperParameterOptimizer):
     def __init__(self, opt_param, train, seed=0, num_eval=100):
         """
-        A Hyperopt implementation, it is similar to a bayesien search
+        A Hyperopt implementation, it is similar to a bayesian search
 
         Hyperopt: https://www.lri.fr/~kegl/research/PDFs/BeBaBeKe11.pdf
 
@@ -153,7 +154,7 @@ class Hyperopt(HyperParameterOptimizer):
         return self.history[int(np.argmin([val[1] for val in self.history]))]
 
 
-def make_rl_training_function(args, train_args):
+def makeRlTrainingFunction(args, train_args):
     """
     makes a training function for the hyperparam optimizers
 
@@ -162,8 +163,8 @@ def make_rl_training_function(args, train_args):
     :return: (function (dict, int, int): float) the function that take:
 
         - params: (dict) the hyper parameters to train with
-        - num_iters (int) the number of itterations to train (can be None)
-        - train_id: (int) the training number (can be None)
+        - num_iters (int) the number of iterations to train (can be None)
+        - train_id: (int) the current iteration number in the hyperparameter search (can be None)
         - returns: (float) the score of the training to minimize
     """
     if args.verbose:
@@ -213,8 +214,8 @@ def make_rl_training_function(args, train_args):
         folders = glob.glob("logs/_hyperband_search/{}/{}/{}/*".format(args.env, args.srl_model, args.algo))
         assert len(folders) != 0, "Error: Could not find generated directory, halting hyperband search."
         rewards = []
-        for montior_path in glob.glob(folders[0] + "/*.monitor.csv"):
-            rewards.append(np.mean(pd.read_csv(montior_path, skiprows=1)["r"][-10:]))
+        for monitor_path in glob.glob(folders[0] + "/*.monitor.csv"):
+            rewards.append(np.mean(pd.read_csv(monitor_path, skiprows=1)["r"][-10:]))
         if np.isnan(rewards).any():
             rewards = -np.inf
         print("reward: ", np.mean(rewards))
@@ -225,7 +226,7 @@ def make_rl_training_function(args, train_args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OpenAI RL Baselines hyperparameter search")
+    parser = argparse.ArgumentParser(description="Hyperparameter search for implemented RL models")
     parser.add_argument('--optimizer', default='hyperband', choices=['hyperband', 'hyperopt'], type=str,
                         help='The hyperparameter optimizer to choose from')
     parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',

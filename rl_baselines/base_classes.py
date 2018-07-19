@@ -69,6 +69,6 @@ class BaseRLObject:
         :param args: (argparse.Namespace Object)
         :param callback: (function)
         :param env_kwargs: (dict) The extra arguments for the environment
-        :param hyperparam: (dict) The list of all hyperparameters (used in Hyperband)
+        :param hyperparam: (dict) The list of all hyperparameters (used in hyperparameter search)
         """
         raise NotImplementedError()

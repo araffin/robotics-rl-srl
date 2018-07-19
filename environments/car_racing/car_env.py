@@ -32,6 +32,23 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
     def __init__(self, name="car_racing", renders=False, record_data=False, is_discrete=True, state_dim=-1,
                  learn_states=False, save_path='srl_zoo/data/', srl_model="raw_pixels", env_rank=0, srl_pipe=None,
                  lookahead=5, **_):
+        """
+        Gym wrapper for Racing car environment
+        WARNING: to be compatible with kuka scripts, additional keyword arguments are discarded
+
+
+        :param name: (str) name of the folder where recorded data will be stored
+        :param renders: (bool) Whether to display the GUI or not
+        :param record_data: (bool) Set to true, record frames with the rewards.
+        :param is_discrete: (bool) Whether to use discrete or continuous actions
+        :param state_dim: (int) When learning states
+        :param learn_states: (bool)
+        :param save_path: (str) location where the saved data should go
+        :param srl_model: (str) The SRL_model used
+        :param env_rank: (int) the number ID of the environment
+        :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
+        :param lookahead: (int) How many segements ahead of the current position of the track should the target be
+        """
         SRLGymEnv.__init__(self, srl_model=srl_model, relative_pos=False, env_rank=env_rank, srl_pipe=srl_pipe)
         GymCarRacing.__init__(self)
         self._renders = renders
@@ -48,6 +65,7 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
             self.saver = EpisodeSaver(name, None, state_dim, globals_=getGlobals(), relative_pos=RELATIVE_POS,
                                       learn_states=learn_states, path=save_path)
 
+        # Accelerate, brake, stear left, stear right
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -62,6 +80,8 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getTargetPos(self):
+        # get the nearest track segement to the current position
+        # then return the track segment position that is ahead of the nearest track segement
         nearest_idx = np.argmin(list(map(lambda a: np.sqrt(np.sum((a[2:4] - self.getGroundTruth()) ** 2)), self.track)))
         return np.array(self.track[(nearest_idx + self.lookahead) % len(self.track)][2:4])
 
@@ -70,6 +90,7 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
         return 2
 
     def getGroundTruth(self):
+        # the car's current x,y position
         return np.array(list(self.car.__dict__["hull"].position))
 
     def getObservation(self):
@@ -135,6 +156,7 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
 
         return np.array(self._observation), step_reward, done, {}
 
+    # Copied for the original Gym Racing Car env, it is modified to be able to remove the render window.
     def render(self, mode='human'):
         if self.viewer is None:
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)

@@ -35,7 +35,7 @@ You will need to define specifically:
     the environment wrappers (static function).
     * ```train(args, callback, env_kwargs=None, hyperparam=None)```: to create the environment, and train your algorithm on said environment.
     * (OPTIONAL) ```getActionProba(observation, dones=None)```: to get the action probabilities from a given observation. This is used for the action probability plotting in ```replay.enjoy_baselines```.
-    * (OPTIONAL) ```getOptParam()```: ```@classmethod``` to return the parameters that can be optimised through the callable argument. Along with the type and range of said parameters.
+    * (OPTIONAL) ```getOptParam()```: ```@classmethod``` to return the hyperparameters that can be optimised through the callable argument. Along with the type and range of said parameters.
 2. Add your class to the ```registered_rl``` dictionary in ```rl_baselines/registry.py```,
 using this format ```NAME: (CLASS, ALGO_TYPE, [ACTION_TYPE])```, where:
     * ```NAME```: is your algorithm's name.

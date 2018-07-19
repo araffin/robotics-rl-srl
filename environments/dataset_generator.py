@@ -37,6 +37,7 @@ def convertImagePath(args, path, record_id_start):
     return args.name + "/record_{:03d}".format(new_record_id) + "/" + image_name
 
 
+# will be replaced when the refactored OpenAI baselines if finished
 def env_thread_ppo2(args, thread_num, partition=True):
     """
     Run a ppo2 session of an environment

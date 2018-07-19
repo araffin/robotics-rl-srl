@@ -284,7 +284,7 @@ class SACModel(BaseRLObject):
             "soft_update_factor": (float, (0, 1)),
             "batch_size": (int, (32, 256)),
             "gradient_step": (int, (1, 10)),
-            "reward_scale": (float, (0, 1))
+            "reward_scale": (float, (0, 100))
         }
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
