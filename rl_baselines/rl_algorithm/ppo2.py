@@ -132,11 +132,23 @@ class PPO2Model(BaseRLObject):
         self.policy = args.policy
         self.continuous_actions = args.continuous_actions
 
-        learn_param = {
-            'nsteps': 128,
-            'ent_coef': .01,
-            'lr': lambda f: f * 2.5e-4,
-        }
+        if "lstm" in args.policy:
+            learn_param = {
+                'ent_coef': 0.06415865069774951,
+                'cliprange': 0.9946304441439344,
+                'vf_coef': 0.056219345567007695,
+                'lam': 0.3987544314875193,
+                'lr': 0.004923676735761618,
+                'nsteps': 609,
+                'max_grad_norm': 0.19232704980689763,
+                'noptepochs': 8,
+                'gamma': 0.9752388470759489}
+        else:
+            learn_param = {
+                'nsteps': 128,
+                'ent_coef': .01,
+                'lr': lambda f: f * 2.5e-4,
+            }
 
         opt_param = self.getOptParam()
         for name, val in hyperparam.items():
