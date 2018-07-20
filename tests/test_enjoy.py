@@ -39,6 +39,7 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'ddpg', 'cma-es', 'ars', 'sac'])
 def testBaselineTrain(algo):
     """

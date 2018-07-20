@@ -61,7 +61,6 @@ def createFolders(log_folder_name):
     createFolder(folder_path, "NearestNeighbors folder already exist")
 
 
-@pytest.mark.slow
 def testDataGen():
     args = ['--num-cpu', 4, '--num-episode', 8, '--name', DATA_FOLDER_NAME, '--force', '--env', DEFAULT_ENV,
             '--reward-dist']
@@ -71,7 +70,6 @@ def testDataGen():
     assertEq(ok, 0)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("baseline", ["supervised", "vae", "autoencoder"])
 def testBaselineTrain(baseline):
     """
@@ -111,7 +109,6 @@ def testBaselineTrain(baseline):
         assertEq(ok, 0)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("loss_type", ["priors", "inverse", "forward", "triplet"])
 def testSrlTrain(loss_type):
     """
@@ -147,7 +144,6 @@ def testSrlTrain(loss_type):
     assertEq(ok, 0)
 
 
-@pytest.mark.slow
 def testSrlCombiningTrain():
     # Combining models
     exp_name = 'vae_inverse_forward_cnn_ST_DIM3_SEED0_NOISE0_EPOCHS1_BS32'
@@ -171,7 +167,6 @@ def testSrlCombiningTrain():
     assertEq(ok, 0)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("model_type", ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination", "multi_view_srl"])
 def testAllRLOnSrlTrain(model_type):
     """
@@ -187,7 +182,6 @@ def testAllRLOnSrlTrain(model_type):
     assertEq(ok, 0)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars', 'sac'])
 def testAllSrlonRLTrain(algo):
     """

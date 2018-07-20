@@ -23,7 +23,6 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars', 'sac'])
 @pytest.mark.parametrize("model_type", ['raw_pixels'])
 def testBaselineTrain(algo, model_type):
@@ -49,7 +48,6 @@ def testBaselineTrain(algo, model_type):
     assertEq(ok, 0)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("model_type", ['ground_truth', 'raw_pixels', 'joints', 'joints_position'])
 @pytest.mark.parametrize("env", ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"])
 def testEnvSRLTrain(model_type, env):
@@ -71,6 +69,7 @@ def testEnvSRLTrain(model_type, env):
     assertEq(ok, 0)
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("env", ["KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0",
                                  "MobileRobot2TargetGymEnv-v0", "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"])
 def testEnvTrain(env):
@@ -88,7 +87,7 @@ def testEnvTrain(env):
     assertEq(ok, 0)
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("env", ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"])
 @pytest.mark.parametrize("algo", ['ppo2', 'sac'])
 def testContinousEnvTrain(env, algo):
