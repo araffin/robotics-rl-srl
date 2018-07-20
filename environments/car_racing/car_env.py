@@ -47,7 +47,7 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
         :param srl_model: (str) The SRL_model used
         :param env_rank: (int) the number ID of the environment
         :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
-        :param lookahead: (int) How many segements ahead of the current position of the track should the target be
+        :param lookahead: (int) How many segments ahead of the current position of the track should the target be
         """
         SRLGymEnv.__init__(self, srl_model=srl_model, relative_pos=False, env_rank=env_rank, srl_pipe=srl_pipe)
         GymCarRacing.__init__(self)
@@ -137,7 +137,6 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
             self.reward -= 0.1
             self._env_step_counter += 1
             # We actually don't want to count fuel spent, we want car to be faster.
-            # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
             self.car.fuel_spent = 0.0
             step_reward = self.reward - self.prev_reward
             self.prev_reward = self.reward

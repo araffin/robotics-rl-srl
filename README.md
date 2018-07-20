@@ -101,11 +101,33 @@ python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --srl-model vae gro
 
 If you want to integrate your own RL algorithm, please read `rl_baselines/README.md`.
 
+### Hyperparameter Search
+
+This repository also allows hyperparameter search, using hyperband and hyperopt for the implemented RL algorithms
+
+for example, here is the command for a hyperband search on PPO2, ground truth on the mobile robot environment:
+```bash
+python -m rl_baselines.hyperparam_search --optimizer hyperband --algo ppo2 --env MobileRobotGymEnv-v0 --srl-model ground_truth
+```
+
 ## Environments
 
 All the environments we propose follow the OpenAI Gym interface. We also extended this interface (adding extra methods) to work with SRL methods (see [State Representation Learning Models](#state-representation-learning-models)).
 
 ### Available Environments
+
+| **Name**                          | **Action space (discrete)**       | **Action space (continuous)**     | **Rewards**                                                                                                         | **ground truth**                   |
+| --------------------------------- | --------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Kuka**<br>**Button**            | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 50 when target reached, -1 when too far from target, otherwise 0                                                    | the X,Y,Z position of the effector |
+| **Kuka**<br>**RandButton**        | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 50 when target reached, -1 when too far from target, otherwise 0                                                    | the X,Y,Z position of the effector |
+| **Kuka**<br>**2Button**           | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 25 when the first target is reached, 50 when the second target is reached, -1 when too far from target, otherwise 0 | the X,Y,Z position of the effector |
+| **Kuka**<br>**MovingButton**      | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 50 when target reached, -1 when too far from target, otherwise 0                                                    | the X,Y,Z position of the effector |
+| **MobileRobot**<br>               | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X,Y position of the robot      |
+| **MobileRobot**<br>**2Target**    | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X,Y position of the robot      |
+| **MobileRobot**<br>**1D**         | 2 actions (1D cardinal direction) | 1 actions (1D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X position of the robot        |
+| **MobileRobot**<br>**LineTarget** | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X,Y position of the robot      |
+| **CarRacing**                     | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | -100 when out of bounds, otherwise -0.1                                                                             | the X,Y position of the car        |
+
 
 If you want to add your own environment, please read `enviroments/README.md`.
 
@@ -126,8 +148,7 @@ the available environments are:
     - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
 - Robobo: A Robobo robot that must reach a target position.
     - RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
-
-
+    
 ### Generating Data
 
 To test the environment with random actions:
