@@ -46,7 +46,7 @@ def testBaselineTrain(algo):
     :param algo: (str) RL algorithm name
     """
     args = ['--optimizer', DEFAULT_OPTIMIZER, '--algo', algo, '--srl-model', DEFAULT_SRL, '--max-eval', MAX_EVAL,
-            '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--env', DEFAULT_ENV, "--num-cpu", 4]
+            '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--env', DEFAULT_ENV]
     if algo == "ddpg":
         args.extend(['-c', '--memory-limit', 100000])
     elif algo == "acer":
