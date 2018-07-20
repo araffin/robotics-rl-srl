@@ -4,8 +4,8 @@ import os
 import importlib
 
 import gym
-from baselines import bench
-from baselines.common.atari_wrappers import make_atari, wrap_deepmind
+from stable_baselines import bench
+from stable_baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from gym.envs.registration import registry, patch_deprecated_methods, load
 
 

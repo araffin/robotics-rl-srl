@@ -203,15 +203,12 @@ class _Runner(AbstractEnvRunner):
             nh, nw, nc = env.observation_space.shape
             self.batch_ob_shape = (nenv * n_steps, nh, nw, nc)
             self.obs_dtype = np.uint8
-            self.obs = np.zeros((nenv, nh, nw, nc), dtype=self.obs_dtype)
             self.nc = nc
         else:
             obs_dim = env.observation_space.shape[0]
             self.batch_ob_shape = (nenv * n_steps, obs_dim)
             self.obs_dtype = np.float32
-            self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
 
-        self.obs[:] = env.reset()
 
     def run(self):
         """
