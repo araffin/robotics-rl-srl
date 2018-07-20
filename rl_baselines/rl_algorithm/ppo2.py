@@ -65,7 +65,7 @@ class PPO2Model(BaseRLObject):
                   'lstm': MlpLstmPolicy,
                   'lnlstm': MlpLnLstmPolicy}[loaded_model.policy]
 
-        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
+        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, n_steps=1,
                                     reuse=False)
         loaded_model.states = loaded_model.model.initial_state
 
@@ -170,11 +170,11 @@ class PPO2Model(BaseRLObject):
         n_envs = env.num_envs
         ob_space = env.observation_space
         ac_space = env.action_space
-        nbatch = n_envs * n_steps
-        nbatch_train = nbatch // nminibatches
+        n_batch = n_envs * n_steps
+        n_batch_train = n_batch // nminibatches
 
-        make_model = lambda: Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=n_envs,
-                                   nbatch_train=nbatch_train, nsteps=n_steps, ent_coef=ent_coef, vf_coef=vf_coef,
+        make_model = lambda: Model(policy=policy, ob_space=ob_space, ac_space=ac_space, n_batch_act=n_envs,
+                                   n_batch_train=n_batch_train, n_steps=n_steps, ent_coef=ent_coef, vf_coef=vf_coef,
                                    max_grad_norm=max_grad_norm)
         if save_interval and logger.get_dir():
             import cloudpickle
@@ -184,15 +184,15 @@ class PPO2Model(BaseRLObject):
         self.states = self.model.initial_state
         if load_path is not None:
             self.model.load(load_path)
-        runner = Runner(env=env, model=self.model, nsteps=n_steps, gamma=gamma, lam=lam)
+        runner = Runner(env=env, model=self.model, n_steps=n_steps, gamma=gamma, lam=lam)
 
         epinfobuf = deque(maxlen=100)
         tfirststart = time.time()
 
-        nupdates = total_timesteps // nbatch
+        nupdates = total_timesteps // n_batch
         for update in range(1, nupdates + 1):
-            assert nbatch % nminibatches == 0
-            nbatch_train = nbatch // nminibatches
+            assert n_batch % nminibatches == 0
+            n_batch_train = n_batch // nminibatches
             tstart = time.time()
             frac = 1.0 - (update - 1.0) / nupdates
             lr_now = learning_rate(frac)
@@ -201,11 +201,11 @@ class PPO2Model(BaseRLObject):
             epinfobuf.extend(epinfos)
             mblossvals = []
             if states is None:  # nonrecurrent version
-                inds = np.arange(nbatch)
+                inds = np.arange(n_batch)
                 for _ in range(noptepochs):
                     np.random.shuffle(inds)
-                    for start in range(0, nbatch, nbatch_train):
-                        end = start + nbatch_train
+                    for start in range(0, n_batch, n_batch_train):
+                        end = start + n_batch_train
                         mbinds = inds[start:end]
                         slices = (arr[mbinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
                         mblossvals.append(self.model.train(lr_now, cliprangenow, *slices))
@@ -213,7 +213,7 @@ class PPO2Model(BaseRLObject):
                 assert n_envs % nminibatches == 0
                 envinds = np.arange(n_envs)
                 flatinds = np.arange(n_envs * n_steps).reshape(n_envs, n_steps)
-                envsperbatch = nbatch_train // n_steps
+                envsperbatch = n_batch_train // n_steps
                 for _ in range(noptepochs):
                     np.random.shuffle(envinds)
                     for start in range(0, n_envs, envsperbatch):
@@ -230,12 +230,12 @@ class PPO2Model(BaseRLObject):
                 callback(locals(), globals())
 
             tnow = time.time()
-            fps = int(nbatch / (tnow - tstart))
+            fps = int(n_batch / (tnow - tstart))
             if update % log_interval == 0 or update == 1:
                 explained_var = explained_variance(values, returns)
                 logger.logkv("serial_timesteps", update * n_steps)
                 logger.logkv("nupdates", update)
-                logger.logkv("total_timesteps", update * nbatch)
+                logger.logkv("total_timesteps", update * n_batch)
                 logger.logkv("fps", fps)
                 logger.logkv("explained_variance", float(explained_var))
                 logger.logkv('eprewmean', safe_mean([epinfo['r'] for epinfo in epinfobuf]))

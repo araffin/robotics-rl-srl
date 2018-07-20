@@ -61,7 +61,7 @@ class A2CModel(BaseRLObject):
                   'mlp': MlpPolicy,
                   'lstm': MlpLstmPolicy,
                   'lnlstm': MlpLnLstmPolicy}[loaded_model.policy]
-        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
+        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, n_steps=1,
                                     reuse=False)
         loaded_model.states = loaded_model.model.initial_state
 
@@ -110,11 +110,11 @@ class A2CModel(BaseRLObject):
 
         logger.configure()
         self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
-                    lrschedule=args.lr_schedule, callback=callback)
+                    lr_schedule=args.lr_schedule, callback=callback)
         envs.close()
 
-    def _learn(self, policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
-               max_grad_norm=0.5, learning_rate=7e-4, lrschedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99,
+    def _learn(self, policy, env, seed=0, n_steps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,
+               max_grad_norm=0.5, learning_rate=7e-4, lr_schedule='linear', epsilon=1e-5, alpha=0.99, gamma=0.99,
                log_interval=100, callback=None):
         """
         Return a trained A2C model.
@@ -122,13 +122,13 @@ class A2CModel(BaseRLObject):
         :param policy: (A2CPolicy) The policy model to use (MLP, CNN, LSTM, ...)
         :param env: (Gym environment) The environment to learn from
         :param seed: (int) The initial seed for training
-        :param nsteps: (int) The number of steps to run for each environment
+        :param n_steps: (int) The number of steps to run for each environment
         :param total_timesteps: (int) The total number of samples
         :param vf_coef: (float) Value function coefficient for the loss calculation
         :param ent_coef: (float) Entropy coefficient for the loss caculation
         :param max_grad_norm: (float) The maximum value for the gradient clipping
         :param learning_rate: (float) The learning rate
-        :param lrschedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
+        :param lr_schedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
                                      'double_linear_con', 'middle_drop' or 'double_middle_drop')
         :param epsilon: (float) RMS prop optimizer epsilon
         :param alpha: (float) RMS prop optimizer decay
@@ -149,18 +149,18 @@ class A2CModel(BaseRLObject):
                      'lstm': MlpLstmPolicy,
                      'lnlstm': MlpLnLstmPolicy}[policy]
 
-        nenvs = env.num_envs
+        n_envs = env.num_envs
         ob_space = env.observation_space
         ac_space = env.action_space
-        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps,
+        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, n_envs=n_envs, n_steps=n_steps,
                            ent_coef=ent_coef,
                            vf_coef=vf_coef, max_grad_norm=max_grad_norm, learning_rate=learning_rate,
                            alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps,
-                           lrschedule=lrschedule)
+                           lr_schedule=lr_schedule)
         self.states = self.model.initial_state
-        runner = _Runner(env, self.model, n_steps=nsteps, gamma=gamma)
+        runner = _Runner(env, self.model, n_steps=n_steps, gamma=gamma)
 
-        nbatch = nenvs * nsteps
+        nbatch = n_envs * n_steps
         tstart = time.time()
         for update in range(1, total_timesteps // nbatch + 1):
             obs, states, rewards, masks, actions, values = runner.run()
@@ -195,7 +195,7 @@ class _Runner(AbstractEnvRunner):
         :param n_steps: (int) The number of steps to run for each environment
         :param gamma: (float) Discount factor
         """
-        super(_Runner, self).__init__(env=env, model=model, nsteps=n_steps)
+        super(_Runner, self).__init__(env=env, model=model, n_steps=n_steps)
         self.gamma = gamma
 
         nenv = env.num_envs
@@ -222,7 +222,7 @@ class _Runner(AbstractEnvRunner):
         """
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
         mb_states = self.states
-        for _ in range(self.nsteps):
+        for _ in range(self.n_steps):
             actions, values, states, _ = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(np.copy(self.obs))
             mb_actions.append(actions)
