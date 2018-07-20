@@ -103,7 +103,7 @@ If you want to integrate your own RL algorithm, please read `rl_baselines/README
 
 ### Hyperparameter Search
 
-This repository also allows hyperparameter search, using hyperband and hyperopt for the implemented RL algorithms
+This repository also allows hyperparameter search, using [hyperband](https://arxiv.org/abs/1603.06560) or [hyperopt](https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf) for the implemented RL algorithms
 
 for example, here is the command for a hyperband search on PPO2, ground truth on the mobile robot environment:
 ```bash
@@ -116,18 +116,21 @@ All the environments we propose follow the OpenAI Gym interface. We also extende
 
 ### Available Environments
 
-| **Name**                          | **Action space (discrete)**       | **Action space (continuous)**     | **Rewards**                                                                                                         | **ground truth**                   |
-| --------------------------------- | --------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| **Kuka**<br>**Button**            | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 50 when target reached, -1 when too far from target, otherwise 0                                                    | the X,Y,Z position of the effector |
-| **Kuka**<br>**RandButton**        | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 50 when target reached, -1 when too far from target, otherwise 0                                                    | the X,Y,Z position of the effector |
-| **Kuka**<br>**2Button**           | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 25 when the first target is reached, 50 when the second target is reached, -1 when too far from target, otherwise 0 | the X,Y,Z position of the effector |
-| **Kuka**<br>**MovingButton**      | 6 actions (3D cardinal direction) | 3 actions (3D cardinal direction) | 50 when target reached, -1 when too far from target, otherwise 0                                                    | the X,Y,Z position of the effector |
-| **MobileRobot**<br>               | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X,Y position of the robot      |
-| **MobileRobot**<br>**2Target**    | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X,Y position of the robot      |
-| **MobileRobot**<br>**1D**         | 2 actions (1D cardinal direction) | 1 actions (1D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X position of the robot        |
-| **MobileRobot**<br>**LineTarget** | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | 1 when target reached, -1 for a wall hit, otherwise 0                                                               | the X,Y position of the robot      |
-| **CarRacing**                     | 4 actions (2D cardinal direction) | 2 actions (2D cardinal direction) | -100 when out of bounds, otherwise -0.1                                                                             | the X,Y position of the car        |
+| **Name**                          | **Action space (discrete)**                | **Action space (continuous)**                 | **Rewards**                                                                                                                                             | **ground truth**                   |
+| --------------------------------- | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Kuka**<br>**Button**            | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector |
+| **Kuka**<br>**RandButton**        | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector |
+| **Kuka**<br>**2Button**           | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 25 when the first target is reached, 50 when the second target is reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup> | the X,Y,Z position of the effector |
+| **Kuka**<br>**MovingButton**      | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector |
+| **MobileRobot**<br>               | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot      |
+| **MobileRobot**<br>**2Target**    | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot      |
+| **MobileRobot**<br>**1D**         | 2 actions (1D cardinal direction)          | 1 axis (1D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X position of the robot        |
+| **MobileRobot**<br>**LineTarget** | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot      |
+| **CarRacing**                     | 4 actions (left, right, accelerate, brake) | 3 axis (stearing, accelerate, brake)          | -100 when out of bounds, otherwise -0.1                                                                                                                 | the X,Y position of the car        |
 
+<sub><sup>1. the action space can use 6 axis arm joints control with the `--joints` flag</sup></sub>
+<br>
+<sup><sup>2. the reward can be the euclidian distance to the target with the `--shape-reward` flag</sup></sup> 
 
 If you want to add your own environment, please read `enviroments/README.md`.
 
