@@ -10,7 +10,7 @@ DEFAULT_ENV = "MobileRobotGymEnv-v0"
 DEFAULT_SRL = "ground_truth"
 NUM_ITERATION = 1
 NUM_TIMESTEP = 10000  # this should be long enough to call a reset of the environment
-MAX_EVAL = 10  # hyperopt evals
+MAX_EVAL = 2  # hyperopt evals
 SEED = 0
 
 

@@ -132,25 +132,32 @@ class Hyperopt(HyperParameterOptimizer):
         """
         super(Hyperopt, self).__init__(opt_param, train, seed=seed)
         self.num_eval = num_eval
-        self.search_space = []
+        self.search_space = {}
         for name, (param_type, val) in self.opt_param.items():
             if param_type == int:
-                self.search_space.append(hyperopt.hp.quniform(name, val[0], val[1], 1))
+                self.search_space[name] = hyperopt.hp.choice(name, np.arange(int(val[0]), int(val[1]), dtype=int))
             elif param_type == float:
-                self.search_space.append(hyperopt.hp.uniform(name, val[0], val[1]))
+                self.search_space[name] = hyperopt.hp.uniform(name, val[0], val[1])
             elif isinstance(param_type, tuple) and param_type[0] == list:
-                self.search_space.append(hyperopt.hp.choice(name, val))
+                self.search_space[name] = hyperopt.hp.choice(name, val)
             else:
                 raise AssertionError("Error: unknown type {}".format(param_type))
 
     def run(self):
         trials = hyperopt.Trials()
-        hyperopt.fmin(lambda **kwargs: {'loss': self.train(kwargs), 'status': hyperopt.STATUS_OK},
+        hyperopt.fmin(fn=lambda kwargs: {'loss': self.train(kwargs), 'status': hyperopt.STATUS_OK},
                       space=self.search_space,
                       algo=hyperopt.tpe.suggest,
                       max_evals=self.num_eval,
-                      trials=trials)
-        self.history.extend(zip(trials.trials, trials.losses()))
+                      trials=trials,
+                      verbose=10)
+
+        # from the trials, get the values for every parameter
+        # set the number of iter to None as they are not changed in Hyperopt
+        # and zip the loss
+        self.history.extend(zip([(
+            {name: val[0] for name, val in params["misc"]["vals"].items()}, None)
+            for params in trials.trials], trials.losses()))
         return self.history[int(np.argmin([val[1] for val in self.history]))]
 
 
@@ -175,11 +182,14 @@ def makeRlTrainingFunction(args, train_args):
 
     def _train(params, num_iters=None, train_id=None):
         # generate a print string
-        print_str = "\n"
+        print_str = "\nID_num={}, "
         format_args = []
-        if train_id is not None:
-            print_str += "ID_num={}, "
-            format_args.append(train_id)
+        if train_id is None:
+            if not hasattr(_train, "current_id"):
+                _train.current_id = 0
+            train_id = _train.current_id
+            _train.current_id += 1
+        format_args.append(train_id)
         if num_iters is not None:
             print_str += "Num-timesteps={}, "
             format_args.append(int(max(MIN_ITERATION, num_iters * ITERATION_SCALE)))
@@ -266,15 +276,19 @@ def main():
     idx = np.argmin(loss)
     opt_params, nb_iter = all_params[idx]
     reward = loss[idx]
-    print('time to run : {}s'.format(int(time.time() - t_start)))
+    print('\ntime to run : {}s'.format(int(time.time() - t_start)))
     print('Total nb. evaluations : {}'.format(len(all_params)))
-    print('Best nb. of iterations : {}'.format(int(nb_iter)))
-    print('Best params : {}'.format(opt_params))
+    if nb_iter is not None:
+        print('Best nb. of iterations : {}'.format(int(nb_iter)))
+    print('Best params : ')
+    pprint.pprint(opt_params)
     print('Best reward : {:.3f}'.format(-reward))
 
     param_dict, timesteps = zip(*all_params)
     output = pd.DataFrame(list(param_dict))
-    output["timesteps"] = np.array(np.maximum(MIN_ITERATION, np.array(timesteps) * ITERATION_SCALE).astype(int))
+    # make sure we returned a timestep value to log, otherwise ignore
+    if not any([el is None for el in timesteps]):
+        output["timesteps"] = np.array(np.maximum(MIN_ITERATION, np.array(timesteps) * ITERATION_SCALE).astype(int))
     output["reward"] = -np.array(loss)
     output.to_csv("logs/hyperband_{}_{}_{}_seed{}_numtimestep{}.csv"
                   .format(args.algo, args.env, args.srl_model, args.seed, args.num_timesteps))
