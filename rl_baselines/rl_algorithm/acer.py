@@ -95,14 +95,11 @@ class ACERModel(BaseRLObject):
             "replay_ratio": (int, (0, 10)),
             "c": (float, (1, 10)),
             "delta": (float, (0.1, 10)),
-            "lrschedule": (list, ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "lrschedule": ((list, str), ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
         assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
-
-        if hyperparam is None:
-            hyperparam = {}
 
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
@@ -114,8 +111,16 @@ class ACERModel(BaseRLObject):
         self.ac_space = envs.action_space
         self.policy = args.policy
 
-        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1,
-                    lrschedule=args.lr_schedule, callback=callback)
+        learn_param = {
+            "lrschedule": args.lr_schedule
+        }
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        learn_param.update(hyperparam)
+
+        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1, callback=callback,
+                    **learn_param)
 
     def _learn(self, policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
                max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,

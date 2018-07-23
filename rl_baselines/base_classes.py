@@ -53,6 +53,28 @@ class BaseRLObject:
         return None
 
     @classmethod
+    def parserHyperParam(cls, hyperparam):
+        """
+        parses the hyperparameters into the expected type
+
+        :param hyperparam: (dict) the input hyperparameters (can be None)
+        :return: (dict) the parsed hyperparam dict (returns at least an empty dict)
+        """
+        opt_param = cls.getOptParam()
+        parsed_hyperparam = {}
+
+        if opt_param is not None and hyperparam is not None:
+            for name, val in hyperparam.items():
+                if name not in opt_param:
+                    raise AssertionError("Error: hyperparameter {} not in list of valid hyperparameters".format(name))
+                if isinstance(opt_param[name][0], tuple):
+                    parsed_hyperparam[name] = opt_param[name][0][1](val)
+                else:
+                    parsed_hyperparam[name] = opt_param[name][0](val)
+
+        return parsed_hyperparam
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         """
         Makes an environment and returns it

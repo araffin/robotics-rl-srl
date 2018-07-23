@@ -101,14 +101,11 @@ class A2CModel(BaseRLObject):
             "epsilon": (float, (0, 0.01)),
             "alpha": (float, (0.5, 1)),
             "gamma": (float, (0.5, 1)),
-            "lrschedule": (list, ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "lrschedule": ((list, str), ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
-
-        if hyperparam is None:
-            hyperparam = {}
 
         # get the associated policy for the architecture requested
         if args.srl_model == "raw_pixels":
@@ -124,9 +121,17 @@ class A2CModel(BaseRLObject):
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
 
+        learn_param = {
+            "lrschedule": args.lr_schedule
+        }
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        learn_param.update(hyperparam)
+
         logger.configure()
-        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed,
-                    lrschedule=args.lr_schedule, callback=callback, **hyperparam)
+        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, callback=callback,
+                    **learn_param)
         envs.close()
 
     def _learn(self, policy, env, seed=0, nsteps=5, total_timesteps=int(1e6), vf_coef=0.5, ent_coef=0.01,

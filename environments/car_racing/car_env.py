@@ -49,7 +49,7 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
         :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
         :param lookahead: (int) How many segments ahead of the current position of the track should the target be
         """
-        SRLGymEnv.__init__(self, srl_model=srl_model, relative_pos=False, env_rank=env_rank, srl_pipe=srl_pipe)
+        SRLGymEnv.__init__(self, srl_model=srl_model, relative_pos=RELATIVE_POS, env_rank=env_rank, srl_pipe=srl_pipe)
         GymCarRacing.__init__(self)
         self._renders = renders
         self._width = RENDER_WIDTH

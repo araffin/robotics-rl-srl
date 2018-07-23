@@ -85,7 +85,7 @@ class Hyperband(HyperParameterOptimizer):
                     params[name] = self.rng.randint(val[0], val[1])
                 elif param_type == float:
                     params[name] = self.rng.uniform(val[0], val[1])
-                elif param_type == list:
+                elif isinstance(param_type, tuple) and param_type[0] == list:
                     params[name] = val[self.rng.randint(len(val))]
                 else:
                     raise AssertionError("Error: unknown type {}".format(param_type))
@@ -138,7 +138,7 @@ class Hyperopt(HyperParameterOptimizer):
                 self.search_space.append(hyperopt.hp.quniform(name, val[0], val[1], 1))
             elif param_type == float:
                 self.search_space.append(hyperopt.hp.uniform(name, val[0], val[1]))
-            elif param_type == list:
+            elif isinstance(param_type, tuple) and param_type[0] == list:
                 self.search_space.append(hyperopt.hp.choice(name, val))
             else:
                 raise AssertionError("Error: unknown type {}".format(param_type))

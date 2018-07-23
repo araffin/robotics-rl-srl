@@ -97,6 +97,9 @@ class DeepQModel(BaseRLObject):
                 dueling=bool(args.dueling),
             )
 
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+
         deepq_param = {
             "lr": 1e-4,
             "exploration_fraction": 0.1,

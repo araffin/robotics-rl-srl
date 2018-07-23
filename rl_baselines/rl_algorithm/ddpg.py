@@ -120,28 +120,29 @@ class DDPGModel(BaseRLObject):
         return {
             # ddpg param
             "nb_epochs": (int, (1, 100)),
-            "nb_epoch_cycles": (float, (0, 1)),
-            "reward_scale": (float, (0, 1)),
+            "nb_epoch_cycles": (int, (1, 100)),
+            "reward_scale": (float, (0, 10)),
             "critic_l2_reg": (float, (0, 0.1)),
             "actor_lr": (float, (0, 0.01)),
             "critic_lr": (float, (0.5, 1)),
             "gamma": (float, (0.5, 1)),
-            "nb_train_steps": (float, (0.5, 1)),
-            "nb_rollout_steps": (int, (0, 10)),
-            "nb_eval_steps": (float, (1, 10)),
-            "batch_size": (float, (0.1, 10)),
+            "nb_train_steps": (int, (1, 100)),
+            "nb_rollout_steps": (int, (1, 100)),
+            "nb_eval_steps": (int, (1, 100)),
+            "batch_size": (int, (16, 128)),
             "tau": (float, (0, 1)),
 
             # noise param
             "noise_action_sigma": (float, (0, 1)),
-            "noise_action": (list, ["none", "normal", "ou"])
+            "noise_action": ((list, str), ["none", "normal", "ou"])
         }
 
     def train(self, args, callback, env_kwargs=None, hyperparam=None):
         logger.configure()
         env = self.makeEnv(args, env_kwargs)
-        if hyperparam is None:
-            hyperparam = {}
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
 
         createTensorflowSession()
         layer_norm = not args.no_layer_norm
@@ -176,6 +177,7 @@ class DDPGModel(BaseRLObject):
 
         # filter the hyperparam, and set default values in case no hyperparam
         hyperparam = {k: v for k, v in hyperparam.items() if k not in ["noise_action_sigma", "noise_action"]}
+
         ddpg_param = {
             "nb_epochs": 500,
             "nb_epoch_cycles": 20,

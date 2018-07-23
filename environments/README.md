@@ -33,7 +33,17 @@ You will need to define specifically:
     * ```reset()```: re-initialise the environment.
     * ```render(mode='human')```: returns an observation of the environment.
     * ```close()```: closes the environment, override if you need to change it.
-2. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```,
+    * Make sure ```__init__``` has the parameter ```**_kwargs``` in order to ignore useless flag parameters sent by the calling code.
+2. Add this code to the same file as the class declaration
+    ```python
+    def getGlobals():
+        """
+        :return: (dict)
+        """
+        return globals()
+    ```
+    it will allow the logging of constant values used by the class
+3. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```,
 using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, where:
     * ```NAME```: is your environment's name.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
@@ -45,5 +55,5 @@ using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, wher
     defined by the enumerator ```ThreadingType``` in ```environments/__init__.py```,
     can be (from most restricive to less restricive) 
     ```PROCESS```, ```THREAD``` or ```NONE``` (use ```NONE``` if unsure).
-3. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
-4. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```dataset_generator.py```.
+4. Add the name of the environment to ```config/srl_models.yaml```, with the location of the saved model for each SRL model (can point to a dummy location, but must be defined).
+5. Now you can call your environment using ```--env NAME``` with ```train.py```, ```pipeline.py``` or ```dataset_generator.py```.

@@ -24,7 +24,7 @@ def assertNeq(left, right):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("optimizer", ['hyperband', 'hyperopt'])
-def testBaselineTrain(optimizer):
+def testHyperparamOptimizer(optimizer):
     """
     test for the given hyperparam optimizer
     :param optimizer: (str) RL algorithm name
@@ -40,7 +40,7 @@ def testBaselineTrain(optimizer):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ddpg', 'cma-es', 'ars', 'sac'])
-def testBaselineTrain(algo):
+def testRLHyperparamSearch(algo):
     """
     test for the given RL algorithm
     :param algo: (str) RL algorithm name

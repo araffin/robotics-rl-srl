@@ -84,8 +84,9 @@ class CMAESModel(BaseRLObject):
         args.num_cpu = args.num_population
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
-        if hyperparam is None:
-            hyperparam = {}
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        args.__dict__.update(hyperparam)
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)
@@ -101,7 +102,7 @@ class CMAESModel(BaseRLObject):
                                     cuda=args.cuda, deterministic=args.deterministic)
         self.n_population = args.num_population
         self.mu = args.mu
-        self.sigma = hyperparam.get("sigma", args.sigma)
+        self.sigma = args.sigma
         self.continuous_actions = args.continuous_actions
         self.es = cma.CMAEvolutionStrategy(self.policy.getParamSpace() * [self.mu], self.sigma,
                                            {'popsize': self.n_population})

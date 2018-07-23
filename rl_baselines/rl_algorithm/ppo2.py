@@ -150,15 +150,9 @@ class PPO2Model(BaseRLObject):
                 'lr': lambda f: f * 2.5e-4,
             }
 
-        opt_param = self.getOptParam()
-        for name, val in hyperparam.items():
-            if name not in opt_param:
-                raise AssertionError("Error: hyperparameter {} not in list of valid hyperparameters".format(name))
-
-            if name == 'lr':
-                learn_param[name] = lambda f: f * opt_param[name][0](val)
-            else:
-                learn_param[name] = opt_param[name][0](val)
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        learn_param.update(hyperparam)
 
         assert not (self.policy in ['lstm', 'lnlstm', 'cnnlstm', 'cnnlnlstm'] and args.num_cpu % 4 != 0), \
             "Error: Reccurent policies must have num cpu at a multiple of 4."

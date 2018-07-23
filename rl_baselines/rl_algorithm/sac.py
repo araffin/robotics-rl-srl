@@ -278,7 +278,7 @@ class SACModel(BaseRLObject):
     @classmethod
     def getOptParam(cls):
         return {
-            "lr": (float, (1e-2, 1e-5)),
+            "learning_rate": (float, (1e-2, 1e-5)),
             "gamma": (float, (0, 1)),
             "w_reg": (float, (0, 1)),
             "soft_update_factor": (float, (0, 1)),
@@ -291,9 +291,8 @@ class SACModel(BaseRLObject):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         # set hyperparameters
-        if hyperparam is not None:
-            for name, val in hyperparam.items():
-                args.__dict__["name"] = val
+        hyperparam = self.parserHyperParam(hyperparam)
+        args.__dict__.update(hyperparam)
 
         self.cuda = th.cuda.is_available() and not args.no_cuda
         self.device = th.device("cuda" if self.cuda else "cpu")
