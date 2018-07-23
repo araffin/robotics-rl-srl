@@ -116,9 +116,9 @@ All the environments we propose follow the OpenAI Gym interface. We also extende
 
 ### Available Environments
 
-| **Kuka environment**                 | **Mobile Robot environment**                 | **Racing car environment**                 |
-| ------------------------------------ | -------------------------------------------- | ------------------------------------------ |
-| <img src="imgs/kuka.gif" width=25%/> | <img src="imgs/mobile_robot.gif" width=25%/> | <img src="imgs/racing_car.gif" width=25%/> |
+| **Kuka environment**       | **Mobile Robot environment**       | **Racing car environment**       |
+| -------------------------- | ---------------------------------- | -------------------------------- |
+| <img src="imgs/kuka.gif"/> | <img src="imgs/mobile_robot.gif"/> | <img src="imgs/racing_car.gif"/> |
 
 
 | **Name**                          | **Action space (discrete)**                | **Action space (continuous)**                 | **Rewards**                                                                                                                                             | **ground truth**                                  |
