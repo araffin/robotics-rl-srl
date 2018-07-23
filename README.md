@@ -116,6 +116,11 @@ All the environments we propose follow the OpenAI Gym interface. We also extende
 
 ### Available Environments
 
+| **Kuka environment**                 | **Mobile Robot environment**                 | **Racing car environment**                 |
+| ------------------------------------ | -------------------------------------------- | ------------------------------------------ |
+| <img src="imgs/kuka.gif" width=25%/> | <img src="imgs/mobile_robot.gif" width=25%/> | <img src="imgs/racing_car.gif" width=25%/> |
+
+
 | **Name**                          | **Action space (discrete)**                | **Action space (continuous)**                 | **Rewards**                                                                                                                                             | **ground truth**                                  |
 | --------------------------------- | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | **Kuka**<br>**Button**            | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector <sup>(3)</sup> |
