@@ -7,9 +7,9 @@ from stable_baselines.a2c.policies import nature_cnn, A2CPolicy
 
 
 class LstmPolicy(A2CPolicy):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False, layer_norm=False, _type="cnn",
+    def __init__(self, sess, ob_space, ac_space, n_batch, n_steps, nlstm=256, reuse=False, layer_norm=False, _type="cnn",
                  **kwargs):
-        super(LstmPolicy, self).__init__(sess, ob_space, ac_space, nbatch, nsteps, nlstm, reuse)
+        super(LstmPolicy, self).__init__(sess, ob_space, ac_space, n_batch, n_steps, nlstm, reuse)
         with tf.variable_scope("model", reuse=reuse):
             if _type == "cnn":
                 extracted_features = nature_cnn(self.obs_ph, **kwargs)
@@ -18,8 +18,8 @@ class LstmPolicy(A2CPolicy):
                 extracted_features = tf.layers.flatten(self.obs_ph)
                 extracted_features = activ(linear(extracted_features, 'pi_fc1', n_hidden=64, init_scale=np.sqrt(2)))
                 extracted_features = activ(linear(extracted_features, 'pi_fc2', n_hidden=64, init_scale=np.sqrt(2)))
-            input_sequence = batch_to_seq(extracted_features, self.nenv, nsteps)
-            masks = batch_to_seq(self.masks_ph, self.nenv, nsteps)
+            input_sequence = batch_to_seq(extracted_features, self.nenv, n_steps)
+            masks = batch_to_seq(self.masks_ph, self.nenv, n_steps)
             rnn_output, self.snew = lstm(input_sequence, masks, self.states_ph, 'lstm1', n_hidden=nlstm,
                                          layer_norm=layer_norm)
             rnn_output = seq_to_batch(rnn_output)
@@ -69,51 +69,47 @@ class MlpLnLstmPolicy(LstmPolicy):
 
 class AcerMlpPolicy(object):
 
-    def __init__(self, sess, ob_space, ac_space, nenv, nsteps, nstack, reuse=False):
+    def __init__(self, sess, ob_space, ac_space, nenv, n_steps, n_stack, reuse=False):
         """
         :param sess: (tf Session)
         :param ob_space: (tuple)
         :param ac_space: (gym action space)
-        :param nsteps: (int)
-        :param nstack: (int)
+        :param n_steps: (int)
+        :param n_stack: (int)
         :param reuse: (bool) for tensorflow
         """
-        nbatch = nenv * nsteps
+        n_batch = nenv * n_steps
         obs_dim = ob_space.shape[0]
-        ob_shape = (nbatch, obs_dim * nstack)
-        nact = ac_space.n
-        X = tf.placeholder(tf.float32, ob_shape)  # obs
+        ob_shape = (n_batch, obs_dim * n_stack)
+        n_act = ac_space.n
+        obs_ph = tf.placeholder(tf.float32, ob_shape)  # obs
         with tf.variable_scope("model", reuse=reuse):
             activ = tf.tanh
-            h1 = activ(linear(X, 'pi_fc1', nh=64, init_scale=np.sqrt(2)))
-            h2 = activ(linear(h1, 'pi_fc2', nh=64, init_scale=np.sqrt(2)))
-            pi_logits = linear(h2, 'pi', nact, init_scale=0.01)
-            pi = tf.nn.softmax(pi_logits)
-            h1 = activ(linear(X, 'q_fc1', nh=64, init_scale=np.sqrt(2)))
-            h2 = activ(linear(h1, 'q_fc2', nh=64, init_scale=np.sqrt(2)))
-            q = linear(h2, 'q', nact)
+            h1 = activ(linear(obs_ph, 'pi_fc1', n_hidden=64, init_scale=np.sqrt(2)))
+            h2 = activ(linear(h1, 'pi_fc2', n_hidden=64, init_scale=np.sqrt(2)))
+            pi_logits = linear(h2, 'pi', n_act, init_scale=0.01)
+            policy = tf.nn.softmax(pi_logits)
+            h1 = activ(linear(obs_ph, 'q_fc1', n_hidden=64, init_scale=np.sqrt(2)))
+            h2 = activ(linear(h1, 'q_fc2', n_hidden=64, init_scale=np.sqrt(2)))
+            q_value = linear(h2, 'q', n_act)
 
-        a = sample(pi_logits)  # could change this to use self.pi instead
+        self.action = sample(pi_logits)  # could change this to use self.policy instead
         self.initial_state = []  # not stateful
-        self.X = X
-        self.pi = pi  # actual policy params now
-        self.q = q
+        self.obs_ph = obs_ph
+        self.policy = policy  # actual policy params now
+        self.q_value = q_value
 
-        def step(ob, *args, **kwargs):
-            # returns actions, mus, states
-            a0, pi0 = sess.run([a, pi], {X: ob})
-            return a0, pi0, []  # dummy state
+    def step(self, obs, state=None, mask=None):
+        # returns actions, mus, states
+        action_0, policy_0 = self.sess.run([self.action, self.policy], {self.obs_ph: obs})
+        return action_0, policy_0, []  # dummy state
 
-        def out(ob, *args, **kwargs):
-            pi0, q0 = sess.run([pi, q], {X: ob})
-            return pi0, q0
+    def out(self, obs, state=None, mask=None):
+        policy_0, q_value_0 = self.sess.run([self.policy, self.q_value], {self.obs_ph: obs})
+        return policy_0, q_value_0
 
-        def act(ob, *args, **kwargs):
-            return sess.run(a, {X: ob})
-
-        self.step = step
-        self.out = out
-        self.act = act
+    def act(self, obs, state=None, mask=None):
+        return self.sess.run(self.action, {self.obs_ph: obs})
 
 
 class DDPGActorCNN(Model):

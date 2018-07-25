@@ -51,8 +51,8 @@ class ACERModel(BaseRLObject):
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
         policy = {'cnn': AcerCnnPolicy, 'mlp': AcerMlpPolicy}[loaded_model.policy]
-        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, nsteps=1,
-                                    nstack=1, reuse=False)
+        loaded_model.model = policy(sess, loaded_model.ob_space, loaded_model.ac_space, args.num_cpu, n_steps=1,
+                                    n_stack=1, reuse=False)
 
         tf.global_variables_initializer().run(session=sess)
         loaded_params = joblib.load(os.path.dirname(load_path) + "/acer_weights.pkl")
@@ -93,11 +93,11 @@ class ACERModel(BaseRLObject):
         self.ac_space = envs.action_space
         self.policy = args.policy
 
-        self._learn(args, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1,
-                    lrschedule=args.lr_schedule, callback=callback)
+        self._learn(args, envs, total_timesteps=args.num_timesteps, seed=args.seed, n_stack=1,
+                    lr_schedule=args.lr_schedule, callback=callback)
 
-    def _learn(self, args, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
-               max_grad_norm=10, learning_rate=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99,
+    def _learn(self, args, env, seed, n_steps=20, n_stack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
+               max_grad_norm=10, learning_rate=7e-4, lr_schedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99,
                gamma=0.99, log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000,
                correction_term=10.0, trust_region=True, alpha=0.99, delta=1, callback=None):
         """
@@ -106,14 +106,14 @@ class ACERModel(BaseRLObject):
         :param args: (ArgumentParser) The arguments to learn the model
         :param env: (Gym environment) The environment to learn from
         :param seed: (int) The initial seed for training
-        :param nsteps: (int) The number of steps to run for each environment
-        :param nstack: (int) The number of stacked frames
+        :param n_steps: (int) The number of steps to run for each environment
+        :param n_stack: (int) The number of stacked frames
         :param total_timesteps: (int) The total number of samples
         :param q_coef: (float) Q function coefficient for the loss calculation
         :param ent_coef: (float) Entropy coefficient for the loss caculation
         :param max_grad_norm: (float) The maximum value for the gradient clipping
         :param learning_rate: (float) The learning rate
-        :param lrschedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
+        :param lr_schedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
                                      'double_linear_con', 'middle_drop' or 'double_middle_drop')
         :param rprop_epsilon: (float) RMS prop optimizer epsilon
         :param rprop_alpha: (float) RMS prop optimizer decay
@@ -139,27 +139,27 @@ class ACERModel(BaseRLObject):
         else:
             raise ValueError("Policy {} not implemented".format(args.policy))
 
-        nenvs = env.num_envs
+        n_envs = env.num_envs
         ob_space = env.observation_space
         ac_space = env.action_space
         num_procs = args.num_cpu
-        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, n_envs=nenvs, n_steps=nsteps,
-                           nstack=nstack, num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
+        self.model = Model(policy=policy_fn, ob_space=ob_space, ac_space=ac_space, n_envs=n_envs, n_steps=n_steps,
+                           n_stack=n_stack, num_procs=num_procs, ent_coef=ent_coef, q_coef=q_coef, gamma=gamma,
                            max_grad_norm=max_grad_norm, learning_rate=learning_rate, rprop_alpha=rprop_alpha,
-                           rprop_epsilon=rprop_epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule,
+                           rprop_epsilon=rprop_epsilon, total_timesteps=total_timesteps, lr_schedule=lr_schedule,
                            correction_term=correction_term, trust_region=trust_region, alpha=alpha, delta=delta)
 
-        runner = _Runner(env=env, model=self.model, nsteps=nsteps, nstack=nstack)
+        runner = _Runner(env=env, model=self.model, n_steps=n_steps, n_stack=n_stack)
         if replay_ratio > 0:
-            buffer = Buffer(env=env, nsteps=nsteps, nstack=nstack, size=buffer_size)
+            buffer = Buffer(env=env, n_steps=n_steps, n_stack=n_stack, size=buffer_size)
         else:
             buffer = None
-        nbatch = nenvs * nsteps
+        n_batch = n_envs * n_steps
         acer = Acer(runner, self.model, buffer, log_interval)
         acer.tstart = time.time()
 
-        # nbatch samples, 1 on_policy call and multiple off-policy calls
-        for acer.steps in range(0, total_timesteps, nbatch):
+        # n_batch samples, 1 on_policy call and multiple off-policy calls
+        for acer.steps in range(0, total_timesteps, n_batch):
             acer.call(on_policy=True)
             if callback is not None:
                 callback(locals(), globals())
@@ -173,43 +173,43 @@ class ACERModel(BaseRLObject):
 
 
 class _Runner(AbstractEnvRunner):
-    def __init__(self, env, model, nsteps, nstack):
+    def __init__(self, env, model, n_steps, n_stack):
         """
         A runner to learn the policy of an environment for a model
 
         :param env: (Gym environment) The environment to learn from
         :param model: (Model) The model to learn
-        :param nsteps: (int) The number of steps to run for each environment
-        :param nstack: (int) The number of stacked frames
+        :param n_steps: (int) The number of steps to run for each environment
+        :param n_stack: (int) The number of stacked frames
         """
 
-        super(_Runner, self).__init__(env=env, model=model, nsteps=nsteps)
+        super(_Runner, self).__init__(env=env, model=model, n_steps=n_steps)
         self.env = env
-        self.nstack = nstack
+        self.n_stack = n_stack
         self.model = model
-        self.nenv = nenv = env.num_envs
-        self.nact = env.action_space.n
-        self.nbatch = nenv * nsteps
+        self.n_env = n_env = env.num_envs
+        self.n_act = env.action_space.n
+        self.n_batch = n_env * n_steps
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
             obs_height, obs_width, obs_num_channels = env.observation_space.shape
-            self.batch_ob_shape = (nenv * (nsteps + 1), obs_height, obs_width, obs_num_channels * nstack)
+            self.batch_ob_shape = (n_env * (n_steps + 1), obs_height, obs_width, obs_num_channels * n_stack)
             self.obs_dtype = np.uint8
-            self.obs = np.zeros((nenv, obs_height, obs_width, obs_num_channels), dtype=self.obs_dtype)
+            self.obs = np.zeros((n_env, obs_height, obs_width, obs_num_channels), dtype=self.obs_dtype)
             self.num_channels = obs_num_channels
         else:
             self.raw_pixels = False
             obs_dim = env.observation_space.shape[0]
-            self.batch_ob_shape = (nenv * (nsteps + 1), obs_dim * nstack)
+            self.batch_ob_shape = (n_env * (n_steps + 1), obs_dim * n_stack)
             self.obs_dtype = np.float32
-            self.obs = np.zeros((nenv, obs_dim), dtype=self.obs_dtype)
+            self.obs = np.zeros((n_env, obs_dim), dtype=self.obs_dtype)
             self.obs_dim = obs_dim
 
         self.update_obs(self.obs)
-        self.nsteps = nsteps
+        self.n_steps = n_steps
         self.states = model.initial_state
-        self.dones = [False for _ in range(nenv)]
+        self.dones = [False for _ in range(n_env)]
 
     def update_obs(self, obs, dones=None):
         """
@@ -237,11 +237,11 @@ class _Runner(AbstractEnvRunner):
                  encoded observation, observations, actions, rewards, mus, dones, masks
         """
         if self.raw_pixels:
-            enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
+            enc_obs = np.split(self.obs, self.n_stack, axis=3)  # so now list of obs steps
         else:
-            enc_obs = np.split(self.obs, self.nstack, axis=1)  # so now list of obs steps
+            enc_obs = np.split(self.obs, self.n_stack, axis=1)  # so now list of obs steps
         mb_obs, mb_actions, mb_mus, mb_dones, mb_rewards = [], [], [], [], []
-        for _ in range(self.nsteps):
+        for _ in range(self.n_steps):
             actions, mus, states = self.model.step(self.obs, state=self.states, mask=self.dones)
             mb_obs.append(np.copy(self.obs))
             mb_actions.append(actions)
@@ -268,7 +268,7 @@ class _Runner(AbstractEnvRunner):
         mb_masks = mb_dones  # Used for statefull models like LSTM's to mask state when done
         mb_dones = mb_dones[:, 1:]  # Used for calculating returns. The dones array is now aligned with rewards
 
-        # shapes are now [nenv, nsteps, []]
+        # shapes are now [n_env, n_steps, []]
         # When pulling from buffer, arrays will now be reshaped in place, preventing a deep copy.
 
         return enc_obs, mb_obs, mb_actions, mb_rewards, mb_mus, mb_dones, mb_masks

@@ -209,8 +209,8 @@ class WrapFrameStack(VecFrameStack):
     and scale output if necessary
     """
 
-    def __init__(self, venv, nstack, normalize=True):
-        super(WrapFrameStack, self).__init__(venv, nstack)
+    def __init__(self, venv, n_stack, normalize=True):
+        super(WrapFrameStack, self).__init__(venv, n_stack)
         self.factor = 255.0 if normalize else 1
 
     def step(self, action):

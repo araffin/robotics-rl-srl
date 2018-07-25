@@ -160,13 +160,13 @@ class A2CModel(BaseRLObject):
         self.states = self.model.initial_state
         runner = _Runner(env, self.model, n_steps=n_steps, gamma=gamma)
 
-        nbatch = n_envs * n_steps
+        n_batch = n_envs * n_steps
         tstart = time.time()
-        for update in range(1, total_timesteps // nbatch + 1):
+        for update in range(1, total_timesteps // n_batch + 1):
             obs, states, rewards, masks, actions, values = runner.run()
             policy_loss, value_loss, policy_entropy = self.model.train(obs, states, rewards, masks, actions, values)
             nseconds = time.time() - tstart
-            fps = int((update * nbatch) / nseconds)
+            fps = int((update * n_batch) / nseconds)
 
             if callback is not None:
                 callback(locals(), globals())
@@ -174,7 +174,7 @@ class A2CModel(BaseRLObject):
             if update % log_interval == 0 or update == 1:
                 explained_var = explained_variance(values, rewards)
                 logger.record_tabular("nupdates", update)
-                logger.record_tabular("total_timesteps", update * nbatch)
+                logger.record_tabular("total_timesteps", update * n_batch)
                 logger.record_tabular("fps", fps)
                 logger.record_tabular("policy_entropy", float(policy_entropy))
                 logger.record_tabular("value_loss", float(value_loss))
