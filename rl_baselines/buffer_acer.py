@@ -82,30 +82,14 @@ class Buffer(object):
         # enc_obs has shape [n_envs, n_steps + n_stack, nh, nw, nc]
         # dones has shape [n_envs, n_steps, nh, nw, nc]
         # returns stacked obs of shape [n_env, (n_steps + 1), nh, nw, n_stack*nc]
-        n_stack, n_env, n_steps = self.n_stack, self.n_env, self.n_steps
         if self.raw_pixels:
-            obs_dim = [self.height, self.width, self.n_channels]
+            n_stack, n_env, n_steps, nh, nw, nc = self.n_stack, self.n_env, self.n_steps, self.height, self.width, self.n_channels
+            x = np.reshape(enc_obs, [n_stack, n_env, n_steps + n_stack, nh, nw, nc]).swapaxes(2, 1)
+            return np.reshape(x[:, :].transpose((2, 1, 3, 4, 0, 5)), [n_env, (n_steps + 1), nh, nw, n_stack * nc])
         else:
-            obs_dim = [self.obs_dim]
-
-        y_var = np.empty([n_steps + n_stack - 1, n_env] + ([1] * len(obs_dim)), dtype=np.float32)
-        obs = np.zeros([n_stack, n_steps + n_stack, n_env] + obs_dim, dtype=self.obs_dtype)
-        # [n_steps + n_stack, n_env, nh, nw, nc]
-        x_var = np.reshape(enc_obs, [n_env, n_steps + n_stack] + obs_dim).swapaxes(1, 0)
-        y_var[3:] = np.reshape(1.0 - dones, [n_env, n_steps] + ([1] * len(obs_dim))).swapaxes(1, 0)  # keep
-        y_var[:3] = 1.0
-        # y = np.reshape(1 - dones, [n_envs, n_steps, 1, 1, 1])
-        for i in range(n_stack):
-            obs[-(i + 1), i:] = x_var
-            # obs[:,i:,:,:,-(i+1),:] = x
-            x_var = x_var[:-1] * y_var
-            y_var = y_var[1:]
-
-        if self.raw_pixels:
-            obs = obs[:, 3:].transpose((2, 1, 3, 4, 0, 5))
-        else:
-            obs = obs[:, 3:].transpose((2, 1, 3, 0))
-        return np.reshape(obs, [n_env, (n_steps + 1)] + obs_dim[:-1] + [obs_dim[-1] * n_stack])
+            n_stack, n_env, n_steps, obs_dim = self.n_stack, self.n_env, self.n_steps, self.obs_dim
+            x = np.reshape(enc_obs, [n_stack, n_env, n_steps + n_stack, obs_dim]).swapaxes(2, 1)
+            return np.reshape(x[:, :].transpose((2, 1, 3, 0)), [n_env, (n_steps + 1), obs_dim, n_stack])
 
     def put(self, enc_obs, actions, rewards, mus, dones, masks):
         """
