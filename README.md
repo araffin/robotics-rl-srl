@@ -4,6 +4,9 @@ This repository was made to evaluate State Representation Learning methods using
 
 We also release customizable Gym environments for working with simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
 
+<a href="https://drive.google.com/open?id=153oxiwHyK2W9nU3avEi0b0O4qjo7WD0X" target="_blank"><img src="imgs/rl_toolboxplay.jpg"/></a>
+
+
 Table of Contents
 =================
   * [Installation](#installation)
