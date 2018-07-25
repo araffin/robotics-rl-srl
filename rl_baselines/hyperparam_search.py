@@ -29,8 +29,8 @@ class HyperParameterOptimizer(object):
         :param train: (function (dict, int, int): float) the function that take:
 
             - params: (dict) the hyper parameters to train with
-            - num_iters (int) the number of itterations to train (can be None)
-            - train_id: (int) the training number (can be None)
+            - num_iters (int) the number of iterations to train (can be None)
+            - train_id: (int) the current iteration number in the hyperparameter search (can be None)
             - returns: (float) the score of the training to minimize
 
         :param seed: (int) the initial seed for the random number generator
@@ -59,8 +59,8 @@ class Hyperband(HyperParameterOptimizer):
         :param train: (function (dict, int, int): float) the function that take:
 
             - params: (dict) the hyper parameters to train with
-            - num_iters (int) the number of itterations to train (can be None)
-            - train_id: (int) the training number (can be None)
+            - num_iters (int) the number of iterations to train (can be None)
+            - train_id: (int) the current iteration number in the hyperparameter search (can be None)
             - returns: (float) the score of the training to minimize
 
         :param seed: (int) the initial seed for the random number generator
@@ -123,8 +123,8 @@ class Hyperopt(HyperParameterOptimizer):
         :param train: (function (dict, int, int): float) the function that take:
 
             - params: (dict) the hyper parameters to train with
-            - num_iters (int) the number of itterations to train (can be None)
-            - train_id: (int) the training number (can be None)
+            - num_iters (int) the number of iterations to train (can be None)
+            - train_id: (int) the current iteration number in the hyperparameter search (can be None)
             - returns: (float) the score of the training to minimize
 
         :param seed: (int) the initial seed for the random number generator

@@ -80,7 +80,7 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getTargetPos(self):
-        # get the nearest track segement to the current position
+        # get the nearest track segment to the current position
         # then return the track segment position that is ahead of the nearest track segement
         nearest_idx = np.argmin(list(map(lambda a: np.sqrt(np.sum((a[2:4] - self.getGroundTruth()) ** 2)), self.track)))
         return np.array(self.track[(nearest_idx + self.lookahead) % len(self.track)][2:4])
@@ -90,8 +90,11 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
         return 2
 
     def getGroundTruth(self):
-        # the car's current x,y position
-        return np.array(list(self.car.__dict__["hull"].position))
+        # the car's current x,y position, angle, speed and angular speed
+        return np.array(list(self.car.__dict__["hull"].position) +
+                        [self.car.__dict__["hull"].angle,
+                         self.car.__dict__["hull"].inertia,
+                         self.car.__dict__["hull"].angularVelocity])
 
     def getObservation(self):
         """
