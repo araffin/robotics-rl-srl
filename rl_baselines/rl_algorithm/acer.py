@@ -12,6 +12,7 @@ from stable_baselines.acer.policies import AcerCnnPolicy, AcerLstmPolicy
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.policies import AcerMlpPolicy
 from rl_baselines.buffer_acer import Buffer
+from rl_baselines.utils import createTensorflowSession
 
 
 class ACERModel(BaseRLObject):
@@ -130,6 +131,7 @@ class ACERModel(BaseRLObject):
         :param callback: (function (dict, dict)) function called at every steps with state of the algorithm.
             It takes the local and global variables.
         """
+        createTensorflowSession()
         if args.policy == 'cnn':
             policy_fn = AcerCnnPolicy
         elif args.policy == 'cnnlstm':
@@ -151,12 +153,12 @@ class ACERModel(BaseRLObject):
 
         runner = _Runner(env=env, model=self.model, n_steps=n_steps, n_stack=n_stack)
         if replay_ratio > 0:
-            buffer = Buffer(env=env, n_steps=n_steps, n_stack=n_stack, size=buffer_size)
+            _buffer = Buffer(env=env, n_steps=n_steps, n_stack=n_stack, size=buffer_size)
         else:
-            buffer = None
+            _buffer = None
         n_batch = n_envs * n_steps
-        acer = Acer(runner, self.model, buffer, log_interval)
-        acer.tstart = time.time()
+        acer = Acer(runner, self.model, _buffer, log_interval)
+        acer.t_start = time.time()
 
         # n_batch samples, 1 on_policy call and multiple off-policy calls
         for acer.steps in range(0, total_timesteps, n_batch):
@@ -164,7 +166,7 @@ class ACERModel(BaseRLObject):
             if callback is not None:
                 callback(locals(), globals())
 
-            if replay_ratio > 0 and buffer.has_atleast(replay_start):
+            if replay_ratio > 0 and _buffer.has_atleast(replay_start):
                 samples_number = np.random.poisson(replay_ratio)
                 for _ in range(samples_number):
                     acer.call(on_policy=False)  # no simulation steps in this

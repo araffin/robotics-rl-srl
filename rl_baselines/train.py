@@ -13,7 +13,7 @@ import sys
 import time
 
 import yaml
-from baselines.common import set_global_seeds
+from stable_baselines.common import set_global_seeds
 from visdom import Visdom
 
 from rl_baselines import AlgoType, ActionType

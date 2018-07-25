@@ -26,15 +26,14 @@ class Buffer(object):
 
         self.n_env = env.num_envs
         self.n_steps = n_steps
-        self.height, self.width, self.n_channels = env.observation_space.shape
         self.n_stack = n_stack
         self.n_batch = self.n_env * self.n_steps
-        # Each loc contains nenv * n_steps frames, thus total buffer is nenv * size frames
+        # Each loc contains n_env * n_steps frames, thus total buffer is n_env * size frames
         self.size = size // self.n_steps
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
-            self.nh, self.nw, self.nc = env.observation_space.shape
+            self.height, self.width, self.n_channels = env.observation_space.shape
             self.obs_dtype = np.uint8
         else:
             self.raw_pixels = False
@@ -60,8 +59,8 @@ class Buffer(object):
         :param frames: (int) The number of frames checked
         :return: (bool) number of frames in buffer >= number asked
         """
-        # Frames per env, so total (nenv * frames) Frames needed
-        # Each buffer loc has nenv * n_steps frames
+        # Frames per env, so total (n_env * frames) Frames needed
+        # Each buffer loc has n_env * n_steps frames
         return self.num_in_buffer >= (frames // self.n_steps)
 
     def can_sample(self):
@@ -80,9 +79,9 @@ class Buffer(object):
         :param dones: ([bool])
         :return: ([float]) the decoded observation
         """
-        # enc_obs has shape [nenvs, n_steps + n_stack, nh, nw, nc]
-        # dones has shape [nenvs, n_steps, nh, nw, nc]
-        # returns stacked obs of shape [nenv, (n_steps + 1), nh, nw, n_stack*nc]
+        # enc_obs has shape [n_envs, n_steps + n_stack, nh, nw, nc]
+        # dones has shape [n_envs, n_steps, nh, nw, nc]
+        # returns stacked obs of shape [n_env, (n_steps + 1), nh, nw, n_stack*nc]
         n_stack, n_env, n_steps = self.n_stack, self.n_env, self.n_steps
         if self.raw_pixels:
             obs_dim = [self.height, self.width, self.n_channels]
@@ -91,11 +90,11 @@ class Buffer(object):
 
         y_var = np.empty([n_steps + n_stack - 1, n_env] + ([1] * len(obs_dim)), dtype=np.float32)
         obs = np.zeros([n_stack, n_steps + n_stack, n_env] + obs_dim, dtype=self.obs_dtype)
-        # [n_steps + n_stack, nenv, nh, nw, nc]
+        # [n_steps + n_stack, n_env, nh, nw, nc]
         x_var = np.reshape(enc_obs, [n_env, n_steps + n_stack] + obs_dim).swapaxes(1, 0)
         y_var[3:] = np.reshape(1.0 - dones, [n_env, n_steps] + ([1] * len(obs_dim))).swapaxes(1, 0)  # keep
         y_var[:3] = 1.0
-        # y = np.reshape(1 - dones, [nenvs, n_steps, 1, 1, 1])
+        # y = np.reshape(1 - dones, [n_envs, n_steps, 1, 1, 1])
         for i in range(n_stack):
             obs[-(i + 1), i:] = x_var
             # obs[:,i:,:,:,-(i+1),:] = x
@@ -119,9 +118,9 @@ class Buffer(object):
         :param dones: ([bool])
         :param masks: ([bool])
         """
-        # enc_obs [nenv, (n_steps + n_stack), nh, nw, nc]
-        # actions, rewards, dones [nenv, n_steps]
-        # mus [nenv, n_steps, n_act]
+        # enc_obs [n_env, (n_steps + n_stack), nh, nw, nc]
+        # actions, rewards, dones [n_env, n_steps]
+        # mus [n_env, n_steps, n_act]
 
         if self.enc_obs is None:
             self.enc_obs = np.empty([self.size] + list(enc_obs.shape), dtype=self.obs_dtype)
@@ -164,9 +163,9 @@ class Buffer(object):
                  observations, actions, rewards, mus, dones, maskes
         """
         # returns
-        # obs [nenv, (n_steps + 1), nh, nw, n_stack*nc]
-        # actions, rewards, dones [nenv, n_steps]
-        # mus [nenv, n_steps, n_act]
+        # obs [n_env, (n_steps + 1), nh, nw, n_stack*nc]
+        # actions, rewards, dones [n_env, n_steps]
+        # mus [n_env, n_steps, n_act]
         n_env = self.n_env
         assert self.can_sample()
 

@@ -4,6 +4,7 @@ import tensorflow.contrib as tc
 from stable_baselines.a2c.utils import linear, sample, batch_to_seq, seq_to_batch, lstm
 from stable_baselines.ddpg.models import Model
 from stable_baselines.a2c.policies import nature_cnn, A2CPolicy
+from stable_baselines.acer.policies import AcerPolicy
 
 
 class LstmPolicy(A2CPolicy):
@@ -18,8 +19,8 @@ class LstmPolicy(A2CPolicy):
                 extracted_features = tf.layers.flatten(self.obs_ph)
                 extracted_features = activ(linear(extracted_features, 'pi_fc1', n_hidden=64, init_scale=np.sqrt(2)))
                 extracted_features = activ(linear(extracted_features, 'pi_fc2', n_hidden=64, init_scale=np.sqrt(2)))
-            input_sequence = batch_to_seq(extracted_features, self.nenv, n_steps)
-            masks = batch_to_seq(self.masks_ph, self.nenv, n_steps)
+            input_sequence = batch_to_seq(extracted_features, self.n_env, n_steps)
+            masks = batch_to_seq(self.masks_ph, self.n_env, n_steps)
             rnn_output, self.snew = lstm(input_sequence, masks, self.states_ph, 'lstm1', n_hidden=nlstm,
                                          layer_norm=layer_norm)
             rnn_output = seq_to_batch(rnn_output)
@@ -30,7 +31,7 @@ class LstmPolicy(A2CPolicy):
         self.value_0 = value_fn[:, 0]
         self.action_0 = self.proba_distribution.sample()
         self.neglogp0 = self.proba_distribution.neglogp(self.action_0)
-        self.initial_state = np.zeros((self.nenv, nlstm * 2), dtype=np.float32)
+        self.initial_state = np.zeros((self.n_env, nlstm * 2), dtype=np.float32)
         self.value_fn = value_fn
 
     def step(self, obs, state=None, mask=None):
@@ -69,7 +70,7 @@ class MlpLnLstmPolicy(LstmPolicy):
 
 class AcerMlpPolicy(object):
 
-    def __init__(self, sess, ob_space, ac_space, nenv, n_steps, n_stack, reuse=False):
+    def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_stack, reuse=False):
         """
         :param sess: (tf Session)
         :param ob_space: (tuple)
@@ -78,24 +79,28 @@ class AcerMlpPolicy(object):
         :param n_stack: (int)
         :param reuse: (bool) for tensorflow
         """
-        n_batch = nenv * n_steps
+        # MLP not supported yet
+        #super(AcerMlpPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_stack, reuse)
+        self.n_batch = n_env * n_steps
+        self.n_act = ac_space.n
         obs_dim = ob_space.shape[0]
-        ob_shape = (n_batch, obs_dim * n_stack)
-        n_act = ac_space.n
-        obs_ph = tf.placeholder(tf.float32, ob_shape)  # obs
+        self.ob_shape = (self.n_batch, obs_dim * n_stack)
+        self.obs_ph = tf.placeholder(tf.float32, self.ob_shape)  # obs
+        self.sess = sess
+        self.reuse = reuse
+
         with tf.variable_scope("model", reuse=reuse):
             activ = tf.tanh
-            h1 = activ(linear(obs_ph, 'pi_fc1', n_hidden=64, init_scale=np.sqrt(2)))
+            h1 = activ(linear(self.obs_ph, 'pi_fc1', n_hidden=64, init_scale=np.sqrt(2)))
             h2 = activ(linear(h1, 'pi_fc2', n_hidden=64, init_scale=np.sqrt(2)))
-            pi_logits = linear(h2, 'pi', n_act, init_scale=0.01)
+            pi_logits = linear(h2, 'pi', self.n_act, init_scale=0.01)
             policy = tf.nn.softmax(pi_logits)
-            h1 = activ(linear(obs_ph, 'q_fc1', n_hidden=64, init_scale=np.sqrt(2)))
+            h1 = activ(linear(self.obs_ph, 'q_fc1', n_hidden=64, init_scale=np.sqrt(2)))
             h2 = activ(linear(h1, 'q_fc2', n_hidden=64, init_scale=np.sqrt(2)))
-            q_value = linear(h2, 'q', n_act)
+            q_value = linear(h2, 'q', self.n_act)
 
         self.action = sample(pi_logits)  # could change this to use self.policy instead
         self.initial_state = []  # not stateful
-        self.obs_ph = obs_ph
         self.policy = policy  # actual policy params now
         self.q_value = q_value
 

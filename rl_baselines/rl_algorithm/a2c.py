@@ -198,15 +198,15 @@ class _Runner(AbstractEnvRunner):
         super(_Runner, self).__init__(env=env, model=model, n_steps=n_steps)
         self.gamma = gamma
 
-        nenv = env.num_envs
+        n_env = env.num_envs
         if len(env.observation_space.shape) > 1:
             nh, nw, nc = env.observation_space.shape
-            self.batch_ob_shape = (nenv * n_steps, nh, nw, nc)
+            self.batch_ob_shape = (n_env * n_steps, nh, nw, nc)
             self.obs_dtype = np.uint8
             self.nc = nc
         else:
             obs_dim = env.observation_space.shape[0]
-            self.batch_ob_shape = (nenv * n_steps, obs_dim)
+            self.batch_ob_shape = (n_env * n_steps, obs_dim)
             self.obs_dtype = np.float32
 
 
