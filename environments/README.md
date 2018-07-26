@@ -45,7 +45,7 @@ You will need to define specifically:
     it will allow the logging of constant values used by the class
 3. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```,
 using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, where:
-    * ```NAME```: is your environment's name, it must only containe ```[A-Z][a-z][0-9]``` and end with the version number in this format: ```-v{number}```.
+    * ```NAME```: is your environment's name, it must only contain ```[A-Z][a-z][0-9]``` and end with the version number in this format: ```-v{number}```.
     * ```CLASS```: is your class that is a subclass of ```SRLGymEnv```.
     * ```SUPER_CLASS```: is the super class of your class, this is for saving all the globals and parameters.
     * ```PLOT_TYPE```: is the type of plotting for ```replay.enjoy_baselines```,
