@@ -15,7 +15,6 @@ from environments.mobile_robot.mobile_robot_1D_env import MobileRobot1DGymEnv
 from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLineTargetGymEnv
 from environments.gym_baxter.baxter_env import BaxterEnv
 from environments.robobo_gym.robobo_env import RoboboEnv
-from environments.car_racing.car_env import CarRacingEnv
 
 
 def register(_id, **kvargs):
@@ -48,8 +47,10 @@ registered_env = {
     "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
 }
 
-# Environments only available when running in a terminal with X:
+# Environments only available when running in a terminal with X (hence only imported when available):
 if isXAvailable():
+    from environments.car_racing.car_env import CarRacingEnv
+
     registered_env["CarRacingGymEnv-v0"] = (CarRacingEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
 
 
