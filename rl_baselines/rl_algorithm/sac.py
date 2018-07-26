@@ -278,8 +278,24 @@ class SACModel(BaseRLObject):
         """
         return toTensor(x, self.device).float()
 
-    def train(self, args, callback, env_kwargs=None):
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "learning_rate": (float, (1e-2, 1e-5)),
+            "gamma": (float, (0, 1)),
+            "w_reg": (float, (0, 1)),
+            "soft_update_factor": (float, (0, 1)),
+            "batch_size": (int, (32, 256)),
+            "gradient_step": (int, (1, 10)),
+            "reward_scale": (float, (0, 100))
+        }
+
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        args.__dict__.update(hyperparam)
 
         self.cuda = th.cuda.is_available() and not args.no_cuda
         self.device = th.device("cuda" if self.cuda else "cpu")

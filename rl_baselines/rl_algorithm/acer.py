@@ -80,7 +80,25 @@ class ACERModel(BaseRLObject):
         actions, _, _ = self.model.step(observation, state=None, mask=dones)
         return actions
 
-    def train(self, args, callback, env_kwargs=None):
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "nsteps": (int, (1, 100)),
+            "q_coef": (float, (0, 1)),
+            "ent_coef": (float, (0, 1)),
+            "max_grad_norm": (float, (0.1, 5)),
+            "lr": (float, (0, 0.1)),
+            "rprop_epsilon": (float, (0, 0.01)),
+            "rprop_alpha": (float, (0.5, 1)),
+            "gamma": (float, (0.5, 1)),
+            "alpha": (float, (0.5, 1)),
+            "replay_ratio": (int, (0, 10)),
+            "c": (float, (1, 10)),
+            "delta": (float, (0.1, 10)),
+            "lrschedule": ((list, str), ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+        }
+
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
 
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
@@ -93,13 +111,49 @@ class ACERModel(BaseRLObject):
         self.ac_space = envs.action_space
         self.policy = args.policy
 
-        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1,
-                    lrschedule=args.lr_schedule, callback=callback)
+        learn_param = {
+            "lrschedule": args.lr_schedule
+        }
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        learn_param.update(hyperparam)
+
+        self._learn(args.policy, envs, total_timesteps=args.num_timesteps, seed=args.seed, nstack=1, callback=callback,
+                    **learn_param)
 
     def _learn(self, policy, env, seed, nsteps=20, nstack=4, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
                max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
                log_interval=100, buffer_size=5000, replay_ratio=4, replay_start=1000, c=10.0,
                trust_region=True, alpha=0.99, delta=1, callback=None):
+        """
+        Traines an ACER model.
+
+        :param policy: (ACERPolicy) The policy model to use (MLP, CNN, LSTM, ...)
+        :param env: (Gym environment) The environment to learn from
+        :param seed: (int) The initial seed for training
+        :param nsteps: (int) The number of steps to run for each environment
+        :param nstack: (int) The number of stacked frames
+        :param total_timesteps: (int) The total number of samples
+        :param q_coef: (float) Q function coefficient for the loss calculation
+        :param ent_coef: (float) Entropy coefficient for the loss caculation
+        :param max_grad_norm: (float) The maximum value for the gradiant clipping
+        :param lr: (float) The learning rate
+        :param lrschedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
+                                     'double_linear_con', 'middle_drop' or 'double_middle_drop')
+        :param rprop_epsilon: (float) RMS prop optimizer epsilon
+        :param rprop_alpha: (float) RMS prop optimizer decay
+        :param gamma: (float) Discount factor
+        :param log_interval: (int) The number of timesteps before logging.
+        :param buffer_size: (int) The buffer size in number of steps
+        :param replay_ratio: (float) The number of replay learning per on policy learning on average,
+                                     using a poisson distribution
+        :param replay_start: (int) The minimum number of steps in the buffer, before learning replay
+        :param c: (float) The correction term for the weights
+        :param trust_region: (bool) Enable Trust region policy optimization loss
+        :param alpha: (float) The decay rate for the Exponential moving average of the parameters
+        :param delta: (float) trust region delta value
+        """
         tf.reset_default_graph()
         createTensorflowSession()
 

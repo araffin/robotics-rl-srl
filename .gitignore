@@ -9,6 +9,7 @@ logs/
 logs_real/
 *.bak
 .pytest_cache/
+docker/environment.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
