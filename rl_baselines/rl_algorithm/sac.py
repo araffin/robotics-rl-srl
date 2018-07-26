@@ -285,7 +285,7 @@ class SACModel(BaseRLObject):
         self.device = th.device("cuda" if self.cuda else "cpu")
         self.using_images = args.srl_model == "raw_pixels"
 
-        assert not args.log_states and self.using_images, "SRL logger can only be used with SRL models"
+        assert not (args.log_states and self.using_images), "SRL logger can only be used with SRL models"
 
         if args.log_states:
             srl_logger = LogRLStates(args.log_dir)
