@@ -6,22 +6,28 @@ We also release customizable Gym environments for working with simulation (Kuka 
 
 Table of Contents
 =================
-  * [Installation](#installation)
-  * [Reinforcement Learning](#reinforcement-learning)
-    * [RL Algorithms: OpenAI Baselines and More](#rl-algorithms-openai-baselines-and-more)
-      * [Train an Agent with Discrete Actions](#train-an-agent-with-discrete-actions)
-      * [Train an Agent with Continuous Actions](#train-an-agent-with-continuous-actions)
-      * [Train an agent multiple times on multiple environments, using different methods](#train-an-agent-multiple-times-on-multiple-environments-using-different-methods)
-      * [Load a Trained Agent](#load-a-trained-agent)
-      * [Add Your own RL Algorithm](#add-your-own-rl-algorithm)
-  * [Environments](#environments)
-    * [Available Environments](#available-environments)
-    * [Generating Data](#generating-data)
-  * [State Representation Learning Models](#state-representation-learning-models)
-    * [Plot Learning Curve](#plot-learning-curve)
-  * [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo)
-  * [Troubleshooting](#troubleshooting)
-  * [Known issues](#known-issues)
+* [Installation](#installation)
+  * [Using Anaconda](#using-anaconda)
+  * [Using Docker](#using-docker)
+    * [Use Built Images](#use-built-images)
+    * [Build the Docker Images](#build-the-docker-images)
+    * [Run the images](#run-the-images)
+* [Reinforcement Learning](#reinforcement-learning)
+  * [RL Algorithms: OpenAI Baselines and More](#rl-algorithms-openai-baselines-and-more)
+    * [Train an Agent with Discrete Actions](#train-an-agent-with-discrete-actions)
+    * [Train an Agent with Continuous Actions](#train-an-agent-with-continuous-actions)
+    * [Train an agent multiple times on multiple environments, using different methods](#train-an-agent-multiple-times-on-multiple-environments-using-different-methods)
+    * [Load a Trained Agent](#load-a-trained-agent)
+    * [Add Your own RL Algorithm](#add-your-own-rl-algorithm)
+* [Environments](#environments)
+  * [Available Environments](#available-environments)
+  * [Generating Data](#generating-data)
+* [State Representation Learning Models](#state-representation-learning-models)
+  * [Plot Learning Curve](#plot-learning-curve)
+* [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo)
+* [Troubleshooting](#troubleshooting)
+* [Known issues](#known-issues)
+
 
 
 
@@ -61,7 +67,7 @@ Note: The save method of ACER of baselines is currently buggy, you need to manua
 
 #### Use Built Images
 
-GPU image:
+GPU image (requires [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)):
 ```
 docker pull araffin/rl-toolbox
 ```
