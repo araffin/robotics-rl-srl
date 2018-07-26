@@ -16,7 +16,7 @@ As such, we have created a few robotic environments, using OpenAI's Gym environm
     - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order (yellow target, then red target).
     - MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can only go up and down, it must reach a target position.
     - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a colored band going across the terrain.
-- Racing car: Here we have the interface for the Gym racing car environment. It must complete a racing course in the least time possible
+- Racing car: Here we have the interface for the Gym racing car environment. It must complete a racing course in the least time possible (only available in a terminal with X running)
     - CarRacingGymEnv-v0: A racing car on a racing course, it must complete the racing course in the least time possible.
 - Baxter: A baxter robot that must reach a target, with its arms.
     - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
