@@ -11,6 +11,7 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
 
+from environments import ThreadingType
 from environments.utils import makeEnv, dynamicEnvLoad
 from rl_baselines.visualize import loadCsv
 from srl_zoo.utils import printYellow, printGreen
@@ -76,21 +77,20 @@ def filterJSONSerializableObjects(input_dict):
 
 
 class CustomVecNormalize(VecEnvWrapper):
-    """
-    Custom vectorized environment, it adds support for saving/loading moving average
-    It can normalize observation and reward by computing a moving average
-    :param venv: (VecEnv Object)
-    :param training: (bool) Whether to update or not the moving average
-    :param norm_obs: (bool) Whether to normalize observation or not (default: True)
-    :param norm_rewards: (bool) Whether to normalize rewards or not (default: False)
-    :param clip_obs: (float) Max absolute value for observation
-    :param clip_reward: (float) Max value absolute for discounted reward
-    :param gamma: (float) discount factor
-    :param epsilon: (float) To avoid division by zero
-    """
-
     def __init__(self, venv, training=True, norm_obs=True, norm_rewards=False,
                  clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
+        """
+        Custom vectorized environment, it adds support for saving/loading moving average
+        It can normalize observation and reward by computing a moving average
+        :param venv: (VecEnv Object)
+        :param training: (bool) Whether to update or not the moving average
+        :param norm_obs: (bool) Whether to normalize observation or not (default: True)
+        :param norm_rewards: (bool) Whether to normalize rewards or not (default: False)
+        :param clip_obs: (float) Max absolute value for observation
+        :param clip_reward: (float) Max value absolute for discounted reward
+        :param gamma: (float) discount factor
+        :param epsilon: (float) To avoid division by zero
+        """
         VecEnvWrapper.__init__(self, venv)
         self.obs_rms = RunningMeanStd(shape=self.observation_space.shape)
         self.ret_rms = RunningMeanStd(shape=())
@@ -300,7 +300,7 @@ class MultiprocessSRLModel:
         while True:
             # pop an item, get state, and return to sender.
             env_id, var = self.pipe[0].get()
-            self.pipe[1][env_id].put(self.model.getState(var))
+            self.pipe[1][env_id].put(self.model.getState(var, env_id=env_id))
 
 
 def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
@@ -311,6 +311,10 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
     :param load_path_normalise: (str) the path to loading the rolling average, None if not available or wanted.
     :return: (Gym VecEnv)
     """
+    # imported here to prevent cyclic imports
+    from environments.registry import registered_env
+    assert not (registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
+        "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
     if env_kwargs is not None and env_kwargs.get("use_srl", False):
         srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
         env_kwargs["state_dim"] = srl_model.state_dim

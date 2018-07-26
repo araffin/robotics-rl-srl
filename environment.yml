@@ -105,6 +105,7 @@ dependencies:
     - enum34==1.1.6
     - future==0.16.0
     - futures==3.1.1
+    - git+https://github.com/hyperopt/hyperopt.git
     - gym==0.10.3
     - idna==2.6
     - joblib==0.11
@@ -137,3 +138,4 @@ dependencies:
     - zmq==0.0.0
     - cma==2.5.3
     - h5py==2.8.0rc1
+    - Box2D==2.3.2

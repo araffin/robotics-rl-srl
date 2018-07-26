@@ -116,9 +116,13 @@ class SRLBaseClass(object):
         """
         raise NotImplementedError("load() not implemented")
 
-    def getState(self, observation):
+    def getState(self, observation, env_id=0):
         """
         Predict the state for a given observation
+
+        :param observation: (numpy Number) the input observation
+        :param env_id: (int) the environment ID for multi env systems (default=0)
+        :return: (numpy Number)
         """
         raise NotImplementedError("getState() not implemented")
 
@@ -150,18 +154,10 @@ class SRLNeuralNetwork(SRLBaseClass):
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
         self.model = self.model.to(self.device)
 
-
     def load(self, path):
-        """
-        :param path: (str)
-        """
         self.model.load_state_dict(th.load(path))
 
-    def getState(self, observation):
-        """
-        :param observation: (numpy tensor)
-        :return: (numpy matrix)
-        """
+    def getState(self, observation, env_id=0):
         if getNChannels() > 3:
             observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
             observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
@@ -189,9 +185,6 @@ class SRLPCA(SRLBaseClass):
         super(SRLPCA, self).__init__(state_dim)
 
     def load(self, path):
-        """
-        :param path: (str)
-        """
         try:
             with open(path, "rb") as f:
                 self.model = pkl.load(f)
@@ -200,11 +193,7 @@ class SRLPCA(SRLBaseClass):
             with open(path, "rb") as f:
                 self.model = pkl.load(f, encoding='latin1')
 
-    def getState(self, observation):
-        """
-        :param observation: (numpy tensor)
-        :return: (numpy matrix)
-        """
+    def getState(self, observation, env_id=0):
         observation = observation[None]  # Add a dimension
         # n_features = width * height * n_channels
         n_features = np.prod(observation.shape[1:])
