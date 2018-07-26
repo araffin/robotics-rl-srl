@@ -1,4 +1,4 @@
-# Reinforcement Learning (RL) and State Representation Learning (SRL) for Robotics
+# Reinforcement Learning (RL) and State Representation Learning (SRL) Toolbox for Robotics
 
 This repository was made to evaluate State Representation Learning methods using Reinforcement Learning. It integrates (automatic logging, plotting, saving, loading of trained agent) various RL algorithms (PPO, A2C, ARS, DDPG, DQN, ACER, CMA-ES, SAC) along with different SRL methods (see [SRL Repo](https://github.com/araffin/srl-zoo)) in an efficient way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
 
@@ -27,18 +27,76 @@ Table of Contents
 
 ## Installation
 
-- Python 3 is required (python 2 is not supported because of OpenAI baselines)
-- [OpenAI Baselines](https://github.com/openai/baselines) (latest version, install from source (at least commit 3cc7df0))
-- Install the dependencies using `environment.yml` file (for conda users)
+Note **Python 3 is required** (python 2 is not supported because of OpenAI baselines)
+
+
+### Using Anaconda
+
+0. Download the project (note the `--recursive` argument because we are using git submodules):
+```
+git clone git@github.com:araffin/robotics-rl-srl.git --recursive
+```
+
+
+1. Install the dependencies using `environment.yml` file (for anaconda users) in the current environment
+```
+conda env create --file environment.yml
+source activate py35
+```
+
+2. Download and install [Stable Baselines](https://github.com/hill-a/stable-baselines.git) (a fork of OpenAI Baselines). Make sure you have the right dependencies (see the README in the stable baselines repo)
+```
+git clone https://github.com/hill-a/stable-baselines.git
+cd stable-baselines/
+# Hack for now, until the refactoring is over
+git checkout 1f8a03f3a62367526f
+pip install -e .
+```
 
 Note: The save method of ACER of baselines is currently buggy, you need to manually add an import (see [pull request #312](https://github.com/openai/baselines/pull/312))
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 
-How to download the project (note the `--recursive` argument because we are using git submodules):
+### Using Docker
+
+#### Use Built Images
+
+GPU image:
 ```
-git clone git@github.com:araffin/robotics-rl-srl.git --recursive
+docker pull araffin/rl-toolbox
 ```
+
+CPU only:
+```
+docker pull araffin/rl-toolbox-cpu
+```
+
+#### Build the Docker Images
+
+Build GPU image (with nvidia-docker):
+```
+cd docker/ && cp ../environment.yml .
+docker build . -f Dockerfile.gpu -t rl-toolbox
+```
+
+Build CPU image:
+```
+cd docker/
+docker build . -f Dockerfile.cpu -t rl-toolbox-cpu
+```
+
+#### Run the images
+
+Run the nvidia-docker image
+```
+docker run -it --runtime=nvidia --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --no-vis --num-timesteps 1000'
+```
+
+Run the docker image
+```
+docker run -it --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox-cpu bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --no-vis --num-timesteps 1000'
+```
+
 
 ## Reinforcement Learning
 
@@ -186,7 +244,7 @@ Note: for debugging, we integrated logging of states (we save the states that th
 python -m rl_baselines.train --srl-model ground_truth --env MobileRobotLineTargetGymEnv-v0 --log-dir logs/ --algo sac --reward-scale 10 --log-states
 
 ```
-The states will be saved in a `log_srl/` folder as numpy archives, inside the log folder of the rl experiment. 
+The states will be saved in a `log_srl/` folder as numpy archives, inside the log folder of the rl experiment.
 
 
 ### Plot Learning Curve
