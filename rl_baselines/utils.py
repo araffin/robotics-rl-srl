@@ -300,7 +300,7 @@ class MultiprocessSRLModel:
         while True:
             # pop an item, get state, and return to sender.
             env_id, var = self.pipe[0].get()
-            self.pipe[1][env_id].put(self.model.getState(var))
+            self.pipe[1][env_id].put(self.model.getState(var, env_id=env_id))
 
 
 def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
