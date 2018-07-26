@@ -78,7 +78,7 @@ def testBaselineTrain():
             '--seed', SEED, '--model-type', 'cnn']
     args = list(map(str, args))
 
-    ok = subprocess.call(['python', '-m', 'baselines.supervised'] + args,  cwd=os.getcwd() + "/srl_zoo")
+    ok = subprocess.call(['python', '-m', 'srl_baselines.supervised'] + args,  cwd=os.getcwd() + "/srl_zoo")
     assertEq(ok, 0)
 
     for baseline in ['vae', 'autoencoder']:
