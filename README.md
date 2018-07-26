@@ -88,7 +88,7 @@ docker pull araffin/rl-toolbox-cpu
 
 Build GPU image (with nvidia-docker):
 ```
-cd docker/ && cp ../environment.yml .
+cd docker/ && cp ../environment.yml . && \
 docker build . -f Dockerfile.gpu -t rl-toolbox
 ```
 
