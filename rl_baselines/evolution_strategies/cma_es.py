@@ -54,7 +54,7 @@ class CMAESModel(BaseRLObject):
         parser.add_argument('--num-population', help='Number of population', type=int, default=20)
         parser.add_argument('--mu', type=float, default=0,
                             help='inital location for gaussian sampling of network parameters')
-        parser.add_argument('--sigma', type=float, default=0.2,
+        parser.add_argument('--sigma', type=float, default=0.14,
                             help='inital scale for gaussian sampling of network parameters')
         parser.add_argument('--cuda', action='store_true', default=False,
                             help='use gpu for the neural network')
@@ -71,12 +71,22 @@ class CMAESModel(BaseRLObject):
         return self.policy.getAction(observation)
 
     @classmethod
+    def getOptParam(cls):
+        return {
+            "sigma": (float, (0, 0.2))
+        }
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         return createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         args.num_cpu = args.num_population
         env = self.makeEnv(args, env_kwargs=env_kwargs)
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        args.__dict__.update(hyperparam)
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)

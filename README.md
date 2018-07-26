@@ -4,6 +4,9 @@ This repository was made to evaluate State Representation Learning methods using
 
 We also release customizable Gym environments for working with simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
 
+<a href="https://drive.google.com/open?id=153oxiwHyK2W9nU3avEi0b0O4qjo7WD0X"><img src="imgs/rl_toolboxplay.jpg"/></a>
+
+
 Table of Contents
 =================
 * [Installation](#installation)
@@ -43,14 +46,18 @@ Note **Python 3 is required** (python 2 is not supported because of OpenAI basel
 git clone git@github.com:araffin/robotics-rl-srl.git --recursive
 ```
 
+1. Install the swig library:
+```
+sudo apt-get install swig
+```
 
-1. Install the dependencies using `environment.yml` file (for anaconda users) in the current environment
+2. Install the dependencies using `environment.yml` file (for anaconda users) in the current environment
 ```
 conda env create --file environment.yml
 source activate py35
 ```
 
-2. Download and install [Stable Baselines](https://github.com/hill-a/stable-baselines.git) (a fork of OpenAI Baselines). Make sure you have the right dependencies (see the README in the stable baselines repo)
+3. Download and install [Stable Baselines](https://github.com/hill-a/stable-baselines.git) (a fork of OpenAI Baselines). Make sure you have the right dependencies (see the README in the stable baselines repo)
 ```
 git clone https://github.com/hill-a/stable-baselines.git
 cd stable-baselines/
@@ -181,11 +188,43 @@ python -m replay.enjoy_baselines --log-dir path/to/trained/agent/ --render
 
 If you want to integrate your own RL algorithm, please read `rl_baselines/README.md`.
 
+### Hyperparameter Search
+
+This repository also allows hyperparameter search, using [hyperband](https://arxiv.org/abs/1603.06560) or [hyperopt](https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf) for the implemented RL algorithms
+
+for example, here is the command for a hyperband search on PPO2, ground truth on the mobile robot environment:
+```bash
+python -m rl_baselines.hyperparam_search --optimizer hyperband --algo ppo2 --env MobileRobotGymEnv-v0 --srl-model ground_truth
+```
+
 ## Environments
 
 All the environments we propose follow the OpenAI Gym interface. We also extended this interface (adding extra methods) to work with SRL methods (see [State Representation Learning Models](#state-representation-learning-models)).
 
 ### Available Environments
+
+| **Kuka environment**       | **Mobile Robot environment**       | **Racing car environment**       |
+| -------------------------- | ---------------------------------- | -------------------------------- |
+| <img src="imgs/kuka.gif"/> | <img src="imgs/mobile_robot.gif"/> | <img src="imgs/racing_car.gif"/> |
+
+
+| **Name**                          | **Action space (discrete)**                | **Action space (continuous)**                 | **Rewards**                                                                                                                                             | **ground truth**                                  |
+| --------------------------------- | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **Kuka**<br>**Button**            | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector <sup>(3)</sup> |
+| **Kuka**<br>**RandButton**        | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector <sup>(3)</sup> |
+| **Kuka**<br>**2Button**           | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 25 when the first target is reached, 50 when the second target is reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup> | the X,Y,Z position of the effector <sup>(3)</sup> |
+| **Kuka**<br>**MovingButton**      | 6 actions (3D cardinal direction)          | 3 axis (3D cardinal direction) <sup>(1)</sup> | 50 when target reached, -1 when too far from target or when table is hit, otherwise 0 <sup>(2)</sup>                                                    | the X,Y,Z position of the effector <sup>(3)</sup> |
+| **MobileRobot**<br>               | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot <sup>(3)</sup>      |
+| **MobileRobot**<br>**2Target**    | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot <sup>(3)</sup>      |
+| **MobileRobot**<br>**1D**         | 2 actions (1D cardinal direction)          | 1 axis (1D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X position of the robot <sup>(3)</sup>        |
+| **MobileRobot**<br>**LineTarget** | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot <sup>(3)</sup>      |
+| **CarRacing**                     | 4 actions (left, right, accelerate, brake) | 3 axis (stearing, accelerate, brake)          | -100 when out of bounds, otherwise -0.1                                                                                                                 | the X,Y position of the car <sup>(3)</sup>        |
+
+<sub><sup>1. the action space can use 6 axis arm joints control with the `--joints` flag</sup></sub>
+<br>
+<sup><sup>2. the reward can be the euclidian distance to the target with the `--shape-reward` flag</sup></sup>
+<br>
+<sup><sup>3. the ground truth can be relative position from agent to the target by changing the `RELATIVE_POS` constant in the environemnt file</sup></sup>
 
 If you want to add your own environment, please read `enviroments/README.md`.
 
@@ -200,11 +239,12 @@ the available environments are:
     - MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach two target positions, in the correct order (lighter target, then darker target).
     - MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can only go up and down, it must reach a target position.
     - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a colored band going across the terrain.
+- Racing car: Here we have the interface for the Gym racing car environment. It must complete a racing course in the least time possible
+    - CarRacingGymEnv-v0: A racing car on a racing course, it must complete the racing course in the least time possible.
 - Baxter: A baxter robot that must reach a target, with its arms. (see [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo))
     - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
 - Robobo: A Robobo robot that must reach a target position.
     - RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
-
 
 ### Generating Data
 

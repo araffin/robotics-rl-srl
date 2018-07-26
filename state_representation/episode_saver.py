@@ -92,23 +92,25 @@ class EpisodeSaver(object):
         :param target_pos: (numpy array)
         :param ground_truth: (numpy array)
         """
-        self.episode_idx += 1
+        # only reset if the array is empty, or the a reset has not already occured
+        if len(self.episode_starts) == 0 or self.episode_starts[-1] is False:
+            self.episode_idx += 1
 
-        if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
-            print("Learning a state representation ...")
-            start_time = time.time()
-            ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
-            print("Took {:.2f}s".format(time.time() - start_time))
+            if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
+                print("Learning a state representation ...")
+                start_time = time.time()
+                ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
+                print("Took {:.2f}s".format(time.time() - start_time))
 
-        self.episode_step = 0
-        self.episode_success = False
-        self.episode_folder = "record_{:03d}".format(self.episode_idx)
-        os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
+            self.episode_step = 0
+            self.episode_success = False
+            self.episode_folder = "record_{:03d}".format(self.episode_idx)
+            os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
 
-        self.episode_starts.append(True)
-        self.target_positions.append(target_pos)
-        self.ground_truth_states.append(ground_truth)
-        self.saveImage(observation)
+            self.episode_starts.append(True)
+            self.target_positions.append(target_pos)
+            self.ground_truth_states.append(ground_truth)
+            self.saveImage(observation)
 
     def step(self, observation, action, reward, done, ground_truth_state):
         """

@@ -8,10 +8,18 @@ import shutil
 import time
 
 import numpy as np
+import tensorflow as tf
 from gym.spaces import prng
+from baselines.ppo2.ppo2 import Model, constfn, Runner, deque
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 
+from rl_baselines.policies import PPO2CNNPolicy
+from rl_baselines.utils import CustomVecNormalize
+from environments import ThreadingType
 from environments.registry import registered_env
 from srl_zoo.utils import printRed, printYellow
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
 
 def convertImagePath(args, path, record_id_start):
@@ -27,6 +35,116 @@ def convertImagePath(args, path, record_id_start):
     # of the folder
     new_record_id = record_id_start + int(path.split("/")[-2].split("_")[-1])
     return args.name + "/record_{:03d}".format(new_record_id) + "/" + image_name
+
+
+# will be replaced when the refactored OpenAI baselines if finished
+def env_thread_ppo2(args, thread_num, partition=True):
+    """
+    Run a ppo2 session of an environment
+    :param args: (ArgumentParser object)
+    :param thread_num: (int) The thread ID of the environment session
+    :param partition: (bool) If the output should be in multiple parts (default=True)
+    """
+    env_kwargs = {
+        "max_distance": args.max_distance,
+        "random_target": args.random_target,
+        "force_down": True,
+        "is_discrete": not args.continuous_actions,
+        "renders": thread_num == 0 and args.display,
+        "record_data": not args.no_record_data,
+        "multi_view": args.multi_view,
+        "save_path": args.save_path,
+        "shape_reward": args.shape_reward
+    }
+
+    if partition:
+        env_kwargs["name"] = args.name + "_part-" + str(thread_num)
+    else:
+        env_kwargs["name"] = args.name
+
+    env_class = registered_env[args.env][0]
+    env = env_class(**env_kwargs)
+    real_env = env
+    env = DummyVecEnv([lambda: env])
+    env = CustomVecNormalize(env, norm_obs=True, norm_rewards=False)
+
+    nsteps = 128
+    total_timesteps = 10000
+    ent_coef = 0.01
+    lr = 2.5e-4
+    vf_coef = 0.5
+    max_grad_norm = 0.5
+    gamma = 0.99
+    lam = 0.95
+    nminibatches = 4
+    noptepochs = 4
+    cliprange = 0.2
+
+    config = tf.ConfigProto(allow_soft_placement=True,
+                            intra_op_parallelism_threads=4,
+                            inter_op_parallelism_threads=4)
+    config.gpu_options.allow_growth = True
+
+    with tf.Session(config=config):
+        continuous = args.continuous_actions
+        policy = PPO2CNNPolicy(continuous=continuous)
+
+        lr = constfn(lr)
+        cliprange = constfn(cliprange)
+        total_timesteps = int(total_timesteps)
+
+        nenvs = 1
+        ob_space = env.observation_space
+        ac_space = env.action_space
+        nbatch = nenvs * nsteps
+        nbatch_train = nbatch // nminibatches
+
+        model = Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train,
+                      nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef, max_grad_norm=max_grad_norm)
+        runner = Runner(env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam)
+
+        epinfobuf = deque(maxlen=100)
+        nupdates = total_timesteps // nbatch
+
+        frames = 0
+        start_time = time.time()
+        # divide evenly, then do an extra one for only some of them in order to get the right count
+        for i_episode in range(args.num_episode // args.num_cpu + 1 * (args.num_episode % args.num_cpu > thread_num)):
+            # seed + position in this slice + size of slice (with reminder if uneven partitions)
+            seed = args.seed + i_episode + args.num_episode // args.num_cpu * thread_num + \
+                   (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
+
+            real_env.seed(seed)
+            prng.seed(seed)  # this is for the sample() function from gym.space
+            env.reset()
+            masks = [False]
+            t = 0
+            while not masks[0]:
+                real_env.render()
+
+                nbatch_train = nbatch // nminibatches
+                frac = 1.0 - (t - 1.0) / nupdates
+                lrnow = lr(frac)
+                cliprangenow = cliprange(frac)
+                obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run()  # pylint: disable=E0632
+                epinfobuf.extend(epinfos)
+                mblossvals = []
+                inds = np.arange(nbatch)
+                for _ in range(noptepochs):
+                    np.random.shuffle(inds)
+                    for start in range(0, nbatch, nbatch_train):
+                        end = start + nbatch_train
+                        mbinds = inds[start:end]
+                        slices = (arr[mbinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
+                        mblossvals.append(model.train(lrnow, cliprangenow, *slices))
+
+                frames += 1
+                t += 1
+                if masks[0]:
+                    print("Episode finished after {} timesteps".format(t + 1))
+
+            if thread_num == 0:
+                print("{:.2f} FPS".format(frames * args.num_cpu / (time.time() - start_time)))
 
 
 def env_thread(args, thread_num, partition=True):
@@ -108,6 +226,8 @@ def main():
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('--reward-dist', action='store_true', default=False,
                         help='Prints out the reward distribution when the dataset generation is finished')
+    parser.add_argument('--run-ppo2', action='store_true', default=False,
+                        help='runs a ppo2 agent instead of a random agent')
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
@@ -115,6 +235,8 @@ def main():
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
     assert not args.reward_dist or not args.shape_reward, \
         "Error: cannot display the reward distribution for continuous reward"
+    assert not(registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
+        "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
     if args.num_cpu > args.num_episode:
         args.num_cpu = args.num_episode
         printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
@@ -134,13 +256,19 @@ def main():
         os.mkdir(args.save_path + args.name)
 
     if args.num_cpu == 1:
-        env_thread(args, 0, partition=False)
+        if args.run_ppo2:
+            env_thread_ppo2(args, 0, partition=False)
+        else:
+            env_thread(args, 0, partition=False)
     else:
         # try and divide into multiple processes, with an environment each
         try:
             jobs = []
             for i in range(args.num_cpu):
-                process = multiprocessing.Process(target=env_thread, args=(args, i))
+                if args.run_ppo2:
+                    process = multiprocessing.Process(target=env_thread_ppo2, args=(args, i))
+                else:
+                    process = multiprocessing.Process(target=env_thread, args=(args, i))
                 jobs.append(process)
 
             for j in jobs:

@@ -65,10 +65,25 @@ class DeepQModel(BaseRLObject):
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
         return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
-    def train(self, args, callback, env_kwargs=None):
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "lr": (float, (0, 0.1)),
+            "exploration_fraction": (float, (0, 1)),
+            "exploration_final_eps": (float, (0, 1)),
+            "train_freq": (int, (1, 10)),
+            "learning_starts": (int, (10, 10000)),
+            "target_network_update_freq": (int, (10, 10000)),
+            "gamma": (float, (0, 1)),
+            "batch_size": (int, (8, 128)),
+        }
+
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         logger.configure()
 
         env = self.makeEnv(args, env_kwargs)
+        if hyperparam is None:
+            hyperparam = {}
 
         createTensorflowSession()
 
@@ -82,22 +97,30 @@ class DeepQModel(BaseRLObject):
                 dueling=bool(args.dueling),
             )
 
-        # TODO: tune params
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+
+        deepq_param = {
+            "lr": 1e-4,
+            "exploration_fraction": 0.1,
+            "exploration_final_eps": 0.01,
+            "train_freq": 4,
+            "learning_starts": 500,
+            "target_network_update_freq": 500,
+            "gamma": 0.99,
+            "batch_size": 32,
+            **hyperparam
+        }
+
         self.model = deepq.learn(
             env,
             q_func=model,
-            lr=1e-4,
             max_timesteps=args.num_timesteps,
             buffer_size=args.buffer_size,
-            exploration_fraction=0.1,
-            exploration_final_eps=0.01,
-            train_freq=4,
-            learning_starts=500,
-            target_network_update_freq=500,
-            gamma=0.99,
             prioritized_replay=bool(args.prioritized),
             print_freq=10,  # Print every 10 episodes
-            callback=callback
+            callback=callback,
+            **deepq_param
         )
         self.model.save(args.log_dir + "deepq_model_end.pkl")
         env.close()

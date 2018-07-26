@@ -25,7 +25,7 @@ class RandomAgentModel(BaseRLObject):
         # Action space is not available here, so we do not support it.
         raise ValueError("Error: getAction is not supported for random agent.")
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         obs = env.reset()

@@ -169,24 +169,21 @@ def main():
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     parser.add_argument('--srl-model', type=str, default='raw_pixels', choices=list(registered_srl.keys()),
                         help='SRL model to use')
-    parser.add_argument('--num-stack', type=int, default=1,
-                        help='number of frames to stack (default: 1)')
+    parser.add_argument('--num-stack', type=int, default=1, help='number of frames to stack (default: 1)')
     parser.add_argument('--action-repeat', type=int, default=1,
                         help='number of times an action will be repeated (default: 1)')
-    parser.add_argument('--port', type=int, default=8097,
-                        help='visdom server port (default: 8097)')
-    parser.add_argument('--no-vis', action='store_true', default=False,
-                        help='disables visdom visualization')
+    parser.add_argument('--port', type=int, default=8097, help='visdom server port (default: 8097)')
+    parser.add_argument('--no-vis', action='store_true', default=False, help='disables visdom visualization')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('-c', '--continuous-actions', action='store_true', default=False)
-    parser.add_argument('-joints', '--action-joints',
-                        help='set actions to the joints of the arm directly, instead of inverse kinematics',
-                        action='store_true', default=False)
+    parser.add_argument('-joints', '--action-joints', action='store_true', default=False,
+                        help='set actions to the joints of the arm directly, instead of inverse kinematics')
     parser.add_argument('-r', '--random-target', action='store_true', default=False,
                         help='Set the button to a random position')
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
+    parser.add_argument('--hyperparam', type=str, nargs='+', default=[])
     parser.add_argument('--latest', action='store_true', default=False,
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
 
@@ -272,7 +269,7 @@ def main():
 
     super_class = registered_env[args.env][1]
     # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
-    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _) in
+    rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _, _) in
                               registered_env.items()}
     while super_class != SRLGymEnv:
         assert super_class in rec_super_class_lookup, "Error: could not find super class of {}".format(super_class) + \
@@ -297,8 +294,10 @@ def main():
     set_global_seeds(args.seed)
     # Augment the number of timesteps (when using mutliprocessing this number is not reached)
     args.num_timesteps = int(1.1 * args.num_timesteps)
+    # Get the hyperparameter, if given (Hyperband)
+    hyperparams = {param.split(":")[0]: param.split(":")[1] for param in args.hyperparam}
     # Train the agent
-    algo.train(args, callback, env_kwargs=env_kwargs)
+    algo.train(args, callback, env_kwargs=env_kwargs, hyperparam=hyperparams)
 
 
 if __name__ == '__main__':
