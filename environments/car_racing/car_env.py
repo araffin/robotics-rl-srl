@@ -82,12 +82,14 @@ class CarRacingEnv(GymCarRacing, SRLGymEnv):
     def getTargetPos(self):
         # get the nearest track segment to the current position
         # then return the track segment position that is ahead of the nearest track segement
-        nearest_idx = np.argmin(list(map(lambda a: np.sqrt(np.sum((a[2:4] - self.getGroundTruth()) ** 2)), self.track)))
-        return np.array(self.track[(nearest_idx + self.lookahead) % len(self.track)][2:4])
+        nearest_idx = np.argmin(list(map(
+            lambda a: np.sqrt(np.sum(((list(a[2:4]) + [0, 0, 0]) - self.getGroundTruth()) ** 2)),
+            self.track)))
+        return np.array(list(self.track[(nearest_idx + self.lookahead) % len(self.track)][2:4]) + [0, 0, 0])
 
     @staticmethod
     def getGroundTruthDim():
-        return 2
+        return 5
 
     def getGroundTruth(self):
         # the car's current x,y position, angle, speed and angular speed
