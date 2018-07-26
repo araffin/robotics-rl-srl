@@ -1,3 +1,5 @@
+import subprocess
+
 import gym
 from gym.envs import registry
 
@@ -23,6 +25,16 @@ def register(_id, **kvargs):
         return gym.envs.registration.register(_id, **kvargs)
 
 
+def isXAvailable():
+    """
+    check to see if running in terminal with X or not
+    :return: (bool)
+    """
+    p = subprocess.Popen(["xset", "-q"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p.communicate()
+    return p.returncode == 0
+
+
 registered_env = {
     "KukaButtonGymEnv-v0":            (KukaButtonGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
     "KukaRandButtonGymEnv-v0":        (KukaRandButtonGymEnv, KukaButtonGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
@@ -32,10 +44,13 @@ registered_env = {
     "MobileRobot2TargetGymEnv-v0":    (MobileRobot2TargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobot1DGymEnv-v0":         (MobileRobot1DGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
-    "CarRacingGymEnv-v0": (CarRacingEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
     "Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),
     "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
 }
+
+# Environments only available when running in a terminal with X:
+if isXAvailable():
+    registered_env["CarRacingGymEnv-v0"] = (CarRacingEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
 
 
 for name, (env_class, _, _, _) in registered_env.items():
