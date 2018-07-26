@@ -100,14 +100,14 @@ docker build . -f Dockerfile.cpu -t rl-toolbox-cpu
 
 #### Run the images
 
-Run the nvidia-docker image
+Run the nvidia-docker GPU image
 ```
-docker run -it --runtime=nvidia --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --no-vis --num-timesteps 1000'
+docker run -it --runtime=nvidia --rm --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
 ```
 
-Run the docker image
+Run the docker CPU image
 ```
-docker run -it --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox-cpu bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --no-vis --num-timesteps 1000'
+docker run -it --rm --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox-cpu bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
 ```
 
 

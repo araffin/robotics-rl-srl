@@ -4,7 +4,6 @@ FROM nvidia/cuda:9.0-base-ubuntu16.04
 #  $ docker run --rm -it continuumio/miniconda3:latest /bin/bash
 #  $ docker push continuumio/miniconda3:latest
 #  $ docker push continuumio/miniconda3:4.5.4
-#  $ docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
 
 ENV CODE_DIR /root/code
 
@@ -15,7 +14,8 @@ RUN apt-get update --fix-missing && \
     apt-get install -y wget bzip2 ca-certificates curl git
 
 RUN apt-get -y install libopenmpi-dev zlib1g-dev cmake libglib2.0-0\
-  libsm6 libxext6 libfontconfig1 libxrender1 swig build-essential libgtk2.0-0
+  libsm6 libxext6 libfontconfig1 libxrender1 swig build-essential libgtk2.0-0\
+  libgl1-mesa-dev libglu1-mesa-dev x11-xserver-utils
 
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*

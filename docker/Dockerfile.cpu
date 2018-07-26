@@ -14,7 +14,8 @@ RUN apt-get update --fix-missing && \
     apt-get install -y wget bzip2 ca-certificates curl git
 
 RUN apt-get -y install libopenmpi-dev zlib1g-dev cmake libglib2.0-0\
-  libsm6 libxext6 libfontconfig1 libxrender1 swig build-essential libgtk2.0-0
+  libsm6 libxext6 libfontconfig1 libxrender1 swig build-essential libgtk2.0-0\
+  libgl1-mesa-dev libglu1-mesa-dev x11-xserver-utils
 
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -30,7 +31,6 @@ COPY env_cpu.yml /tmp/
 RUN conda env create --file /tmp/env_cpu.yml
 
 RUN echo "conda activate py35" >> ~/.bashrc
-
 
 RUN /bin/bash -c "source activate py35 && \
   git clone https://github.com/hill-a/stable-baselines.git && \
