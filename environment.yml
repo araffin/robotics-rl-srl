@@ -1,12 +1,11 @@
 name: py35
 channels:
   - menpo
-  - anaconda
   - pytorch
+  - anaconda
   - defaults
 dependencies:
   - bleach=1.5.0=py35_0
-  - cudnn=7.0.5=cuda8.0_0
   - html5lib=0.9999999=py35_0
   - markdown=2.6.9=py35_0
   - protobuf=3.4.1=py35he6b9134_0
@@ -75,7 +74,8 @@ dependencies:
   - xz=5.2.3=h55aa19d_2
   - zlib=1.2.11=ha838bed_2
   - opencv3=3.1.0=py35_0
-  - pytorch=0.4.1
+  - cuda80=1.0=h205658b_0
+  - pytorch=0.4.1=py35_cuda8.0.61_cudnn7.1.2_1
   - torchvision=0.2.1=py35_1
   - pip:
     - absl-py==0.1.9
