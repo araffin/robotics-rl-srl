@@ -15,6 +15,16 @@ NUM_TIMESTEP = 1600  # this should be long enough to call a reset of the environ
 SEED = 0
 
 
+def isXAvailable():
+    """
+    check to see if running in terminal with X or not
+    :return: (bool)
+    """
+    p = subprocess.Popen(["xset", "-q"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p.communicate()
+    return p.returncode == 0
+
+
 def assertEq(left, right):
     assert left == right, "{} != {}".format(left, right)
 
@@ -56,6 +66,9 @@ def testEnvSRLTrain(model_type, env):
     :param model_type: (str) the model type to test
     :param env: (str) the environment type to test
     """
+    if env in ["CarRacingGymEnv-v0"] and not isXAvailable():
+        return
+
     if model_type in ['joints', 'joints_position'] and env != "KukaButtonGymEnv-v0":
         return
 
@@ -96,6 +109,9 @@ def testContinousEnvTrain(env, algo):
     :param env: (str) the environment type to test
     :param algo: (str) RL algorithm name
     """
+    if env in ["CarRacingGymEnv-v0"] and not isXAvailable():
+        return
+
     args = ['--algo', algo, '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
             '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '-c']
     if algo in ['ppo2'] and registered_env[env][3] != ThreadingType.NONE:
