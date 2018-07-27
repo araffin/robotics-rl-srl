@@ -29,6 +29,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_
 
 COPY environment.yml /tmp/
 RUN conda env create --file /tmp/environment.yml
+RUN conda clean -ya
 
 RUN echo "conda activate py35" >> ~/.bashrc
 

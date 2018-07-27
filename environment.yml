@@ -75,7 +75,7 @@ dependencies:
   - xz=5.2.3=h55aa19d_2
   - zlib=1.2.11=ha838bed_2
   - opencv3=3.1.0=py35_0
-  - pytorch=0.4.0
+  - pytorch=0.4.1
   - torchvision=0.2.1=py35_1
   - pip:
     - absl-py==0.1.9
