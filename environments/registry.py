@@ -29,9 +29,13 @@ def isXAvailable():
     check to see if running in terminal with X or not
     :return: (bool)
     """
-    p = subprocess.Popen(["xset", "-q"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    p.communicate()
-    return p.returncode == 0
+    try:
+        p = subprocess.Popen(["xset", "-q"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p.communicate()
+        return p.returncode == 0
+    except FileNotFoundError:
+        # Return False if xset is not present on the machine
+        return False
 
 
 registered_env = {
