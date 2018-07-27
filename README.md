@@ -22,6 +22,7 @@ Table of Contents
     * [Train an agent multiple times on multiple environments, using different methods](#train-an-agent-multiple-times-on-multiple-environments-using-different-methods)
     * [Load a Trained Agent](#load-a-trained-agent)
     * [Add Your own RL Algorithm](#add-your-own-rl-algorithm)
+  * [Hyperparameter Search](#hyperparameter-search)
 * [Environments](#environments)
   * [Available Environments](#available-environments)
   * [Generating Data](#generating-data)
@@ -30,6 +31,7 @@ Table of Contents
 * [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo)
 * [Troubleshooting](#troubleshooting)
 * [Known issues](#known-issues)
+
 
 
 ## Installation
