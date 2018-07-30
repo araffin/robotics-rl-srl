@@ -184,7 +184,7 @@ To run multiple enviroments with multiple SRL models for a given algorithm (you 
 python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --env env1 env2 [...] --srl-model model1 model2 [...]
 ```
 
-For example, run 15 experiments of ppo2 with 4 cpus and randomly initialized target position, in the default environment using VAE and ground_truth:
+For example, run a total of 30 experiments of ppo2 with 4 cpus and randomly initialized target position, in the default environment using VAE, and using ground truth (15 experiments each):
 ```
 python  -m rl_baselines.pipeline --algo ppo2 --log-dir logs/ --srl-model vae ground_truth --random-target --num-cpu 4 --num-iteration 15
 ```
