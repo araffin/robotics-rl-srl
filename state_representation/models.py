@@ -164,13 +164,10 @@ class SRLNeuralNetwork(SRLBaseClass):
 
     def getState(self, observation, env_id=0):
         if getNChannels() > 3:
-            observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
-            observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
-            observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
+            observation = np.dstack((preprocessImage(observation[:, :, :3], convert_to_rgb=False),
+                                     preprocessImage(observation[:, :, 3:], convert_to_rgb=False)))
         else:
-            # preprocessImage expects a BGR image
-            observation = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
-            observation = preprocessImage(observation)
+            observation = preprocessImage(observation, convert_to_rgb=False)
 
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
