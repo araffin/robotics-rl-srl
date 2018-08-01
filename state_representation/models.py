@@ -144,7 +144,7 @@ class SRLNeuralNetwork(SRLBaseClass):
 
         self.model_type = model_type
         if "supervised" in losses:
-            if model_type == "cnn":
+            if "cnn" in model_type:
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
