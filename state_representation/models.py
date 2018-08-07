@@ -53,7 +53,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
 
-        split_index = exp_config.get('split-index', None)
+        split_index = exp_config.get('split-index', [-1, -1])
         state_dim = exp_config.get('state-dim', None)
         losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
@@ -133,7 +133,7 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None,
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=[-1, -1],
                  inverse_model_type="linear"):
         """
         :param state_dim: (int)
@@ -152,7 +152,7 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif split_index is not None and split_index > 0:
+        elif split_index[1] > split_index[0] > 0:
             self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                         cuda=self.cuda, losses=losses, split_index=split_index,
                                          inverse_model_type=inverse_model_type)
