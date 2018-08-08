@@ -54,6 +54,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             exp_config = json.load(f)
 
         split_index = exp_config.get('split-index', [-1, -1])
+        if type(split_index) is not type(list()):
+            split_index = [split_index, split_index]
         state_dim = exp_config.get('state-dim', None)
         losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
