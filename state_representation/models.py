@@ -152,7 +152,7 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif split_index[1] > split_index[0] > 0:
+        elif split_index[1] >= split_index[0] > 0:
             self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                         cuda=self.cuda, losses=losses, split_index=split_index,
                                          inverse_model_type=inverse_model_type)
