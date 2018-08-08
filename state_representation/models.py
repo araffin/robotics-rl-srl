@@ -59,7 +59,6 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
         model_type = exp_config.get('model-type', None)
         use_multi_view = exp_config.get('multi-view', False)
-        inverse_model_type = exp_config.get('inverse-model-type', 'linear')
 
         assert state_dim is not None, \
             "Please make sure you are loading an up to date model with a conform exp_config file."
@@ -85,8 +84,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         if use_multi_view:
             preprocessing.preprocess.N_CHANNELS = 6
 
-        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses,
-                                 split_index=split_index, inverse_model_type=inverse_model_type)
+        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses, split_index=split_index)
 
     model_name = model_type
     if 'baselines' not in path:
@@ -133,8 +131,7 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None,
-                 inverse_model_type="linear"):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None):
         """
         :param state_dim: (int)
         :param cuda: (bool)
@@ -142,7 +139,6 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param n_actions: action space dimensions (int)
         :param losses: list of optimized losses defining the model (list of string)
         :param split_index: (int) Number of dimensions for the first split
-        :param inverse_model_type: (string)
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
@@ -154,11 +150,10 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = ConvolutionalNetwork(state_dim)
         elif split_index is not None and split_index > 0:
             self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                        cuda=self.cuda, losses=losses, split_index=split_index,
-                                         inverse_model_type=inverse_model_type)
+                                    cuda=self.cuda, losses=losses, split_index=split_index)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                    cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
+                                    cuda=self.cuda, losses=losses)
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
