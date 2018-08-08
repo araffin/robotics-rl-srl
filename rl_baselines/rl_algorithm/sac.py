@@ -13,6 +13,7 @@ from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
     loadRunningAverage, MultiprocessSRLModel
 from rl_baselines.models.sac_models import MLPPolicy, MLPQValueNetwork, MLPValueNetwork, NatureCNN
+from state_representation.episode_saver import LogRLStates
 from srl_zoo.utils import printYellow
 
 
@@ -147,6 +148,8 @@ class SACModel(BaseRLObject):
         parser.add_argument('--gradient-steps', type=int, default=1, help="How many gradient update after each step")
         parser.add_argument('--reward-scale', type=float, default=1.0,
                             help="Scaling factor for raw reward. (entropy factor)")
+        parser.add_argument('--log-states', action='store_true', default=False,
+                            help='Log the states encountered during RL training (only valid with SRL models)')
         return parser
 
     def moveToDevice(self, device, d):
@@ -297,6 +300,14 @@ class SACModel(BaseRLObject):
         self.cuda = th.cuda.is_available() and not args.no_cuda
         self.device = th.device("cuda" if self.cuda else "cpu")
         self.using_images = args.srl_model == "raw_pixels"
+
+        assert not (args.log_states and self.using_images), "SRL logger can only be used with SRL models"
+
+        if args.log_states:
+            srl_logger = LogRLStates(args.log_dir)
+        else:
+            srl_logger = None
+
         self.continuous_actions = args.continuous_actions
 
         if args.continuous_actions:
@@ -332,10 +343,15 @@ class SACModel(BaseRLObject):
 
         obs = env.reset()
         start_time = time.time()
+        if srl_logger is not None:
+            srl_logger.reset(obs, env.getOriginalObs())
 
         for step in range(args.num_timesteps):
             action = self.getAction(obs[None])
             new_obs, reward, done, info = env.step(action)
+            # Log states
+            if srl_logger is not None:
+                srl_logger.step(new_obs, env.getOriginalObs(), action, reward, done)
 
             # Fill the replay buffer
             replay_buffer.add(obs, action, reward, new_obs, float(done))
@@ -347,7 +363,8 @@ class SACModel(BaseRLObject):
 
             if done:
                 obs = env.reset()
-
+                if srl_logger is not None:
+                    srl_logger.reset(obs, env.getOriginalObs())
             # Update the different networks
             for _ in range(args.gradient_steps):
                 # Check that there is enough data in the buffer replay

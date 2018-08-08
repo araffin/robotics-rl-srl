@@ -1,5 +1,5 @@
 """
-Train script for openAI RL Baselines
+Train script for RL algorithms
 """
 import argparse
 import glob
@@ -60,7 +60,7 @@ def saveEnvParams(kuka_env_globals, env_kwargs):
 def latestPath(path):
     """
     :param path: path to the log folder (defined in srl_model.yaml) (str)
-    :return: path till latest learned model in the same dataset folder (str)
+    :return: path to latest learned model in the same dataset folder (str)
     """
     return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
 
@@ -156,8 +156,8 @@ def callback(_locals, _globals):
 
 def main():
     global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
-    parser = argparse.ArgumentParser(description="OpenAI RL Baselines")
-    parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='OpenAI baseline to use',
+    parser = argparse.ArgumentParser(description="Train script for RL algorithms")
+    parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='RL algo to use',
                         type=str)
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0',
                         choices=list(registered_env.keys()))

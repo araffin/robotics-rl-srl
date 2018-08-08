@@ -103,24 +103,24 @@ class CustomVecNormalize(VecEnvWrapper):
         self.training = training
         self.norm_obs = norm_obs
         self.norm_rewards = norm_rewards
-        self.old_obs = np.array([])
+        self.unnormalized_obs = np.array([])
 
     def step_wait(self):
         """
         Apply sequence of actions to sequence of environments
-        actions -> (observations, rewards, news)
+        actions -> (observations, rewards, dones)
 
-        where 'news' is a boolean vector indicating whether each element is new.
+        where 'dones' is a boolean vector indicating whether each element is new.
         """
-        obs, rews, news, infos = self.venv.step_wait()
-        self.ret = self.ret * self.gamma + rews
-        self.old_obs = obs
+        obs, rewards, dones, infos = self.venv.step_wait()
+        self.ret = self.ret * self.gamma + rewards
+        self.unnormalized_obs = obs
         obs = self._normalizeObservation(obs)
         if self.norm_rewards:
             if self.training:
                 self.ret_rms.update(self.ret)
-            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.clip_reward, self.clip_reward)
-        return obs, rews, news, infos
+            rewards = np.clip(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.clip_reward, self.clip_reward)
+        return obs, rewards, dones, infos
 
     def _normalizeObservation(self, obs):
         """
@@ -140,7 +140,7 @@ class CustomVecNormalize(VecEnvWrapper):
         returns the unnormalized observation
         :return: (numpy float)
         """
-        return self.old_obs
+        return self.unnormalized_obs
 
     def reset(self):
         """
@@ -148,9 +148,9 @@ class CustomVecNormalize(VecEnvWrapper):
         """
         obs = self.venv.reset()
         if len(np.array(obs).shape) == 1:  # for when num_cpu is 1
-            self.old_obs = [obs]
+            self.unnormalized_obs = [obs]
         else:
-            self.old_obs = obs
+            self.unnormalized_obs = obs
         return self._normalizeObservation(obs)
 
     def saveRunningAverage(self, path):
@@ -185,13 +185,13 @@ class VecFrameStack(OpenAIVecFrameStack):
         Step for each env
         :return: ([float], [float], [bool], dict) obs, reward, done, info
         """
-        obs, rews, news, infos = self.venv.step_wait()
+        obs, rewards, dones, infos = self.venv.step_wait()
         self.stackedobs = np.roll(self.stackedobs, shift=-obs.shape[-1], axis=-1)
-        for (i, new) in enumerate(news):
+        for (i, new) in enumerate(dones):
             if new:
                 self.stackedobs[i] = 0
         self.stackedobs[..., -obs.shape[-1]:] = obs
-        return self.stackedobs, rews, news, infos
+        return self.stackedobs, rewards, dones, infos
 
 
 class CustomDummyVecEnv(VecEnv):
@@ -239,8 +239,8 @@ class WrapFrameStack(VecFrameStack):
 
     def step(self, action):
         self.step_async([action])
-        stackedobs, rews, news, infos = self.step_wait()
-        return stackedobs[0] / self.factor, rews, news[0], infos[0]
+        stackedobs, rewards, dones, infos = self.step_wait()
+        return stackedobs[0] / self.factor, rewards, dones[0], infos[0]
 
     def reset(self):
         """

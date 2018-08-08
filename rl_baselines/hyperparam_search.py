@@ -199,8 +199,8 @@ def makeRlTrainingFunction(args, train_args):
         pprint.pprint(params)
 
         # cleanup old files
-        if os.path.exists("logs/_hyperband_search/"):
-            shutil.rmtree("logs/_hyperband_search/")
+        if os.path.exists(args.log_dir):
+            shutil.rmtree(args.log_dir)
 
         # add the training args that where parsed for the hyperparam optimizers
         if num_iters is not None:
@@ -221,8 +221,8 @@ def makeRlTrainingFunction(args, train_args):
             raise ChildProcessError("An error occured, error code: {}".format(ok))
 
         # load the logging of the training, and extract the reward
-        folders = glob.glob("logs/_hyperband_search/{}/{}/{}/*".format(args.env, args.srl_model, args.algo))
-        assert len(folders) != 0, "Error: Could not find generated directory, halting hyperband search."
+        folders = glob.glob("{}/{}/{}/{}/*".format(args.log_dir, args.env, args.srl_model, args.algo))
+        assert len(folders) != 0, "Error: Could not find generated directory, halting {} search.".format(args.optimizer)
         rewards = []
         for monitor_path in glob.glob(folders[0] + "/*.monitor.csv"):
             rewards.append(np.mean(pd.read_csv(monitor_path, skiprows=1)["r"][-10:]))
@@ -251,16 +251,17 @@ def main():
     parser.add_argument('--max-eval', type=int, default=100, help='Number of evalutation to try for hyperopt')
 
     args, train_args = parser.parse_known_args()
+    args.log_dir = "logs/_{}_search/".format(args.optimizer)
 
     train_args.extend(['--srl-model', args.srl_model, '--seed', str(args.seed), '--algo', args.algo, '--env', args.env,
-                       '--log-dir', "logs/_hyperband_search/", '--no-vis'])
+                       '--log-dir', args.log_dir, '--no-vis'])
 
     # verify the algorithm has defined it, and that it returnes an expected value
     try:
         opt_param = registered_rl[args.algo][0].getOptParam()
         assert opt_param is not None
     except AttributeError or AssertionError:
-        raise AssertionError("Error: {} algo does not support Hyperband search.".format(args.algo))
+        raise AssertionError("Error: {} algo does not support hyperparameter search.".format(args.algo))
 
     if args.optimizer == "hyperband":
         opt = Hyperband(opt_param, makeRlTrainingFunction(args, train_args), seed=args.seed,
@@ -290,8 +291,8 @@ def main():
     if not any([el is None for el in timesteps]):
         output["timesteps"] = np.array(np.maximum(MIN_ITERATION, np.array(timesteps) * ITERATION_SCALE).astype(int))
     output["reward"] = -np.array(loss)
-    output.to_csv("logs/hyperband_{}_{}_{}_seed{}_numtimestep{}.csv"
-                  .format(args.algo, args.env, args.srl_model, args.seed, args.num_timesteps))
+    output.to_csv("logs/{}_{}_{}_{}_seed{}_numtimestep{}.csv"
+                  .format(args.optimizer, args.algo, args.env, args.srl_model, args.seed, args.num_timesteps))
 
 
 if __name__ == '__main__':

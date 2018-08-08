@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 import cv2
 
-from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
+from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
 from srl_zoo.preprocessing import preprocessImage, getNChannels
 import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
@@ -53,6 +53,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
 
+        split_index = exp_config.get('split-index', None)
         state_dim = exp_config.get('state-dim', None)
         losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
@@ -83,7 +84,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         if use_multi_view:
             preprocessing.preprocess.N_CHANNELS = 6
 
-        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
+        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses, split_index=split_index)
 
     model_name = model_type
     if 'baselines' not in path:
@@ -130,22 +131,26 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None):
         """
         :param state_dim: (int)
         :param cuda: (bool)
         :param model_type: (string)
         :param n_actions: action space dimensions (int)
         :param losses: list of optimized losses defining the model (list of string)
+        :param split_index: (int) Number of dimensions for the first split
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
         if "supervised" in losses:
-            if model_type == "cnn":
+            if "cnn" in model_type:
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
+        elif split_index is not None and split_index > 0:
+            self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+                                    cuda=self.cuda, losses=losses, split_index=split_index)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                     cuda=self.cuda, losses=losses)
@@ -159,13 +164,10 @@ class SRLNeuralNetwork(SRLBaseClass):
 
     def getState(self, observation, env_id=0):
         if getNChannels() > 3:
-            observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
-            observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
-            observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
+            observation = np.dstack((preprocessImage(observation[:, :, :3], convert_to_rgb=False),
+                                     preprocessImage(observation[:, :, 3:], convert_to_rgb=False)))
         else:
-            # preprocessImage expects a BGR image
-            observation = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
-            observation = preprocessImage(observation)
+            observation = preprocessImage(observation, convert_to_rgb=False)
 
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
