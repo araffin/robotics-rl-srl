@@ -53,9 +53,10 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         with open(log_folder + 'exp_config.json', 'r') as f:
             exp_config = json.load(f)
 
-        split_index = exp_config.get('split-index', [-1, -1])
-        if type(split_index) is not type(list()):
-            split_index = [split_index, split_index]
+        split_index = exp_config.get('split-index', [-1])
+        # backward compatibility
+        if not isinstance(split_index, list):
+            split_index = [split_index]
         state_dim = exp_config.get('state-dim', None)
         losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
@@ -135,7 +136,7 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=[-1, -1],
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=-1,
                  inverse_model_type="linear"):
         """
         :param state_dim: (int)
@@ -143,7 +144,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param model_type: (string)
         :param n_actions: action space dimensions (int)
         :param losses: list of optimized losses defining the model (list of string)
-        :param split_index: (int) Number of dimensions for the first split
+        :param split_index: (int or [int]) Indices for the different splits
         :param inverse_model_type: (string)
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
@@ -154,7 +155,7 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif split_index[1] >= split_index[0] > 0:
+        elif isinstance(split_index, list) and split_index[0] > 0:
             self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                         cuda=self.cuda, losses=losses, split_index=split_index,
                                          inverse_model_type=inverse_model_type)
