@@ -1,15 +1,15 @@
 #!/bin/bash
 
-BS=32
+BS=32  # Batch size for training SRL model
 ENV='KukaMovingButtonGymEnv-v0'
 DATASET_NAME='kuka_moving_button_big'
-N_ITER=10
-N_CPU=8
-N_EPS=300
+N_ITER=10  # Number of random seeds for training RL
+N_CPU=8  # Number of cpu for training PPO
+N_EPISODES=300  # For generating data
 N_SRL_SAMPLES=20000
 N_TIMESTEPS=5000000
-ENV_DIM=3
-N_EPOCHS=25
+ENV_DIM=3  # Only for priors, state dimension
+N_EPOCHS=30  # NUM_EPOCHS for training SRL model
 
 rm -rf logs/ICLR
 rm -rf srl_zoo/data/$DATASET_NAME*
@@ -22,7 +22,7 @@ if [ "$1" != "full" ]; then
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo
     sleep 5s
-    N_EPS=$N_CPU
+    N_EPISODES=$N_CPU
     N_SRL_SAMPLES=200
     N_TIMESTEPS=5000
     N_EPOCHS=2
@@ -34,7 +34,7 @@ fi
 # DATASET
 #########
 
-python -m environments.dataset_generator --num-cpu $N_CPU --name $DATASET_NAME --num-episode $N_EPS --random-target --env $ENV
+python -m environments.dataset_generator --num-cpu $N_CPU --name $DATASET_NAME --num-episode $N_EPISODES --random-target --env $ENV
 if [ $? != 0 ]; then
     printf "Error when creating dataset, halting.\n"
 	exit $ERROR_CODE
