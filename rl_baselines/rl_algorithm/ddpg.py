@@ -28,8 +28,6 @@ class DDPGModel(StableBaselinesRLObject):
         parser.add_argument('--noise-action-sigma', help='The variance of the action noise', type=float, default=0.2)
         parser.add_argument('--noise-param', help='Enable parameter noise', action='store_true', default=False)
         parser.add_argument('--noise-param-sigma', help='The variance of the parameter noise', type=float, default=0.2)
-        parser.add_argument('--no-layer-norm', help='Disable layer normalization for the neural networks',
-                            action='store_true', default=False)
         parser.add_argument('--batch-size',
                             help='The batch size used for training (use 16 for raw pixels and 64 for srl_model)',
                             type=int,
@@ -54,6 +52,28 @@ class DDPGModel(StableBaselinesRLObject):
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
         return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
+    @classmethod
+    def getOptParam(cls):
+        return {
+            # ddpg param
+            "nb_epochs": (int, (1, 100)),
+            "nb_epoch_cycles": (int, (1, 100)),
+            "reward_scale": (float, (0, 10)),
+            "critic_l2_reg": (float, (0, 0.1)),
+            "actor_lr": (float, (0, 0.01)),
+            "critic_lr": (float, (0.5, 1)),
+            "gamma": (float, (0.5, 1)),
+            "nb_train_steps": (int, (1, 100)),
+            "nb_rollout_steps": (int, (1, 100)),
+            "nb_eval_steps": (int, (1, 100)),
+            "batch_size": (int, (16, 128)),
+            "tau": (float, (0, 1)),
+
+            # noise param
+            "noise_action_sigma": (float, (0, 1)),
+            "noise_action": ((list, str), ["none", "normal", "ou"])
+        }
+
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
@@ -68,12 +88,15 @@ class DDPGModel(StableBaselinesRLObject):
             param_noise = AdaptiveParamNoiseSpec(initial_stddev=args.noise_param_sigma,
                                                  desired_action_stddev=args.noise_param_sigma)
 
-        if args.noise_action == 'normal':
+        if train_kwargs.get("noise_action", args.noise_action) == 'normal':
             action_noise = NormalActionNoise(mean=np.zeros(n_actions),
                                              sigma=args.noise_action_sigma * np.ones(n_actions))
-        elif args.noise_action == 'ou':
+        elif train_kwargs.get("noise_action", args.noise_action) == 'ou':
             action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(n_actions),
                                                         sigma=args.noise_action_sigma * np.ones(n_actions))
+
+        # filter the hyperparam, and set default values in case no hyperparam
+        train_kwargs = {k: v for k, v in train_kwargs.items() if k not in ["noise_action_sigma", "noise_action"]}
 
         # get the associated policy for the architecture requested
         if args.srl_model == "raw_pixels":

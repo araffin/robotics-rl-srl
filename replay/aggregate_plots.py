@@ -161,15 +161,24 @@ if __name__ == '__main__':
 
     # TODO: check that the parameters are the same between Experiments
     folders = []
+    other = []
+    train_args = {}
     for folder in os.listdir(args.log_dir):
         path = "{}/{}/".format(args.log_dir, folder)
         env_globals = json.load(open(path + "env_globals.json", 'r'))
         train_args = json.load(open(path + "args.json", 'r'))
         if train_args["shape_reward"] == args.shape_reward:
             folders.append(path)
+        else:
+            other.append(path)
 
-    if len(folders) == 0:
-        printYellow("No experiment corresponding to the criterions")
+    if len(folders) == 0 and len(other) == 0:
+        printYellow("No experiment found. Is the folder path {} correct?".format(args.log_dir))
+        exit()
+    elif len(folders) == 0:
+        printYellow("No experiments found with the given criterion. However {} experiments".format(len(other)) +
+                    " where found {} reward shaping. ".format("without" if args.shape_reward else "with") +
+                    "Did you mean {} the flag '--shape-reward'?".format("without" if args.shape_reward else "with"))
         exit()
 
     srl_model = train_args['srl_model'] if train_args['srl_model'] != "" else "raw pixels"

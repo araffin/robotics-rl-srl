@@ -1,16 +1,15 @@
 name: py35
 channels:
   - menpo
-  - pytorch
   - anaconda
+  - pytorch
   - defaults
 dependencies:
   - bleach=1.5.0=py35_0
   - html5lib=0.9999999=py35_0
   - markdown=2.6.9=py35_0
   - protobuf=3.4.1=py35he6b9134_0
-  - tensorflow-gpu=1.4.1=0
-  - tensorflow-gpu-base=1.4.1=py35h01caf0a_0
+  - tensorflow=1.4.1=0
   - tensorflow-tensorboard=0.4.0=py35hf484d3e_0
   - werkzeug=0.14.1=py35_0
   - bzip2=1.0.6=h6d464ef_2
@@ -74,9 +73,9 @@ dependencies:
   - xz=5.2.3=h55aa19d_2
   - zlib=1.2.11=ha838bed_2
   - opencv3=3.1.0=py35_0
-  - cuda80=1.0=h205658b_0
-  - pytorch=0.4.1=py35_cuda8.0.61_cudnn7.1.2_1
-  - torchvision=0.2.1=py35_1
+  - pytorch-cpu=0.4.1
+  - torchvision-cpu=0.2.1=py35_1
+
   - pip:
     - absl-py==0.1.9
     - atari-py==0.1.1
@@ -93,7 +92,6 @@ dependencies:
     - azure-servicebus==0.20.1
     - azure-servicemanagement-legacy==0.20.2
     - azure-storage==0.20.3
-    - baselines==0.1.5
     - better-exceptions==0.2.1
     - chardet==3.0.4
     - click==6.7

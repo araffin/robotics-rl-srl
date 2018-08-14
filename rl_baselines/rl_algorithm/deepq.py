@@ -40,6 +40,19 @@ class DeepQModel(StableBaselinesRLObject):
         # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
         return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
 
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "lr": (float, (0, 0.1)),
+            "exploration_fraction": (float, (0, 1)),
+            "exploration_final_eps": (float, (0, 1)),
+            "train_freq": (int, (1, 10)),
+            "learning_starts": (int, (10, 10000)),
+            "target_network_update_freq": (int, (10, 10000)),
+            "gamma": (float, (0, 1)),
+            "batch_size": (int, (8, 128)),
+        }
+
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 

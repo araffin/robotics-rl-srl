@@ -21,6 +21,21 @@ class A2CModel(StableBaselinesRLObject):
                             default='constant')
         return parser
 
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "nsteps": (int, (1, 100)),
+            "vf_coef": (float, (0, 1)),
+            "ent_coef": (float, (0, 1)),
+            "max_grad_norm": (float, (0.1, 5)),
+            "lr": (float, (0, 0.1)),
+            "epsilon": (float, (0, 0.01)),
+            "alpha": (float, (0.5, 1)),
+            "gamma": (float, (0.5, 1)),
+            "lrschedule": (
+            (list, str), ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+        }
+
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}

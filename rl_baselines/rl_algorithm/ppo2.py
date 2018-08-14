@@ -21,26 +21,54 @@ class PPO2Model(StableBaselinesRLObject):
 
         return parser
 
+    @classmethod
+    def getOptParam(cls):
+        return {
+            "lam": (float, (0, 1)),
+            "gamma": (float, (0, 1)),
+            "max_grad_norm": (float, (0, 1)),
+            "vf_coef": (float, (0, 1)),
+            "lr": (float, (1e-2, 1e-5)),
+            "ent_coef": (float, (0, 1)),
+            "cliprange": (float, (0, 1)),
+            "noptepochs": (int, (1, 10)),
+            "nsteps": (int, (32, 2048))
+        }
+
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}
         train_kwargs["lr_schedule"] = args.lr_schedule
 
-        assert not (self.policy in ['lstm', 'lnlstm'] and args.num_cpu % 4 != 0), \
+        assert not (self.policy in ['lstm', 'lnlstm', 'cnnlstm', 'cnnlnlstm'] and args.num_cpu % 4 != 0), \
             "Error: Reccurent policies must have num cpu at a multiple of 4."
 
-        param_kwargs = {
-            "verbose": 1,
-            "n_steps": 128,
-            "ent_coef": 0.01,
-            "learning_rate": lambda f: f * 2.5e-4,
-            "vf_coef": 0.5,
-            "max_grad_norm": 0.5,
-            "gamma": 0.99,
-            "lam": 0.95,
-            "nminibatches": 4,
-            "noptepochs": 4,
-            "cliprange": 0.2
-        }
+        if "lstm" in args.policy:
+            param_kwargs = {
+                "verbose": 1,
+                "n_steps": 609,
+                "ent_coef": 0.06415865069774951,
+                "learning_rate": 0.004923676735761618,
+                "vf_coef": 0.056219345567007695,
+                "max_grad_norm": 0.19232704980689763,
+                "gamma": 0.9752388470759489,
+                "lam": 0.3987544314875193,
+                "nminibatches": 4,
+                "noptepochs": 8
+            }
+        else:
+            param_kwargs = {
+                "verbose": 1,
+                "n_steps": 128,
+                "ent_coef": 0.01,
+                "learning_rate": lambda f: f * 2.5e-4,
+                "vf_coef": 0.5,
+                "max_grad_norm": 0.5,
+                "gamma": 0.99,
+                "lam": 0.95,
+                "nminibatches": 4,
+                "noptepochs": 4,
+                "cliprange": 0.2
+            }
 
         super().train(args, callback, env_kwargs, {**param_kwargs, **train_kwargs})

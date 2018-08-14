@@ -6,6 +6,8 @@ from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
 
 from rl_baselines.base_classes import BaseRLObject
+from environments import ThreadingType
+from environments.registry import registered_env
 from environments.utils import makeEnv
 from rl_baselines.utils import CustomVecNormalize, loadRunningAverage, MultiprocessSRLModel, softmax
 from srl_zoo.utils import printYellow
@@ -90,10 +92,21 @@ class ARSModel(BaseRLObject):
         return action
 
     @classmethod
+    def getOptParam(cls):
+        return {
+            "top_population": (int, (1, 5)),
+            "exploration_noise": (float, (0, 0.1)),
+            "step_size": (float, (0, 0.1)),
+            "max_step_amplitude": (float, (1, 100))
+        }
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         if "num_population" in args.__dict__:
             args.num_cpu = args.num_population * 2
 
+        assert not (registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
+            "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
             srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
             env_kwargs["state_dim"] = srl_model.state_dim
@@ -108,12 +121,16 @@ class ARSModel(BaseRLObject):
             envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
         return envs
 
-    def train(self, args, callback, env_kwargs=None):
+    def train(self, args, callback, env_kwargs=None, hyperparam=None):
         assert args.top_population <= args.num_population, \
             "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
         assert args.num_population > 1, "The population cannot be less than 2."
 
         env = self.makeEnv(args, env_kwargs)
+
+        # set hyperparameters
+        hyperparam = self.parserHyperParam(hyperparam)
+        args.__dict__.update(hyperparam)
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)

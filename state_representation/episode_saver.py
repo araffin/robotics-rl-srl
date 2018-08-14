@@ -17,6 +17,7 @@ class EpisodeSaver(object):
     :param name: (str)
     :param max_dist: (float)
     :param state_dim: (int)
+    :param _globals: (dict) Environments globals
     :param learn_every: (int)
     :param learn_states: (bool)
     :param path: (str)
@@ -52,7 +53,6 @@ class EpisodeSaver(object):
         self.n_steps = 0
         self.max_steps = 10000
 
-        # TODO: convert max dist (to button) to lower/upper bound
         self.dataset_config = {'relative_pos': relative_pos, 'max_dist': str(max_dist)}
         with open("{}/dataset_config.json".format(self.data_folder), "w") as f:
             json.dump(self.dataset_config, f)
@@ -92,23 +92,25 @@ class EpisodeSaver(object):
         :param target_pos: (numpy array)
         :param ground_truth: (numpy array)
         """
-        self.episode_idx += 1
+        # only reset if the array is empty, or the a reset has not already occured
+        if len(self.episode_starts) == 0 or self.episode_starts[-1] is False:
+            self.episode_idx += 1
 
-        if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
-            print("Learning a state representation ...")
-            start_time = time.time()
-            ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
-            print("Took {:.2f}s".format(time.time() - start_time))
+            if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
+                print("Learning a state representation ...")
+                start_time = time.time()
+                ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
+                print("Took {:.2f}s".format(time.time() - start_time))
 
-        self.episode_step = 0
-        self.episode_success = False
-        self.episode_folder = "record_{:03d}".format(self.episode_idx)
-        os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
+            self.episode_step = 0
+            self.episode_success = False
+            self.episode_folder = "record_{:03d}".format(self.episode_idx)
+            os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
 
-        self.episode_starts.append(True)
-        self.target_positions.append(target_pos)
-        self.ground_truth_states.append(ground_truth)
-        self.saveImage(observation)
+            self.episode_starts.append(True)
+            self.target_positions.append(target_pos)
+            self.ground_truth_states.append(ground_truth)
+            self.saveImage(observation)
 
     def step(self, observation, action, reward, done, ground_truth_state):
         """
@@ -158,3 +160,76 @@ class EpisodeSaver(object):
         print("Saving preprocessed data...")
         np.savez('{}/preprocessed_data.npz'.format(self.data_folder), **data)
         np.savez('{}/ground_truth.npz'.format(self.data_folder), **ground_truth)
+
+
+
+class LogRLStates(object):
+    """
+    Save the experience data (states, normalized states, actions, rewards) from a gym env to a file
+    during RL training. It is useful to debug SRL models.
+    :param log_folder: (str)
+    """
+
+    def __init__(self, log_folder):
+        super(LogRLStates, self).__init__()
+
+        self.log_folder = log_folder + 'log_srl/'
+        try:
+            os.makedirs(self.log_folder)
+        except OSError:
+            printYellow("Folder already exist")
+
+        self.actions = []
+        self.rewards = []
+        self.states = []
+        self.normalized_states = []
+
+
+    def reset(self, normalized_state, state):
+        """
+        Called when starting a new episode
+        :param normalized_state: (numpy array)
+        :param state: (numpy array)
+        """
+        # self.episode_starts.append(True)
+        self.normalized_states.append(normalized_state)
+        self.states.append(np.squeeze(state))
+
+    def step(self, normalized_state, state, action, reward, done):
+        """
+        :param normalized_state: (numpy array)
+        :param state: (numpy array)
+        :param action: (int)
+        :param reward: (float)
+        :param done: (bool) whether the episode is done or not
+        """
+        self.rewards.append(reward)
+        self.actions.append(action)
+
+        if not done:
+            self.normalized_states.append(normalized_state)
+            self.states.append(np.squeeze(state))
+        else:
+            # Save the gathered data at the end of each episode
+            self.save()
+
+    def save(self):
+        """
+        Write data to disk
+        """
+        # Sanity checks
+        assert len(self.actions) == len(self.rewards)
+        assert len(self.actions) == len(self.normalized_states)
+        assert len(self.actions) == len(self.states)
+
+        data = {
+            'rewards': np.array(self.rewards),
+            'actions': np.array(self.actions),
+            'states': np.array(self.states),
+            'normalized_states': np.array(self.normalized_states),
+        }
+
+        np.savez('{}/full_log.npz'.format(self.log_folder), **data)
+        np.savez('{}/states_rewards.npz'.format(self.log_folder), **{'states': data['states'], 'rewards': data['rewards']})
+        np.savez('{}/normalized_states_rewards.npz'.format(self.log_folder),
+                **{'states': data['normalized_states'], 'rewards': data['rewards']})
