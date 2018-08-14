@@ -53,7 +53,7 @@ if [ $? != 0 ]; then
 fi
 popd
 for i in `seq 1 $N_ITER`; do
-    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model srl_splits --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/
+    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model srl_splits --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/ --seed $i
     if [ $? != 0 ]; then
         printf "Error when training RL srl_splits model, halting.\n"
         exit $ERROR_CODE
@@ -73,7 +73,7 @@ if [ $? != 0 ]; then
 fi
 popd
 for i in `seq 1 $N_ITER`; do
-    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model srl_combination --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/
+    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model srl_combination --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/ --seed $i
     if [ $? != 0 ]; then
         printf "Error when training RL srl_combination model, halting.\n"
         exit $ERROR_CODE
@@ -93,7 +93,7 @@ if [ $? != 0 ]; then
 fi
 popd
 for i in `seq 1 $N_ITER`; do
-    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model random --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/
+    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model random --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/ --seed $i
     if [ $? != 0 ]; then
         printf "Error when training RL random model, halting.\n"
         exit $ERROR_CODE
@@ -113,7 +113,7 @@ if [ $? != 0 ]; then
 fi
 popd
 for i in `seq 1 $N_ITER`; do
-    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model robotic_priors --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/
+    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model robotic_priors --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/ --seed $i
     if [ $? != 0 ]; then
         printf "Error when training RL robotic_priors model, halting.\n"
         exit $ERROR_CODE
@@ -133,7 +133,7 @@ if [ $? != 0 ]; then
 fi
 popd
 for i in `seq 1 $N_ITER`; do
-    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model supervised --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/
+    python -m rl_baselines.train --algo ppo2 --random-target --latest --srl-model supervised --num-timesteps $N_TIMESTEPS --env $ENV --num-cpu $N_CPU --no-vis --log-dir logs/ICLR/ --seed $i
     if [ $? != 0 ]; then
         printf "Error when training RL supervised model, halting.\n"
         exit $ERROR_CODE
