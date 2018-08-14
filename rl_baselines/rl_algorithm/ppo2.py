@@ -38,7 +38,6 @@ class PPO2Model(StableBaselinesRLObject):
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}
-        train_kwargs["lr_schedule"] = args.lr_schedule
 
         assert not (self.policy in ['lstm', 'lnlstm', 'cnnlstm', 'cnnlnlstm'] and args.num_cpu % 4 != 0), \
             "Error: Reccurent policies must have num cpu at a multiple of 4."

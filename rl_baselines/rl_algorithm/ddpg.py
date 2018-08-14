@@ -7,7 +7,7 @@ from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 from environments.utils import makeEnv
-from rl_baselines.utils import WrapFrameStack, loadRunningAverage, MultiprocessSRLModel
+from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel
 
 
 class DDPGModel(StableBaselinesRLObject):
@@ -48,16 +48,12 @@ class DDPGModel(StableBaselinesRLObject):
             env = VecNormalize(env)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
-        # Normalize only raw pixels
-        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
+        return env
 
     @classmethod
     def getOptParam(cls):
         return {
             # ddpg param
-            "nb_epochs": (int, (1, 100)),
-            "nb_epoch_cycles": (int, (1, 100)),
             "reward_scale": (float, (0, 10)),
             "critic_l2_reg": (float, (0, 0.1)),
             "actor_lr": (float, (0, 0.01)),
@@ -113,8 +109,6 @@ class DDPGModel(StableBaselinesRLObject):
 
         param_kwargs = {
             "verbose": 1,
-            "nb_epochs": 500,
-            "nb_epoch_cycles": 20,
             "render_eval": False,
             "render": False,
             "reward_scale": 1.,
@@ -134,6 +128,6 @@ class DDPGModel(StableBaselinesRLObject):
             "batch_size": args.batch_size
         }
 
-        self.model = self.model_class(policy_fn, env, {**param_kwargs, **train_kwargs})
+        self.model = self.model_class(policy_fn, env, **{**param_kwargs, **train_kwargs})
         self.model.learn(total_timesteps=args.num_timesteps, seed=args.seed, callback=callback)
         env.close()

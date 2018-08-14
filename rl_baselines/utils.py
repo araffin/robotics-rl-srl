@@ -4,6 +4,7 @@ from multiprocessing import Queue, Process
 import numpy as np
 import tensorflow as tf
 import torch as th
+from stable_baselines.common.vec_env import VecEnv
 from stable_baselines.common.vec_env.vec_normalize import VecNormalize
 from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
@@ -72,6 +73,39 @@ def filterJSONSerializableObjects(input_dict):
         if isJsonSafe(input_dict[key]):
             output_dict[key] = input_dict[key]
     return output_dict
+
+
+class CustomDummyVecEnv(VecEnv):
+    """Dummy class in order to use FrameStack with DQN"""
+
+    def __init__(self, env_fns):
+        """
+        :param env_fns: ([function])
+        """
+        assert len(env_fns) == 1, "This dummy class does not support multiprocessing"
+        self.envs = [fn() for fn in env_fns]
+        env = self.envs[0]
+        VecEnv.__init__(self, len(env_fns), env.observation_space, env.action_space)
+        self.env = self.envs[0]
+        self.actions = None
+        self.obs = None
+        self.reward, self.done, self.infos = None, None, None
+
+    def step_wait(self):
+        self.obs, self.reward, self.done, self.infos = self.env.step(self.actions[0])
+        return self.obs[None], self.reward, [self.done], [self.infos]
+
+    def step_async(self, actions):
+        """
+        :param actions: ([int])
+        """
+        self.actions = actions
+
+    def reset(self):
+        return self.env.reset()
+
+    def close(self):
+        return
 
 
 class WrapFrameStack(VecFrameStack):
@@ -150,7 +184,7 @@ class MultiprocessSRLModel:
             self.pipe[1][env_id].put(self.model.getState(var, env_id=env_id))
 
 
-def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
+def createEnvs(args, allow_early_resets=True, env_kwargs=None, load_path_normalise=None):
     """
     :param args: (argparse.Namespace Object)
     :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs

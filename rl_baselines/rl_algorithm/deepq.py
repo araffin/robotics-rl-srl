@@ -5,7 +5,7 @@ from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 from environments.utils import makeEnv
-from rl_baselines.utils import WrapFrameStack, loadRunningAverage, MultiprocessSRLModel
+from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel
 
 
 class DeepQModel(StableBaselinesRLObject):
@@ -36,9 +36,7 @@ class DeepQModel(StableBaselinesRLObject):
             env = VecNormalize(env)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
-        # Normalize only raw pixels
-        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
+        return env
 
     @classmethod
     def getOptParam(cls):
@@ -78,7 +76,6 @@ class DeepQModel(StableBaselinesRLObject):
         param_kwargs = {
             "verbose": 1,
             "learning_rate": 1e-4,
-            "max_timesteps": args.num_timesteps,
             "buffer_size": args.buffer_size,
             "exploration_fraction": 0.1,
             "exploration_final_eps": 0.01,
@@ -90,6 +87,6 @@ class DeepQModel(StableBaselinesRLObject):
             "prioritized_replay_alpha": 0.6
         }
 
-        self.model = self.model_class(policy_fn, env, {**param_kwargs, **train_kwargs})
+        self.model = self.model_class(policy_fn, env, **{**param_kwargs, **train_kwargs})
         self.model.learn(total_timesteps=args.num_timesteps, seed=args.seed, callback=callback)
         env.close()

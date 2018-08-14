@@ -91,13 +91,13 @@ class BaseRLObject:
         """
         return createEnvs(args, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
 
-    def train(self, args, callback, env_kwargs=None, hyperparam=None):
+    def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         """
         Makes an environment and trains the model on it
         :param args: (argparse.Namespace Object)
         :param callback: (function)
         :param env_kwargs: (dict) The extra arguments for the environment
-        :param hyperparam: (dict) The list of all hyperparameters (used in hyperparameter search)
+        :param train_kwargs: (dict) The list of all training agruments (used in hyperparameter search)
         """
         raise NotImplementedError()
 
@@ -208,7 +208,7 @@ class StableBaselinesRLObject(BaseRLObject):
         :param args: (argparse.Namespace Object)
         :param callback: (function)
         :param env_kwargs: (dict) The extra arguments for the environment
-        :param train_kwargs:
+        :param train_kwargs: (dict) The list of all training agruments (used in hyperparameter search)
         """
         envs = self.makeEnv(args, env_kwargs=env_kwargs)
 

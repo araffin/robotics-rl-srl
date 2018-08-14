@@ -32,8 +32,8 @@ class A2CModel(StableBaselinesRLObject):
             "epsilon": (float, (0, 0.01)),
             "alpha": (float, (0.5, 1)),
             "gamma": (float, (0.5, 1)),
-            "lrschedule": (
-            (list, str), ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "lrschedule": ((list, str),
+                           ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):

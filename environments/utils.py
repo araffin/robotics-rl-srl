@@ -35,7 +35,7 @@ def dynamicEnvLoad(env_id):
     return module_env, class_name, env_module_path
 
 
-def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=None):
+def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=True, env_kwargs=None):
     """
     Instantiate gym env
     :param env_id: (str)

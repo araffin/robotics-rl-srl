@@ -37,8 +37,8 @@ class ACERModel(StableBaselinesRLObject):
             "replay_ratio": (int, (0, 10)),
             "c": (float, (1, 10)),
             "delta": (float, (0.1, 10)),
-            "lrschedule": (
-            (list, str), ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "lrschedule": ((list, str),
+                           ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
@@ -59,7 +59,6 @@ class ACERModel(StableBaselinesRLObject):
             "rprop_epsilon": 1e-5,
             "rprop_alpha": 0.99,
             "gamma": 0.99,
-            "log_interval": 100,
             "buffer_size": 5000,
             "replay_ratio": 4,
             "replay_start": 1000,
