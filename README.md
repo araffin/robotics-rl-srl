@@ -233,12 +233,9 @@ All the environments we propose follow the OpenAI Gym interface. We also extende
 | **MobileRobot**<br>**LineTarget** | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot <sup>(4)</sup>      |
 | **CarRacing**                     | 4 actions (left, right, accelerate, brake) | 3 axis (stearing, accelerate, brake)          | -100 when out of bounds, otherwise -0.1                                                                                                                 | the X,Y position of the car <sup>(4)</sup>        |
 
-<sub><sup>1. The action space can use 6 axis arm joints control with the `--joints` flag</sup></sub>
-<br>
-<sup><sup>2. The reward can be the euclidian distance to the target with the `--shape-reward` flag</sup></sup>
-<br>
-<sup><sup>3. When using `--shape-reward`, the reward for hitting the button is 50 and for being out of bounds is -250. This is to prevent the agent hitting the table to stop the environment early and obtaining a higher reward</sup></sup>
-<br>
+<sub><sup>1. The action space can use 6 axis arm joints control with the `--joints` flag</sup></sub><br>
+<sup><sup>2. The reward can be the euclidian distance to the target with the `--shape-reward` flag</sup></sup><br>
+<sup><sup>3. When using `--shape-reward` and ```--continuous```, the reward for hitting the button is 50 and for being out of bounds is -250. This is to prevent the agent hitting the table to stop the environment early and obtaining a higher reward</sup></sup><br>
 <sup><sup>4. The ground truth can be relative position from agent to the target by changing the `RELATIVE_POS` constant in the environemnt file</sup></sup>
 
 If you want to add your own environment, please read `enviroments/README.md`.
