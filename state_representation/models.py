@@ -3,11 +3,10 @@ import pickle as pkl
 
 import numpy as np
 import torch as th
-import cv2
 
+import srl_zoo.preprocessing as preprocessing
 from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
 from srl_zoo.preprocessing import preprocessImage, getNChannels
-import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -54,7 +53,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             exp_config = json.load(f)
 
         state_dim = exp_config.get('state-dim', None)
-        losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
+        losses = exp_config.get('losses', None)  # None in the case of baseline models (pca, supervised)
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
         model_type = exp_config.get('model-type', None)
         use_multi_view = exp_config.get('multi-view', False)
@@ -169,7 +168,7 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = ConvolutionalNetwork(state_dim)
         elif isinstance(split_dimensions, list) and split_dimensions[0] > 0:
             self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                        cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
+                                         cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
                                          inverse_model_type=inverse_model_type)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,

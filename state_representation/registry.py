@@ -16,6 +16,7 @@ registered_srl = {
     "autoencoder": (SRLType.SRL, None),
     "autoencoder_inverse": (SRLType.SRL, None),
     "autoencoder_reward": (SRLType.SRL, None),
+    "autoencoder_forward": (SRLType.SRL, None),
     "random": (SRLType.SRL, None),
     "random_inverse": (SRLType.SRL, None),
     "reward_inverse": (SRLType.SRL, None),

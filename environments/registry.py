@@ -53,9 +53,13 @@ registered_env = {
 
 # Environments only available when running in a terminal with X (hence only imported when available):
 if isXAvailable():
-    from environments.car_racing.car_env import CarRacingEnv
-
-    registered_env["CarRacingGymEnv-v0"] = (CarRacingEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
+    # Catch if X available, but GL context unavailable. 
+    # This prevents SSH crashing when X is passed without GL context.
+    try:
+        from environments.car_racing.car_env import CarRacingEnv
+        registered_env["CarRacingGymEnv-v0"] = (CarRacingEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
+    except:
+        pass
 
 
 for name, (env_class, _, _, _) in registered_env.items():
