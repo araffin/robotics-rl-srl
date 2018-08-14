@@ -123,16 +123,19 @@ def callback(_locals, _globals):
     # Save the RL model if it has improved
     if (n_steps + 1) % SAVE_INTERVAL == 0:
         # Evaluate network performance
-        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es)
+        ok, mean_reward = computeMeanReward(LOG_DIR, N_EPISODES_EVAL, is_es=is_es, return_n_episodes=True)
         if ok:
+            # Unpack mean reward and number of episodes
+            mean_reward, n_episodes = mean_reward
             print(
                 "Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
         else:
             # Not enough episode
             mean_reward = -10000
+            n_episodes = 0
 
         # Save Best model
-        if mean_reward > best_mean_reward:
+        if mean_reward > best_mean_reward and n_episodes >= N_EPISODES_EVAL:
             # Try saving the running average (only valid for mlp policy)
             try:
                 _locals['env'].saveRunningAverage(LOG_DIR)
