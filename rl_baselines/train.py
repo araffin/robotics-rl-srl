@@ -84,11 +84,18 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     args.log_dir += args.srl_model + "/"
 
     env_kwargs["srl_model"] = args.srl_model
-    if path is not None:
+    if registered_srl[args.srl_model][0] == SRLType.SRL:
         env_kwargs["use_srl"] = True
-        srl_model_path = models['log_folder'] + path
-        # Path depending on whether to load the latest model or not
-        env_kwargs["srl_model_path"] = latestPath(models['log_folder']) if args.latest else srl_model_path
+        if args.latest:
+            printYellow("Using latest srl model in {}".format(models['log_folder']))
+            env_kwargs["srl_model_path"] = latestPath(models['log_folder'])
+        else:
+            assert path is not None, "Error: SRL path not defined for {} in {}".format(args.srl_model,
+                                                                                       args.srl_config_file)
+            # Path depending on whether to load the latest model or not
+            srl_model_path = models['log_folder'] + path
+            env_kwargs["srl_model_path"] = srl_model_path
+
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir

@@ -313,9 +313,12 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
     """
     # imported here to prevent cyclic imports
     from environments.registry import registered_env
+    from state_representation.registry import registered_srl, SRLType
+
     assert not (registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
         "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
-    if env_kwargs is not None and env_kwargs.get("use_srl", False):
+
+    if env_kwargs is not None and registered_srl[args.srl_model][0] == SRLType.SRL:
         srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
         env_kwargs["state_dim"] = srl_model.state_dim
         env_kwargs["srl_pipe"] = srl_model.pipe
