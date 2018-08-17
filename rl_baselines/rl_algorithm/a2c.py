@@ -24,22 +24,21 @@ class A2CModel(StableBaselinesRLObject):
     @classmethod
     def getOptParam(cls):
         return {
-            "nsteps": (int, (1, 100)),
+            "n_steps": (int, (1, 100)),
             "vf_coef": (float, (0, 1)),
             "ent_coef": (float, (0, 1)),
             "max_grad_norm": (float, (0.1, 5)),
-            "lr": (float, (0, 0.1)),
+            "learning_rate": (float, (0, 0.1)),
             "epsilon": (float, (0, 0.01)),
             "alpha": (float, (0.5, 1)),
             "gamma": (float, (0.5, 1)),
-            "lrschedule": ((list, str),
-                           ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "lr_schedule": ((list, str),
+                            ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}
-        train_kwargs["lr_schedule"] = args.lr_schedule
 
         param_kwargs = {
             "verbose": 1,
@@ -50,7 +49,8 @@ class A2CModel(StableBaselinesRLObject):
             "learning_rate": 7e-4,
             "epsilon": 1e-5,
             "alpha": 0.99,
-            "gamma": 0.99
+            "gamma": 0.99,
+            "lr_schedule": args.lr_schedule
         }
 
         super().train(args, callback, env_kwargs, {**param_kwargs, **train_kwargs})

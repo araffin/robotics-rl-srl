@@ -28,11 +28,11 @@ class PPO2Model(StableBaselinesRLObject):
             "gamma": (float, (0, 1)),
             "max_grad_norm": (float, (0, 1)),
             "vf_coef": (float, (0, 1)),
-            "lr": (float, (1e-2, 1e-5)),
+            "learning_rate": (float, (1e-2, 1e-5)),
             "ent_coef": (float, (0, 1)),
             "cliprange": (float, (0, 1)),
             "noptepochs": (int, (1, 10)),
-            "nsteps": (int, (32, 2048))
+            "n_steps": (int, (32, 2048))
         }
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):

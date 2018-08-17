@@ -25,26 +25,25 @@ class ACERModel(StableBaselinesRLObject):
     @classmethod
     def getOptParam(cls):
         return {
-            "nsteps": (int, (1, 100)),
+            "n_steps": (int, (1, 100)),
             "q_coef": (float, (0, 1)),
             "ent_coef": (float, (0, 1)),
             "max_grad_norm": (float, (0.1, 5)),
-            "lr": (float, (0, 0.1)),
+            "learning_rate": (float, (0, 0.1)),
             "rprop_epsilon": (float, (0, 0.01)),
             "rprop_alpha": (float, (0.5, 1)),
             "gamma": (float, (0.5, 1)),
             "alpha": (float, (0.5, 1)),
             "replay_ratio": (int, (0, 10)),
-            "c": (float, (1, 10)),
+            "correction_term": (float, (1, 10)),
             "delta": (float, (0.1, 10)),
-            "lrschedule": ((list, str),
-                           ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "lr_schedule": ((list, str),
+                            ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}
-        train_kwargs["lr_schedule"] = args.lr_schedule
 
         assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
 
@@ -65,7 +64,8 @@ class ACERModel(StableBaselinesRLObject):
             "correction_term": 10.0,
             "trust_region": True,
             "alpha": 0.99,
-            "delta": 1
+            "delta": 1,
+            "lr_schedule": args.lr_schedule
         }
 
         super().train(args, callback, env_kwargs, {**param_kwargs, **train_kwargs})

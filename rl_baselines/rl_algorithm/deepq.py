@@ -1,3 +1,6 @@
+import pickle
+import os
+
 from stable_baselines.deepq import DeepQ
 from stable_baselines.deepq import models as deepq_models
 from stable_baselines.common.vec_env.vec_normalize import VecNormalize
@@ -23,6 +26,28 @@ class DeepQModel(StableBaselinesRLObject):
         return parser
 
     @classmethod
+    def load(cls, load_path, args=None):
+        """
+        Load the model from a path
+        :param load_path: (str)
+        :param args: (dict) the arguments used
+        :return: (BaseRLObject)
+        """
+        with open(load_path, "rb") as f:
+            save_param = pickle.load(f)
+
+        loaded_model = cls()
+        loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
+
+        model_save_name = loaded_model.name + ".pkl"
+        if os.path.basename(load_path) == model_save_name:
+            model_save_name = loaded_model.name + "_model.pkl"
+
+        loaded_model.model = loaded_model.model_class.load(os.path.dirname(load_path) + "/" + model_save_name)
+
+        return loaded_model
+
+    @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         # Even though DeepQ is single core only, we need to use the pipe system to work
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
@@ -41,7 +66,7 @@ class DeepQModel(StableBaselinesRLObject):
     @classmethod
     def getOptParam(cls):
         return {
-            "lr": (float, (0, 0.1)),
+            "learning_rate": (float, (0, 0.1)),
             "exploration_fraction": (float, (0, 1)),
             "exploration_final_eps": (float, (0, 1)),
             "train_freq": (int, (1, 10)),

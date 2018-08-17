@@ -130,12 +130,12 @@ class WrapFrameStack(VecFrameStack):
         stackedobs = super(WrapFrameStack, self).reset()
         return stackedobs[0] / self.factor
 
-    def getOriginalObs(self):
+    def get_original_obs(self):
         """
         Hack to use CustomVecNormalize
         :return: (numpy float)
         """
-        return self.venv.getOriginalObs()
+        return self.venv.get_original_obs()
 
     def saveRunningAverage(self, path):
         """
@@ -223,7 +223,7 @@ def loadRunningAverage(envs, load_path_normalise=None):
     if load_path_normalise is not None:
         try:
             printGreen("Loading saved running average")
-            envs.loadRunningAverage(load_path_normalise)
+            envs.load_running_average(load_path_normalise)
             envs.training = False
         except FileNotFoundError:
             envs.training = True
