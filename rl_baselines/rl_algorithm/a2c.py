@@ -17,8 +17,8 @@ class A2CModel(StableBaselinesRLObject):
     def customArguments(self, parser):
         super().customArguments(parser)
         parser.add_argument('--num-cpu', help='Number of processes', type=int, default=1)
-        parser.add_argument('--lr-schedule', help='Learning rate schedule', choices=['constant', 'linear'],
-                            default='constant')
+        parser.add_argument('--lr-schedule', help='Learning rate schedule', default='constant',
+                            choices=['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         return parser
 
     @classmethod

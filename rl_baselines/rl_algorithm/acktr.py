@@ -1,19 +1,16 @@
-from stable_baselines.acer import ACER
+from stable_baselines.acktr import ACKTR
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 
 
-class ACERModel(StableBaselinesRLObject):
+class ACKTRModel(StableBaselinesRLObject):
     """
-    object containing the interface between baselines.acer and this code base
-    ACER: Sample Efficient Actor-Critic with Experience Replay
+    object containing the interface between baselines.acktr and this code base
+    ACKTR: Actor Critic using Kronecker-Factored Trust Region
     """
-
-    LOG_INTERVAL = 1  # log RL model performance every 1 steps
-    SAVE_INTERVAL = 20  # Save RL model every 20 steps
 
     def __init__(self):
-        super(ACERModel, self).__init__(name="acer", model_class=ACER)
+        super(ACKTRModel, self).__init__(name="acktr", model_class=ACKTR)
 
     def customArguments(self, parser):
         super().customArguments(parser)
@@ -26,17 +23,13 @@ class ACERModel(StableBaselinesRLObject):
     def getOptParam(cls):
         return {
             "n_steps": (int, (1, 100)),
-            "q_coef": (float, (0, 1)),
+            "vf_coef": (float, (0, 1)),
             "ent_coef": (float, (0, 1)),
             "max_grad_norm": (float, (0.1, 5)),
             "learning_rate": (float, (0, 0.1)),
-            "rprop_epsilon": (float, (0, 0.01)),
-            "rprop_alpha": (float, (0.5, 1)),
+            "vf_fisher_coef": (float, (0, 1)),
             "gamma": (float, (0.5, 1)),
-            "alpha": (float, (0.5, 1)),
-            "replay_ratio": (int, (0, 10)),
-            "correction_term": (float, (1, 10)),
-            "delta": (float, (0.1, 10)),
+            "kfac_clip": (float, (0, 1)),
             "lr_schedule": ((list, str),
                             ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
         }
@@ -45,26 +38,15 @@ class ACERModel(StableBaselinesRLObject):
         if train_kwargs is None:
             train_kwargs = {}
 
-        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
-
         param_kwargs = {
             "verbose": 1,
-            "n_steps": 20,
-            "n_stack": 1,
-            "q_coef": 0.5,
+            "n_steps": 5,
+            "vf_coef": 0.5,
             "ent_coef": 0.01,
-            "max_grad_norm": 10,
+            "max_grad_norm": 0.5,
             "learning_rate": 7e-4,
-            "rprop_epsilon": 1e-5,
-            "rprop_alpha": 0.99,
+            "vf_fisher_coef": 1.0,
             "gamma": 0.99,
-            "buffer_size": 5000,
-            "replay_ratio": 4,
-            "replay_start": 1000,
-            "correction_term": 10.0,
-            "trust_region": True,
-            "alpha": 0.99,
-            "delta": 1,
             "lr_schedule": args.lr_schedule
         }
 

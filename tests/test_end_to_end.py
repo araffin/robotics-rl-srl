@@ -182,7 +182,7 @@ def testAllRLOnSrlTrain(model_type):
     assertEq(ok, 0)
 
 
-@pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac', 'trpo'])
 def testAllSrlonRLTrain(algo):
     """
     Testing RL pipeline on previously learned models

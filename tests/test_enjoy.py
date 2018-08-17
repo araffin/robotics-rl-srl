@@ -44,7 +44,7 @@ def assertNeq(left, right):
 
 
 @pytest.mark.fast
-@pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'ddpg', 'cma-es', 'ars', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'sac', 'trpo'])
 def testBaselineTrain(algo):
     """
     test for the given RL algorithm
@@ -67,7 +67,7 @@ def testBaselineTrain(algo):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'ddpg', 'cma-es', 'ars', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'sac', 'trpo'])
 def testEnjoyBaselines(algo):
     """
     test the enjoy script for the given RL algorithm

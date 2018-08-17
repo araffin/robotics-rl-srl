@@ -143,14 +143,17 @@ python -m visdom.server
 
 Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with some evolution strategies and SAC:
 
-- DQN and variants (Double, Dueling, prioritized experience replay)
+- A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C).
 - ACER: Sample Efficient Actor-Critic with Experience Replay
-- A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C) which gives equal performance.
-- PPO2: Proximal Policy Optimization (GPU Implementation)
-- DDPG: Deep Deterministic Policy Gradients
-- ARS: Augmented Random Search
+- ACKTR: Actor Critic using Kronecker-Factored Trust Region
+- ARS: Augmented Random Search (https://arxiv.org/abs/1803.07055)
 - CMA-ES: Covariance Matrix Adaptation Evolution Strategy
+- DDPG: Deep Deterministic Policy Gradients
+- DeepQ: and variants (Double, Dueling, prioritized experience replay)
+- PPO1: Proximal Policy Optimization (MPI Implementation)
+- PPO2: Proximal Policy Optimization (GPU Implementation)
 - SAC: Soft Actor Critic
+- TPRO: Trust Region Policy Optimization (MPI Implementation)
 
 #### Train an Agent with Discrete Actions
 

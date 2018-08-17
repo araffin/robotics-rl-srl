@@ -33,7 +33,7 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-@pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac', 'trpo'])
 @pytest.mark.parametrize("model_type", ['raw_pixels'])
 def testBaselineTrain(algo, model_type):
     """

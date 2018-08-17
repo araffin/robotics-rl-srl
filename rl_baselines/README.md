@@ -15,14 +15,17 @@ In our case, the policies of the RL algorithms will be deep neural networks.
 
 
 ## Available algorithms
-- DeepQ: and variants (Double, Dueling, prioritized experience replay)
-- ACER: Sample Efficient Actor-Critic with Experience Replay
 - A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C).
-- PPO2: Proximal Policy Optimization (GPU Implementation)
-- DDPG: Deep Deterministic Policy Gradients
+- ACER: Sample Efficient Actor-Critic with Experience Replay
+- ACKTR: Actor Critic using Kronecker-Factored Trust Region
 - ARS: Augmented Random Search (https://arxiv.org/abs/1803.07055)
 - CMA-ES: Covariance Matrix Adaptation Evolution Strategy
+- DDPG: Deep Deterministic Policy Gradients
+- DeepQ: and variants (Double, Dueling, prioritized experience replay)
+- PPO1: Proximal Policy Optimization (MPI Implementation)
+- PPO2: Proximal Policy Optimization (GPU Implementation)
 - SAC: Soft Actor Critic
+- TPRO: Trust Region Policy Optimization (MPI Implementation)
 
 ## Add your own
 1. Create a class that inherits ```rl_baselines.base_classes.BaseRLObject``` which implements your algorithm.
