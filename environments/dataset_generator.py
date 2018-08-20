@@ -62,13 +62,14 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-    real_env = env
-    env = DummyVecEnv([lambda: env])
-    env = VecNormalize(env, norm_obs=True, norm_reward=False)
+
+    train_env = env_class(**{**env_kwargs, "record_data": False})
+    train_env = DummyVecEnv([lambda: train_env])
+    train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
 
     model = None
     if use_ppo2:
-        model = PPO2(CnnPolicy, env).learn(args.ppo2_timesteps)
+        model = PPO2(CnnPolicy, train_env).learn(args.ppo2_timesteps)
 
     frames = 0
     start_time = time.time()
@@ -78,7 +79,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         seed = args.seed + i_episode + args.num_episode // args.num_cpu * thread_num + \
                (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
 
-        real_env.seed(seed)
+        env.seed(seed)
         prng.seed(seed)  # this is for the sample() function from gym.space
         obs = env.reset()
         done = False
@@ -87,11 +88,11 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             env.render()
 
             if use_ppo2:
-                action, _ = model.predict(obs)
+                action, _ = model.predict([obs])
             else:
-                action = env.action_space.sample()
+                action = [env.action_space.sample()]
 
-            _, _, done, _ = env.step(action)
+            _, _, done, _ = env.step(action[0])
             frames += 1
             t += 1
             if done:
@@ -129,7 +130,7 @@ def main():
                         help='Prints out the reward distribution when the dataset generation is finished')
     parser.add_argument('--run-ppo2', action='store_true', default=False,
                         help='runs a ppo2 agent instead of a random agent')
-    parser.add_argument('--ppo2-timesteps', type=int, default=10000,
+    parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
     args = parser.parse_args()
 
@@ -165,7 +166,7 @@ def main():
         try:
             jobs = []
             for i in range(args.num_cpu):
-                process = multiprocessing.Process(target=env_thread, args=(args, i, args.run_ppo2))
+                process = multiprocessing.Process(target=env_thread, args=(args, i, True, args.run_ppo2))
                 jobs.append(process)
 
             for j in jobs:
