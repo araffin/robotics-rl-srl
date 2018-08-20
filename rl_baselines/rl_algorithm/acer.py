@@ -50,7 +50,6 @@ class ACERModel(StableBaselinesRLObject):
         param_kwargs = {
             "verbose": 1,
             "n_steps": 20,
-            "n_stack": 1,
             "q_coef": 0.5,
             "ent_coef": 0.01,
             "max_grad_norm": 10,

@@ -184,7 +184,7 @@ class MultiprocessSRLModel:
             self.pipe[1][env_id].put(self.model.getState(var, env_id=env_id))
 
 
-def createEnvs(args, allow_early_resets=True, env_kwargs=None, load_path_normalise=None):
+def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
     """
     :param args: (argparse.Namespace Object)
     :param allow_early_resets: (bool) Allow reset before the enviroment is done, usually used in ES to halt the envs
