@@ -141,7 +141,7 @@ python -m visdom.server
 
 ### RL Algorithms: OpenAI Baselines and More
 
-Several algorithms from [Open AI baselines](https://github.com/openai/baselines) have been integrated along with some evolution strategies and SAC:
+Several algorithms from [Stable Baselines](https://github.com/hill-a/stable-baselines) have been integrated along with some evolution strategies and SAC:
 
 - A2C: A synchronous, deterministic variant of Asynchronous Advantage Actor Critic (A3C).
 - ACER: Sample Efficient Actor-Critic with Experience Replay

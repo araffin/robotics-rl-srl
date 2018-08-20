@@ -70,7 +70,7 @@ class DDPGModel(StableBaselinesRLObject):
         env = DummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
         if args.srl_model != "raw_pixels":
-            env = VecNormalize(env)
+            env = VecNormalize(env, norm_reward=False)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
         return env

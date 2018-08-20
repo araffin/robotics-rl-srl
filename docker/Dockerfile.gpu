@@ -36,7 +36,6 @@ RUN echo "conda activate py35" >> ~/.bashrc
 RUN /bin/bash -c "source activate py35 && \
   git clone https://github.com/hill-a/stable-baselines.git && \
   cd stable-baselines/ && \
-  git checkout 1f8a03f3a62367526f && \
   pip install -e ."
 
 

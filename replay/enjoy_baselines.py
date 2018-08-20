@@ -298,6 +298,8 @@ def main():
                 plt.pause(0.000001)
 
         if load_args.action_proba and hasattr(method, "getActionProba"):
+            # When continuous actions are needed, we cannot plot the action probability of every action
+            # in the action space, so we show the action directly instead
             if train_args["continuous_actions"]:
                 pi = method.getAction(obs, dones)
             else:

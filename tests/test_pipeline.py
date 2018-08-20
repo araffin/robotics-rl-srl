@@ -102,7 +102,7 @@ def testEnvTrain(env):
 
 @pytest.mark.fast
 @pytest.mark.parametrize("env", ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"])
-@pytest.mark.parametrize("algo", ['ppo2', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'ppo1', 'ppo2', 'sac', 'trpo'])
 def testContinousEnvTrain(env, algo):
     """
     test the environment on the RL pipeline with continuous actions
