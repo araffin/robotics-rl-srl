@@ -15,6 +15,9 @@ class TRPOModel(StableBaselinesRLObject):
     TRPO: Trust Region Policy Optimization (MPI Implementation)
     """
 
+    LOG_INTERVAL = 10  # log RL model performance every 10 steps
+    SAVE_INTERVAL = 1  # Save RL model every 1 steps
+
     def __init__(self):
         super(TRPOModel, self).__init__(name="trpo", model_class=TRPO)
 
@@ -53,6 +56,9 @@ class TRPOModel(StableBaselinesRLObject):
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}
+
+        if args.srl_model == "raw_pixels":
+            printYellow("Warning: TRPO can have memory issues when running with raw_pixels")
 
         param_kwargs = {
             "verbose": 1,

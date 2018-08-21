@@ -15,13 +15,16 @@ class PPO1Model(StableBaselinesRLObject):
     PPO1: Proximal Policy Optimization (MPI Implementation)
     """
 
+    LOG_INTERVAL = 10  # log RL model performance every 10 steps
+    SAVE_INTERVAL = 1  # Save RL model every 1 steps
+
     def __init__(self):
         super(PPO1Model, self).__init__(name="ppo1", model_class=PPO1)
 
     def customArguments(self, parser):
         super().customArguments(parser)
         parser.add_argument('--lr-schedule', help='Learning rate schedule', default='constant',
-                            choices=['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+                            choices=['linear', 'constant'])
         return parser
 
     @classmethod
@@ -52,8 +55,7 @@ class PPO1Model(StableBaselinesRLObject):
             "clip_param": (float, (0, 1)),
             "optim_epochs": (int, (1, 10)),
             "timesteps_per_actorbatch": (int, (32, 2048)),
-            "schedule": ((list, str),
-                         ['linear', 'constant', 'double_linear_con', 'middle_drop', 'double_middle_drop'])
+            "schedule": ((list, str), ['linear', 'constant'])
         }
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
