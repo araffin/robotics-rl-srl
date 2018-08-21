@@ -1,6 +1,7 @@
 from stable_baselines.acktr import ACKTR
 
 from rl_baselines.base_classes import StableBaselinesRLObject
+from srl_zoo.utils import printYellow
 
 
 class ACKTRModel(StableBaselinesRLObject):
@@ -37,6 +38,9 @@ class ACKTRModel(StableBaselinesRLObject):
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         if train_kwargs is None:
             train_kwargs = {}
+
+        if args.srl_model == "raw_pixels":
+            printYellow("Warning: ACKTR can have memory issues when running with raw_pixels")
 
         param_kwargs = {
             "verbose": 1,

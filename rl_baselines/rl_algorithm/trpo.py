@@ -57,9 +57,6 @@ class TRPOModel(StableBaselinesRLObject):
         if train_kwargs is None:
             train_kwargs = {}
 
-        if args.srl_model == "raw_pixels":
-            printYellow("Warning: TRPO can have memory issues when running with raw_pixels")
-
         param_kwargs = {
             "verbose": 1,
             "timesteps_per_batch": 128,

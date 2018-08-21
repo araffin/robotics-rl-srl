@@ -33,8 +33,8 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-# ignoring 'trpo', as it will run out of memory and crash tensorflow's allocation
-@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac'])
+# ignoring 'acktr', as it will run out of memory and crash tensorflow's allocation
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac', 'trpo'])
 @pytest.mark.parametrize("model_type", ['raw_pixels'])
 def testBaselineTrain(algo, model_type):
     """
