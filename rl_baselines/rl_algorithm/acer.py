@@ -45,8 +45,6 @@ class ACERModel(StableBaselinesRLObject):
         if train_kwargs is None:
             train_kwargs = {}
 
-        assert args.num_stack > 1, "ACER only works with '--num-stack' of 2 or more"
-
         param_kwargs = {
             "verbose": 1,
             "n_steps": 20,
