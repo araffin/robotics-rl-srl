@@ -110,10 +110,21 @@ Run the nvidia-docker GPU image
 docker run -it --runtime=nvidia --rm --network host --ipc=host --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
 ```
 
+Or, with the shell file:
+```
+./run_docker_gpu.sh python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000
+```
+
 Run the docker CPU image
 ```
 docker run -it --rm --network host --ipc=host --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox-cpu bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
 ```
+
+Or, with the shell file:
+```
+./run_docker_cpu.sh python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000
+```
+
 
 Explanation of the docker command:
  - `docker run -it` create an instance of an image (=container), and run it interactively (so ctrl+c will work)
