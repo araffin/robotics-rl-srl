@@ -88,14 +88,12 @@ docker pull araffin/rl-toolbox-cpu
 
 Build GPU image (with nvidia-docker):
 ```
-cd docker/ && cp ../environment.yml . && \
-docker build . -f Dockerfile.gpu -t rl-toolbox
+docker build . -f docker/Dockerfile.gpu -t rl-toolbox
 ```
 
 Build CPU image:
 ```
-cd docker/
-docker build . -f Dockerfile.cpu -t rl-toolbox-cpu
+docker build . -f docker/Dockerfile.cpu -t rl-toolbox-cpu
 ```
 
 Note: if you are using a proxy, you need to pass extra params during build and do some [tweaks](https://stackoverflow.com/questions/23111631/cannot-download-docker-images-behind-a-proxy):

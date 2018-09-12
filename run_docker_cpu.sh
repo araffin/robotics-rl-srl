@@ -3,7 +3,7 @@
 
 cmd_line="$@"
 
-echo "Excuting in the docker (cpu image):"
+echo "Executing in the docker (cpu image):"
 echo $cmd_line
 
 
