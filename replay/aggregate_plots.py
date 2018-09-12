@@ -8,7 +8,7 @@ import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 
 from rl_baselines.visualize import loadCsv, movingAverage, loadData
-from srl_zoo.utils import printGreen, printYellow
+from srl_zoo.utils import printGreen, printYellow, printRed
 
 # Init seaborn
 sns.set()
@@ -17,14 +17,15 @@ fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
 # Modified Colorbrewer Paired_12, you can use palettable to retrieve it
 colors = [[166, 206, 227], [31, 120, 180], [178, 223, 138], [51, 160, 44], [251, 154, 153], [227, 26, 28],
-          [253, 191, 111], [255, 127, 0], [202, 178, 214], [106, 61, 154], [143, 156, 212], [64, 57, 178], [255, 255, 153], [177, 89, 40]]
+          [253, 191, 111], [255, 127, 0], [202, 178, 214], [106, 61, 154], [143, 156, 212], [64, 57, 178], [255, 255, 153], [177, 89, 40],
+          [10, 10, 10], [0, 0, 0]]
 colors = [(r / 255, g / 255, b / 255) for (r, g, b) in colors]
 lightcolors = colors[0::2]
 darkcolors = colors[1::2]
 
 # y-limits for the plot
 # Kuka Arm
-# Y_LIM_SPARSE_REWARD = [-3, 6]
+Y_LIM_SPARSE_REWARD = [0, 5]
 # Mobile robot
 Y_LIM_SPARSE_REWARD = [-3, 250]
 # Relative: [-150, -50]
@@ -73,6 +74,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     """
     y_list = []
     x_list = []
+    ok = False
     for folder in folders:
         if timesteps:
             x, y = loadData(folder, smooth=1, bin_size=100)
@@ -89,13 +91,18 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
             printYellow("Folder {}".format(folder))
             printYellow("Not enough episodes for current window size = {}".format(window))
             continue
-
+        ok = True
         y = movingAverage(y, window)
         y_list.append(y)
 
         # Truncate x
         x = x[len(x) - len(y):]
         x_list.append(x)
+
+    if not ok:
+        printRed("Not enough data to plot anything with current config." +
+                 " Consider decreasing --min-x")
+        return
 
     lengths = list(map(len, x_list))
     min_x, max_x = np.min(lengths), np.max(lengths)
@@ -152,7 +159,7 @@ if __name__ == '__main__':
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--min-x', type=int, default=-1,
-                        help='Minimum number of episode/timesteps to keep an experiment (default: -1, no minimum)')
+                        help='Minimum number of x-ticks to keep an experiment (default: -1, no minimum)')
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('--timesteps', action='store_true', default=False,
