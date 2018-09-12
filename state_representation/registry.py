@@ -21,7 +21,10 @@ registered_srl = {
     "random_inverse": (SRLType.SRL, None),
     "reward_inverse": (SRLType.SRL, None),
     "srl_splits": (SRLType.SRL, None),
+    "srl_split_forward": (SRLType.SRL, None),
+    "srl_3_splits": (SRLType.SRL, None),
     "reward": (SRLType.SRL, None),
     "vae": (SRLType.SRL, None),
+    "dae": (SRLType.SRL, None),
     "pca": (SRLType.SRL, None)
 }
