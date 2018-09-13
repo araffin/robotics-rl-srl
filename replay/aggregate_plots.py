@@ -23,7 +23,7 @@ colors = [(r / 255, g / 255, b / 255) for (r, g, b) in colors]
 lightcolors = colors[0::2]
 darkcolors = colors[1::2]
 
-# y-limits for the plot
+# Default y-limits for the plot
 # Kuka Arm
 Y_LIM_SPARSE_REWARD = [0, 5]
 # Mobile robot
@@ -59,8 +59,8 @@ def millions(x, pos):
     return '{:.1f}M'.format(x * 1e-6)
 
 
-def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
-                            timesteps=False, shaped_reward=False, output_file=""):
+def plotGatheredExperiments(folders, algo, y_limits, window=40, title="", min_num_x=-1,
+                            timesteps=False, output_file=""):
     """
     Compute mean and standard error for several experiments and plot the learning curve
     :param folders: ([str]) Log folders, where the monitor.csv are stored
@@ -69,7 +69,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     :param title: (str) plot title
     :param min_num_x: (int) Minimum number of episode/timesteps to keep an experiment (default: -1, no minimum)
     :param timesteps: (bool) Plot timesteps instead of episodes
-    :param shaped_reward: (bool)
+    :param y_limits: ([float]) y-limits for the plot
     :param output_file: (str) Path to a file where the plot data will be saved
     """
     y_list = []
@@ -138,10 +138,7 @@ def plotGatheredExperiments(folders, algo, window=40, title="", min_num_x=-1,
     plt.ylabel('Rewards')
 
     plt.title(title, **fontstyle)
-    if shaped_reward:
-        plt.ylim(Y_LIM_SHAPED_REWARD)
-    else:
-        plt.ylim(Y_LIM_SPARSE_REWARD)
+    plt.ylim(y_limits)
 
     plt.legend(framealpha=0.5, labelspacing=0.01, loc='lower right', fontsize=16)
 
@@ -160,11 +157,20 @@ if __name__ == '__main__':
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--min-x', type=int, default=-1,
                         help='Minimum number of x-ticks to keep an experiment (default: -1, no minimum)')
+    parser.add_argument('--y-lim', nargs=2, type=float, default=[-1, -1], help="limits for the y axis")
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('--timesteps', action='store_true', default=False,
                         help='Plot timesteps instead of episodes')
     args = parser.parse_args()
+
+    y_limits = args.y_lim
+    if y_limits[0] == y_limits[1]:
+        if args.shape_reward:
+            y_limits = Y_LIM_SHAPED_REWARD
+        else:
+            y_limits = Y_LIM_SPARSE_REWARD
+        print("Using default limits:", y_limits)
 
     # TODO: check that the parameters are the same between Experiments
     folders = []
@@ -194,6 +200,6 @@ if __name__ == '__main__':
     else:
         title = srl_model + " [Episodes]"
 
-    plotGatheredExperiments(folders, train_args['algo'], window=args.episode_window,
+    plotGatheredExperiments(folders, train_args['algo'], y_limits=y_limits, window=args.episode_window,
                             title=title, min_num_x=args.min_x,
-                            timesteps=args.timesteps, shaped_reward=args.shape_reward, output_file=args.output_file)
+                            timesteps=args.timesteps, output_file=args.output_file)
