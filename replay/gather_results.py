@@ -100,12 +100,12 @@ for method in os.listdir(log_dir):
             if len(args.timestep_budget) > 0:  # mean and std for every budget requested
                 for i, ts_budget in enumerate(args.timestep_budget):
                     mean_rew = np.mean(data[i])
-                    std_rew = np.std(data[i]) / len(data[i])
+                    std_rew = np.std(data[i]) / np.sqrt(len(data[i]))
                     exp_results['mean_reward_{}'.format(ts_budget)].append(mean_rew)
                     exp_results['stderr_reward_{}'.format(ts_budget)].append(std_rew)
             else:
                 mean_rew = np.mean(data)
-                std_rew = np.std(data) / len(data)
+                std_rew = np.std(data) / np.sqrt(len(data))
                 exp_results['mean_reward'].append(mean_rew)
                 exp_results['stderr_reward'].append(std_rew)
             for key in exp_configs.keys():
