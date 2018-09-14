@@ -32,10 +32,10 @@ if len(args.timestep_budget) > 0:
     exp_results = []
     for ts_budget in args.timestep_budget:
         exp_results.append(('mean_reward_{}'.format(ts_budget), []))
-        exp_results.append(('std_reward_{}'.format(ts_budget), []))
+        exp_results.append(('stderr_reward_{}'.format(ts_budget), []))
 else:
     exp_results = [('mean_reward', []),
-                   ('std_reward', [])]
+                   ('stderr_reward', [])]
 
 exp_configs = OrderedDict(exp_configs)
 exp_results = OrderedDict(exp_results)
@@ -100,14 +100,14 @@ for method in os.listdir(log_dir):
             if len(args.timestep_budget) > 0:  # mean and std for every budget requested
                 for i, ts_budget in enumerate(args.timestep_budget):
                     mean_rew = np.mean(data[i])
-                    std_rew = np.std(data[i])
+                    std_rew = np.std(data[i]) / len(data[i])
                     exp_results['mean_reward_{}'.format(ts_budget)].append(mean_rew)
-                    exp_results['std_reward_{}'.format(ts_budget)].append(std_rew)
+                    exp_results['stderr_reward_{}'.format(ts_budget)].append(std_rew)
             else:
                 mean_rew = np.mean(data)
-                std_rew = np.std(data)
+                std_rew = np.std(data) / len(data)
                 exp_results['mean_reward'].append(mean_rew)
-                exp_results['std_reward'].append(std_rew)
+                exp_results['stderr_reward'].append(std_rew)
             for key in exp_configs.keys():
                 exp_configs[key].append(env_globals.get(key, None))
 
