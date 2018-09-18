@@ -62,21 +62,10 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         assert state_dim is not None, \
             "Please make sure you are loading an up to date model with a conform exp_config file."
 
+        # WARNING: split_dimensions should be loaded as an OrderedDict to keep the order
+        # which is not the case for now. However, this is not a problem in test mode
+        # (only predicting states, not training)
         split_dimensions = exp_config.get('split-dimensions')
-
-        # backward compatibility
-        if split_dimensions is None:
-            split_indices = exp_config.get('split-index', [-1])
-            if not isinstance(split_indices, list):
-                split_indices = [split_indices]
-
-            # Compute the number of dimensions for each method
-            if split_indices[0] > 0:
-                split_dimensions = [split_indices[0]]
-                for i in range(len(split_indices) - 1):
-                    split_dimensions.append(split_indices[i + 1] - split_indices[i])
-
-                split_dimensions.append(state_dim - split_indices[-1])
     else:
         assert env_object is not None or state_dim > 0, \
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
@@ -155,7 +144,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param model_type: (string)
         :param n_actions: action space dimensions (int)
         :param losses: list of optimized losses defining the model (list of string)
-        :param split_dimensions: ([int])) Number of dimensions for the different splits
+        :param split_dimensions: (OrderedDict) Number of dimensions for the different losses
         :param inverse_model_type: (string)
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
@@ -166,10 +155,12 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif isinstance(split_dimensions, list) and split_dimensions[0] > 0:
-            self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                         cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
-                                         inverse_model_type=inverse_model_type)
+        # TODO: convert split_dimensions to OrderedDict when loading config
+        # for now, using SRLModules for both split and combination (same networks)
+        # elif isinstance(split_dimensions, OrderedDict):
+        #     self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+        #                                  cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
+        #                                  inverse_model_type=inverse_model_type)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                     cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
