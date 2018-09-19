@@ -1,5 +1,6 @@
 import json
 import pickle as pkl
+from collections import OrderedDict
 
 import numpy as np
 import torch as th
@@ -24,7 +25,7 @@ def getSRLDim(path=None, env_object=None):
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
 
         with open(log_folder + 'exp_config.json', 'r') as f:
-            exp_config = json.load(f)
+            exp_config = json.load(f, object_pairs_hook=OrderedDict)
         try:
             return exp_config['state-dim']
         except KeyError:
@@ -50,7 +51,9 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
         with open(log_folder + 'exp_config.json', 'r') as f:
-            exp_config = json.load(f)
+            # IMPORTANT: keep the order for the losses
+            # so the json is loaded as an OrderedDict
+            exp_config = json.load(f, object_pairs_hook=OrderedDict)
 
         state_dim = exp_config.get('state-dim', None)
         losses = exp_config.get('losses', None)  # None in the case of baseline models (pca, supervised)
@@ -62,9 +65,6 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         assert state_dim is not None, \
             "Please make sure you are loading an up to date model with a conform exp_config file."
 
-        # WARNING: split_dimensions should be loaded as an OrderedDict to keep the order
-        # which is not the case for now. However, this is not a problem in test mode
-        # (only predicting states, not training)
         split_dimensions = exp_config.get('split-dimensions')
     else:
         assert env_object is not None or state_dim > 0, \
@@ -155,12 +155,10 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        # TODO: convert split_dimensions to OrderedDict when loading config
-        # for now, using SRLModules for both split and combination (same networks)
-        # elif isinstance(split_dimensions, OrderedDict):
-        #     self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-        #                                  cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
-        #                                  inverse_model_type=inverse_model_type)
+        elif isinstance(split_dimensions, OrderedDict):
+            self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+                                         cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
+                                         inverse_model_type=inverse_model_type)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
                                     cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
