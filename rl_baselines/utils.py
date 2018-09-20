@@ -4,11 +4,7 @@ from multiprocessing import Queue, Process
 import numpy as np
 import tensorflow as tf
 import torch as th
-from stable_baselines.common.vec_env import VecEnv
-from stable_baselines.common.vec_env.vec_normalize import VecNormalize
-from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
+from stable_baselines.common.vec_env import VecEnv, VecNormalize, DummyVecEnv, SubprocVecEnv, VecFrameStack
 
 from environments import ThreadingType
 from environments.utils import makeEnv, dynamicEnvLoad
@@ -80,7 +76,7 @@ def filterJSONSerializableObjects(input_dict):
 
 
 class CustomDummyVecEnv(VecEnv):
-    """Dummy class in order to use FrameStack with DQN"""
+    """Dummy class in order to use FrameStack with SAC"""
 
     def __init__(self, env_fns):
         """
@@ -97,7 +93,7 @@ class CustomDummyVecEnv(VecEnv):
 
     def step_wait(self):
         self.obs, self.reward, self.done, self.infos = self.env.step(self.actions[0])
-        return self.obs[None], self.reward, [self.done], [self.infos]
+        return np.copy(self.obs[None]), self.reward, [self.done], [self.infos]
 
     def step_async(self, actions):
         """
@@ -111,10 +107,13 @@ class CustomDummyVecEnv(VecEnv):
     def close(self):
         return
 
+    def get_images(self):
+        return [env.render(mode='rgb_array') for env in self.envs]
+
 
 class WrapFrameStack(VecFrameStack):
     """
-    Wrap VecFrameStack in order to be usable with dqn
+    Wrap VecFrameStack in order to be usable with SAC
     and scale output if necessary
     """
 

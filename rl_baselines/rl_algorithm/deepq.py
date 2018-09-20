@@ -1,8 +1,7 @@
 import pickle
 import os
 
-from stable_baselines.deepq import DeepQ
-from stable_baselines.deepq import models as deepq_models
+from stable_baselines.deepq import DQN
 from stable_baselines.common.vec_env.vec_normalize import VecNormalize
 from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 
@@ -11,13 +10,13 @@ from environments.utils import makeEnv
 from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel
 
 
-class DeepQModel(StableBaselinesRLObject):
+class DQNModel(StableBaselinesRLObject):
     """
     object containing the interface between baselines.deepq and this code base
-    DeepQ: https://arxiv.org/pdf/1312.5602v1.pdf
+    DQN: https://arxiv.org/pdf/1312.5602v1.pdf
     """
     def __init__(self):
-        super(DeepQModel, self).__init__(name="deepq", model_class=DeepQ)
+        super(DQNModel, self).__init__(name="deepq", model_class=DQN)
 
     def customArguments(self, parser):
         parser.add_argument('--prioritized', type=int, default=1)
@@ -49,7 +48,7 @@ class DeepQModel(StableBaselinesRLObject):
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
-        # Even though DeepQ is single core only, we need to use the pipe system to work
+        # Even though DQN is single core only, we need to use the pipe system to work
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
             srl_model = MultiprocessSRLModel(1, args.env, env_kwargs)
             env_kwargs["state_dim"] = srl_model.state_dim
@@ -84,15 +83,17 @@ class DeepQModel(StableBaselinesRLObject):
 
         if args.srl_model != "raw_pixels":
             args.policy = "mlp"
-            policy_fn = deepq_models.mlp([64, 64])
+            policy_fn = 'MlpPolicy'
+            # policy_fn = deepq_models.mlp([64, 64])
         else:
             # Atari CNN
             args.policy = "cnn"
-            policy_fn = deepq_models.cnn_to_mlp(
-                convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
-                hiddens=[256],
-                dueling=bool(args.dueling),
-            )
+            policy_fn = 'CnnPolicy'
+            # policy_fn = deepq_models.cnn_to_mlp(
+            #     convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
+            #     hiddens=[256],
+            #     dueling=bool(args.dueling),
+            # )
 
         self.policy = args.policy
         self.ob_space = env.observation_space

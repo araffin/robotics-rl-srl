@@ -9,7 +9,6 @@ import torch.nn.functional as F
 
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import createEnvs
-from srl_zoo.utils import printYellow
 
 
 def detachToNumpy(tensor):

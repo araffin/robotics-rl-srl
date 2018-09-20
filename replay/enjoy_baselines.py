@@ -158,7 +158,7 @@ def main():
 
     tf.reset_default_graph()
     set_global_seeds(load_args.seed)
-    createTensorflowSession()
+    # createTensorflowSession()
 
     printYellow("Compiling Policy function....")
     method = algo_class.load(load_path, args=algo_args)

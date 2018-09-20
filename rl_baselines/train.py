@@ -2,28 +2,26 @@
 Train script for RL algorithms
 """
 import argparse
-import glob
+import inspect
 import json
 import os
-import re
-from datetime import datetime
-from pprint import pprint
-import inspect
 import sys
 import time
+from datetime import datetime
+from pprint import pprint
 
 import yaml
 from stable_baselines.common import set_global_seeds
 from visdom import Visdom
 
+from environments.registry import registered_env
+from environments.srl_env import SRLGymEnv
 from rl_baselines import AlgoType, ActionType
 from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
-from environments.registry import registered_env
-from environments.srl_env import SRLGymEnv
 from state_representation import SRLType
 from state_representation.registry import registered_srl
 
@@ -62,7 +60,9 @@ def latestPath(path):
     :param path: path to the log folder (defined in srl_model.yaml) (str)
     :return: path to latest learned model in the same dataset folder (str)
     """
-    return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
+    return max([path + "/" + d for d in os.listdir(path)
+                if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
+
 
 def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """

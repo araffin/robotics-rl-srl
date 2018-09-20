@@ -142,7 +142,8 @@ class SACModel(BaseRLObject):
         parser.add_argument('-lr', '--learning-rate', type=float, default=3e-4, help="Learning rate")
         parser.add_argument('--gamma', type=float, default=0.99, help="Discount factor")
         parser.add_argument('--w-reg', type=float, default=1e-3, help="Weight for policy network regularization")
-        parser.add_argument('--soft-update-factor', type=float, default=1e-2, help="Rate for updating target net weights")
+        parser.add_argument('--soft-update-factor', type=float, default=1e-2,
+                            help="Rate for updating target net weights")
         parser.add_argument('--print-freq', type=int, default=500, help="Print Frequency (every n steps)")
         parser.add_argument('--batch-size', type=int, default=128, help="Minibatch size for each gradient update")
         parser.add_argument('--gradient-steps', type=int, default=1, help="How many gradient update after each step")

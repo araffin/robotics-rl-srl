@@ -6,7 +6,7 @@ from rl_baselines.rl_algorithm.acktr import ACKTRModel
 from rl_baselines.evolution_strategies.ars import ARSModel
 from rl_baselines.evolution_strategies.cma_es import CMAESModel
 from rl_baselines.rl_algorithm.ddpg import DDPGModel
-from rl_baselines.rl_algorithm.deepq import DeepQModel
+from rl_baselines.rl_algorithm.deepq import DQNModel
 from rl_baselines.rl_algorithm.ppo1 import PPO1Model
 from rl_baselines.rl_algorithm.ppo2 import PPO2Model
 from rl_baselines.random_agent import RandomAgentModel
@@ -21,7 +21,7 @@ registered_rl = {
     "ars":          (ARSModel, AlgoType.EVOLUTION_STRATEGIES, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
     "cma-es":       (CMAESModel, AlgoType.EVOLUTION_STRATEGIES, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
     "ddpg":         (DDPGModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.CONTINUOUS]),
-    "deepq":        (DeepQModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE]),
+    "deepq":        (DQNModel, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE]),
     "ppo1":         (PPO1Model, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
     "ppo2":         (PPO2Model, AlgoType.REINFORCEMENT_LEARNING, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
     "random_agent": (RandomAgentModel, AlgoType.OTHER, [ActionType.DISCRETE, ActionType.CONTINUOUS]),
