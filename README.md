@@ -36,7 +36,9 @@ Table of Contents
 
 ## Installation
 
-Note **Python 3 is required** (python 2 is not supported because of OpenAI baselines)
+**Python 3 is required** (python 2 is not supported because of OpenAI baselines)
+
+Note: we are using [Stable Baselines](https://github.com/hill-a/stable-baselines.git), a fork of OpenAI Baselines with unified interface and other improvements (e.g. tensorboard support).
 
 
 ### Using Anaconda
@@ -56,17 +58,6 @@ sudo apt-get install swig
 conda env create --file environment.yml
 source activate py35
 ```
-
-3. Download and install [Stable Baselines](https://github.com/hill-a/stable-baselines.git) (a fork of OpenAI Baselines). Make sure you have the right dependencies (see the README in the stable baselines repo)
-```
-git clone https://github.com/hill-a/stable-baselines.git
-cd stable-baselines/
-# Hack for now, until the refactoring is over
-git checkout 1f8a03f3a62367526f
-pip install -e .
-```
-
-Note: The save method of ACER of baselines is currently buggy, you need to manually add an import (see [pull request #312](https://github.com/openai/baselines/pull/312))
 
 [PyBullet Documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA)
 

@@ -33,11 +33,6 @@ RUN conda clean -ya
 
 RUN echo "conda activate py35" >> ~/.bashrc
 
-RUN /bin/bash -c "source activate py35 && \
-  git clone https://github.com/hill-a/stable-baselines.git && \
-  cd stable-baselines/ && \
-  pip install -e ."
-
 
 ENV TINI_VERSION v0.16.1
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
