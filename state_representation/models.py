@@ -1,13 +1,13 @@
 import json
 import pickle as pkl
+from collections import OrderedDict
 
 import numpy as np
 import torch as th
-import cv2
 
+import srl_zoo.preprocessing as preprocessing
 from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
 from srl_zoo.preprocessing import preprocessImage, getNChannels
-import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -25,7 +25,7 @@ def getSRLDim(path=None, env_object=None):
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
 
         with open(log_folder + 'exp_config.json', 'r') as f:
-            exp_config = json.load(f)
+            exp_config = json.load(f, object_pairs_hook=OrderedDict)
         try:
             return exp_config['state-dim']
         except KeyError:
@@ -51,17 +51,21 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         # Get path to the log folder
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
         with open(log_folder + 'exp_config.json', 'r') as f:
-            exp_config = json.load(f)
+            # IMPORTANT: keep the order for the losses
+            # so the json is loaded as an OrderedDict
+            exp_config = json.load(f, object_pairs_hook=OrderedDict)
 
-        split_index = exp_config.get('split-index', None)
         state_dim = exp_config.get('state-dim', None)
-        losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
+        losses = exp_config.get('losses', None)  # None in the case of baseline models (pca, supervised)
         n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
         model_type = exp_config.get('model-type', None)
         use_multi_view = exp_config.get('multi-view', False)
+        inverse_model_type = exp_config.get('inverse-model-type', 'linear')
 
         assert state_dim is not None, \
             "Please make sure you are loading an up to date model with a conform exp_config file."
+
+        split_dimensions = exp_config.get('split-dimensions')
     else:
         assert env_object is not None or state_dim > 0, \
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
@@ -84,7 +88,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         if use_multi_view:
             preprocessing.preprocess.N_CHANNELS = 6
 
-        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses, split_index=split_index)
+        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses,
+                                 split_dimensions=split_dimensions, inverse_model_type=inverse_model_type)
 
     model_name = model_type
     if 'baselines' not in path:
@@ -131,14 +136,16 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_index=None):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_dimensions=None,
+                 inverse_model_type="linear"):
         """
         :param state_dim: (int)
         :param cuda: (bool)
         :param model_type: (string)
         :param n_actions: action space dimensions (int)
         :param losses: list of optimized losses defining the model (list of string)
-        :param split_index: (int) Number of dimensions for the first split
+        :param split_dimensions: (OrderedDict) Number of dimensions for the different losses
+        :param inverse_model_type: (string)
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
@@ -148,12 +155,13 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif split_index is not None and split_index > 0:
+        elif isinstance(split_dimensions, OrderedDict):
             self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                    cuda=self.cuda, losses=losses, split_index=split_index)
+                                         cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
+                                         inverse_model_type=inverse_model_type)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                    cuda=self.cuda, losses=losses)
+                                    cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")

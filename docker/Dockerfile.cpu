@@ -27,7 +27,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_
     ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
 
-COPY env_cpu.yml /tmp/
+COPY docker/env_cpu.yml /tmp/
 RUN conda env create --file /tmp/env_cpu.yml
 RUN conda clean -ya
 

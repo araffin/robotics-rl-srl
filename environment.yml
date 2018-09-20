@@ -9,9 +9,7 @@ dependencies:
   - html5lib=0.9999999=py35_0
   - markdown=2.6.9=py35_0
   - protobuf=3.4.1=py35he6b9134_0
-  - tensorflow-gpu=1.5.0
-  - tensorflow-gpu-base=1.5.0
-  - tensorflow-tensorboard=0.4.0=py35hf484d3e_0
+  - tensorflow-gpu=1.8.0
   - werkzeug=0.14.1=py35_0
   - bzip2=1.0.6=h6d464ef_2
   - ca-certificates=2017.08.26=h1d4fec5_0
@@ -130,7 +128,7 @@ dependencies:
     - tornado==4.5.3
     - tqdm==4.19.5
     - urllib3==1.22
-    - visdom==0.1.7
+    - visdom==0.1.8.5
     - zmq==0.0.0
     - cma==2.5.3
     - h5py==2.8.0rc1
