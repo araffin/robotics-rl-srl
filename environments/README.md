@@ -35,14 +35,15 @@ You will need to define specifically:
     * ```close()```: closes the environment, override if you need to change it.
     * Make sure ```__init__``` has the parameter ```**_kwargs``` in order to ignore useless flag parameters sent by the calling code.
 2. Add this code to the same file as the class declaration
-    ```python
-    def getGlobals():
-        """
-        :return: (dict)
-        """
-        return globals()
-    ```
-    it will allow the logging of constant values used by the class
+```python
+def getGlobals():
+    """
+    :return: (dict)
+    """
+    return globals()
+```
+ it will allow the logging of constant values used by the class
+ 
 3. Add your class to the ```registered_env``` dictionary in ```environments/registry.py```,
 using this format ```NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)```, where:
     * ```NAME```: is your environment's name, it must only contain ```[A-Z][a-z][0-9]``` and end with the version number in this format: ```-v{number}```.

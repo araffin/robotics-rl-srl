@@ -97,7 +97,6 @@ class SRLGymEnv(gym.Env):
     def render(self, mode='human'):
         """
         :param mode: (str)
-        :param close: (bool)
         :return: (numpy array)
         """
         raise NotImplementedError()

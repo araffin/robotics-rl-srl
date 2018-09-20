@@ -24,5 +24,4 @@ try:
                 i += 1
 except KeyboardInterrupt:
     pass
-env.closeServerConnection()
 print("Avg. frame rate: {:.2f} FPS".format(i / (time.time() - start_time)))

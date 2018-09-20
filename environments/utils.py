@@ -1,12 +1,10 @@
 # Modified version of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/envs.py
 
-import os
 import importlib
+import os
 
-import gym
-from stable_baselines import bench
-from stable_baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from gym.envs.registration import registry, patch_deprecated_methods, load
+from stable_baselines import bench
 
 
 def dynamicEnvLoad(env_id):
@@ -51,14 +49,9 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=No
         local_env_kwargs = dict(env_kwargs)  # copy this to avoid altering the others
         local_env_kwargs["env_rank"] = rank
         env = _make(env_id, env_kwargs=local_env_kwargs)
-        is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        if is_atari:
-            env = make_atari(env_id)
         env.seed(seed + rank)
         if log_dir is not None:
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)), allow_early_resets=allow_early_resets)
-        if is_atari:
-            env = wrap_deepmind(env)
         return env
 
     return _thunk
