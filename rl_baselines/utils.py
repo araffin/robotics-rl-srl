@@ -30,18 +30,22 @@ def createTensorflowSession():
     tf.Session(config=config).__enter__()
 
 
-def computeMeanReward(log_dir, last_n_episodes, is_es=False):
+def computeMeanReward(log_dir, last_n_episodes, is_es=False, return_n_episodes=False):
     """
     Compute the mean reward for the last n episodes
     :param log_dir: (str)
     :param last_n_episodes: (int)
     :param is_es: (bool)
-    :return: (bool, numpy array)
+    :param return_n_episodes: (bool)
+    :return: (bool, numpy array or tuple when return_n_episodes is True)
     """
     result, _ = loadCsv(log_dir, is_es=is_es)
     if len(result) == 0:
         return False, 0
     y = np.array(result)[:, 1]
+
+    if return_n_episodes:
+        return True, (y[-last_n_episodes:].mean(), len(y))
     return True, y[-last_n_episodes:].mean()
 
 
@@ -313,9 +317,12 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
     """
     # imported here to prevent cyclic imports
     from environments.registry import registered_env
+    from state_representation.registry import registered_srl, SRLType
+
     assert not (registered_env[args.env][3] is ThreadingType.NONE and args.num_cpu != 1), \
         "Error: cannot have more than 1 CPU for the environment {}".format(args.env)
-    if env_kwargs is not None and env_kwargs.get("use_srl", False):
+
+    if env_kwargs is not None and registered_srl[args.srl_model][0] == SRLType.SRL:
         srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
         env_kwargs["state_dim"] = srl_model.state_dim
         env_kwargs["srl_pipe"] = srl_model.pipe

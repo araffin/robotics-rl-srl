@@ -88,14 +88,12 @@ docker pull araffin/rl-toolbox-cpu
 
 Build GPU image (with nvidia-docker):
 ```
-cd docker/ && cp ../environment.yml . && \
-docker build . -f Dockerfile.gpu -t rl-toolbox
+docker build . -f docker/Dockerfile.gpu -t rl-toolbox
 ```
 
 Build CPU image:
 ```
-cd docker/
-docker build . -f Dockerfile.cpu -t rl-toolbox-cpu
+docker build . -f docker/Dockerfile.cpu -t rl-toolbox-cpu
 ```
 
 Note: if you are using a proxy, you need to pass extra params during build and do some [tweaks](https://stackoverflow.com/questions/23111631/cannot-download-docker-images-behind-a-proxy):
@@ -107,18 +105,30 @@ Note: if you are using a proxy, you need to pass extra params during build and d
 
 Run the nvidia-docker GPU image
 ```
-docker run -it --runtime=nvidia --rm --network host --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
+docker run -it --runtime=nvidia --rm --network host --ipc=host --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
+```
+
+Or, with the shell file:
+```
+./run_docker_gpu.sh python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000
 ```
 
 Run the docker CPU image
 ```
-docker run -it --rm --network host --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox-cpu bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
+docker run -it --rm --network host --ipc=host --name test --mount src="$(pwd)",target=/tmp/rl_toolbox,type=bind araffin/rl-toolbox-cpu bash -c 'source activate py35 && cd /tmp/rl_toolbox/ && python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000'
 ```
+
+Or, with the shell file:
+```
+./run_docker_cpu.sh python -m rl_baselines.train --srl-model ground_truth --env MobileRobotGymEnv-v0 --no-vis --num-timesteps 1000
+```
+
 
 Explanation of the docker command:
  - `docker run -it` create an instance of an image (=container), and run it interactively (so ctrl+c will work)
  - `--rm` option means to remove the container once it exits/stops (otherwise, you will have to use `docker rm`)
  - `--network host` don't use network isolation, this allow to use visdom on host machine
+ - `--ipc=host` Use the host system’s IPC namespace. It is needed to train SRL model with PyTorch. IPC (POSIX/SysV IPC) namespace provides separation of named shared memory segments, semaphores and message queues.
  - `--name test` give explicitely the name `test` to the container, otherwise it will be assigned a random name
  - `--mount src=...` give access of the local directory (`pwd` command) to the container (it will be map to `/tmp/rl_toolbox`), so all the logs created in the container in this folder will be kept (for that you need to pass the `--log-dir logs/` option)
  - `bash -c 'source activate py35 && ...` Activate the conda enviroment inside the docker container, and launch an experiment (` python -m rl_baselines.train ...`)
@@ -322,6 +332,13 @@ Here it plots experiments with reward shaping and that have a minimum of 1000 da
 To create a comparison plots from saved plots (.npz files), you need to pass a path to folder containing .npz files:
 ```
 python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timesteps
+```
+
+### Gather Results
+
+Gather results for all experiments of an enviroment. It will report mean performance for a given budget.
+```
+python -m replay.gather_results -i path/to/envdir/ --min-timestep 5000000 --timestep-budget 1000000 2000000 3000000 5000000 --episode-window 100
 ```
 
 ## Working With Real Robots: Baxter and Robobo
