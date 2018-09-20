@@ -14,7 +14,7 @@ import numpy as np
 from scipy.stats import ttest_ind as welch_test
 
 
-def run_welch_test(args, exp_results, methods, log_dir, ts_budget=None):
+def runWelchTest(args, exp_results, methods, log_dir, ts_budget=None):
     """
     get the welch t test results
 
@@ -36,6 +36,7 @@ def run_welch_test(args, exp_results, methods, log_dir, ts_budget=None):
                   .format(welch_baseline, log_dir))
         else:
             welch_perf = []
+
             if ts_budget is not None:
                 for rewards in exp_results['rewards_{}'.format(ts_budget)]:
                     welch_perf.append(
@@ -53,8 +54,10 @@ def main():
     parser.add_argument('-i', '--log-dir', type=str, default="", required=True,
                         help='Path to a base log folder (environment level)')
     parser.add_argument('--timestep-budget', type=int, nargs='+',  default=[], help='the timesteps budget')
-    parser.add_argument('--min-timestep', type=int, default=None, help='the minimum timesteps for a monitoring to count')
-    parser.add_argument('--episode-window', type=int, default=100, help='The expected reward over the number of episodes')
+    parser.add_argument('--min-timestep', type=int, default=None,
+                        help='the minimum timesteps for a monitoring to count')
+    parser.add_argument('--episode-window', type=int, default=100,
+                        help='The expected reward over the number of episodes')
     parser.add_argument('--welch-test', type=str, nargs='+', default=[],
                         help='The name of the baseline you wish to compare with the welch test')
     args = parser.parse_args()
@@ -112,6 +115,7 @@ def main():
                 monitor_files = sorted(glob.glob(path + "/*.monitor.csv"))
                 for monitor_file in monitor_files:
                     run = np.array(pd.read_csv(monitor_file, skiprows=1)[["l", "r"]])
+
                     if run_acc is None:
                         run_acc = run
                     else:
@@ -124,15 +128,19 @@ def main():
                 if run_acc is not None and (args.min_timestep is None or np.sum(run_acc[:, 0]) > args.min_timestep):
                     run_acc[:, 1] = run_acc[:, 1] / len(monitor_files)
                     run_acc[:, 0] = np.cumsum(run_acc[:, 0])
+
                     if len(args.timestep_budget) > 0:  # extract the episodes for the requested budget
                         for i, ts_budget in enumerate(args.timestep_budget):
                             if np.all(run_acc[:, 0] < ts_budget):
-                                print("warning, budget too high for {} using {}, the highest logged wil be for {} timesteps."
+                                print("warning, budget too high for {} using {}, "
+                                      "the highest logged will be for {} timesteps."
                                       .format(algo, method, np.max(run_acc[:, 0])))
                             budget_acc = run_acc[run_acc[:, 0] < ts_budget]
+
                             if budget_acc.shape[0] == 0:
                                 print("budget too low for {} using {}".format(algo, method))
                                 continue
+
                             data[i].append(budget_acc[-args.episode_window:, 1])
                     else:  # otherwise do for the highest value possible
                         data.append(run_acc[-args.episode_window:, 1])
@@ -151,16 +159,18 @@ def main():
                     exp_results['mean_reward'].append(mean_rew)
                     exp_results['rewards'].append(data)
                     exp_results['stderr_reward'].append(stderr_rew)
+
                 for key in exp_configs.keys():
                     exp_configs[key].append(env_globals.get(key, None))
 
     if len(args.timestep_budget) > 0:
         for ts_budget in args.timestep_budget:
-            run_welch_test(args, exp_results, methods, log_dir, ts_budget=ts_budget)
+            runWelchTest(args, exp_results, methods, log_dir, ts_budget=ts_budget)
     else:
-        run_welch_test(args, exp_results, methods, log_dir)
+        runWelchTest(args, exp_results, methods, log_dir)
 
     filtered_exp_results = [(k, v) for k, v in exp_results.items() if not k.startswith("rewards")]
+
     if len(args.timestep_budget) > 0:
         exp_results = OrderedDict(sorted(filtered_exp_results, key=lambda a: a[0].split('_')[-1]))
     else:

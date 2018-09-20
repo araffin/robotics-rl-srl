@@ -334,6 +334,13 @@ To create a comparison plots from saved plots (.npz files), you need to pass a p
 python -m replay.compare_plots -i logs/path/to/folder/ --shape-reward --timesteps
 ```
 
+### Gather Results
+
+Gather results for all experiments of an enviroment. It will report mean performance for a given budget.
+```
+python -m replay.gather_results -i path/to/envdir/ --min-timestep 5000000 --timestep-budget 1000000 2000000 3000000 5000000 --episode-window 100
+```
+
 ## Working With Real Robots: Baxter and Robobo
 
 The instructions for working with a real robot are availables here : `real_robots/README.md`.
