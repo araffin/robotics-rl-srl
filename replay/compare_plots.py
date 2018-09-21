@@ -16,13 +16,14 @@ fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
 
 def comparePlots(path, plots, y_limits, title="Learning Curve",
-                 timesteps=False):
+                 timesteps=False, truncate_x=-1):
     """
     :param path: (str) path to the folder where the plots are stored
     :param plots: ([str]) List of saved plots as npz file
     :param y_limits: ([float]) y-limits for the plot
     :param title: (str) plot title
     :param timesteps: (bool) Plot timesteps instead of episodes
+    :param truncate_x: (int) Truncate the experiments after n ticks on the x-axis
     """
     y_list = []
     x_list = []
@@ -36,6 +37,10 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
 
     print("Min x: {}".format(min_x))
     print("Max x: {}".format(max_x))
+
+    if max_x > 0:
+        min_x = min(truncate_x, min_x)
+    print("Truncating the x-axis at {}".format(min_x))
 
     x = np.array(x_list[0][:min_x])
 
@@ -66,7 +71,7 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
     plt.title(title, **fontstyle)
     plt.ylim(y_limits)
 
-    plt.legend(framealpha=0.5, labelspacing=0.01, loc='lower right', fontsize=16)
+    plt.legend(framealpha=0.8, frameon=True, labelspacing=0.01, loc='lower right', fontsize=16)
 
     plt.show()
 
@@ -79,6 +84,8 @@ if __name__ == '__main__':
     parser.add_argument('--shape-reward', action='store_true', default=False,
                         help='Change the y_limit to correspond shaped reward bounds')
     parser.add_argument('--y-lim', nargs=2, type=float, default=[-1, -1], help="limits for the y axis")
+    parser.add_argument('--truncate-x', type=int, default=-1,
+                        help="Truncate the experiments after n ticks on the x-axis (default: -1, no truncation)")
     parser.add_argument('--timesteps', action='store_true', default=False,
                         help='Plot timesteps instead of episodes')
     args = parser.parse_args()
@@ -93,4 +100,4 @@ if __name__ == '__main__':
 
     plots = [f for f in os.listdir(args.input_dir) if f.endswith('.npz')]
 
-    comparePlots(args.input_dir, plots, y_limits=y_limits, timesteps=args.timesteps)
+    comparePlots(args.input_dir, plots, y_limits=y_limits, timesteps=args.timesteps, truncate_x=args.truncate_x)
