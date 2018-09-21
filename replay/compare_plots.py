@@ -38,7 +38,7 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
     print("Min x: {}".format(min_x))
     print("Max x: {}".format(max_x))
 
-    if max_x > 0:
+    if truncate_x > 0:
         min_x = min(truncate_x, min_x)
     print("Truncating the x-axis at {}".format(min_x))
 
