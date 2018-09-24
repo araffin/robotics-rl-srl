@@ -16,7 +16,7 @@ fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
 
 
 def comparePlots(path, plots, y_limits, title="Learning Curve",
-                 timesteps=False, truncate_x=-1):
+                 timesteps=False, truncate_x=-1, no_display=False):
     """
     :param path: (str) path to the folder where the plots are stored
     :param plots: ([str]) List of saved plots as npz file
@@ -24,6 +24,7 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
     :param title: (str) plot title
     :param timesteps: (bool) Plot timesteps instead of episodes
     :param truncate_x: (int) Truncate the experiments after n ticks on the x-axis
+    :param no_display: (bool) Set to true, the plot won't be displayed (useful when only saving plot)
     """
     y_list = []
     x_list = []
@@ -73,7 +74,8 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
 
     plt.legend(framealpha=0.8, frameon=True, labelspacing=0.01, loc='lower right', fontsize=16)
 
-    plt.show()
+    if not no_display:
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -88,6 +90,7 @@ if __name__ == '__main__':
                         help="Truncate the experiments after n ticks on the x-axis (default: -1, no truncation)")
     parser.add_argument('--timesteps', action='store_true', default=False,
                         help='Plot timesteps instead of episodes')
+    parser.add_argument('--no-display', action='store_true', default=False, help='Do not display plot')
     args = parser.parse_args()
 
     y_limits = args.y_lim
@@ -101,4 +104,5 @@ if __name__ == '__main__':
     plots = [f for f in os.listdir(args.input_dir) if f.endswith('.npz')]
     plots.sort()
 
-    comparePlots(args.input_dir, plots, y_limits=y_limits, timesteps=args.timesteps, truncate_x=args.truncate_x)
+    comparePlots(args.input_dir, plots, y_limits=y_limits, no_display=args.no_display,
+                timesteps=args.timesteps, truncate_x=args.truncate_x)

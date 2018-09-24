@@ -60,7 +60,7 @@ def millions(x, pos):
 
 
 def plotGatheredExperiments(folders, algo, y_limits, window=40, title="", min_num_x=-1,
-                            timesteps=False, output_file=""):
+                            timesteps=False, output_file="", no_display=False):
     """
     Compute mean and standard error for several experiments and plot the learning curve
     :param folders: ([str]) Log folders, where the monitor.csv are stored
@@ -71,6 +71,7 @@ def plotGatheredExperiments(folders, algo, y_limits, window=40, title="", min_nu
     :param timesteps: (bool) Plot timesteps instead of episodes
     :param y_limits: ([float]) y-limits for the plot
     :param output_file: (str) Path to a file where the plot data will be saved
+    :param no_display: (bool) Set to true, the plot won't be displayed (useful when only saving plot)
     """
     y_list = []
     x_list = []
@@ -146,7 +147,8 @@ def plotGatheredExperiments(folders, algo, y_limits, window=40, title="", min_nu
         printGreen("Saving aggregated data to {}.npz".format(output_file))
         np.savez(output_file, x=x, y=y)
 
-    plt.show()
+    if not no_display:
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -162,6 +164,7 @@ if __name__ == '__main__':
                         help='Shape the reward (reward = - distance) instead of a sparse reward')
     parser.add_argument('--timesteps', action='store_true', default=False,
                         help='Plot timesteps instead of episodes')
+    parser.add_argument('--no-display', action='store_true', default=False, help='Do not display plot')
     args = parser.parse_args()
 
     y_limits = args.y_lim
@@ -201,5 +204,5 @@ if __name__ == '__main__':
         title = srl_model + " [Episodes]"
 
     plotGatheredExperiments(folders, train_args['algo'], y_limits=y_limits, window=args.episode_window,
-                            title=title, min_num_x=args.min_x,
+                            title=title, min_num_x=args.min_x, no_display=args.no_display,
                             timesteps=args.timesteps, output_file=args.output_file)
