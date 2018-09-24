@@ -99,5 +99,6 @@ if __name__ == '__main__':
         print("Using default limits:", y_limits)
 
     plots = [f for f in os.listdir(args.input_dir) if f.endswith('.npz')]
+    plots.sort()
 
     comparePlots(args.input_dir, plots, y_limits=y_limits, timesteps=args.timesteps, truncate_x=args.truncate_x)
