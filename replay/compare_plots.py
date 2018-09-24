@@ -7,7 +7,7 @@ import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 
 from replay.aggregate_plots import lightcolors, darkcolors, Y_LIM_SHAPED_REWARD, Y_LIM_SPARSE_REWARD, millions
-from srl_zoo.utils import printGreen
+from srl_zoo.utils import printGreen, printRed
 
 # Init seaborn
 sns.set()
@@ -103,6 +103,10 @@ if __name__ == '__main__':
 
     plots = [f for f in os.listdir(args.input_dir) if f.endswith('.npz')]
     plots.sort()
+
+    if len(plots) == 0:
+        printRed("No npz files found in {}".format(args.input_dir))
+        exit(-1)
 
     comparePlots(args.input_dir, plots, y_limits=y_limits, no_display=args.no_display,
                 timesteps=args.timesteps, truncate_x=args.truncate_x)
