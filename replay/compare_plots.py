@@ -81,6 +81,7 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plot trained agent")
     parser.add_argument('-i', '--input-dir', help='folder with the plots as npz files', type=str, required=True)
+    parser.add_argument('-t', '--title', help='Plot title', type=str, default='Learning Curve')
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--shape-reward', action='store_true', default=False,
@@ -108,5 +109,5 @@ if __name__ == '__main__':
         printRed("No npz files found in {}".format(args.input_dir))
         exit(-1)
 
-    comparePlots(args.input_dir, plots, y_limits=y_limits, no_display=args.no_display,
+    comparePlots(args.input_dir, plots, title=args.title, y_limits=y_limits, no_display=args.no_display,
                 timesteps=args.timesteps, truncate_x=args.truncate_x)
