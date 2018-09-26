@@ -66,6 +66,11 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
             "Please make sure you are loading an up to date model with a conform exp_config file."
 
         split_dimensions = exp_config.get('split-dimensions')
+        if isinstance(split_dimensions, OrderedDict):
+            n_dims = sum(split_dimensions.values())
+            # Combine losses instead of splitting
+            if n_dims == 0:
+                split_dimensions = None
     else:
         assert env_object is not None or state_dim > 0, \
             "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \

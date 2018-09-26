@@ -13,6 +13,8 @@ import pandas as pd
 import numpy as np
 from scipy.stats import ttest_ind as welch_test
 
+from srl_zoo.utils import printYellow, printGreen
+
 
 def runWelchTest(args, exp_results, methods, log_dir, ts_budget=None):
     """
@@ -97,9 +99,12 @@ def main():
             algos.append(algo)
             methods.append(method)
             exp_dir = "{}/{}/".format(algos_dir, algo)
-            print(exp_dir)
+
+            print("Experiment dir:", exp_dir)
+
             data = [[] for _ in args.timestep_budget]  # the RL data for all the requested budgets
             env_globals = None
+            valid_exp_folder = False
             for exp_id, exp in enumerate(os.listdir(exp_dir)):
                 path = "{}/{}/".format(exp_dir, exp)
 
@@ -108,13 +113,17 @@ def main():
                     train_args = json.load(open(path + "/args.json", 'r'))
                     pass
                 except FileNotFoundError:
-                    print("config files not found for {}".format(exp))
+                    printYellow("config files not found for {}".format(exp))
                     continue
 
+                valid_exp_folder = True
                 run_acc = None  # the accumulated RL data for the run
                 monitor_files = sorted(glob.glob(path + "/*.monitor.csv"))
                 for monitor_file in monitor_files:
                     run = np.array(pd.read_csv(monitor_file, skiprows=1)[["l", "r"]])
+
+                    if len(run) == 0:
+                        continue
 
                     if run_acc is None:
                         run_acc = run
@@ -132,18 +141,24 @@ def main():
                     if len(args.timestep_budget) > 0:  # extract the episodes for the requested budget
                         for i, ts_budget in enumerate(args.timestep_budget):
                             if np.all(run_acc[:, 0] < ts_budget):
-                                print("warning, budget too high for {} using {}, "
+                                printYellow("warning, budget too high for {} using {}, "
                                       "the highest logged will be for {} timesteps."
                                       .format(algo, method, np.max(run_acc[:, 0])))
                             budget_acc = run_acc[run_acc[:, 0] < ts_budget]
 
                             if budget_acc.shape[0] == 0:
-                                print("budget too low for {} using {}".format(algo, method))
+                                printYellow("budget too low for {} using {}".format(algo, method))
                                 continue
 
                             data[i].append(budget_acc[-args.episode_window:, 1])
                     else:  # otherwise do for the highest value possible
                         data.append(run_acc[-args.episode_window:, 1])
+
+
+            # Suppress them from results
+            if not valid_exp_folder:
+                algos.pop(-1)
+                methods.pop(-1)
 
             if len(data) > 0 and env_globals is not None:
                 if len(args.timestep_budget) > 0:  # mean and std for every budget requested
@@ -181,7 +196,7 @@ def main():
     # Export to csv
     result_df = pd.DataFrame(exp_configs)
     result_df.to_csv('{}/results.csv'.format(log_dir), sep=",", index=False)
-    print("Saved results to {}/results.csv".format(log_dir))
+    printGreen("Saved results to {}/results.csv".format(log_dir))
 
 
 if __name__ == '__main__':

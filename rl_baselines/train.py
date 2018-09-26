@@ -60,9 +60,8 @@ def latestPath(path):
     :param path: path to the log folder (defined in srl_model.yaml) (str)
     :return: path to latest learned model in the same dataset folder (str)
     """
-    return max([path + "/" + d for d in os.listdir(path)
-                if not d.startswith('baselines')], key=os.path.getmtime) + '/srl_model.pth'
-
+    return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines') and os.path.isdir(path + "/" + d)],
+                key=os.path.getmtime) + '/srl_model.pth'
 
 def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
