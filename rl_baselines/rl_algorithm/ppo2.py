@@ -1,4 +1,4 @@
-from stable_baselines.ppo2 import PPO2
+from stable_baselines import PPO2
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 

@@ -1,12 +1,11 @@
 import pickle
 import os
 
-from stable_baselines.deepq import DQN
-from stable_baselines.common.vec_env.vec_normalize import VecNormalize
-from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from stable_baselines import DQN
+from stable_baselines.common.vec_env import VecNormalize, DummyVecEnv
 
-from rl_baselines.base_classes import StableBaselinesRLObject
 from environments.utils import makeEnv
+from rl_baselines.base_classes import StableBaselinesRLObject
 from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel
 
 

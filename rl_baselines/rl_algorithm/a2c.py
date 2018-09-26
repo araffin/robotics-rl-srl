@@ -1,4 +1,4 @@
-from stable_baselines.a2c import A2C
+from stable_baselines import A2C
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 

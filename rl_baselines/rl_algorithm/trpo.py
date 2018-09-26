@@ -1,7 +1,5 @@
-from stable_baselines.trpo_mpi import TRPO
-from stable_baselines.common.vec_env.vec_normalize import VecNormalize
-from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
+from stable_baselines import TRPO
+from stable_baselines.common.vec_env import VecNormalize, DummyVecEnv, VecFrameStack
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 from rl_baselines.utils import MultiprocessSRLModel, loadRunningAverage

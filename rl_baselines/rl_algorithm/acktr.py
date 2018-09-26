@@ -1,4 +1,4 @@
-from stable_baselines.acktr import ACKTR
+from stable_baselines import ACKTR
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 from srl_zoo.utils import printYellow

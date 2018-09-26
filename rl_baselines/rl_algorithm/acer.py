@@ -1,4 +1,4 @@
-from stable_baselines.acer import ACER
+from stable_baselines import ACER
 
 from rl_baselines.base_classes import StableBaselinesRLObject
 

@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical, Normal
 from stable_baselines.deepq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
-from stable_baselines.common.vec_env.vec_normalize import VecNormalize
+from stable_baselines.common.vec_env import VecNormalize
 
 from environments.utils import makeEnv
 from rl_baselines.base_classes import BaseRLObject
