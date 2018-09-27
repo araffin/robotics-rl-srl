@@ -39,6 +39,7 @@ viz = None
 n_steps = 0
 SAVE_INTERVAL = 0  # initialised during loading of the algorithm
 N_EPISODES_EVAL = 100  # Evaluate the performance on the last 100 episodes
+MIN_EPISODES_BEFORE_SAVE = 100  # Number of episodes to train on before saving best model
 params_saved = False
 best_mean_reward = -10000
 
@@ -143,7 +144,7 @@ def callback(_locals, _globals):
             n_episodes = 0
 
         # Save Best model
-        if mean_reward > best_mean_reward and n_episodes >= N_EPISODES_EVAL:
+        if mean_reward > best_mean_reward and n_episodes >= MIN_EPISODES_BEFORE_SAVE:
             # Try saving the running average (only valid for mlp policy)
             try:
                 _locals['env'].saveRunningAverage(LOG_DIR)
@@ -166,7 +167,9 @@ def callback(_locals, _globals):
 
 
 def main():
-    global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz, SAVE_INTERVAL, EPISODE_WINDOW
+    # Global variables for callback
+    global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz
+    global SAVE_INTERVAL, EPISODE_WINDOW, MIN_EPISODES_BEFORE_SAVE
     parser = argparse.ArgumentParser(description="Train script for RL algorithms")
     parser.add_argument('--algo', default='ppo2', choices=list(registered_rl.keys()), help='RL algo to use',
                         type=str)
@@ -195,6 +198,7 @@ def main():
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
     parser.add_argument('--hyperparam', type=str, nargs='+', default=[])
+    parser.add_argument('--min-episodes-save', type=int, default=100, help="Min number of episodes before saving best model")
     parser.add_argument('--latest', action='store_true', default=False,
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
 
@@ -230,6 +234,7 @@ def main():
     ALGO_NAME = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
+    MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
 
     if args.no_vis:
         viz = False

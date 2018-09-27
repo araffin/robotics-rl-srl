@@ -44,6 +44,7 @@ def testBaselineTrain(algo, model_type):
     args = ['--algo', algo, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP, '--seed', SEED,
             '--num-iteration', NUM_ITERATION, '--no-vis', '--env', DEFAULT_ENV]
     if algo == "ddpg":
+        # Prevent RAM issue because of the replay buffer
         mem_limit = 100 if model_type == 'raw_pixels' else 100000
         args.extend(['-c', '--memory-limit', mem_limit])
     elif algo == "acer":
@@ -66,8 +67,13 @@ def testEnvSRLTrain(model_type, env):
     :param model_type: (str) the model type to test
     :param env: (str) the environment type to test
     """
-    if env in ["CarRacingGymEnv-v0"] and not isXAvailable():
-        return
+    if env in ["CarRacingGymEnv-v0"] and isXAvailable():
+        # Catch if X available, but GL context unavailable.
+        # This prevents SSH crashing when X is passed without GL context.
+        try:
+            from environments.car_racing.car_env import CarRacingEnv
+        except:
+            return
 
     if model_type in ['joints', 'joints_position'] and env != "KukaButtonGymEnv-v0":
         return
@@ -109,8 +115,13 @@ def testContinousEnvTrain(env, algo):
     :param env: (str) the environment type to test
     :param algo: (str) RL algorithm name
     """
-    if env in ["CarRacingGymEnv-v0"] and not isXAvailable():
-        return
+    if env in ["CarRacingGymEnv-v0"] and isXAvailable():
+        # Catch if X available, but GL context unavailable.
+        # This prevents SSH crashing when X is passed without GL context.
+        try:
+            from environments.car_racing.car_env import CarRacingEnv
+        except:
+            return
 
     args = ['--algo', algo, '--env', env, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TIMESTEP,
             '--seed', SEED, '--num-iteration', NUM_ITERATION, '--no-vis', '-c']
