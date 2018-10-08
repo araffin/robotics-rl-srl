@@ -7,7 +7,7 @@ We also release customizable Gym environments for working with simulation (Kuka 
 Related paper:
 - "S-RL Toolbox: Environments, Datasets and Evaluation Metrics for State Representation Learning" (Raffin et al., 2018) [https://arxiv.org/abs/1809.09369](https://arxiv.org/abs/1809.09369)
 
-<a href="https://drive.google.com/open?id=153oxiwHyK2W9nU3avEi0b0O4qjo7WD0X"><img src="imgs/rl_toolboxplay.jpg"/></a>
+<a href="https://drive.google.com/file/d/153oxiwHyK2W9nU3avEi0b0O4qjo7WD0X/view"><img src="imgs/rl_toolboxplay.jpg"/></a>
 
 ## Documentation
 
