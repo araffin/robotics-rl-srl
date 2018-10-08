@@ -2,28 +2,26 @@
 Train script for RL algorithms
 """
 import argparse
-import glob
+import inspect
 import json
 import os
-import re
-from datetime import datetime
-from pprint import pprint
-import inspect
 import sys
 import time
+from datetime import datetime
+from pprint import pprint
 
 import yaml
-from baselines.common import set_global_seeds
+from stable_baselines.common import set_global_seeds
 from visdom import Visdom
 
+from environments.registry import registered_env
+from environments.srl_env import SRLGymEnv
 from rl_baselines import AlgoType, ActionType
 from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot
 from srl_zoo.utils import printGreen, printYellow
-from environments.registry import registered_env
-from environments.srl_env import SRLGymEnv
 from state_representation import SRLType
 from state_representation.registry import registered_srl
 
@@ -147,7 +145,10 @@ def callback(_locals, _globals):
         if mean_reward > best_mean_reward and n_episodes >= MIN_EPISODES_BEFORE_SAVE:
             # Try saving the running average (only valid for mlp policy)
             try:
-                _locals['env'].saveRunningAverage(LOG_DIR)
+                if 'env' in _locals:
+                    _locals['env'].save_running_average(LOG_DIR)
+                else:
+                    _locals['self'].env.save_running_average(LOG_DIR)
             except AttributeError:
                 pass
 
@@ -312,8 +313,9 @@ def main():
     args.num_timesteps = int(1.1 * args.num_timesteps)
     # Get the hyperparameter, if given (Hyperband)
     hyperparams = {param.split(":")[0]: param.split(":")[1] for param in args.hyperparam}
+    hyperparams = algo.parserHyperParam(hyperparams)
     # Train the agent
-    algo.train(args, callback, env_kwargs=env_kwargs, hyperparam=hyperparams)
+    algo.train(args, callback, env_kwargs=env_kwargs, train_kwargs=hyperparams)
 
 
 if __name__ == '__main__':

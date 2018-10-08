@@ -2,13 +2,15 @@ import time
 import pickle
 
 import numpy as np
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
+from stable_baselines.common.vec_env.vec_normalize import VecNormalize
 
 from rl_baselines.base_classes import BaseRLObject
 from environments import ThreadingType
 from environments.registry import registered_env
 from environments.utils import makeEnv
-from rl_baselines.utils import CustomVecNormalize, VecFrameStack, loadRunningAverage, MultiprocessSRLModel, softmax
+from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel, softmax
 from srl_zoo.utils import printYellow
 
 
@@ -116,11 +118,11 @@ class ARSModel(BaseRLObject):
         envs = SubprocVecEnv(envs)
         envs = VecFrameStack(envs, args.num_stack)
         if args.srl_model != "raw_pixels" and args.algo_type == "v2":
-            envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+            envs = VecNormalize(envs, norm_obs=True, norm_reward=False)
             envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
         return envs
 
-    def train(self, args, callback, env_kwargs=None, hyperparam=None):
+    def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         assert args.top_population <= args.num_population, \
             "Cannot select top %d, from population of %d." % (args.top_population, args.num_population)
         assert args.num_population > 1, "The population cannot be less than 2."
@@ -128,8 +130,7 @@ class ARSModel(BaseRLObject):
         env = self.makeEnv(args, env_kwargs)
 
         # set hyperparameters
-        hyperparam = self.parserHyperParam(hyperparam)
-        args.__dict__.update(hyperparam)
+        args.__dict__.update(train_kwargs)
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)

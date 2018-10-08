@@ -51,23 +51,23 @@ class RoboboEnv(SRLGymEnv):
     :param log_folder: (str) name of the folder where recorded data will be stored
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
-    :param use_srl: (bool) Set to true, use srl_models
-    :param srl_model_path: (str) Path to the srl model
     :param record_data: (bool) Set to true, record frames with the rewards.
-    :param use_ground_truth: (bool) Set to true, the observation will be the ground truth (arm position)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
     :param env_rank: (int) the number ID of the environment
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="robobo_log_folder", state_dim=-1,
-                 learn_states=False, use_srl=False, srl_model_path=None, record_data=False, use_ground_truth=False,
+                 learn_states=False, srl_model="raw_pixels", record_data=False,
                  shape_reward=False, env_rank=0, srl_pipe=None):
-        super(RoboboEnv, self).__init__(use_ground_truth=use_ground_truth,
+
+        super(RoboboEnv, self).__init__(srl_model=srl_model,
                                         relative_pos=RELATIVE_POS,
                                         env_rank=env_rank,
                                         srl_pipe=srl_pipe)
         self.n_contacts = 0
+        use_ground_truth = srl_model == 'ground_truth'
+        use_srl = srl_model != 'raw_pixels'
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
         self.use_joints = False

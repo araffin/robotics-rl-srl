@@ -158,7 +158,7 @@ def main():
 
     tf.reset_default_graph()
     set_global_seeds(load_args.seed)
-    createTensorflowSession()
+    # createTensorflowSession()
 
     printYellow("Compiling Policy function....")
     method = algo_class.load(load_path, args=algo_args)
@@ -197,7 +197,7 @@ def main():
         fig.legend()
 
         if train_args["srl_model"] in ["ground_truth", "supervised"]:
-            delta_obs = [envs.getOriginalObs()[0]]
+            delta_obs = [envs.get_original_obs()[0]]
         else:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
@@ -248,7 +248,7 @@ def main():
         # plotting
         if load_args.plotting:
             if train_args["srl_model"] in ["ground_truth", "supervised"]:
-                ajusted_obs = envs.getOriginalObs()[0]
+                ajusted_obs = envs.get_original_obs()[0]
             else:
                 ajusted_obs = pca.transform(fixStateDim([obs[0]], min_state_dim=min_state_dim))[0]
 
@@ -298,7 +298,13 @@ def main():
                 plt.pause(0.000001)
 
         if load_args.action_proba and hasattr(method, "getActionProba"):
-            pi = method.getActionProba(obs, dones)
+            # When continuous actions are needed, we cannot plot the action probability of every action
+            # in the action space, so we show the action directly instead
+            if train_args["continuous_actions"]:
+                pi = method.getAction(obs, dones)
+            else:
+                pi = method.getActionProba(obs, dones)
+
             fig_prob.canvas.restore_region(background_prob)
             for act, rect in enumerate(bar):
                 if train_args["continuous_actions"]:

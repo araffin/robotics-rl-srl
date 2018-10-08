@@ -28,6 +28,7 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
     :param fpv: (bool) enable first person view camera
     :param srl_model: (str) The SRL_model used
     """
+
     def __init__(self, name="mobile_robot_line_target", **kwargs):
         super(MobileRobotLineTargetGymEnv, self).__init__(name=name, **kwargs)
 
@@ -59,9 +60,9 @@ class MobileRobotLineTargetGymEnv(MobileRobotGymEnv):
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
 
         self.target_uid = p.loadURDF("/urdf/wall_target.urdf", [x_pos, y_pos / 2, -0.045],
-                              p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
+                                     p.getQuaternionFromEuler([0, 0, np.pi / 2]), useFixedBase=True)
         self.target_pos = np.array([x_pos, y_pos, 0])
-        p.changeVisualShape(self.target_uid, -1, rgbaColor=[1, 1, 0, 1]) # yellow
+        p.changeVisualShape(self.target_uid, -1, rgbaColor=[1, 1, 0, 1])  # yellow
 
         # Add walls
         # Path to the urdf file

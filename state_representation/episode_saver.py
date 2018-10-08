@@ -17,7 +17,7 @@ class EpisodeSaver(object):
     :param name: (str)
     :param max_dist: (float)
     :param state_dim: (int)
-    :param _globals: (dict) Environments globals
+    :param globals_: (dict) Environments globals
     :param learn_every: (int)
     :param learn_states: (bool)
     :param path: (str)
@@ -162,7 +162,6 @@ class EpisodeSaver(object):
         np.savez('{}/ground_truth.npz'.format(self.data_folder), **ground_truth)
 
 
-
 class LogRLStates(object):
     """
     Save the experience data (states, normalized states, actions, rewards) from a gym env to a file
@@ -183,7 +182,6 @@ class LogRLStates(object):
         self.rewards = []
         self.states = []
         self.normalized_states = []
-
 
     def reset(self, normalized_state, state):
         """
@@ -230,6 +228,7 @@ class LogRLStates(object):
         }
 
         np.savez('{}/full_log.npz'.format(self.log_folder), **data)
-        np.savez('{}/states_rewards.npz'.format(self.log_folder), **{'states': data['states'], 'rewards': data['rewards']})
+        np.savez('{}/states_rewards.npz'.format(self.log_folder),
+                 **{'states': data['states'], 'rewards': data['rewards']})
         np.savez('{}/normalized_states_rewards.npz'.format(self.log_folder),
-                **{'states': data['normalized_states'], 'rewards': data['rewards']})
+                 **{'states': data['normalized_states'], 'rewards': data['rewards']})

@@ -33,7 +33,8 @@ def assertNeq(left, right):
     assert left != right, "{} == {}".format(left, right)
 
 
-@pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ppo2', 'random_agent', 'ddpg', 'cma-es', 'ars', 'sac'])
+# ignoring 'acktr', as it will run out of memory and crash tensorflow's allocation
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac', 'trpo'])
 @pytest.mark.parametrize("model_type", ['raw_pixels'])
 def testBaselineTrain(algo, model_type):
     """
@@ -108,7 +109,7 @@ def testEnvTrain(env):
 
 @pytest.mark.fast
 @pytest.mark.parametrize("env", ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"])
-@pytest.mark.parametrize("algo", ['ppo2', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'ppo1', 'ppo2', 'sac', 'trpo'])
 def testContinousEnvTrain(env, algo):
     """
     test the environment on the RL pipeline with continuous actions

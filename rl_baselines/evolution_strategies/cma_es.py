@@ -9,7 +9,6 @@ import torch.nn.functional as F
 
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import createEnvs
-from srl_zoo.utils import printYellow
 
 
 def detachToNumpy(tensor):
@@ -80,13 +79,11 @@ class CMAESModel(BaseRLObject):
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
         return createEnvs(args, allow_early_resets=True, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
 
-    def train(self, args, callback, env_kwargs=None, hyperparam=None):
+    def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         args.num_cpu = args.num_population
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
-        # set hyperparameters
-        hyperparam = self.parserHyperParam(hyperparam)
-        args.__dict__.update(hyperparam)
+        args.__dict__.update(train_kwargs)
 
         if args.continuous_actions:
             action_space = np.prod(env.action_space.shape)

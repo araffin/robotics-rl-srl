@@ -1,33 +1,21 @@
-from baselines import deepq
-from baselines import logger
-import tensorflow as tf
+import pickle
+import os
 
-from rl_baselines.base_classes import BaseRLObject
+from stable_baselines import DQN
+from stable_baselines.common.vec_env import VecNormalize, DummyVecEnv
+
 from environments.utils import makeEnv
-from rl_baselines.utils import createTensorflowSession, CustomVecNormalize, CustomDummyVecEnv, \
-    WrapFrameStack, loadRunningAverage, MultiprocessSRLModel, softmax
+from rl_baselines.base_classes import StableBaselinesRLObject
+from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel
 
 
-class DeepQModel(BaseRLObject):
+class DQNModel(StableBaselinesRLObject):
     """
     object containing the interface between baselines.deepq and this code base
-    DeepQ: https://arxiv.org/pdf/1312.5602v1.pdf
+    DQN: https://arxiv.org/pdf/1312.5602v1.pdf
     """
     def __init__(self):
-        super(DeepQModel, self).__init__()
-        self.model = None
-
-    def save(self, save_path, _locals=None):
-        assert self.model is not None or locals is not None, "Error: must train or load model before use"
-        if self.model is None:
-            self.model = _locals["act"]
-        self.model.save(save_path)
-
-    @classmethod
-    def load(cls, load_path, args=None):
-        loaded_model = DeepQModel()
-        loaded_model.model = deepq.load(load_path)
-        return loaded_model
+        super(DQNModel, self).__init__(name="deepq", model_class=DQN)
 
     def customArguments(self, parser):
         parser.add_argument('--prioritized', type=int, default=1)
@@ -35,40 +23,48 @@ class DeepQModel(BaseRLObject):
         parser.add_argument('--buffer-size', type=int, default=int(1e3), help="Replay buffer size")
         return parser
 
-    def getActionProba(self, observation, dones=None):
-        assert self.model is not None, "Error: must train or load model before use"
-        # Get the tensor just before the softmax function in the TensorFlow graph,
-        # then execute the graph from the input observation to this tensor.
-        tensor = tf.get_default_graph().get_tensor_by_name('deepq/q_func/fully_connected_2/BiasAdd:0')
-        sess = tf.get_default_session()
-        return softmax(sess.run(tensor, feed_dict={'deepq/observation:0': observation}))
+    @classmethod
+    def load(cls, load_path, args=None):
+        """
+        Load the model from a path
+        :param load_path: (str)
+        :param args: (dict) the arguments used
+        :return: (BaseRLObject)
+        """
+        with open(load_path, "rb") as f:
+            save_param = pickle.load(f)
 
-    def getAction(self, observation, dones=None):
-        assert self.model is not None, "Error: must train or load model before use"
-        return self.model(observation)[0]
+        loaded_model = cls()
+        loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
+
+        model_save_name = loaded_model.name + ".pkl"
+        if os.path.basename(load_path) == model_save_name:
+            model_save_name = loaded_model.name + "_model.pkl"
+
+        loaded_model.model = loaded_model.model_class.load(os.path.dirname(load_path) + "/" + model_save_name)
+
+        return loaded_model
 
     @classmethod
     def makeEnv(cls, args, env_kwargs=None, load_path_normalise=None):
-        # Even though DeepQ is single core only, we need to use the pipe system to work
+        # Even though DQN is single core only, we need to use the pipe system to work
         if env_kwargs is not None and env_kwargs.get("use_srl", False):
             srl_model = MultiprocessSRLModel(1, args.env, env_kwargs)
             env_kwargs["state_dim"] = srl_model.state_dim
             env_kwargs["srl_pipe"] = srl_model.pipe
 
-        env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
+        env = DummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
         if args.srl_model != "raw_pixels":
-            env = CustomVecNormalize(env)
+            env = VecNormalize(env, norm_reward=False)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
-        # Normalize only raw pixels
-        # WARNING: when using framestacking, the memory used by the replay buffer can grow quickly
-        return WrapFrameStack(env, args.num_stack, normalize=args.srl_model == "raw_pixels")
+        return env
 
     @classmethod
     def getOptParam(cls):
         return {
-            "lr": (float, (0, 0.1)),
+            "learning_rate": (float, (0, 0.1)),
             "exploration_fraction": (float, (0, 1)),
             "exploration_final_eps": (float, (0, 1)),
             "train_freq": (int, (1, 10)),
@@ -78,49 +74,44 @@ class DeepQModel(BaseRLObject):
             "batch_size": (int, (8, 128)),
         }
 
-    def train(self, args, callback, env_kwargs=None, hyperparam=None):
-        logger.configure()
+    def train(self, args, callback, env_kwargs=None, train_kwargs=None):
+        env = self.makeEnv(args, env_kwargs=env_kwargs)
 
-        env = self.makeEnv(args, env_kwargs)
-        if hyperparam is None:
-            hyperparam = {}
-
-        createTensorflowSession()
+        if train_kwargs is None:
+            train_kwargs = {}
 
         if args.srl_model != "raw_pixels":
-            model = deepq.models.mlp([64, 64])
+            args.policy = "mlp"
+            policy_fn = 'MlpPolicy'
+            # policy_fn = deepq_models.mlp([64, 64])
         else:
             # Atari CNN
-            model = deepq.models.cnn_to_mlp(
-                convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
-                hiddens=[256],
-                dueling=bool(args.dueling),
-            )
+            args.policy = "cnn"
+            policy_fn = 'CnnPolicy'
+            # policy_fn = deepq_models.cnn_to_mlp(
+            #     convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
+            #     hiddens=[256],
+            #     dueling=bool(args.dueling),
+            # )
 
-        # set hyperparameters
-        hyperparam = self.parserHyperParam(hyperparam)
+        self.policy = args.policy
+        self.ob_space = env.observation_space
+        self.ac_space = env.action_space
 
-        deepq_param = {
-            "lr": 1e-4,
+        param_kwargs = {
+            "verbose": 1,
+            "learning_rate": 1e-4,
+            "buffer_size": args.buffer_size,
             "exploration_fraction": 0.1,
             "exploration_final_eps": 0.01,
             "train_freq": 4,
             "learning_starts": 500,
             "target_network_update_freq": 500,
             "gamma": 0.99,
-            "batch_size": 32,
-            **hyperparam
+            "prioritized_replay": bool(args.prioritized),
+            "prioritized_replay_alpha": 0.6
         }
 
-        self.model = deepq.learn(
-            env,
-            q_func=model,
-            max_timesteps=args.num_timesteps,
-            buffer_size=args.buffer_size,
-            prioritized_replay=bool(args.prioritized),
-            print_freq=10,  # Print every 10 episodes
-            callback=callback,
-            **deepq_param
-        )
-        self.model.save(args.log_dir + "deepq_model_end.pkl")
+        self.model = self.model_class(policy_fn, env, **{**param_kwargs, **train_kwargs})
+        self.model.learn(total_timesteps=args.num_timesteps, seed=args.seed, callback=callback)
         env.close()

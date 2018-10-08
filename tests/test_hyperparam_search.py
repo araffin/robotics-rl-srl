@@ -39,7 +39,7 @@ def testHyperparamOptimizer(optimizer):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("algo", ['acer', 'deepq', 'a2c', 'ddpg', 'cma-es', 'ars', 'sac'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'sac', 'trpo'])
 def testRLHyperparamSearch(algo):
     """
     test for the given RL algorithm

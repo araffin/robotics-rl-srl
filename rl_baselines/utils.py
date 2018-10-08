@@ -1,15 +1,10 @@
-import pickle
 from collections import OrderedDict
 from multiprocessing import Queue, Process
 
 import numpy as np
 import tensorflow as tf
 import torch as th
-from baselines.common.running_mean_std import RunningMeanStd
-from baselines.common.vec_env import VecEnvWrapper, VecEnv
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_frame_stack import VecFrameStack as OpenAIVecFrameStack
+from stable_baselines.common.vec_env import VecEnv, VecNormalize, DummyVecEnv, SubprocVecEnv, VecFrameStack
 
 from environments import ThreadingType
 from environments.utils import makeEnv, dynamicEnvLoad
@@ -80,126 +75,8 @@ def filterJSONSerializableObjects(input_dict):
     return output_dict
 
 
-class CustomVecNormalize(VecEnvWrapper):
-    def __init__(self, venv, training=True, norm_obs=True, norm_rewards=False,
-                 clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
-        """
-        Custom vectorized environment, it adds support for saving/loading moving average
-        It can normalize observation and reward by computing a moving average
-        :param venv: (VecEnv Object)
-        :param training: (bool) Whether to update or not the moving average
-        :param norm_obs: (bool) Whether to normalize observation or not (default: True)
-        :param norm_rewards: (bool) Whether to normalize rewards or not (default: False)
-        :param clip_obs: (float) Max absolute value for observation
-        :param clip_reward: (float) Max value absolute for discounted reward
-        :param gamma: (float) discount factor
-        :param epsilon: (float) To avoid division by zero
-        """
-        VecEnvWrapper.__init__(self, venv)
-        self.obs_rms = RunningMeanStd(shape=self.observation_space.shape)
-        self.ret_rms = RunningMeanStd(shape=())
-        self.clip_obs = clip_obs
-        self.clip_reward = clip_reward
-        # Returns: discounted rewards
-        self.ret = np.zeros(self.num_envs)
-        self.gamma = gamma
-        self.epsilon = epsilon
-        self.training = training
-        self.norm_obs = norm_obs
-        self.norm_rewards = norm_rewards
-        self.unnormalized_obs = np.array([])
-
-    def step_wait(self):
-        """
-        Apply sequence of actions to sequence of environments
-        actions -> (observations, rewards, dones)
-
-        where 'dones' is a boolean vector indicating whether each element is new.
-        """
-        obs, rewards, dones, infos = self.venv.step_wait()
-        self.ret = self.ret * self.gamma + rewards
-        self.unnormalized_obs = obs
-        obs = self._normalizeObservation(obs)
-        if self.norm_rewards:
-            if self.training:
-                self.ret_rms.update(self.ret)
-            rewards = np.clip(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.clip_reward, self.clip_reward)
-        return obs, rewards, dones, infos
-
-    def _normalizeObservation(self, obs):
-        """
-        :param obs: (numpy tensor)
-        """
-        if self.norm_obs:
-            if self.training:
-                self.obs_rms.update(obs)
-            obs = np.clip((obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.epsilon), -self.clip_obs,
-                          self.clip_obs)
-            return obs
-        else:
-            return obs
-
-    def getOriginalObs(self):
-        """
-        returns the unnormalized observation
-        :return: (numpy float)
-        """
-        return self.unnormalized_obs
-
-    def reset(self):
-        """
-        Reset all environments
-        """
-        obs = self.venv.reset()
-        if len(np.array(obs).shape) == 1:  # for when num_cpu is 1
-            self.unnormalized_obs = [obs]
-        else:
-            self.unnormalized_obs = obs
-        return self._normalizeObservation(obs)
-
-    def saveRunningAverage(self, path):
-        """
-        :param path: (str) path to log dir
-        """
-        for rms, name in zip([self.obs_rms, self.ret_rms], ['obs_rms', 'ret_rms']):
-            with open("{}/{}.pkl".format(path, name), 'wb') as f:
-                pickle.dump(rms, f)
-
-    def loadRunningAverage(self, path):
-        """
-        :param path: (str) path to log dir
-        """
-        for name in ['obs_rms', 'ret_rms']:
-            with open("{}/{}.pkl".format(path, name), 'rb') as f:
-                setattr(self, name, pickle.load(f))
-
-
-class VecFrameStack(OpenAIVecFrameStack):
-    """
-    Vectorized environment class, fixed from OpenAIVecFrameStack
-    :param venv: (Gym env)
-    :param nstack: (int)
-    """
-
-    def __init__(self, venv, nstack):
-        super(VecFrameStack, self).__init__(venv, nstack)
-
-    def step_wait(self):
-        """
-        Step for each env
-        :return: ([float], [float], [bool], dict) obs, reward, done, info
-        """
-        obs, rewards, dones, infos = self.venv.step_wait()
-        self.stackedobs = np.roll(self.stackedobs, shift=-obs.shape[-1], axis=-1)
-        for (i, new) in enumerate(dones):
-            if new:
-                self.stackedobs[i] = 0
-        self.stackedobs[..., -obs.shape[-1]:] = obs
-        return self.stackedobs, rewards, dones, infos
-
-
 class CustomDummyVecEnv(VecEnv):
-    """Dummy class in order to use FrameStack with DQN"""
+    """Dummy class in order to use FrameStack with SAC"""
 
     def __init__(self, env_fns):
         """
@@ -216,7 +93,7 @@ class CustomDummyVecEnv(VecEnv):
 
     def step_wait(self):
         self.obs, self.reward, self.done, self.infos = self.env.step(self.actions[0])
-        return self.obs[None], self.reward, [self.done], [self.infos]
+        return np.copy(self.obs[None]), self.reward, [self.done], [self.infos]
 
     def step_async(self, actions):
         """
@@ -230,15 +107,18 @@ class CustomDummyVecEnv(VecEnv):
     def close(self):
         return
 
+    def get_images(self):
+        return [env.render(mode='rgb_array') for env in self.envs]
+
 
 class WrapFrameStack(VecFrameStack):
     """
-    Wrap VecFrameStack in order to be usable with dqn
+    Wrap VecFrameStack in order to be usable with SAC
     and scale output if necessary
     """
 
-    def __init__(self, venv, nstack, normalize=True):
-        super(WrapFrameStack, self).__init__(venv, nstack)
+    def __init__(self, venv, n_stack, normalize=True):
+        super(WrapFrameStack, self).__init__(venv, n_stack)
         self.factor = 255.0 if normalize else 1
 
     def step(self, action):
@@ -253,26 +133,31 @@ class WrapFrameStack(VecFrameStack):
         stackedobs = super(WrapFrameStack, self).reset()
         return stackedobs[0] / self.factor
 
-    def getOriginalObs(self):
+    def get_original_obs(self):
         """
-        Hack to use CustomVecNormalize
+        Hack to use VecNormalize
         :return: (numpy float)
         """
-        return self.venv.getOriginalObs()
+        return self.venv.get_original_obs()
+
 
     def saveRunningAverage(self, path):
         """
-        Hack to use CustomVecNormalize
+        Hack to use VecNormalize
         :param path: (str) path to log dir
         """
-        self.venv.saveRunningAverage(path)
+        self.venv.save_running_average(path)
 
     def loadRunningAverage(self, path):
         """
-        Hack to use CustomVecNormalize
+        Hack to use VecNormalize
         :param path: (str) path to log dir
         """
-        self.venv.loadRunningAverage(path)
+        self.venv.load_running_average(path)
+
+    # Compatibility with stable-baselines
+    save_running_average = saveRunningAverage
+    load_running_average = loadRunningAverage
 
 
 class MultiprocessSRLModel:
@@ -339,7 +224,7 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
     if args.srl_model != "raw_pixels":
         printYellow("Using MLP policy because working on state representation")
-        envs = CustomVecNormalize(envs, norm_obs=True, norm_rewards=False)
+        envs = VecNormalize(envs, norm_obs=True, norm_reward=False)
         envs = loadRunningAverage(envs, load_path_normalise=load_path_normalise)
 
     return envs
@@ -349,11 +234,11 @@ def loadRunningAverage(envs, load_path_normalise=None):
     if load_path_normalise is not None:
         try:
             printGreen("Loading saved running average")
-            envs.loadRunningAverage(load_path_normalise)
+            envs.load_running_average(load_path_normalise)
             envs.training = False
         except FileNotFoundError:
             envs.training = True
-            printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
+            printYellow("Running Average files not found for VecNormalize, switching to training mode")
     return envs
 
 

@@ -91,7 +91,6 @@ dependencies:
     - azure-servicebus==0.20.1
     - azure-servicemanagement-legacy==0.20.2
     - azure-storage==0.20.3
-    - baselines==0.1.5
     - better-exceptions==0.2.1
     - chardet==3.0.4
     - click==6.7
@@ -123,6 +122,7 @@ dependencies:
     - seaborn==0.8.1
     - scikit-learn==0.19.1
     - scipy==1.0.0
+    - stable-baselines==2.1.0
     - termcolor==1.1.0
     - torchfile==0.1.0
     - tornado==4.5.3

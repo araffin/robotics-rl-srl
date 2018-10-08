@@ -6,12 +6,12 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical, Normal
-from baselines.deepq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
+from stable_baselines.deepq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
+from stable_baselines.common.vec_env import VecNormalize
 
 from environments.utils import makeEnv
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.utils import CustomVecNormalize, CustomDummyVecEnv, WrapFrameStack, \
-    loadRunningAverage, MultiprocessSRLModel
+from rl_baselines.utils import WrapFrameStack, CustomDummyVecEnv, loadRunningAverage, MultiprocessSRLModel
 from rl_baselines.models.sac_models import MLPPolicy, MLPQValueNetwork, MLPValueNetwork, NatureCNN
 from state_representation.episode_saver import LogRLStates
 from srl_zoo.utils import printYellow
@@ -128,7 +128,7 @@ class SACModel(BaseRLObject):
         env = CustomDummyVecEnv([makeEnv(args.env, args.seed, 0, args.log_dir, env_kwargs=env_kwargs)])
 
         if args.srl_model != "raw_pixels":
-            env = CustomVecNormalize(env, norm_obs=True, norm_rewards=False)
+            env = VecNormalize(env, norm_obs=True, norm_reward=False)
             env = loadRunningAverage(env, load_path_normalise=load_path_normalise)
 
         # Normalize only raw pixels
@@ -142,7 +142,8 @@ class SACModel(BaseRLObject):
         parser.add_argument('-lr', '--learning-rate', type=float, default=3e-4, help="Learning rate")
         parser.add_argument('--gamma', type=float, default=0.99, help="Discount factor")
         parser.add_argument('--w-reg', type=float, default=1e-3, help="Weight for policy network regularization")
-        parser.add_argument('--soft-update-factor', type=float, default=1e-2, help="Rate for updating target net weights")
+        parser.add_argument('--soft-update-factor', type=float, default=1e-2,
+                            help="Rate for updating target net weights")
         parser.add_argument('--print-freq', type=int, default=500, help="Print Frequency (every n steps)")
         parser.add_argument('--batch-size', type=int, default=128, help="Minibatch size for each gradient update")
         parser.add_argument('--gradient-steps', type=int, default=1, help="How many gradient update after each step")
@@ -290,12 +291,11 @@ class SACModel(BaseRLObject):
             "reward_scale": (float, (0, 100))
         }
 
-    def train(self, args, callback, env_kwargs=None, hyperparam=None):
+    def train(self, args, callback, env_kwargs=None, train_kwargs=None):
         env = self.makeEnv(args, env_kwargs=env_kwargs)
 
         # set hyperparameters
-        hyperparam = self.parserHyperParam(hyperparam)
-        args.__dict__.update(hyperparam)
+        args.__dict__.update(train_kwargs)
 
         self.cuda = th.cuda.is_available() and not args.no_cuda
         self.device = th.device("cuda" if self.cuda else "cpu")
