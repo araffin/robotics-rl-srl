@@ -135,24 +135,29 @@ class WrapFrameStack(VecFrameStack):
 
     def get_original_obs(self):
         """
-        Hack to use CustomVecNormalize
+        Hack to use VecNormalize
         :return: (numpy float)
         """
         return self.venv.get_original_obs()
 
+
     def saveRunningAverage(self, path):
         """
-        Hack to use CustomVecNormalize
+        Hack to use VecNormalize
         :param path: (str) path to log dir
         """
-        self.venv.saveRunningAverage(path)
+        self.venv.save_running_average(path)
 
     def loadRunningAverage(self, path):
         """
-        Hack to use CustomVecNormalize
+        Hack to use VecNormalize
         :param path: (str) path to log dir
         """
-        self.venv.loadRunningAverage(path)
+        self.venv.load_running_average(path)
+
+    # Compatibility with stable-baselines
+    save_running_average = saveRunningAverage
+    load_running_average = loadRunningAverage
 
 
 class MultiprocessSRLModel:
@@ -233,7 +238,7 @@ def loadRunningAverage(envs, load_path_normalise=None):
             envs.training = False
         except FileNotFoundError:
             envs.training = True
-            printYellow("Running Average files not found for CustomVecNormalize, switching to training mode")
+            printYellow("Running Average files not found for VecNormalize, switching to training mode")
     return envs
 
 
