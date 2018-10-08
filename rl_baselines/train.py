@@ -146,9 +146,9 @@ def callback(_locals, _globals):
             # Try saving the running average (only valid for mlp policy)
             try:
                 if 'env' in _locals:
-                    _locals['env'].saveRunningAverage(LOG_DIR)
+                    _locals['env'].save_running_average(LOG_DIR)
                 else:
-                    _locals['self'].env.saveRunningAverage(LOG_DIR)
+                    _locals['self'].env.save_running_average(LOG_DIR)
             except AttributeError:
                 pass
 
