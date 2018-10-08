@@ -1,22 +1,20 @@
 .. _envs:
 
 Environments
-------------
+============
 
 All the environments we propose follow the OpenAI Gym interface. We also
 extended this interface (adding extra methods) to work with SRL methods
 (see `State Representation Learning
 Models <#state-representation-learning-models>`__).
 
-Available Environments
-~~~~~~~~~~~~~~~~~~~~~~
+OpenAI Gym repo:
+`https://github.com/openai/gym <https://github.com/openai/gym>`__
+
+Available environments
+----------------------
 
 You can find a recap table in the README.
-
-If you want to add your own environment, please read
-``enviroments/README.md``.
-
-the available environments are:
 
 -  Kuka arm: Here we have a Kuka arm which must reach a target, here a
    button.
@@ -34,10 +32,10 @@ the available environments are:
    position
 
    -  MobileRobotGymEnv-v0: A mobile robot on a 2d terrain where it
-      needs to reach a target position.
+      needs to reach a target position (yellow cylinder).
    -  MobileRobot2TargetGymEnv-v0: A mobile robot on a 2d terrain where
       it needs to reach two target positions, in the correct order
-      (lighter target, then darker target).
+      (yellow target, then red target).
    -  MobileRobot1DGymEnv-v0: A mobile robot on a 1d slider where it can
       only go up and down, it must reach a target position.
    -  MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain
@@ -50,9 +48,7 @@ the available environments are:
    -  CarRacingGymEnv-v0: A racing car on a racing course, it must
       complete the racing course in the least time possible.
 
--  Baxter: A baxter robot that must reach a target, with its arms. (see
-   `Working With Real Robots: Baxter and
-   Robobo <#working-with-real-robots-baxter-and-robobo>`__)
+-  Baxter: A baxter robot that must reach a target, with its arms.
 
    -  Baxter-v0: A bridge to use a baxter robot with ROS (in simulation,
       it uses Gazebo)
@@ -61,14 +57,15 @@ the available environments are:
 
    -  RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
 
+
 Generating Data
-~~~~~~~~~~~~~~~
+---------------
 
 To test the environment with random actions:
 
 ::
 
-   python -m environments.dataset_generator --no-record-data --display
+  python -m environments.dataset_generator --no-record-data --display
 
 Can be as well used to render views (or dataset) with two cameras if
 ``multi_view=True``.
@@ -78,4 +75,63 @@ To **record data** (i.e. generate a dataset) from the environment for
 
 .. code:: bash
 
-   python -m environments.dataset_generator --num-cpu 4 --name folder_name
+  python -m environments.dataset_generator --num-cpu 4 --name folder_name
+
+
+Add a custom environment
+------------------------
+
+1. Create a class that inherits ``environments.srl_env.SRLGymEnv`` which
+   implements your environment. You will need to define specifically:
+
+   -  ``getTargetPos()``: returns the position of the target.
+   -  ``getGroundTruthDim()``: returns the number of dimensions used to
+      encode the ground truth.
+   -  ``getGroundTruth()``: returns the ground truth state.
+   -  ``step(action)``: step the environment in simulation with the
+      given action.
+   -  ``reset()``: re-initialise the environment.
+   -  ``render(mode='human')``: returns an observation of the
+      environment.
+   -  ``close()``: closes the environment, override if you need to
+      change it.
+   -  Make sure ``__init__`` has the parameter ``**_kwargs`` in order to
+      ignore useless flag parameters sent by the calling code.
+
+2. Add this code to the same file as the class declaration
+
+.. code:: python
+
+   def getGlobals():
+       """
+       :return: (dict)
+       """
+       return globals()
+
+it will allow the logging of constant values used by the class
+
+3. Add your class to the ``registered_env`` dictionary in
+   ``environments/registry.py``, using this format
+   ``NAME: (CLASS, SUPER_CLASS, PLOT_TYPE, THREAD_TYPE)``, where:
+
+   -  ``NAME``: is your environment's name, it must only contain
+      ``[A-Z][a-z][0-9]`` and end with the version number in this
+      format: ``-v{number}``.
+   -  ``CLASS``: is your class that is a subclass of ``SRLGymEnv``.
+   -  ``SUPER_CLASS``: is the super class of your class, this is for
+      saving all the globals and parameters.
+   -  ``PLOT_TYPE``: is the type of plotting for
+      ``replay.enjoy_baselines``, defined by the enumerator
+      ``PlottingType`` in ``environments/__init__.py``, can be
+      ``PLOT_2D`` or ``PLOT_3D`` (use ``PLOT_3D`` if unsure).
+   -  ``THREAD_TYPE``: is the type of multithreading supported by the
+      environment, defined by the enumerator ``ThreadingType`` in
+      ``environments/__init__.py``, can be (from most restricive to less
+      restricive) ``PROCESS``, ``THREAD`` or ``NONE`` (use ``NONE`` if
+      unsure).
+
+4. Add the name of the environment to ``config/srl_models.yaml``, with
+   the location of the saved model for each SRL model (can point to a
+   dummy location, but must be defined).
+5. Now you can call your environment using ``--env NAME`` with
+   ``train.py``, ``pipeline.py`` or ``dataset_generator.py``.

@@ -12,8 +12,8 @@ Github repository: https://github.com/araffin/robotics-rl-srl
 
 This repository was made to evaluate State Representation Learning
 methods using Reinforcement Learning. It integrates (automatic logging,
-plotting, saving, loading of trained agent) various RL algorithms (PPO,
-A2C, ARS, DDPG, DQN, ACER, CMA-ES, SAC) along with different SRL methods
+plotting, saving, loading of trained agent) various RL algorithms
+(PPO, A2C, ARS, ACKTR, DDPG, DQN, ACER, CMA-ES, SAC, TRPO) along with different SRL methods
 (see `SRL Repo <https://github.com/araffin/srl-zoo>`__) in an efficient
 way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
 
