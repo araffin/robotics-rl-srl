@@ -39,6 +39,7 @@ Related paper:
    guide/srl
    guide/plotting
    guide/real_robots
+   guide/tests
    changelog
 
 
