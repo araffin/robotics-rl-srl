@@ -9,6 +9,7 @@ Welcome to S-RL Toolbox's documentation!
 S-RL Toolbox: Reinforcement Learning (RL) and State Representation Learning (SRL) Toolbox for Robotics
 
 Github repository: https://github.com/araffin/robotics-rl-srl
+
 Video: https://youtu.be/qNsHMkIsqJc
 
 This repository was made to evaluate State Representation Learning
