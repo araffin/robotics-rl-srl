@@ -11,6 +11,16 @@ Related paper:
 
 <a href="https://youtu.be/qNsHMkIsqJc"><img src="imgs/rl_toolboxplay.jpg"/></a>
 
+## Main Features
+
+- 10 RL algorithms ([Stable Baselines](https://github.com/hill-a/stable-baselines) included)
+- logging / plotting / visdom integration / replay trained agent
+- hyperparameter search (hyperband, hyperopt)
+- integration with State Representation Learning (SRL) methods (for feature extraction)
+- visualisation tools (explore latent space, display action proba, live plot in the state space, ...)
+- robotics environments to compare SRL methods
+- easy install using anaconda env or Docker images (CPU/GPU)
+
 ## Documentation
 
 Documentation is available online: [https://s-rl-toolbox.readthedocs.io/](https://s-rl-toolbox.readthedocs.io/)
@@ -20,7 +30,7 @@ Documentation is available online: [https://s-rl-toolbox.readthedocs.io/](https:
 
 **Python 3 is required** (python 2 is not supported because of OpenAI baselines)
 
-Note: we are using [Stable Baselines](https://github.com/hill-a/stable-baselines.git), a fork of OpenAI Baselines with unified interface and other improvements (e.g. tensorboard support).
+Note: we are using [Stable Baselines](https://github.com/hill-a/stable-baselines), a fork of OpenAI Baselines with unified interface and other improvements (e.g. tensorboard support).
 
 
 ### Using Anaconda

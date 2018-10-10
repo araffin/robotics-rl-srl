@@ -23,6 +23,21 @@ We also release customizable Gym environments for working with
 simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a
 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
 
+Main Features
+-------------
+
+-  10 RL algorithms (`Stable Baselines`_ included)
+-  logging / plotting / visdom integration / replay trained agent
+-  hyperparameter search (hyperband, hyperopt)
+-  integration with State Representation Learning (SRL) methods (for
+   feature extraction)
+-  visualisation tools (explore latent space, display action proba, live
+   plot in the state space, …)
+-  robotics environments to compare SRL methods
+-  easy install using anaconda env or Docker images (CPU/GPU)
+
+.. _Stable Baselines: https://github.com/hill-a/stable-baselines
+
 Related paper:
 
 -  "S-RL Toolbox: Environments, Datasets and Evaluation Metrics for
@@ -35,6 +50,7 @@ Related paper:
    :caption: Guide
 
    guide/install
+   guide/quickstart
    guide/rl
    guide/hyperparams
    guide/envs
