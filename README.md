@@ -25,6 +25,23 @@ Related paper:
 
 Documentation is available online: [https://s-rl-toolbox.readthedocs.io/](https://s-rl-toolbox.readthedocs.io/)
 
+## Example
+
+Here is a quick example of how to train a PPO2 agent on `MobileRobotGymEnv-v0` environment for 10 000 steps using 4 parallel processes:
+
+```
+python -m rl_baselines.train --algo ppo2 --no-vis --num-cpu 4 --num-timesteps 10000 --env MobileRobotGymEnv-v0
+```
+
+
+The complete command (logs will be saved in `logs/` folder):
+
+```
+python -m rl_baselines.train --algo rl_algo --env env1 --log-dir logs/ --srl-model raw_pixels --num-timesteps 10000 --no-vis
+```
+
+To use the robot's position as input instead of pixels, just pass `--srl-model ground_truth` instead of `--srl-model raw_pixels`
+
 
 ## Installation
 
@@ -142,18 +159,20 @@ Please look the [SRL Repo](https://github.com/araffin/srl-zoo) to learn how to t
 Then you must edit `config/srl_models.yaml` and set the right path to use the learned state representations.
 
 The available state representation models are:
-- ground_truth: the arm's x,y,z position
-- robotic_priors: Robotic Priors model
-- supervised: a supervised model from the raw pixels to the arm's x,y,z position
-- pca: pca applied to the raw pixels
+- ground_truth: Hand engineered features (e.g., robot position + target position for mobile robot env)
+- raw_pixels: Learning a policy in an end-to-end manner, directly from pixels to actions.
 - autoencoder: an autoencoder from the raw pixels
-- vae: a variational autoencoder from the raw pixels
 - inverse: an inverse dynamics model
 - forward: a forward dynamics model
+- vae: a variational autoencoder from the raw pixels
+- random: random features, the feature extractor, a convolutional network, is fixed after random initialization.
 - srl_combination: a model combining several losses (e.g. vae + forward + inverse...) for SRL
+- supervised: A model trained with Ground Truth states as targets in a supervised setting.
+- robotic_priors: Robotic Priors model
+- pca: pca applied to the raw pixels
 - multi_view_srl: a SRL model using views from multiple cameras as input, with any of the above losses (e.g triplet and others)
-- joints: the arm's joints angles
-- joints_position: the arm's x,y,z position and joints angles
+- joints: the arm's joints angles (only for Kuka environments)
+- joints_position: the arm's x,y,z position and joints angles (only for Kuka environments)
 
 Please read the [documentation](https://s-rl-toolbox.readthedocs.io/) for more details (e.g. adding a custom SRL model).
 

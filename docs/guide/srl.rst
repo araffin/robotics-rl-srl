@@ -27,35 +27,33 @@ Available SRL models
 
 The available state representation models are:
 
--  ground_truth: the arm's x,y,z position
--  robotic_priors: robotic priors model (`Learning State Representations
-   with Robotic
-   Priors <http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/Jonschkowski-15-AURO.pdf>`__)
--  supervised: a supervised model from the raw pixels to the arm's x,y,z
-   position
--  pca: pca applied to the raw pixels
--  autoencoder: an autoencoder from the raw pixels
--  vae: a variational autoencoder from the raw pixels
--  inverse: an inverse dynamics model
--  forward: a forward dynamics model
--  srl_combination: a model combining several losses (e.g. vae + forward
-   + inverse...) for SRL
--  multi_view_srl: a SRL model using views from multiple cameras as
-   input, with any of the above losses (e.g triplet and others)
--  joints: the arm's joints angles (kuka environments only)
--  joints_position: the arm's x,y,z position and joints angles (kuka environments only)
+- ground_truth: Hand engineered features (e.g., robot position + target position for mobile robot env)
+- raw_pixels: Learning a policy in an end-to-end manner, directly from pixels to actions.
+- supervised: A model trained with Ground Truth states as targets in a supervised setting.
+- autoencoder: an autoencoder from the raw pixels
+- vae: a variational autoencoder from the raw pixels
+- inverse: an inverse dynamics model
+- forward: a forward dynamics model
+- srl_combination: a model combining several losses (e.g. vae + forward + inverse...) for SRL
+- pca: pca applied to the raw pixels
+- robotic_priors: robotic priors model (`Learning State Representations with Robotic Priors <http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/Jonschkowski-15-AURO.pdf>`_)
+- multi_view_srl: a SRL model using views from multiple cameras as input, with any of the above losses (e.g triplet and others)
+- joints: the arm's joints angles (kuka environments only)
+- joints_position: the arm's x,y,z position and joints angles (kuka environments only)
 
-Note: for debugging, we integrated logging of states (we save the states
-that the RL agent encountered during training) with SAC algorithm. To
-log the states during RL training you have to pass the ``--log-states``
-argument:
 
-::
+.. note::
 
-   python -m rl_baselines.train --srl-model ground_truth --env MobileRobotLineTargetGymEnv-v0 --log-dir logs/ --algo sac --reward-scale 10 --log-states
+  For debugging, we integrated logging of states (we save the states
+  that the RL agent encountered during training) with SAC algorithm. To
+  log the states during RL training you have to pass the ``--log-states``
+  argument:
+  ::
 
-The states will be saved in a ``log_srl/`` folder as numpy archives,
-inside the log folder of the rl experiment.
+     python -m rl_baselines.train --srl-model ground_truth --env MobileRobotLineTargetGymEnv-v0 --log-dir logs/ --algo sac --reward-scale 10 --log-states
+
+  The states will be saved in a ``log_srl/`` folder as numpy archives,
+  inside the log folder of the rl experiment.
 
 
 Add a custom SRL model

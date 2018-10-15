@@ -44,6 +44,12 @@ Related paper:
    State Representation Learning" (Raffin et al., 2018)
    `https://arxiv.org/abs/1809.09369 <https://arxiv.org/abs/1809.09369>`__
 
+.. note::
+  This documentation only gives an overview of the RL Toolbox,
+  and provides some examples. However, for a complete list of possible argument,
+  you have to use the ``--help`` argument. For example, you can try:
+  ``python -m rl_baselines.train --help``
+
 
 .. toctree::
    :maxdepth: 2

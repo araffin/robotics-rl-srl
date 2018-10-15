@@ -5,8 +5,8 @@ Environments
 
 All the environments we propose follow the OpenAI Gym interface. We also
 extended this interface (adding extra methods) to work with SRL methods
-(see `State Representation Learning
-Models <#state-representation-learning-models>`__).
+(see :ref:`State Representation Learning
+Models <srl>`).
 
 OpenAI Gym repo:
 `https://github.com/openai/gym <https://github.com/openai/gym>`__

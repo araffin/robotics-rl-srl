@@ -3,9 +3,11 @@
 Reinforcement Learning
 ----------------------
 
-Note: All CNN policies normalize input, dividing it by 255. By default,
-observations are not stacked. For SRL, states are normalized using a
-running mean/std average.
+.. note::
+
+  All CNN policies normalize input, dividing it by 255. By default,
+  observations are not stacked. For SRL, states are normalized using a
+  running mean/std average.
 
 About frame-stacking, action repeat (frameskipping) please read this
 blog post: `Frame Skipping and Pre-Processing for DQN on
