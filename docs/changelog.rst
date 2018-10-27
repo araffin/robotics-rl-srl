@@ -5,6 +5,12 @@ Changelog
 
 For download links, please look at `Github release page <https://github.com/araffin/robotics-rl-srl/releases>`_.
 
+Pre-Release 1.0.1 (WIP)
+-----------------------
+
+- fixed a bug in the dataset generator where the GUI was instantiated two times
+- updated stable-baselines version + srl-zoo submodule
+
 Release 1.0 (2018-10-09)
 -------------------------
 **Stable Baselines Version**
