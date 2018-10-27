@@ -62,10 +62,10 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-
-    train_env = env_class(**{**env_kwargs, "record_data": False})
+    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False})
     train_env = DummyVecEnv([lambda: train_env])
     train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
+
 
     model = None
     if use_ppo2:
