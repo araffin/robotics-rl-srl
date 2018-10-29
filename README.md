@@ -190,3 +190,7 @@ sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
 ## Known issues
 
 The inverse kinematics function has trouble finding a solution when the arm is fully straight and the arm must bend to reach the requested point.
+
+## Acknowledgments
+
+This work is supported by the [DREAM project](http://www.robotsthatdream.eu) through the European Union Horizon 2020 FET research and innovation program under grant agreement No 640891.
