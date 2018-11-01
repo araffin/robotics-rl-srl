@@ -145,7 +145,7 @@ the available environments are:
     - MobileRobotLineTargetGymEnv-v0: A mobile robot on a 2d terrain where it needs to reach a colored band going across the terrain.
 - Racing car: Here we have the interface for the Gym racing car environment. It must complete a racing course in the least time possible (only available in a terminal with X running)
     - CarRacingGymEnv-v0: A racing car on a racing course, it must complete the racing course in the least time possible.
-- Baxter: A baxter robot that must reach a target, with its arms. (see [Working With Real Robots: Baxter and Robobo](#working-with-real-robots-baxter-and-robobo))
+- Baxter: A baxter robot that must reach a target, with its arms. (see [Working With Real Robots: Baxter and Robobo](https://s-rl-toolbox.readthedocs.io/en/latest/guide/real_robots.html))
     - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
 - Robobo: A Robobo robot that must reach a target position.
     - RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
