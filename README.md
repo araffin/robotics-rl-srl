@@ -194,3 +194,14 @@ The inverse kinematics function has trouble finding a solution when the arm is f
 ## Acknowledgments
 
 This work is supported by the [DREAM project](http://www.robotsthatdream.eu) through the European Union Horizon 2020 FET research and innovation program under grant agreement No 640891.
+
+## Citation
+
+If you use this toolbox, please cite:
+
+@article{Raffin18,
+  title={S-RL Toolbox: Environments, Datasets and Evaluation Metrics for State Representation Learning},
+  author={Raffin, Antonin and Hill, Ashley and Traor{\'e}, Ren{\'e} and Lesort, Timoth{\'e}e and D{\'\i}az-Rodr{\'\i}guez, Natalia and Filliat, David},
+  journal={arXiv preprint arXiv:1809.09369},
+  year={2018}
+}
