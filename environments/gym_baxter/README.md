@@ -3,28 +3,17 @@ The Baxter environment is a single agent domain featuring discrete state and act
 
 Goal: Pushing a button
 
+Associated ROS packages:
+
+- [arm scenario experiments](https://github.com/NataliaDiaz/arm_scenario_experiments/tree/rl), branch "rl"
+- [arm scenario simulator](https://github.com/araffin/arm_scenario_simulator) branch kinetic-devel
+
 
 # Requirements
-Tested with Python 3.5.
-To ensure you have the same requirements:
 
-1) Clone OpenAI baselines (https://github.com/openai/baselines) and install according to its README
+1) Install S-RL Toolbox requirements, cf [documentation](https://s-rl-toolbox.readthedocs.io/en/latest/)
 
-2) You need to install tensorflow (version >= 1.4) along with the associated CUDA.
-
-3) Install requirements by using environment.yml in the repo. This will take care of PyTorch, OpenAI Gym, etc.
-a) If you are using Anaconda (recommended), create the environment from the environment.yml file:  
-```
-conda env create -f environment.yml   # adopts the name of given environment
-```
-
-b) If you are not using Anaconda:
-Note: this will not install OpenCV, nor CUDA which is a requirement
-```
-pip install -r requirements.txt
-```
-
-4) If you are using ROS, for this environment to work, remember to comment from your ~/.bashrc file the line including your ROS distribution path:
+2) If you are using ROS, for this environment to work, remember to comment from your ~/.bashrc file the line including your ROS distribution path:
 #source /opt/ros/{indigo/kinetic}/setup.bash
 and just run the above command before running the gazebo server and clients:
 python -m gazebo.gazebo_server
@@ -52,13 +41,6 @@ python -m environments.gym_baxter.test_baxter_env
 
 # Troubleshooting
 
-Q: Installing OpenAI baselines:
-pip install -e .
-Command "/home/your_login/anaconda2/envs/py35/bin/python -u -c "import setuptools, tokenize;__file__='/tmp/pip-build-cobxuqz0/mujoco-py/setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\r\n', '\n');f.close();exec(compile(code, __file__, 'exec'))" install --record /tmp/pip-6crcjes7-record/install-record.txt --single-version-externally-managed --compile" failed with error code 1 in /tmp/pip-build-cobxuqz0/mujoco-py/
-
-A: Until this issue is fixed, remove mujoco from this list:
-https://github.com/openai/baselines/blob/master/setup.py#L13
-
 Q: Running tests:  Error while finding module specification for 'environments.test_env' (ImportError: No module named 'environments')
 
 A: Call it as a python module always at the root of the repo:
@@ -81,13 +63,6 @@ plt.show()
 
 3. Build OpenCV from source with gui support.
 
-Q: Gym's tensorflow:
-self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-TypeError: __init__() got an unexpected keyword argument 'dtype'
-
-A: See issue: https://github.com/openai/baselines/issues/286  Update Gym (see Gym's README):  (print(gym.__version__) must return > 0.95.)
-
-
 Q: GLib-GIO-Message: Using the 'memory' GSettings backend.  Your settings will not be saved or shared with other applications.
 
 A: Caused when calling cv2.imshow. https://github.com/conda-forge/glib-feedstock/issues/19  -> Add to your ~/.bashrc:
@@ -98,7 +73,7 @@ GIO_EXTRA_MODULES=/usr/lib/x86_64-linux-gnu/gio/modules/
 
 ```
 # Comment when not using ROS
-source /opt/ros/indigo/setup.bash
+source /opt/ros/kinetic/setup.bash
 source ~/catkin_ws/devel/setup.bash
 export GAZEBO_MODEL_PATH=$(rospack find arm_scenario_simulator)/models:$GAZEBO_MODEL_PATH
 

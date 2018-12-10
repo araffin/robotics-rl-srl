@@ -12,13 +12,22 @@ Gym Wrapper for baxter environment, more details in the dedicated README
 (environments/gym_baxter/README.md).
 
 .. warning::
-  
+
   ROS (and Gazebo + Baxter) only works with python2, whereas this repo (except the ROS scripts) works with python3.
   For Ros/Baxter installation, please look at the `Official Tutorial <http://sdk.rethinkrobotics.com/wiki/Workstation_Setup>`__.
   Also, ROS comes with its own version of OpenCV, so when running the
   python3 scripts, you need to deactivate ROS. In the same vein, if you
   use Anaconda, you need to disable it when you want to run ROS scripts
   (denoted as python 2 in the following instructions).
+
+0. Download ROS packages (ROS kinetic) and install them in your catkin workspace:
+
+-  `arm scenario experiments`_, branch “rl”
+-  `arm scenario simulator`_ branch kinetic-devel
+
+.. _arm scenario experiments: https://github.com/NataliaDiaz/arm_scenario_experiments/tree/rl
+.. _arm scenario simulator: https://github.com/araffin/arm_scenario_simulator
+
 
 1. Start ros nodes (Python 2):
 

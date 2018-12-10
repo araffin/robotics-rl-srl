@@ -43,7 +43,6 @@ dependencies:
   - libvpx=1.6.1=h888fd40_0
   - libxcb=1.12=hcd93eb1_4
   - libxml2=2.9.7=h26e45fe_0
-  - mkl=2018.0.1=h19d6760_4
   - ncurses=6.0=h9df7e31_2
   - numpy=1.14.0=py35h3dfced4_1
   - olefile=0.44=py35h2c86149_0
@@ -72,8 +71,8 @@ dependencies:
   - xz=5.2.3=h55aa19d_2
   - zlib=1.2.11=ha838bed_2
   - opencv3=3.1.0=py35_0
-  - pytorch-cpu=0.4.1
-  - torchvision-cpu=0.2.1=py35_1
+  - pytorch-cpu=1.0
+  - torchvision-cpu
 
   - pip:
     - absl-py==0.1.9
@@ -122,7 +121,7 @@ dependencies:
     - seaborn==0.8.1
     - scikit-learn==0.19.1
     - scipy==1.0.0
-    - stable-baselines==2.2.0
+    - stable-baselines==2.3.0
     - termcolor==1.1.0
     - torchfile==0.1.0
     - tornado==4.5.3
