@@ -164,7 +164,7 @@ def callback(_locals, _globals):
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
-    return False
+    return True
 
 
 def main():
