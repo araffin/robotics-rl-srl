@@ -1,10 +1,9 @@
-import pickle
 import os
+import pickle
 
-import numpy as np
 from stable_baselines import SAC
-from stable_baselines.sac.policies import MlpPolicy, CnnPolicy
 from stable_baselines.common.vec_env import VecNormalize, DummyVecEnv
+from stable_baselines.sac.policies import MlpPolicy, CnnPolicy
 
 from environments.utils import makeEnv
 from rl_baselines.base_classes import StableBaselinesRLObject
