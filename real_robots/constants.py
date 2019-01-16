@@ -8,9 +8,9 @@ from enum import Enum
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
 USING_REAL_BAXTER = False
-USING_ROBOBO = True
-
-assert not (USING_ROBOBO and USING_REAL_BAXTER), "You can only use one real robot at a time"
+USING_ROBOBO = False
+USING_OMNIROBOT = True
+assert not (USING_REAL_BAXTER + USING_ROBOBO + USING_OMNIROBOT), "You can only use one real robot at a time"
 # For compatibility with teleop_client
 Move = None
 DELTA_POS = 0
@@ -70,6 +70,29 @@ elif USING_ROBOBO:
         LEFT = 2
         RIGHT = 3
         STOP = 4
+elif USING_OMNIROBOT:
+    # ROS Topics
+    IMAGE_TOPIC = "/camera/image_raw"
+   
+    SECOND_CAM_TOPIC = None # not support currently
+   
+    # Max number of steps per episode
+    MAX_STEPS = 20
+    # Boundaries
+    MIN_X, MAX_X = -1, 1
+    MIN_Y, MAX_Y = -1, 1
+
+    #error threshold
+    DIST_TO_TARGET_THRESHOLD = 0.02
+
+    # Define the possible Moves
+    class Move(Enum):
+        FORWARD = 0
+        BACKWARD = 1
+        LEFT = 2
+        RIGHT = 3
+        STOP = 4
+
 
 # Gazebo
 else:
