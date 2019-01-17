@@ -140,7 +140,6 @@ class WrapFrameStack(VecFrameStack):
         """
         return self.venv.get_original_obs()
 
-
     def saveRunningAverage(self, path):
         """
         Hack to use VecNormalize
