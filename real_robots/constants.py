@@ -10,7 +10,7 @@ HOSTNAME = 'localhost'
 USING_REAL_BAXTER = False
 USING_ROBOBO = False
 USING_OMNIROBOT = True
-assert not (USING_REAL_BAXTER + USING_ROBOBO + USING_OMNIROBOT), "You can only use one real robot at a time"
+assert (int(USING_REAL_BAXTER) + int(USING_ROBOBO) + int(USING_OMNIROBOT) == 1), "You can only use one real robot at a time"
 # For compatibility with teleop_client
 Move = None
 DELTA_POS = 0
@@ -80,7 +80,7 @@ elif USING_OMNIROBOT:
     MAX_STEPS = 20
     # Boundaries
     MIN_X, MAX_X = -1, 1
-    MIN_Y, MAX_Y = -1, 1
+    MIN_Y, MAX_Y = -0.95, 0.95
 
     #error threshold
     DIST_TO_TARGET_THRESHOLD = 0.02

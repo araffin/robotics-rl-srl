@@ -5,6 +5,7 @@ import os
 import signal
 import time
 
+
 import numpy as np
 import rospy
 import zmq
@@ -13,6 +14,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Vector3, PoseStamped
 from std_msgs.msg import Bool
+
 
 from tf.transformations import euler_from_quaternion
 
@@ -61,25 +63,29 @@ class OmniRobot(object):
 
 
         # Distance for each step
-        self.step_distance = 0.1
+        self.step_distance = 0.07
 
-        self.visual_robot_sub = rospy.Subscriber("/visual_robot_pose", PoseStamped, self.visualRobotCallback)
-        self.visual_target_sub = rospy.Subscriber("/visual_target_pose", PoseStamped, self.visualTargetCallback)
+        self.visual_robot_sub = rospy.Subscriber("/visual_robot_pose", PoseStamped, self.visualRobotCallback, queue_size=10)
+        self.visual_target_sub = rospy.Subscriber("/visual_target_pose", PoseStamped, self.visualTargetCallback, queue_size=10)
          
-        self.pos_cmd_pub = rospy.Publisher("/position_command", Vector3)
-        self.move_finished_sub = rospy.Subscriber("/finished", Bool, self.moveFinishedCallback)
-        self.stop_signal_pub = rospy.Publisher("/stop", Bool)
-        self.reset_odom_pub = rospy.Publisher("/reset_odom", Vector3)
-        self.reset_signal_pub = rospy.Publisher("/reset", Bool)
+        self.pos_cmd_pub = rospy.Publisher("/position_commands", Vector3, queue_size=10)
+        self.move_finished_sub = rospy.Subscriber("/finished", Bool, self.moveFinishedCallback, queue_size=10)
+        self.stop_signal_pub = rospy.Publisher("/stop", Bool, queue_size=10)
+        self.reset_odom_pub = rospy.Publisher("/reset_odom", Vector3, queue_size=10)
+        self.reset_signal_pub = rospy.Publisher("/reset", Bool, queue_size=10)
         # status of moving
         self.move_finished = False
 
-    def setRobotCmd(self, x, y, yaw):
+    def setRobotCmdConstrained(self, x, y, yaw):
         self.robot_pos_cmd[0] = max(x, MIN_X)
         self.robot_pos_cmd[0] = min(x, MAX_X)
 
         self.robot_pos_cmd[1] = max(y, MIN_Y)
         self.robot_pos_cmd[1] = min(y, MAX_Y)
+        self.robot_yaw_cmd = self.normalizeAngle(yaw)
+    def setRobotCmd(self, x, y, yaw):
+        self.robot_pos_cmd[0] = x
+        self.robot_pos_cmd[1] = y
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
         
     def pubPosCmd(self):
@@ -93,6 +99,7 @@ class OmniRobot(object):
         msg.z = self.robot_yaw_cmd
         self.pos_cmd_pub.publish(msg)
         self.move_finished = False
+        print("move to x: {:.4f} y:{:.4f} yaw: {:.4f}".format(msg.x, msg.y, msg.z))
 
     def resetOdom(self, x, y, yaw):
         """
@@ -104,7 +111,7 @@ class OmniRobot(object):
         msg.z = yaw
         self.reset_odom_pub.publish(msg)
     
-    def reset(self, x, y, yaw):
+    def reset(self):
         """
         Publish the reset signal to robot (quit the stop state)
         The odometry will not be reset automatically
@@ -119,6 +126,7 @@ class OmniRobot(object):
         msg = Bool()
         msg.data = True
         self.stop_signal_pub.publish(msg)
+        self.move_finished = True
 
     def visualRobotCallback(self, pose_stamped_msg):
         """
@@ -253,18 +261,20 @@ episode_folder = None
 
 omni_robot = OmniRobot(0, 0, 0) # yaw is in rad
 omni_robot.stop() # after stop, the robot need to be reset
-omni_robot.reset(0, 0, 0)
+omni_robot.resetOdom(0, 0, 0)
+omni_robot.reset()
 
-while not should_exit[0]:
+while not rospy.is_shutdown():
+    print("wait for new command")
     msg = socket.recv_json()
     command = msg.get('command', '')
 
     if command == 'reset':
-        print('Environment reset')
+        print('Environment reset, choose random position')
         action = None
         episode_idx += 1
         episode_step = 0
-
+        omni_robot.reset()
         if SECOND_CAM_TOPIC is not None:
             assert NotImplementedError
             episode_folder = "record_{:03d}".format(episode_idx)
@@ -313,13 +323,21 @@ while not should_exit[0]:
         random_init_y = np.random.random_sample() * (MAX_Y - MIN_Y) + MIN_Y
         
         omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
+        omni_robot.pubPosCmd()
     else:
         print("Unsupported action")
 
     # wait for robot to finish the action, timeout 20s
     for i in range(20):
+        readable_list, _, _ = zmq.select([socket], [], [], 0)
+
+        if len(readable_list) > 0:
+            print("New command incomes, ignore the current command")
+            continue
         if omni_robot.move_finished:
+            print("action done")
             break
+        
         elif i == 19:
             print("Error: timeout for action finished signal")  
             exit()
@@ -335,7 +353,7 @@ while not should_exit[0]:
     # Consider that we reached the target if we are close enough
     # we detect that computing the difference in area between TARGET_INITIAL_AREA
     # current detected area of the target
-    if np.linalg.norm(np.array(omni_robot.robot_pos - omni_robot.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
+    if np.linalg.norm(np.array(omni_robot.robot_pos) - np.array(omni_robot.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
         reward = 1
         print("Target reached!")
 
