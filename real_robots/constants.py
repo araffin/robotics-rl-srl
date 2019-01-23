@@ -77,10 +77,10 @@ elif USING_OMNIROBOT:
     SECOND_CAM_TOPIC = None # not support currently
    
     # Max number of steps per episode
-    MAX_STEPS = 20
+    MAX_STEPS = 50
     # Boundaries
-    MIN_X, MAX_X = -1, 1
-    MIN_Y, MAX_Y = -0.95, 0.95
+    MIN_X, MAX_X = -0.66, 0.65
+    MIN_Y, MAX_Y = -0.66, 0.65
 
     #error threshold
     DIST_TO_TARGET_THRESHOLD = 0.1

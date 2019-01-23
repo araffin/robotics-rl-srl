@@ -68,6 +68,7 @@ class OmniRobot(object):
         # Distance for each step
         self.step_distance = 0.07
 
+
         self.visual_robot_sub = rospy.Subscriber("/visual_robot_pose", PoseStamped, self.visualRobotCallback, queue_size=10)
         self.visual_target_sub = rospy.Subscriber("/visual_target_pose", PoseStamped, self.visualTargetCallback, queue_size=10)
          
@@ -80,6 +81,7 @@ class OmniRobot(object):
 
         rospy.sleep(1) #known issues, without sleep 1 second, publishers could not been setup
                         #https://answers.ros.org/question/9665/test-for-when-a-rospy-publisher-become-available/?answer=14125#post-id-14125
+        
 
     def setRobotCmdConstrained(self, x, y, yaw):
         self.robot_pos_cmd[0] = max(x, MIN_X)
@@ -147,7 +149,8 @@ class OmniRobot(object):
         Get the new updated position of robot from camera
         :param pose_stamped_msg: (PoseStamped ROS message)
         """
-        if self.target_pos_changed and self.move_finished:
+        
+        if self.target_pos_changed:
             self.target_pos[0] = pose_stamped_msg.pose.position.x
             self.target_pos[1] = pose_stamped_msg.pose.position.y
             self.target_yaw = euler_from_quaternion([pose_stamped_msg.pose.orientation.x, pose_stamped_msg.pose.orientation.y,
@@ -209,14 +212,27 @@ class ImageCallback(object):
     def __init__(self):
         super(ImageCallback, self).__init__()
         self.valid_img = None
+        self.valid_box = None
+        self.first_msg = True
 
     def imageCallback(self, msg):
-        try:
+        try:    
             # Convert your ROS Image message to OpenCV
             cv2_img = bridge.imgmsg_to_cv2(msg, "rgb8")
-            self.valid_img = cv2_img
+            
+            if self.first_msg:
+                shape = cv2_img.shape
+                min_length = min(shape[0], shape[1])
+                left_margin = int((shape[0] - min_length) / 2)
+                up_margin = int((shape[1] - min_length) / 2)
+                self.valid_box = [left_margin, left_margin + min_length, up_margin, up_margin + min_length]
+                print("crop each image to a square image, cropped size: {}x{}".format(min_length, min_length))
+                self.first_msg = False
+            self.valid_img = cv2_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
+
         except CvBridgeError as e:
             print("CvBridgeError:", e)
+
 
 
 def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam"):
@@ -230,6 +246,17 @@ def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam
     image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     cv2.imwrite("srl_zoo/data/{}".format(image_path), im)
+
+def waitTargetUpdate(omni_robot, timeout):
+    omni_robot.target_pos_changed = True
+    time = 0.0 #second
+    while time < timeout:
+        if not omni_robot.target_pos_changed: #updated
+            return True
+        else:
+            rospy.sleep(0.1)
+            time += 0.1
+    return False
 
 
 
@@ -283,6 +310,17 @@ if __name__ == '__main__':
             episode_idx += 1
             episode_step = 0
             omni_robot.reset()
+            
+            while True: # check the new target can be seen
+                
+                raw_input("please set the target position, then press 'enter' !")
+                
+                if waitTargetUpdate(omni_robot, timeout=0.5):
+                    break
+                else: 
+                    print("Can't see the target, please move it into the FOV!")
+                   
+            
             if SECOND_CAM_TOPIC is not None:
                 assert NotImplementedError
                 episode_folder = "record_{:03d}".format(episode_idx)
@@ -311,12 +349,12 @@ if __name__ == '__main__':
         elif action == Move.STOP:
             omni_robot.stop()
         elif action == Move.RIGHT:
-            if omni_robot.robot_pos[1] < MAX_Y:
+            if omni_robot.robot_pos[1] > MIN_Y:
                 omni_robot.right()
             else:
                 has_bumped = True
         elif action == Move.LEFT:
-            if omni_robot.robot_pos[1] > MIN_Y:
+            if omni_robot.robot_pos[1] < MAX_Y:
                 omni_robot.left()
             else:
                 has_bumped = True
@@ -331,7 +369,6 @@ if __name__ == '__main__':
             random_init_y = np.random.random_sample() * (MAX_Y - MIN_Y) + MIN_Y
             
             omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
-            omni_robot.target_pos_changed = True
             omni_robot.pubPosCmd()
             
         else:
