@@ -2,7 +2,7 @@ import time
 
 import environments.omnirobot_gym.omnirobot_env as omnirobot_env
 
-env = omnirobot_env.OmniRobotEnv(renders=False, is_discrete=True, log_folder="robobo_real_2", record_data=True)
+env = omnirobot_env.OmniRobotEnv(renders=False, is_discrete=True, log_folder="omnirobot_real", record_data=True)
 timesteps = 500  # must be greater than MAX_STEPS
 episodes = 20
 env.seed(1)
