@@ -83,7 +83,7 @@ elif USING_OMNIROBOT:
     MIN_Y, MAX_Y = -0.8, 0.8
 
     #error threshold
-    DIST_TO_TARGET_THRESHOLD = 0.1
+    DIST_TO_TARGET_THRESHOLD = 0.2
 
     # Define the possible Moves
     class Move(Enum):

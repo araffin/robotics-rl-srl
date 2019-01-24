@@ -313,16 +313,7 @@ if __name__ == '__main__':
             episode_step = 0
             omni_robot.reset()
             
-            while True: # check the new target can be seen
-                
-                raw_input("please set the target position, then press 'enter' !")
-                
-                if waitTargetUpdate(omni_robot, timeout=0.5):
-                    break
-                else: 
-                    print("Can't see the target, please move it into the boundary!")
-                   
-            
+
             if SECOND_CAM_TOPIC is not None:
                 assert NotImplementedError
                 episode_folder = "record_{:03d}".format(episode_idx)
@@ -372,6 +363,17 @@ if __name__ == '__main__':
             
             omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
             omni_robot.pubPosCmd()
+
+            while True: # check the new target can be seen
+                
+                raw_input("please set the target position, then press 'enter' !")
+                
+                if waitTargetUpdate(omni_robot, timeout=0.5):
+                    break
+                else: 
+                    print("Can't see the target, please move it into the boundary!")
+                   
+            
             
         else:
             print("Unsupported action")
