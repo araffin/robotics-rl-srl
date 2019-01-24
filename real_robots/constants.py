@@ -79,8 +79,8 @@ elif USING_OMNIROBOT:
     # Max number of steps per episode
     MAX_STEPS = 50
     # Boundaries
-    MIN_X, MAX_X = -0.66, 0.65
-    MIN_Y, MAX_Y = -0.66, 0.65
+    MIN_X, MAX_X = -0.8, 0.8
+    MIN_Y, MAX_Y = -0.8, 0.8
 
     #error threshold
     DIST_TO_TARGET_THRESHOLD = 0.1

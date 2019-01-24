@@ -151,11 +151,13 @@ class OmniRobot(object):
         """
         
         if self.target_pos_changed:
-            self.target_pos[0] = pose_stamped_msg.pose.position.x
-            self.target_pos[1] = pose_stamped_msg.pose.position.y
-            self.target_yaw = euler_from_quaternion([pose_stamped_msg.pose.orientation.x, pose_stamped_msg.pose.orientation.y,
-                                                    pose_stamped_msg.pose.orientation.z, pose_stamped_msg.pose.orientation.w])[2]
-            self.target_pos_changed = False
+            if pose_stamped_msg.pose.position.x < MAX_X and pose_stamped_msg.pose.position.x > MIN_X  \
+                and pose_stamped_msg.pose.position.y > MIN_Y and pose_stamped_msg.pose.position.y < MAX_Y:
+                self.target_pos[0] = pose_stamped_msg.pose.position.x
+                self.target_pos[1] = pose_stamped_msg.pose.position.y
+                self.target_yaw = euler_from_quaternion([pose_stamped_msg.pose.orientation.x, pose_stamped_msg.pose.orientation.y,
+                                                        pose_stamped_msg.pose.orientation.z, pose_stamped_msg.pose.orientation.w])[2]
+                self.target_pos_changed = False
 
 
     
@@ -223,9 +225,9 @@ class ImageCallback(object):
             if self.first_msg:
                 shape = cv2_img.shape
                 min_length = min(shape[0], shape[1])
-                left_margin = int((shape[0] - min_length) / 2)
-                up_margin = int((shape[1] - min_length) / 2)
-                self.valid_box = [left_margin, left_margin + min_length, up_margin, up_margin + min_length]
+                up_margin = int((shape[0] - min_length) / 2)  # row
+                left_margin = int((shape[1] - min_length) / 2)  # col
+                self.valid_box = [up_margin, up_margin + min_length, left_margin, left_margin + min_length]
                 print("crop each image to a square image, cropped size: {}x{}".format(min_length, min_length))
                 self.first_msg = False
             self.valid_img = cv2_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
@@ -250,7 +252,7 @@ def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam
 def waitTargetUpdate(omni_robot, timeout):
     omni_robot.target_pos_changed = True
     time = 0.0 #second
-    while time < timeout:
+    while time < timeout and not rospy.is_shutdown() :
         if not omni_robot.target_pos_changed: #updated
             return True
         else:
@@ -318,7 +320,7 @@ if __name__ == '__main__':
                 if waitTargetUpdate(omni_robot, timeout=0.5):
                     break
                 else: 
-                    print("Can't see the target, please move it into the FOV!")
+                    print("Can't see the target, please move it into the boundary!")
                    
             
             if SECOND_CAM_TOPIC is not None:
