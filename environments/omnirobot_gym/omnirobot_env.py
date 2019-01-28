@@ -15,8 +15,8 @@ from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
-RENDER_HEIGHT = 224
-RENDER_WIDTH = 224
+RENDER_HEIGHT = 480
+RENDER_WIDTH = 480
 RELATIVE_POS = False
 
 N_DISCRETE_ACTIONS = 4

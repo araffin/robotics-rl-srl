@@ -24,6 +24,8 @@ from utils import sendMatrix
 
 assert USING_OMNIROBOT, "Please set USING_OMNIROBOT to True in real_robots/constants.py"
 
+NO_TARGET_MODE = True
+
 bridge = CvBridge()
 should_exit = [False]
 
@@ -143,6 +145,13 @@ class OmniRobot(object):
         self.robot_yaw = euler_from_quaternion([pose_stamped_msg.pose.orientation.x, pose_stamped_msg.pose.orientation.y,
                                                 pose_stamped_msg.pose.orientation.z, pose_stamped_msg.pose.orientation.w])[2]
 
+        if NO_TARGET_MODE and self.target_pos_changed:
+            #simulate the target's position update
+            self.target_pos[0] = 0.0
+            self.target_pos[1] = 0.0
+            self.target_yaw = 0.0
+            self.target_pos_changed = False
+
     def visualTargetCallback(self, pose_stamped_msg):
         """
         Callback for ROS topic
@@ -228,6 +237,7 @@ class ImageCallback(object):
                 up_margin = int((shape[0] - min_length) / 2)  # row
                 left_margin = int((shape[1] - min_length) / 2)  # col
                 self.valid_box = [up_margin, up_margin + min_length, left_margin, left_margin + min_length]
+                print("origin size: {}x{}".format(shape[0],shape[1]))
                 print("crop each image to a square image, cropped size: {}x{}".format(min_length, min_length))
                 self.first_msg = False
             self.valid_img = cv2_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
@@ -265,7 +275,9 @@ def waitTargetUpdate(omni_robot, timeout):
 if __name__ == '__main__':
 
     rospy.init_node('omni_robot_server', anonymous=True)
-
+    # warning for no target mode
+    if NO_TARGET_MODE:
+        rospy.logwarn("ATTENTION: This script is running under NO TARGET mode!!!")
     # Connect to ROS Topics
     if IMAGE_TOPIC is not None:
         image_cb_wrapper = ImageCallback()
@@ -363,10 +375,10 @@ if __name__ == '__main__':
             
             omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
             omni_robot.pubPosCmd()
-
+            
             while True: # check the new target can be seen
-                
-                raw_input("please set the target position, then press 'enter' !")
+                if not NO_TARGET_MODE:
+                    raw_input("please set the target position, then press 'enter' !")
                 
                 if waitTargetUpdate(omni_robot, timeout=0.5):
                     break
