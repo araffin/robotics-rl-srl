@@ -14,6 +14,9 @@ def hammingDistance(s1, s2):
     return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
 
 class MakerFinder():
+    '''
+    Find the exact physical position of marker in the coordinate of camera.
+    '''
     def __init__(self, camera_info_path):
         self.min_area = 70
         self.marker_code = {}
@@ -26,6 +29,7 @@ class MakerFinder():
                 self.distortion_coefficients = np.array(contents['distortion_coefficients']['data'])
             except yaml.YAMLError as exc:
                 print(exc)
+        self.cropped_size = np.min(self.origin_size) # size after being cropped
     def setMarkerCode(self, marker_id, marker_code, real_length):
         self.marker_code[marker_id] = (np.zeros((4,*marker_code.shape[0:2])))
         
@@ -67,7 +71,7 @@ class MakerFinder():
         return ret
     
     def labelSquares(self, img_input, visualise:bool):
-        img = cv2.resize(img_input, (480,480))
+        img = cv2.resize(img_input, (self.cropped_size,self.cropped_size))
         self.cropped_margin = (self.origin_size - np.array(img.shape[0:2]))/2.0
         self.gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         self.edge = cv2.adaptiveThreshold(self.gray,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
@@ -138,12 +142,11 @@ class MakerFinder():
 
             # Calculated four intersection points
             for j in range(4):
-                intc = self.intersection(fitted_lines[j,:],fitted_lines[(j+1)%4,:]);
-                self.blob_corners[i,j,:] = intc;
+                intc = self.intersection(fitted_lines[j,:],fitted_lines[(j+1)%4,:])
+                self.blob_corners[i,j,:] = intc
             if visualise:
                 for j in range(4):
-                    intc = tuple(self.blob_corners[i,j,:]);
-                    print(intc)
+                    intc = tuple(self.blob_corners[i,j,:])
                     if j == 0:
                         cv2.circle(img, intc, 5, (255, 255, 255))
                     if (j == 1):
@@ -159,7 +162,6 @@ class MakerFinder():
         num_step =9
         code = np.zeros((num_step,num_step), np.uint8)
         step = int(transformed_img.shape[0]/num_step)
-        print(int(step))
         for i in range(num_step):
             for j in range(num_step):
                 if np.average(transformed_img[i*step:i*step+step,j*step:j*step+step]) < 100:
@@ -178,7 +180,7 @@ class MakerFinder():
         self.marker_img = img
     def findMarker(self, marker_id, visualise=False):
         
-        
+        print("find marker_id: ", marker_id)
         for i_square in range(self.blob_corners.shape[0]):
             # create marker's mask
             self.marker_mask = np.zeros(self.gray.shape[0:3],np.uint8)
@@ -207,8 +209,6 @@ class MakerFinder():
                 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
                 self.blob_corners[i_square,:,:] = cv2.cornerSubPix(self.gray,self.blob_corners[i_square,:,:],(11,11),(-1,-1),criteria)
                 # Find the rotation and translation vectors. (camera to tag)
-                print(self.marker_real_corners.shape)
-                print(self.blob_corners[i_square,:,:].shape)
                 print("margin",self.cropped_margin)
                 _, rot_vec, trans_vec = cv2.solvePnP(self.marker_real_corners, self.blob_corners[i_square,:,:]+ self.cropped_margin, \
                                                          self.camera_matrix.astype(np.float32), self.distortion_coefficients.astype(np.float32))
@@ -224,26 +224,27 @@ class MakerFinder():
                                                     [0,self.marker_img.shape[1]]]).reshape(-1,1,2)
                     
                     H , _ = cv2.findHomography(marker_img_corner,self.blob_corners[i_square,:,:] + self.cropped_margin)
-                    print(self.blob_corners[i_square,:,:] + self.cropped_margin)
-                    print(self.blob_corners[i_square,:,:])
                     reconst = cv2.warpPerspective(self.marker_img,H,self.gray.shape)
                     cv2.imshow('frame', reconst)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
                 return tag_trans_coord_cam, tag_rot_coord_cam
+        assert True, "Not Found"
 
     def getMarkerPose(self, img, marker_ids, visualise=False):
         self.labelSquares(img,visualise)
-        if marker_ids is list:
-            pos_array = []
-            rot_array = []
+        if isinstance(marker_ids, list):
+            pos_dict = {}
+            rot_dict = {}   
             for i in marker_ids:
-                pos, rot = self.findMarker(marker_id)
-                pos_array.append(pos)
-                rot_array.append(rot)
-            return pos_array, rot_array
+                print("element", i)
+                pos, rot = self.findMarker(i)
+                print("element", i)
+                pos_dict[i] = pos
+                rot_dict[i] = rot
+            return pos_dict, rot_dict
         else:
-            return self.findMarker(marker_id)
+            return self.findMarker(marker_ids)
 
 def transformPosCamToGround(pos_coord_cam):
     pos_coord_ground = pos_coord_cam

@@ -183,3 +183,16 @@ python -m visdom.server
 ```
 python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --algo ppo2 --env RoboboGymEnv-v0
 ```
+
+
+### Working on Omnirobot Simulator
+This simulator uses photoshop tricks to make realistic image of environment.
+#### Known issues
+- error: `No module named 'scipy.spatial.transform'`, use `pip3 install scipy==1.2` to solve it
+
+#### Version 1
+- Launch simulator server
+  - Change camera info file's path in omnirobot_simulator_server.py (The camera info file is the file generated from ROS package 'camera_calibration')
+  - cd to `real_robots` and then run `python ./omnirobot_simulator_server.py` 
+- Recording data
+  - run `python -m environments.omnirobot_gym.test_env`
