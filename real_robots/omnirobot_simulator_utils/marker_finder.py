@@ -29,7 +29,7 @@ class MakerFinder():
                 self.distortion_coefficients = np.array(contents['distortion_coefficients']['data'])
             except yaml.YAMLError as exc:
                 print(exc)
-        self.cropped_size = np.min(self.origin_size) # size after being cropped
+        self.marker_img = None
     def setMarkerCode(self, marker_id, marker_code, real_length):
         self.marker_code[marker_id] = (np.zeros((4,*marker_code.shape[0:2])))
         
@@ -37,10 +37,10 @@ class MakerFinder():
         for i in range(1,4):
             self.marker_code[marker_id][i,:,:] = rotateMatrix90(self.marker_code[marker_id][i-1,:,:])
         self.marker_rows, self.marker_cols = 90, 90
-        self.marker_square_pts = np.float32([[0,0],[self.marker_rows,0], [self.marker_rows,self.marker_cols],[0,self.marker_cols]\
+        self.marker_square_pts = np.float32([[0,0],[0,self.marker_cols],[self.marker_rows,self.marker_cols], [self.marker_rows,0]\
                                             ]).reshape(-1,1,2)
-        self.marker_real_corners =  np.float32([[0,0,0],[real_length,0,0], [real_length,real_length,0],\
-                                                [0,real_length,0]]) - np.float32([real_length/2.0, real_length/2.0,0])
+        self.marker_real_corners =  np.float32([[0,0,0], [0,real_length,0], [real_length,real_length,0],\
+                                                [real_length,0,0]]) - np.float32([real_length/2.0, real_length/2.0,0])
         self.marker_real_corners = self.marker_real_corners.reshape(-1,1,3)
     def intersection(self, l1, l2):
         vx = l1[0]
@@ -70,9 +70,7 @@ class MakerFinder():
                 ret = False
         return ret
     
-    def labelSquares(self, img_input, visualise:bool):
-        img = cv2.resize(img_input, (self.cropped_size,self.cropped_size))
-        self.cropped_margin = (self.origin_size - np.array(img.shape[0:2]))/2.0
+    def labelSquares(self, img, visualise:bool):
         self.gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         self.edge = cv2.adaptiveThreshold(self.gray,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
                 cv2.THRESH_BINARY_INV,31,5)
@@ -191,6 +189,7 @@ class MakerFinder():
             marker_transformed = cv2.warpPerspective(self.edge, H, self.gray.shape[0:2])[0:self.marker_rows, 0:self.marker_cols]
             if visualise:
                 cv2.imshow('frame', marker_transformed)
+                cv2.imshow('edge', self.edge)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
             code = self.decode(marker_transformed)
@@ -209,27 +208,26 @@ class MakerFinder():
                 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
                 self.blob_corners[i_square,:,:] = cv2.cornerSubPix(self.gray,self.blob_corners[i_square,:,:],(11,11),(-1,-1),criteria)
                 # Find the rotation and translation vectors. (camera to tag)
-                print("margin",self.cropped_margin)
-                _, rot_vec, trans_vec = cv2.solvePnP(self.marker_real_corners, self.blob_corners[i_square,:,:]+ self.cropped_margin, \
+                retval, rot_vec, trans_vec = cv2.solvePnP(self.marker_real_corners, self.blob_corners[i_square,:,:], \
                                                          self.camera_matrix.astype(np.float32), self.distortion_coefficients.astype(np.float32))
+               
                 rot_mat,_ = cv2.Rodrigues(rot_vec)
                 # reverse the rotation and translation (tag to camera)
                 tag_trans_coord_cam = - trans_vec
                 tag_rot_coord_cam = np.linalg.inv(rot_mat)
                 
-                
-                if visualise:
+                if visualise and self.marker_img is not None:
                     marker_img_corner = np.float32([[0,0], [self.marker_img.shape[0],0], \
                                                     [self.marker_img.shape[0],self.marker_img.shape[1]],\
                                                     [0,self.marker_img.shape[1]]]).reshape(-1,1,2)
                     
-                    H , _ = cv2.findHomography(marker_img_corner,self.blob_corners[i_square,:,:] + self.cropped_margin)
+                    H , _ = cv2.findHomography(marker_img_corner,self.blob_corners[i_square,:,:])
                     reconst = cv2.warpPerspective(self.marker_img,H,self.gray.shape)
                     cv2.imshow('frame', reconst)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
-                return tag_trans_coord_cam, tag_rot_coord_cam
-        assert True, "Not Found"
+                return (tag_trans_coord_cam, tag_rot_coord_cam)
+        raise ValueError("Not Found Tag")
 
     def getMarkerPose(self, img, marker_ids, visualise=False):
         self.labelSquares(img,visualise)
@@ -237,14 +235,12 @@ class MakerFinder():
             pos_dict = {}
             rot_dict = {}   
             for i in marker_ids:
-                print("element", i)
-                pos, rot = self.findMarker(i)
-                print("element", i)
+                pos, rot = self.findMarker(i,visualise)
                 pos_dict[i] = pos
                 rot_dict[i] = rot
             return pos_dict, rot_dict
         else:
-            return self.findMarker(marker_ids)
+            return self.findMarker(marker_ids, visualise)
 
 def transformPosCamToGround(pos_coord_cam):
     pos_coord_ground = pos_coord_cam
@@ -258,7 +254,10 @@ if __name__ == "__main__":
     # example, find the markers in the observation image, and get it's position in the ground
     camera_info_path = "/home/gaspard/Documents/ros_omnirobot/catkin_ws/src/omnirobot-dream/omnirobot_remote/cam_calib_info.yaml"
     path = "/home/gaspard/Documents/ros_omnirobot/robotics-rl-srl-omnirobot/data/omnirobot_real_20190125_155902/"
-    img = cv2.imread(join(path,"record_008/frame000015.jpg"))
+    cropped_img = cv2.imread(join(path,"record_008/frame000015.jpg"))
+
+    img = np.zeros((480, 640,3), np.uint8)
+    img[0:480,80:560,:] = cv2.resize(cropped_img, (480,480))
     robot_tag_img = cv2.imread("robot_tag.png")
     robot_tag_code = np.array([
     [0, 0, 0, 0, 0, 0, 0, 0, 0],
