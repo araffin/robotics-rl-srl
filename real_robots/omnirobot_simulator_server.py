@@ -286,7 +286,7 @@ if __name__ == '__main__':
     episode_folder = None
 
     back_ground_img = cv2.imread("omnirobot_simulator_utils/back_ground.jpg")
-    camera_info_path = "/home/gaspard/Documents/ros_omnirobot/catkin_ws/src/omnirobot-dream/omnirobot_remote/cam_calib_info.yaml"
+    camera_info_path = "omnirobot_simulator_utils/cam_calib_info.yaml"
     robot_marker_path = "omnirobot_simulator_utils/robot_margin4_pixel.png"
     target_marker_path = "omnirobot_simulator_utils/target_margin4_pixel.png"
     omni_robot = OmniRobotSimulator(0, 0, 0, [640,480],[480,480],back_ground_img=back_ground_img, camera_info_path=camera_info_path,\
