@@ -38,8 +38,9 @@ Main Features
 
 .. _Stable Baselines: https://github.com/hill-a/stable-baselines
 
-Related paper:
+Related papers:
 
+- "Decoupling feature extraction from policy learning: assessing benefits of state representation learning in goal based robotics" (Raffin et al. 2018) https://openreview.net/forum?id=Hkl-di09FQ
 -  "S-RL Toolbox: Environments, Datasets and Evaluation Metrics for
    State Representation Learning" (Raffin et al., 2018)
    `https://arxiv.org/abs/1809.09369 <https://arxiv.org/abs/1809.09369>`__

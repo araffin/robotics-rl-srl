@@ -61,8 +61,10 @@ def latestPath(path):
     :param path: path to the log folder (defined in srl_model.yaml) (str)
     :return: path to latest learned model in the same dataset folder (str)
     """
-    return max([path + "/" + d for d in os.listdir(path) if not d.startswith('baselines') and os.path.isdir(path + "/" + d)],
-                key=os.path.getmtime) + '/srl_model.pth'
+    return max(
+        [path + "/" + d for d in os.listdir(path) if not d.startswith('baselines') and os.path.isdir(path + "/" + d)],
+        key=os.path.getmtime) + '/srl_model.pth'
+
 
 def configureEnvAndLogFolder(args, env_kwargs, all_models):
     """
@@ -164,7 +166,7 @@ def callback(_locals, _globals):
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
     n_steps += 1
-    return False
+    return True
 
 
 def main():
@@ -199,7 +201,8 @@ def main():
     parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
                         help='Set the location of the SRL model path configuration.')
     parser.add_argument('--hyperparam', type=str, nargs='+', default=[])
-    parser.add_argument('--min-episodes-save', type=int, default=100, help="Min number of episodes before saving best model")
+    parser.add_argument('--min-episodes-save', type=int, default=100,
+                        help="Min number of episodes before saving best model")
     parser.add_argument('--latest', action='store_true', default=False,
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
 
