@@ -135,14 +135,15 @@ class OmniRobotEnv(SRLGymEnv):
         """
         assert self.action_space.contains(action)
         # Convert int action to action in (x,y,z) space
-
+        
         # serialize the action
         if isinstance(action, np.ndarray):
             self.action = action.tolist()
         elif hasattr(action, 'dtype'): # convert numpy type to python type
             self.action = action.item()
-
-        
+        else:
+            self.action = action
+            
         self._env_step_counter += 1
 
         # Send the action to the server
