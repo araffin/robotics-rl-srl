@@ -58,13 +58,15 @@ class OmniRobotEnv(SRLGymEnv):
     """
 
     def __init__(self, renders=False, is_discrete=True, log_folder="omnirobot_log_folder", state_dim=-1,
-                 learn_states=False, srl_model="raw_pixels", record_data=False,
-                 shape_reward=False, env_rank=0, srl_pipe=None):
+                 learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1,
+                 shape_reward=False, env_rank=0, srl_pipe=None,**_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                         relative_pos=RELATIVE_POS,
                                         env_rank=env_rank,
                                         srl_pipe=srl_pipe)
+        if action_repeat != 1:
+            raise NotImplementedError
         self.n_contacts = 0
         use_ground_truth = srl_model == 'ground_truth'
         use_srl = srl_model != 'raw_pixels'
@@ -133,7 +135,14 @@ class OmniRobotEnv(SRLGymEnv):
         """
         assert self.action_space.contains(action)
         # Convert int action to action in (x,y,z) space
-        self.action = action
+
+        # serialize the action
+        if isinstance(action, np.ndarray):
+            self.action = action.tolist()
+        elif hasattr(action, 'dtype'): # convert numpy type to python type
+            self.action = action.item()
+
+        
         self._env_step_counter += 1
 
         # Send the action to the server
