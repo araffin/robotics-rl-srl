@@ -21,16 +21,16 @@ episodes = 500
 env.seed(1)
 i = 0
 
-print('Starting episodes..., 20%_action use torward target policy, 80%_action use random policy ')
+print('Starting episodes..., "30%_action use torward target policy, 70%_action use random policy ')
 start_time = time.time()
 try:
     for _ in range(episodes):
         observation = env.reset()
         for t in range(timesteps):
-                if np.random.rand() < 0.8:
+                if np.random.rand() < 0.7:
                     action = env.action_space.sample()
                 else:
-                    action = actionPolicyTorwardTarget(env.robot_pos, env.target_pos)            
+                    action = actionPolicyTorwardTarget(env.robot_pos, env.target_pos)     
                 observation, reward, done, info = env.step(action)
                 env.render()  # render() requires first the observation to be obtained
                 if done:

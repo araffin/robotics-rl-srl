@@ -49,7 +49,7 @@ registered_env = {
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),
     "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
-    "OmnirobotEnv-v0":                (OmniRobotEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
+    "OmnirobotEnv-v0":                (OmniRobotEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
 }
 
 # Environments only available when running in a terminal with X (hence only imported when available):

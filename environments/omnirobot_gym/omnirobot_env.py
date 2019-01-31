@@ -9,15 +9,18 @@ from gym import spaces
 import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
+import subprocess
 
 from environments.srl_env import SRLGymEnv
-from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS
+from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 480
 RENDER_WIDTH = 480
 RELATIVE_POS = False
+
+
 
 N_DISCRETE_ACTIONS = 4
 
@@ -67,6 +70,7 @@ class OmniRobotEnv(SRLGymEnv):
                                         srl_pipe=srl_pipe)
         if action_repeat != 1:
             raise NotImplementedError
+        self.server_port = SERVER_PORT + env_rank
         self.n_contacts = 0
         use_ground_truth = srl_model == 'ground_truth'
         use_srl = srl_model != 'raw_pixels'
@@ -113,12 +117,18 @@ class OmniRobotEnv(SRLGymEnv):
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PAIR)
-        self.socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
+        self.socket.connect("tcp://{}:{}".format(HOSTNAME, self.server_port))
 
         # note: if takes too long, run first client, then server
         print("Waiting for server connection...")
+
+        if USING_OMNIROBOT_SIMULATOR:
+            print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
+            self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", "--output-size", "224", "224" ,"--port", str(self.server_port)], stdout=subprocess.PIPE)
+            # hide the output of server
         msg = self.socket.recv_json()
-        print("Connected to server (received message: {})".format(msg))
+        print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
+
 
         self.action = [0, 0]
         self.reward = 0
@@ -145,7 +155,7 @@ class OmniRobotEnv(SRLGymEnv):
             self.action = action
             
         self._env_step_counter += 1
-
+        
         # Send the action to the server
         self.socket.send_json({"command": "action", "action": self.action})
 

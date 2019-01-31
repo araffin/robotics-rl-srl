@@ -9,8 +9,9 @@ SERVER_PORT = 7777
 HOSTNAME = 'localhost'
 USING_REAL_BAXTER = False
 USING_ROBOBO = False
-USING_OMNIROBOT = True
-assert (int(USING_REAL_BAXTER) + int(USING_ROBOBO) + int(USING_OMNIROBOT) == 1), "You can only use one real robot at a time"
+USING_OMNIROBOT = False
+USING_OMNIROBOT_SIMULATOR = True
+assert (int(USING_REAL_BAXTER) + int(USING_ROBOBO) + int(USING_OMNIROBOT) + int(USING_OMNIROBOT_SIMULATOR)== 1), "You can only use one real robot at a time"
 # For compatibility with teleop_client
 Move = None
 DELTA_POS = 0
@@ -42,6 +43,7 @@ if USING_REAL_BAXTER:
     SECOND_CAM_TOPIC = "/camera/rgb/image_raw"
     DATA_FOLDER_SECOND_CAM = "real_baxter_second_cam"
 elif USING_ROBOBO:
+
     # ROS Topics
     IMAGE_TOPIC = "/camera/rgb/image_raw"
     # SECOND_CAM_TOPIC = "/camera/image_repub"
@@ -70,14 +72,16 @@ elif USING_ROBOBO:
         LEFT = 2
         RIGHT = 3
         STOP = 4
-elif USING_OMNIROBOT:
+elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
+
+
     # ROS Topics
     IMAGE_TOPIC = "/camera/image_raw"
    
     SECOND_CAM_TOPIC = None # not support currently
    
     # Max number of steps per episode
-    MAX_STEPS = 50
+    MAX_STEPS = 100
     # Boundaries
     MIN_X, MAX_X = -0.8, 0.8
     MIN_Y, MAX_Y = -0.8, 0.8
