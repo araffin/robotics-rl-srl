@@ -387,8 +387,8 @@ if __name__ == '__main__':
             omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
             
             # target reset
-            random_init_x = np.random.random_sample() * (MAX_X -MIN_X) + MIN_X
-            random_init_y = np.random.random_sample() * (MAX_Y - MIN_Y) + MIN_Y
+            random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
+            random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
             omni_robot.setTargetCmd(random_init_x, random_init_y, 0)
             print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
 

@@ -160,8 +160,8 @@ class OmniRobot(object):
         """
         
         if self.target_pos_changed:
-            if pose_stamped_msg.pose.position.x < MAX_X and pose_stamped_msg.pose.position.x > MIN_X  \
-                and pose_stamped_msg.pose.position.y > MIN_Y and pose_stamped_msg.pose.position.y < MAX_Y:
+            if pose_stamped_msg.pose.position.x < TARGET_MAX_X and pose_stamped_msg.pose.position.x > TARGET_MIN_X  \
+                and pose_stamped_msg.pose.position.y > TARGET_MIN_Y and pose_stamped_msg.pose.position.y < TARGET_MAX_Y:
                 self.target_pos[0] = pose_stamped_msg.pose.position.x
                 self.target_pos[1] = pose_stamped_msg.pose.position.y
                 self.target_yaw = euler_from_quaternion([pose_stamped_msg.pose.orientation.x, pose_stamped_msg.pose.orientation.y,

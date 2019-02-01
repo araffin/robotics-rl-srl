@@ -86,6 +86,10 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     MIN_X, MAX_X = -0.8, 0.8
     MIN_Y, MAX_Y = -0.8, 0.8
 
+    # Target Boundaries
+    TARGET_MIN_X, TARGET_MAX_X = -0.7, 0.7
+    TARGET_MIN_Y, TARGET_MAX_Y = -0.7, 0.7
+
     #error threshold
     DIST_TO_TARGET_THRESHOLD = 0.2
 
