@@ -81,7 +81,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     SECOND_CAM_TOPIC = None # not support currently
    
     # Max number of steps per episode
-    MAX_STEPS = 100
+    MAX_STEPS = 250
     # Boundaries
     MIN_X, MAX_X = -0.8, 0.8
     MIN_Y, MAX_Y = -0.8, 0.8
