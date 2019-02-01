@@ -16,8 +16,8 @@ from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIRO
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
-RENDER_HEIGHT = 480
-RENDER_WIDTH = 480
+RENDER_HEIGHT = 224
+RENDER_WIDTH = 224
 RELATIVE_POS = False
 
 
@@ -124,7 +124,8 @@ class OmniRobotEnv(SRLGymEnv):
 
         if USING_OMNIROBOT_SIMULATOR:
             print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
-            self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", "--output-size", "224", "224" ,"--port", str(self.server_port)], stdout=subprocess.PIPE)
+            self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
+                                            "--output-size", RENDER_WIDTH, RENDER_HEIGHT ,"--port", str(self.server_port)], stdout=subprocess.DEVNULL)
             # hide the output of server
         msg = self.socket.recv_json()
         print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
