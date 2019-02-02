@@ -71,7 +71,7 @@ class EpisodeSaver(object):
         Write an image to disk
         :param observation: (numpy matrix) BGR image
         """
-        image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step)
+        image_path = "{}/{}/frame{:06d}".format(self.name, self.episode_folder, self.episode_step)
         self.images_path.append(image_path)
 
         # in the case of dual/multi-camera
