@@ -325,14 +325,14 @@ if __name__ == '__main__':
     omni_robot.renderTarget()
     print("initial target position: ", omni_robot.target_pos)
     while not should_exit[0]:
-        print("wait for new command")
+        #print("wait for new command")
         msg = socket.recv_json()
 
-        print("msg: {}".format(msg))
+        #print("msg: {}".format(msg))
         command = msg.get('command', '')
 
         if command == 'reset':
-            print('Environment reset, choose random position')
+            #print('Environment reset, choose random position')
             action = None
             episode_idx += 1
             episode_step = 0
@@ -346,9 +346,9 @@ if __name__ == '__main__':
                     pass
 
         elif command == 'action':
-            print("action (int)", msg['action'])
+            #print("action (int)", msg['action'])
             action = Move(msg['action'])
-            print("action (move):", action)
+            #print("action (move):", action)
 
         elif command == "exit":
             break
@@ -390,7 +390,7 @@ if __name__ == '__main__':
             random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
             random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
             omni_robot.setTargetCmd(random_init_x, random_init_y, 0)
-            print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
+            #print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
 
             # render the target
             omni_robot.renderTarget()
@@ -408,16 +408,16 @@ if __name__ == '__main__':
         # current detected area of the target
         if np.linalg.norm(np.array(omni_robot.robot_pos) - np.array(omni_robot.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
             reward = 1
-            print("Target reached!")
+            #print("Target reached!")
 
         if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
             reward = -1
-            print("Bumped into wall")
-            print()
-        print("reward: {}".format(reward))
+            #print("Bumped into wall")
+            #print()
+        #print("reward: {}".format(reward))
 
-        print("omni_robot position", omni_robot.robot_pos)
-        print("target position", omni_robot.target_pos)
+        #print("omni_robot position", omni_robot.robot_pos)
+        #print("target position", omni_robot.target_pos)
         socket.send_json(
             {
                 # XYZ position
