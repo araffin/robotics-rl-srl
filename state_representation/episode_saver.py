@@ -71,9 +71,10 @@ class EpisodeSaver(object):
         Write an image to disk
         :param observation: (numpy matrix) BGR image
         """
-        image_path = "{}/{}/frame{:06d}".format(self.name, self.episode_folder, self.episode_step)
-        self.images_path.append(image_path)
-
+        image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step)
+        relative_image_path = "{}/{}/frame{:06d}".format(self.name, self.episode_folder, self.episode_step)
+        self.images_path.append(relative_image_path)
+        
         # in the case of dual/multi-camera
         if observation.shape[2] > 3:
             observation1 = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_BGR2RGB)
