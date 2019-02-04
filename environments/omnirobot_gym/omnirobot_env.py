@@ -84,6 +84,7 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = state_dim
+        
         self._renders = renders
         self._shape_reward = shape_reward
         self.cuda = th.cuda.is_available()
@@ -125,7 +126,7 @@ class OmniRobotEnv(SRLGymEnv):
         if USING_OMNIROBOT_SIMULATOR:
             print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
             self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
-                                            "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)], stdout=subprocess.DEVNULL)
+                                            "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)])#, stdout=subprocess.DEVNULL)
             # hide the output of server
         msg = self.socket.recv_json()
         print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
@@ -272,10 +273,10 @@ class OmniRobotEnv(SRLGymEnv):
             plt.ion()  # needed for interactive update
             if self.image_plot is None:
                 plt.figure('Omnirobot RL')
-                self.image_plot = plt.imshow(bgr2rgb(self.observation), cmap='gray')
+                self.image_plot = plt.imshow(self.observation, cmap='gray')
                 self.image_plot.axes.grid(False)
             else:
-                self.image_plot.set_data(bgr2rgb(self.observation))
+                self.image_plot.set_data(self.observation)
             plt.draw()
             # Wait a bit, so that plot is visible
             plt.pause(0.0001)

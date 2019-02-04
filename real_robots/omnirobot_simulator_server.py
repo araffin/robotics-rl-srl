@@ -179,8 +179,8 @@ class OmniRobotSimulator(object):
         """        
         #print("pixel pos: ",self.pos_transformer.phyPosGround2PixelPos(self.target_pos_cmd.reshape(2,1)))
         self.target_bg_img = self.target_render.addMarker(self.bg_img, \
-                              self.pos_transformer.phyPosGround2PixelPos(self.target_pos_cmd.reshape(2,1)),\
-                              self.target_yaw_cmd)
+                              self.pos_transformer.phyPosGround2PixelPos(self.target_pos.reshape(2,1)),\
+                              self.target_yaw)
 
     def renderRobot(self):
         """
@@ -188,8 +188,8 @@ class OmniRobotSimulator(object):
         """
         
         self.image = self.robot_render.addMarker(self.target_bg_img, \
-                             self.pos_transformer.phyPosGround2PixelPos( self.robot_pos_cmd.reshape(2,1)),\
-                             self.robot_yaw_cmd)
+                             self.pos_transformer.phyPosGround2PixelPos( self.robot_pos.reshape(2,1)),\
+                             self.robot_yaw)
     def getCroppedImage(self):
         return self.image[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3],:]
     def findMarkers(self):
@@ -222,16 +222,17 @@ class OmniRobotSimulator(object):
         self.robot_pos_cmd[1] = y
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
         
-        self.robot_pos = self.robot_pos_cmd + np.random.randn(2) * 0.03 # 0.03 m variance
-        self.robot_yaw = self.robot_yaw_cmd + np.random.randn() * np.pi/180* 2 # 2 degree variance
+        self.robot_pos = self.robot_pos_cmd + np.random.randn(2) * 0.04 # 0.04 m variance
+        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd + np.random.randn() * np.pi/180* 20 )# 20 degree variance
 
     def setTargetCmd(self, x, y, yaw):
         self.target_pos_cmd[0] = x
         self.target_pos_cmd[1] = y
         self.target_yaw_cmd = self.normalizeAngle(yaw)
 
-        self.target_pos = self.target_pos_cmd+ np.random.randn(2) * 0.03 # 0.03 m variance
-        self.target_yaw = self.target_yaw_cmd+ np.random.randn() * np.pi/180* 2 # 2 degree variance
+        self.target_pos = self.target_pos_cmd+ np.random.randn(2) * 0.04 # 0.04 m variance
+        self.target_yaw = self.normalizeAngle(self.target_yaw_cmd+ np.random.randn() * np.pi/180* 10 )# 10 degree variance
+
     def forward(self):
         """
         Move one step forward (Translation)
@@ -389,7 +390,7 @@ if __name__ == '__main__':
             # target reset
             random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
             random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
-            omni_robot.setTargetCmd(random_init_x, random_init_y, 0)
+            omni_robot.setTargetCmd(random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
             #print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
 
             # render the target

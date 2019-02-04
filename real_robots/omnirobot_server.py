@@ -4,7 +4,6 @@ from __future__ import division, print_function, absolute_import
 import rospy
 
 import os
-import signal
 import time
 
 
@@ -19,22 +18,15 @@ from std_msgs.msg import Bool
 
 from tf.transformations import euler_from_quaternion
 
-from constants import *
-from utils import sendMatrix
+from real_robots.constants import *
+from real_robots.utils import sendMatrix
 
 assert USING_OMNIROBOT, "Please set USING_OMNIROBOT to True in real_robots/constants.py"
 
-NO_TARGET_MODE = True
+NO_TARGET_MODE = False
 
 bridge = CvBridge()
 should_exit = [False]
-
-# exit the script on ctrl+c
-def ctrl_c(signum, frame):
-    should_exit[0] = True
-
-
-signal.signal(signal.SIGINT, ctrl_c)
 
 
 class OmniRobot(object):
