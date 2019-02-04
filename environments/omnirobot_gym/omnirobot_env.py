@@ -126,7 +126,7 @@ class OmniRobotEnv(SRLGymEnv):
         if USING_OMNIROBOT_SIMULATOR:
             print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
             self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
-                                            "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)])#, stdout=subprocess.DEVNULL)
+                                            "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)], shell=True)#, stdout=subprocess.DEVNULL)
             # hide the output of server
         msg = self.socket.recv_json()
         print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
