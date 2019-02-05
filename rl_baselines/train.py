@@ -247,11 +247,11 @@ def main():
 
     algo_class, algo_type, action_type = registered_rl[args.algo]
     algo = algo_class()
-    ALGO = algo
-    
     if args.load_rl_model_path is not None:
         print("Load trained model from the path: ", args.load_rl_model_path)
-        algo.load(args.load_rl_model_path)
+        algo = algo.load(args.load_rl_model_path)
+    ALGO = algo
+    
 
     # if callback frequency needs to be changed
     LOG_INTERVAL = algo.LOG_INTERVAL
