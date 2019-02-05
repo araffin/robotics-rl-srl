@@ -247,9 +247,6 @@ def main():
 
     algo_class, algo_type, action_type = registered_rl[args.algo]
     algo = algo_class()
-    if args.load_rl_model_path is not None:
-        print("Load trained model from the path: ", args.load_rl_model_path)
-        algo.loadModelParameters(args.load_rl_model_path)
     ALGO = algo
     
 
@@ -330,6 +327,9 @@ def main():
         hyperparams["learning_rate"] = lambda f: f * 1.0e-4
         
     # Train the agent
+
+    if args.load_rl_model_path is not None:
+        algo.setLoadPath(args.load_rl_model_path)
     algo.train(args, callback, env_kwargs=env_kwargs, train_kwargs=hyperparams)
 
 
