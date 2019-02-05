@@ -136,6 +136,14 @@ class StableBaselinesRLObject(BaseRLObject):
         }
         with open(save_path, "wb") as f:
             pickle.dump(save_param, f)
+    def loadModelParameters(self, load_path):
+        """
+        Load the only the parameters of the neuro-network model from a path
+        :param load_path: (str)
+        :return: None
+        """
+        
+        self.model = self.model_class.load(load_path)
 
     @classmethod
     def load(cls, load_path, args=None):

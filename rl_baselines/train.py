@@ -249,7 +249,7 @@ def main():
     algo = algo_class()
     if args.load_rl_model_path is not None:
         print("Load trained model from the path: ", args.load_rl_model_path)
-        algo = algo.load(args.load_rl_model_path)
+        algo.loadModelParameters(args.load_rl_model_path)
     ALGO = algo
     
 
