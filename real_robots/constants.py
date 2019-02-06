@@ -75,9 +75,9 @@ elif USING_ROBOBO:
 elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
 
     # Reward definition
-    REWARD_TARGET_REACH = 10.0
-    REWARD_NOTHING = -0.1
-    REWARD_BUMP_WALL = -10.0
+    REWARD_TARGET_REACH = 1
+    REWARD_NOTHING = 0
+    REWARD_BUMP_WALL = -1
     # ROS Topics
     IMAGE_TOPIC = "/camera/image_raw"
    
