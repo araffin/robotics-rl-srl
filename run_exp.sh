@@ -6,13 +6,13 @@ ENV='OmnirobotEnv-v0'
 DATASET_NAME='omnirobot_simulator'
 N_ITER=1  # Number of random seeds for training RL
 N_CPU=8  # Number of cpu for training PPO
-N_EPISODES=10  # For generating data
+N_EPISODES=5000  # For generating data
 N_SRL_SAMPLES=-1
 N_TIMESTEPS=1000000
 ENV_DIM=4  # Only for priors, state dimension
-N_EPOCHS=1  # NUM_EPOCHS for training SRL model
+N_EPOCHS=30  # NUM_EPOCHS for training SRL model
 
-SRL_LOG_FOLDER=logs/simulator
+SRL_LOG_FOLDER=logs/simulator/
 mkdir -p $SRL_LOG_FOLDER
 #########
 # DATASET
