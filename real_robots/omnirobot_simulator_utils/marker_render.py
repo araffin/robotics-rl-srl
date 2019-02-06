@@ -30,12 +30,13 @@ class MarkerRender(object):
         self.margin = margin
         
         
-    def transformMarkerImage(self, marker_pixel_pos, marker_yaw):
+    def transformMarkerImage(self, marker_pixel_pos, marker_yaw, maker_scale):
         self.marker_yaw = marker_yaw
         self.marker_pixel_pos = marker_pixel_pos
+        self.maker_scale = maker_scale
         self.M_marker_with_margin =  cv2.getRotationMatrix2D((self.marker_image_with_margin.shape[1]/2,\
                                                               self.marker_image_with_margin.shape[0]/2),\
-                                                             self.marker_yaw*180/np.pi,1)
+                                                             self.marker_yaw*180/np.pi,self.maker_scale)
         
         
         self.M_marker_with_margin[0,2] += self.marker_pixel_pos[0] - self.marker_image_with_margin.shape[0]/2
@@ -44,13 +45,13 @@ class MarkerRender(object):
         # setup margin's weight
         marker_weight = np.ones(self.marker_image_with_margin.shape[0:3], np.float32)
         for i in range(self.margin[0]):
-            marker_weight[i,:] = i/self.margin[0]
+            marker_weight[i,:] = i/self.margin[0] * 0.3
         for i in range(self.margin[1]):
-            marker_weight[:,i] = i/self.margin[1]
+            marker_weight[:,i] = i/self.margin[1] * 0.3
         for i in range(self.margin[2]):
-            marker_weight[-i-1,:] = i/self.margin[2]
+            marker_weight[-i-1,:] = i/self.margin[2] * 0.3
         for i in range(self.margin[3]):
-            marker_weight[:,-i-1] = i/self.margin[3]
+            marker_weight[:,-i-1] = i/self.margin[3] * 0.3
             
         self.marker_image_transformed = cv2.warpAffine(self.marker_image_with_margin,self.M_marker_with_margin,\
                                                        (self.origin_image_shape[1],self.origin_image_shape[0])) 
@@ -70,7 +71,7 @@ class MarkerRender(object):
         return cv2.warpAffine(noise,self.M_marker_with_margin,(self.origin_image_shape[1],self.origin_image_shape[0]))
         
 
-    def addMarker(self, origin_image, marker_pixel_pos=None, marker_yaw=None):
+    def addMarker(self, origin_image, marker_pixel_pos=None, marker_yaw=None, maker_scale=None):
         
     
         if not self.initialized:
@@ -81,8 +82,9 @@ class MarkerRender(object):
             # set Marker pixel position
             marker_pixel_pos_np = np.float32(marker_pixel_pos)
             assert marker_pixel_pos_np.shape == (2,1)
-            self.transformMarkerImage(marker_pixel_pos, marker_yaw )
-    
+            self.transformMarkerImage(marker_pixel_pos, marker_yaw, maker_scale)
+
+        
         noise = self.generateNoise()
         
         # correct the luminosity for Marker area 

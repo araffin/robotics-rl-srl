@@ -17,7 +17,7 @@ timestr = time.strftime("%Y%m%d_%H%M%S")
 log_folder = "omnirobot_" + timestr
 env = omnirobot_env.OmniRobotEnv(renders=False, is_discrete=True, log_folder=log_folder, record_data=True)
 timesteps = 500  # must be greater than MAX_STEPS
-episodes = 500
+episodes = 5000
 env.seed(1)
 i = 0
 

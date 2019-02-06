@@ -74,14 +74,17 @@ elif USING_ROBOBO:
         STOP = 4
 elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
 
-
+    # Reward definition
+    REWARD_TARGET_REACH = 10.0
+    REWARD_NOTHING = -0.1
+    REWARD_BUMP_WALL = -10.0
     # ROS Topics
     IMAGE_TOPIC = "/camera/image_raw"
    
     SECOND_CAM_TOPIC = None # not support currently
    
     # Max number of steps per episode
-    MAX_STEPS = 250
+    MAX_STEPS = 15
     # Boundaries
     MIN_X, MAX_X = -0.8, 0.8
     MIN_Y, MAX_Y = -0.8, 0.8

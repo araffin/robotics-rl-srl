@@ -13,14 +13,14 @@ import subprocess
 import atexit
 
 from environments.srl_env import SRLGymEnv
-from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR
+from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 RELATIVE_POS = False
-
+N_CONTACTS_BEFORE_TERMINATION = 3
 
 
 N_DISCRETE_ACTIONS = 4
@@ -138,7 +138,8 @@ class OmniRobotEnv(SRLGymEnv):
         self.reward = 0
         self.robot_pos = np.array([0, 0])
 
-        # Initialize the state
+
+        # Initialize the state  
         if self._renders:
             self.image_plot = None
 
@@ -169,6 +170,9 @@ class OmniRobotEnv(SRLGymEnv):
         #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
+
+        self.render()
+
         if self.saver is not None:
             self.saver.step(self.observation, action, self.reward, done, self.getGroundTruth())
         if self.use_srl:
@@ -234,6 +238,8 @@ class OmniRobotEnv(SRLGymEnv):
         self.episode_terminated = False
         # Step count since episode start
         self._env_step_counter = 0
+        # set n contact count
+        self.n_contacts = 0
         self.socket.send_json({"command": "reset"})
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
@@ -252,6 +258,14 @@ class OmniRobotEnv(SRLGymEnv):
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
             return True
+        if np.abs(self.reward - REWARD_BUMP_WALL) < 0.000001: # bump the wall
+            return True
+        if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001: # reach the target
+            self.n_contacts += 1
+            if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
+                return True
+        else:
+            self.n_contacts = 0
         return False
 
     def closeServerConnection(self):
@@ -270,7 +284,6 @@ class OmniRobotEnv(SRLGymEnv):
         if mode != "rgb_array":
             print('render in human mode not yet supported')
             return np.array([])
-
         if self._renders:
             plt.ion()  # needed for interactive update
             if self.image_plot is None:
