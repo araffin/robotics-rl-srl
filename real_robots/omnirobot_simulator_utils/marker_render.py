@@ -90,7 +90,7 @@ class MarkerRender(object):
         # correct the luminosity for Marker area 
         origin_image_LAB = cv2.cvtColor(origin_image, cv2.COLOR_BGR2LAB)
         marker_image_transformed_corrected = self.marker_image_transformed_LAB
-        marker_image_transformed_corrected[0] = origin_image_LAB[0]
+        marker_image_transformed_corrected[:,:,0] = origin_image_LAB[:,:,0]
         marker_image_transformed_corrected = cv2.cvtColor(marker_image_transformed_corrected, cv2.COLOR_LAB2BGR)
         processed_image = (noise + marker_image_transformed_corrected) * self.marker_weight_trasnformed + origin_image * self.bg_weight
         return processed_image.astype(np.uint8)

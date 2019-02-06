@@ -388,8 +388,8 @@ if __name__ == '__main__':
                 has_bumped = True
         elif action is None:
             # Env reset
-            random_init_x = np.random.random_sample() * (MAX_X -MIN_X) + MIN_X
-            random_init_y = np.random.random_sample() * (MAX_Y - MIN_Y) + MIN_Y
+            random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
+            random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
             
             omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
             

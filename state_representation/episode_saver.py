@@ -72,9 +72,6 @@ class EpisodeSaver(object):
         :param observation: (numpy matrix) BGR image
         """
         image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step)
-        print(self.name)
-        print(self.episode_folder)
-        print(image_path)
         self.images_path.append(image_path)
         # in the case of dual/multi-camera
         if observation.shape[2] > 3:
@@ -94,23 +91,24 @@ class EpisodeSaver(object):
         :param target_pos: (numpy array)
         :param ground_truth: (numpy array)
         """
-        self.episode_idx += 1
+        if len(self.episode_starts) == 0 or self.episode_starts[-1] is False:
+            self.episode_idx += 1
 
-        if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
-            print("Learning a state representation ...")
-            start_time = time.time()
-            ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
-            print("Took {:.2f}s".format(time.time() - start_time))
+            if self.learn_states and (self.episode_idx + 1) % self.learn_every == 0 and self.n_steps <= self.max_steps:
+                print("Learning a state representation ...")
+                start_time = time.time()
+                ok, self.srl_model_path = self.socket_client.waitForSRLModel(self.state_dim)
+                print("Took {:.2f}s".format(time.time() - start_time))
 
-        self.episode_step = 0
-        self.episode_success = False
-        self.episode_folder = "record_{:03d}".format(self.episode_idx)
-        os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
+            self.episode_step = 0
+            self.episode_success = False
+            self.episode_folder = "record_{:03d}".format(self.episode_idx)
+            os.makedirs("{}/{}".format(self.data_folder, self.episode_folder), exist_ok=True)
 
-        self.episode_starts.append(True)
-        self.target_positions.append(target_pos)
-        self.ground_truth_states.append(ground_truth)
-        self.saveImage(observation)
+            self.episode_starts.append(True)
+            self.target_positions.append(target_pos)
+            self.ground_truth_states.append(ground_truth)
+            self.saveImage(observation)
 
     def step(self, observation, action, reward, done, ground_truth_state):
         """
@@ -120,6 +118,17 @@ class EpisodeSaver(object):
         :param done: (bool) whether the episode is done or not
         :param ground_truth_state: (numpy array)
         """
+        
+        #if self.episode_step == 0 and done:
+            # drop this episode (it has only one frame), remove last element
+            #self.actions.pop()
+            #self.rewards.pop()
+            #self.episode_starts.pop()
+            #self.ground_truth_states.pop()
+            #self.images_path.pop()
+            #self.n_steps -= 1
+            #return
+        
         self.episode_step += 1
         self.n_steps += 1
         self.rewards.append(reward)
@@ -131,10 +140,10 @@ class EpisodeSaver(object):
             self.episode_starts.append(False)
             self.ground_truth_states.append(ground_truth_state)
             self.saveImage(observation)
-        else:
+        else:   
             # Save the gathered data at the end of each episode
             self.save()
-
+    
     def save(self):
         """
         Write data and ground truth to disk
