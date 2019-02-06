@@ -52,7 +52,7 @@ class OmniRobotEnv(SRLGymEnv):
     (signaled with a circle sticker on the table)
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) true if action space is discrete vs continuous
-    :param log_folder: (str) name of the folder where recorded data will be stored
+    :param save_path: (str) name of the folder where recorded data will be stored
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
     :param record_data: (bool) Set to true, record frames with the rewards.
@@ -61,7 +61,7 @@ class OmniRobotEnv(SRLGymEnv):
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
-    def __init__(self, renders=False, is_discrete=True, log_folder="omnirobot_log_folder", state_dim=-1,
+    def __init__(self, renders=False,name="Omnirobot", is_discrete=True,save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1,
                  shape_reward=False, env_rank=0, srl_pipe=None,**_):
 
@@ -112,9 +112,9 @@ class OmniRobotEnv(SRLGymEnv):
 
         if record_data:
             print("Recording data...")
-            self.saver = EpisodeSaver(log_folder, 0, self.state_dim, globals_=getGlobals(),
+            self.saver = EpisodeSaver(name, 0, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
-                                      learn_states=learn_states)
+                                      learn_states=learn_states, path=save_path)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
         self.context = zmq.Context()
@@ -142,6 +142,8 @@ class OmniRobotEnv(SRLGymEnv):
         # Initialize the state  
         if self._renders:
             self.image_plot = None
+    def __del__(self):
+        self.process.terminate()
 
     def step(self, action):
         """

@@ -52,7 +52,8 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         "record_data": not args.no_record_data,
         "multi_view": args.multi_view,
         "save_path": args.save_path,
-        "shape_reward": args.shape_reward
+        "shape_reward": args.shape_reward,
+        "env_rank": thread_num
     }
 
     if partition:
@@ -65,7 +66,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     # Additional env when using a trained ppo agent to generate data
     # instead of a random agent
-    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False})
+    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False, "env_rank":100+thread_num})
     train_env = DummyVecEnv([lambda: train_env])
     train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
 
@@ -192,6 +193,9 @@ def main():
         file_parts = sorted(glob.glob(args.save_path + args.name + "_part-[0-9]*"), key=lambda a: int(a.split("-")[-1]))
 
         # move the config files from any as they are identical
+        print("file_parts:", file_parts)
+        print("save_path: ", args.save_path)
+        print("name: ", args.name)
         os.rename(file_parts[0] + "/dataset_config.json", args.save_path + args.name + "/dataset_config.json")
         os.rename(file_parts[0] + "/env_globals.json", args.save_path + args.name + "/env_globals.json")
 
