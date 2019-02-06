@@ -13,7 +13,8 @@ import subprocess
 import atexit
 
 from environments.srl_env import SRLGymEnv
-from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
+from real_robots.constants import Move, SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, \
+                                REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
@@ -27,13 +28,6 @@ N_DISCRETE_ACTIONS = 4
 
 # Init seaborn
 sns.set()
-def actionPolicyTorwardTarget(robot_position, target_position):
-    if abs(robot_position[0] - target_position[0]) > abs(robot_position[1] - target_position[1]):
-        return 0 if robot_position[0] < target_position[0] else 1
-               #forward                                        # backward
-    else:
-        # left                                          # right
-        return 2 if robot_position[1] < target_position[1] else 3
 
 
 def getGlobals():
@@ -151,6 +145,17 @@ class OmniRobotEnv(SRLGymEnv):
             self.image_plot = None
     def __del__(self):
         self.process.terminate()
+
+    def actionPolicyTowardTarget(self):
+        """
+        :return: (int) action
+        """
+        if abs(self.robot_pos[0] - self.target_pos[0]) > abs(self.robot_pos[1] - self.target_pos[1]):
+            return int(Move.FORWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.BACKWARD)
+                #forward                                        # backward
+        else:
+            # left                                          # right
+            return int(Move.LEFT) if self.robot_pos[1] < self.target_pos[1] else int(Move.RIGHT)
 
     def step(self, action):
         """

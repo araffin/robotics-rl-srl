@@ -1,7 +1,7 @@
 from __future__ import print_function, absolute_import, division
 
 import numpy as np
-from enum import Enum
+from enum import IntEnum
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
@@ -66,7 +66,7 @@ elif USING_ROBOBO:
     MIN_Y, MAX_Y = -4, 3
 
     # Define the possible Moves
-    class Move(Enum):
+    class Move(IntEnum):
         FORWARD = 0
         BACKWARD = 1
         LEFT = 2
@@ -99,7 +99,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     DIST_TO_TARGET_THRESHOLD = 0.2
 
     # Define the possible Moves
-    class Move(Enum):
+    class Move(IntEnum):
         FORWARD = 0
         BACKWARD = 1
         LEFT = 2

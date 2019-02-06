@@ -93,7 +93,10 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             if use_ppo2:
                 action, _ = model.predict([obs])
             else:
-                action = [env.action_space.sample()]
+                if np.random.rand() < args.toward_target_timesteps_proportion:
+                    action = [env.actionPolicyTowardTarget()]
+                else:
+                    action = [env.action_space.sample()]
 
             _, _, done, _ = env.step(action[0])
             frames += 1
@@ -135,6 +138,8 @@ def main():
                         help='runs a ppo2 agent instead of a random agent')
     parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
+    parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0, 
+                        help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
@@ -193,9 +198,6 @@ def main():
         file_parts = sorted(glob.glob(args.save_path + args.name + "_part-[0-9]*"), key=lambda a: int(a.split("-")[-1]))
 
         # move the config files from any as they are identical
-        print("file_parts:", file_parts)
-        print("save_path: ", args.save_path)
-        print("name: ", args.name)
         os.rename(file_parts[0] + "/dataset_config.json", args.save_path + args.name + "/dataset_config.json")
         os.rename(file_parts[0] + "/env_globals.json", args.save_path + args.name + "/env_globals.json")
 
