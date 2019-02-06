@@ -27,6 +27,13 @@ N_DISCRETE_ACTIONS = 4
 
 # Init seaborn
 sns.set()
+def actionPolicyTorwardTarget(robot_position, target_position):
+    if abs(robot_position[0] - target_position[0]) > abs(robot_position[1] - target_position[1]):
+        return 0 if robot_position[0] < target_position[0] else 1
+               #forward                                        # backward
+    else:
+        # left                                          # right
+        return 2 if robot_position[1] < target_position[1] else 3
 
 
 def getGlobals():
@@ -128,7 +135,7 @@ class OmniRobotEnv(SRLGymEnv):
             print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
             self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
                                             "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)])#, stdout=subprocess.DEVNULL)
-            atexit.register(self.process.terminate)
+            #atexit.register(self.process.terminate)
             # hide the output of server
         msg = self.socket.recv_json()
         print("Connected to server on port {} (received message: {})".format(self.server_port, msg))

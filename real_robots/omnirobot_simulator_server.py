@@ -175,7 +175,7 @@ class OmniRobotSimulator(object):
         origin_image_LAB[:,:,0] = origin_image_LAB[:,:,0] * (np.random.randn() * noise_var + 1.0)
         origin_image_LAB[:,:,1] = origin_image_LAB[:,:,1] * (np.random.randn() * noise_var + 1.0)
         origin_image_LAB[:,:,2] = origin_image_LAB[:,:,2] * (np.random.randn() * noise_var + 1.0)
-        out_image = cv2.cvtColor(origin_image_LAB, cv2.COLOR_LAB2RGB if out_RGB else cv2.COLOR_LAB2BGR, cv2.CV_8U)
+        out_image = cv2.cvtColor(origin_image_LAB, cv2.COLOR_LAB2RGB if out_RGB else cv2.COLOR_LAB2BGR, cv2.CV_8UC3)
         return out_image
 
     def renderTarget(self):
