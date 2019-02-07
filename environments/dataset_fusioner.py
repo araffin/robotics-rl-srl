@@ -12,11 +12,11 @@ import numpy as np
 import cv2
 def main():
     parser = argparse.ArgumentParser(description='Dataset Manipulator: useful to fusion two datasets by concatenating '
-                                                 'episodes.')
+                                                 'episodes. PS: Deleting sources after fusion into destination folder.')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--rename', type=str, nargs=3, metavar=('source_1', 'source_2', 'destination'),
                        default=argparse.SUPPRESS,
-                       help='Fusion two datasets appending the episodes.')
+                       help='Fusion two datasets by appending the episodes, deleting sources right after.')
 
     args = parser.parse_args()
 
@@ -35,7 +35,6 @@ def main():
 
         for record in sorted(glob.glob(args.rename[0] + "/record_[0-9]*/*")):
             s = args.rename[2] + "/" + record.split("/")[-2] + '/' + record.split("/")[-1]
-            print("s: ", s, record.split("/")[-2])
             os.renames(record, s)
 
         num_episode_dataset_1 = int(record.split("/")[-2][7:]) + 1
@@ -47,9 +46,6 @@ def main():
             s = args.rename[2] + "/" + new_episode + '/' + record.split("/")[-1]
             os.renames(record, s)
         num_episode_dataset_2 = int(record.split("/")[-2][7:]) + 1
-
-
-        print("num episodes:", num_episode_dataset_1, num_episode_dataset_2)
 
         # load and correct ground_truth
         ground_truth = {}
@@ -69,7 +65,6 @@ def main():
             else:
                 # anything that isnt image_path, we dont need to change
                 gt_arr = ground_truth_load[arr]
-                print("type 1 : ", type(gt_arr))
 
                 # HERE check before overwritting that the target is random !+
                 if ground_truth_load[arr].shape[0] < num_episode_dataset_1:
@@ -88,7 +83,7 @@ def main():
                     new_record_path = "/record_" + episode + "/" + path[end_pos:][8:][inter_pos:]
 
                     index_slash = args.rename[2].find("/")
-                    ground_truth["images_path"].append( args.rename[2][index_slash+1:] + new_record_path)
+                    ground_truth["images_path"].append(args.rename[2][index_slash+1:] + new_record_path)
             else:
                 # anything that isnt image_path, we dont need to change
                 # HERE check before overwritting that the target is random !+
@@ -119,6 +114,7 @@ def main():
         # remove the old folders
         shutil.rmtree(args.rename[0])
         shutil.rmtree(args.rename[1])
+
 
 if __name__ == '__main__':
     main()
