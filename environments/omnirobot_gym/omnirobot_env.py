@@ -13,14 +13,15 @@ import subprocess
 import atexit
 
 from environments.srl_env import SRLGymEnv
-from real_robots.constants import SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR
+from real_robots.constants import Move, SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, \
+                                REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
 from real_robots.utils import recvMatrix
 from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 RELATIVE_POS = False
-
+N_CONTACTS_BEFORE_TERMINATION = 3
 
 
 N_DISCRETE_ACTIONS = 4
@@ -52,7 +53,7 @@ class OmniRobotEnv(SRLGymEnv):
     (signaled with a circle sticker on the table)
     :param renders: (bool) Whether to display the GUI or not
     :param is_discrete: (bool) true if action space is discrete vs continuous
-    :param log_folder: (str) name of the folder where recorded data will be stored
+    :param save_path: (str) name of the folder where recorded data will be stored
     :param state_dim: (int) When learning states
     :param learn_states: (bool)
     :param record_data: (bool) Set to true, record frames with the rewards.
@@ -61,7 +62,7 @@ class OmniRobotEnv(SRLGymEnv):
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
-    def __init__(self, renders=False, is_discrete=True, log_folder="omnirobot_log_folder", state_dim=-1,
+    def __init__(self, renders=False,name="Omnirobot", is_discrete=True,save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1,
                  shape_reward=False, env_rank=0, srl_pipe=None,**_):
 
@@ -112,9 +113,9 @@ class OmniRobotEnv(SRLGymEnv):
 
         if record_data:
             print("Recording data...")
-            self.saver = EpisodeSaver(log_folder, 0, self.state_dim, globals_=getGlobals(),
+            self.saver = EpisodeSaver(name, 0, self.state_dim, globals_=getGlobals(),
                                       relative_pos=RELATIVE_POS,
-                                      learn_states=learn_states)
+                                      learn_states=learn_states, path=save_path)
 
         # Initialize Baxter effector by connecting to the Gym bridge ROS node:
         self.context = zmq.Context()
@@ -128,7 +129,7 @@ class OmniRobotEnv(SRLGymEnv):
             print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
             self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
                                             "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)])#, stdout=subprocess.DEVNULL)
-            atexit.register(self.process.terminate)
+            #atexit.register(self.process.terminate)
             # hide the output of server
         msg = self.socket.recv_json()
         print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
@@ -138,9 +139,23 @@ class OmniRobotEnv(SRLGymEnv):
         self.reward = 0
         self.robot_pos = np.array([0, 0])
 
-        # Initialize the state
+
+        # Initialize the state  
         if self._renders:
             self.image_plot = None
+    def __del__(self):
+        self.process.terminate()
+
+    def actionPolicyTowardTarget(self):
+        """
+        :return: (int) action
+        """
+        if abs(self.robot_pos[0] - self.target_pos[0]) > abs(self.robot_pos[1] - self.target_pos[1]):
+            return int(Move.FORWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.BACKWARD)
+                #forward                                        # backward
+        else:
+            # left                                          # right
+            return int(Move.LEFT) if self.robot_pos[1] < self.target_pos[1] else int(Move.RIGHT)
 
     def step(self, action):
         """
@@ -169,6 +184,9 @@ class OmniRobotEnv(SRLGymEnv):
         #  Receive a camera image from the server
         self.observation = self.getObservation()
         done = self._hasEpisodeTerminated()
+
+        self.render()
+
         if self.saver is not None:
             self.saver.step(self.observation, action, self.reward, done, self.getGroundTruth())
         if self.use_srl:
@@ -234,6 +252,8 @@ class OmniRobotEnv(SRLGymEnv):
         self.episode_terminated = False
         # Step count since episode start
         self._env_step_counter = 0
+        # set n contact count
+        self.n_contacts = 0
         self.socket.send_json({"command": "reset"})
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
@@ -252,6 +272,14 @@ class OmniRobotEnv(SRLGymEnv):
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
             return True
+        if np.abs(self.reward - REWARD_BUMP_WALL) < 0.000001: # bump the wall
+            return True
+        if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001: # reach the target
+            self.n_contacts += 1
+            if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
+                return True
+        else:
+            self.n_contacts = 0
         return False
 
     def closeServerConnection(self):
@@ -270,7 +298,6 @@ class OmniRobotEnv(SRLGymEnv):
         if mode != "rgb_array":
             print('render in human mode not yet supported')
             return np.array([])
-
         if self._renders:
             plt.ion()  # needed for interactive update
             if self.image_plot is None:

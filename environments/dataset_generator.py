@@ -52,7 +52,8 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         "record_data": not args.no_record_data,
         "multi_view": args.multi_view,
         "save_path": args.save_path,
-        "shape_reward": args.shape_reward
+        "shape_reward": args.shape_reward,
+        "env_rank": thread_num
     }
 
     if partition:
@@ -65,7 +66,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     # Additional env when using a trained ppo agent to generate data
     # instead of a random agent
-    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False})
+    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False, "env_rank":100+thread_num})
     train_env = DummyVecEnv([lambda: train_env])
     train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
 
@@ -92,7 +93,10 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             if use_ppo2:
                 action, _ = model.predict([obs])
             else:
-                action = [env.action_space.sample()]
+                if np.random.rand() < args.toward_target_timesteps_proportion:
+                    action = [env.actionPolicyTowardTarget()]
+                else:
+                    action = [env.action_space.sample()]
 
             _, _, done, _ = env.step(action[0])
             frames += 1
@@ -134,6 +138,8 @@ def main():
                         help='runs a ppo2 agent instead of a random agent')
     parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
+    parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0, 
+                        help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"

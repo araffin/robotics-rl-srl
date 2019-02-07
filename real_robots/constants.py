@@ -1,7 +1,7 @@
 from __future__ import print_function, absolute_import, division
 
 import numpy as np
-from enum import Enum
+from enum import IntEnum
 
 # ==== CONSTANTS FOR BAXTER ROBOT ====
 # Socket port
@@ -66,7 +66,7 @@ elif USING_ROBOBO:
     MIN_Y, MAX_Y = -4, 3
 
     # Define the possible Moves
-    class Move(Enum):
+    class Move(IntEnum):
         FORWARD = 0
         BACKWARD = 1
         LEFT = 2
@@ -74,18 +74,23 @@ elif USING_ROBOBO:
         STOP = 4
 elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
 
-
+    # Reward definition
+    REWARD_TARGET_REACH = 1
+    REWARD_NOTHING = 0
+    REWARD_BUMP_WALL = -1
     # ROS Topics
     IMAGE_TOPIC = "/camera/image_raw"
    
     SECOND_CAM_TOPIC = None # not support currently
    
     # Max number of steps per episode
-    MAX_STEPS = 250
+    MAX_STEPS = 30
     # Boundaries
-    MIN_X, MAX_X = -0.8, 0.8
-    MIN_Y, MAX_Y = -0.8, 0.8
-
+    MIN_X, MAX_X = -0.85, 0.85
+    MIN_Y, MAX_Y = -0.85, 0.85
+    # inital position's boudnaries
+    INIT_MIN_X, INIT_MAX_X = -0.7, 0.7
+    INIT_MIN_Y, INIT_MAX_Y = -0.7, 0.7
     # Target Boundaries
     TARGET_MIN_X, TARGET_MAX_X = -0.7, 0.7
     TARGET_MIN_Y, TARGET_MAX_Y = -0.7, 0.7
@@ -94,7 +99,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     DIST_TO_TARGET_THRESHOLD = 0.2
 
     # Define the possible Moves
-    class Move(Enum):
+    class Move(IntEnum):
         FORWARD = 0
         BACKWARD = 1
         LEFT = 2
