@@ -59,8 +59,7 @@ class MarkerRender(object):
         self.marker_weight_trasnformed = cv2.warpAffine(marker_weight,self.M_marker_with_margin,\
                                                       (self.origin_image_shape[1],self.origin_image_shape[0]))  # white: Marker part
         
-        self.marker_image_transformed_LAB = cv2.cvtColor(self.marker_image_transformed, cv2.COLOR_BGR2LAB)
-
+        
         self.bg_weight = 1.0 - self.marker_weight_trasnformed # white: origin image part
 
     def generateNoise(self):
@@ -88,11 +87,7 @@ class MarkerRender(object):
         noise = self.generateNoise()
         
         # correct the luminosity for Marker area 
-        origin_image_LAB = cv2.cvtColor(origin_image, cv2.COLOR_BGR2LAB)
-        marker_image_transformed_corrected = self.marker_image_transformed_LAB
-        marker_image_transformed_corrected[:,:,0] = origin_image_LAB[:,:,0]
-        marker_image_transformed_corrected = cv2.cvtColor(marker_image_transformed_corrected, cv2.COLOR_LAB2BGR)
-        processed_image = (noise + marker_image_transformed_corrected) * self.marker_weight_trasnformed + origin_image * self.bg_weight
+        processed_image = (noise + self.marker_image_transformed) * self.marker_weight_trasnformed + origin_image * self.bg_weight
         return processed_image.astype(np.uint8)
 
 

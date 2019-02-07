@@ -24,7 +24,7 @@ try:
                 if np.random.rand() < 0.7:
                     action = env.action_space.sample()
                 else:
-                    action = omnirobot_env.actionPolicyTorwardTarget(env.robot_pos, env.target_pos)     
+                    action = env.actionPolicyTowardTarget()     
                 observation, reward, done, info = env.step(action)
                 env.render()  # render() requires first the observation to be obtained
                 if done:
