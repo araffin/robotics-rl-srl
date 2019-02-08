@@ -3,6 +3,8 @@ from __future__ import division, print_function, absolute_import
 import os
 import signal
 import time
+from multiprocessing import Process, Pipe
+
 
 # TODO !!!!!!!!!!!!!!!!!!!!!!!!!
 # undistort origin image -> add undistort target marker -> redistort image
@@ -18,12 +20,10 @@ import argparse
 from scipy.spatial.transform import Rotation as R
 
 from .constants import *
-from .utils import sendMatrix
 from .omnirobot_simulator_utils import *
 
 
 assert USING_OMNIROBOT_SIMULATOR, "Please set USING_OMNIROBOT_SIMULATOR to True in real_robots/constants.py"
-should_exit = [False]
 
 
 class PosTransformer(object):
@@ -73,16 +73,20 @@ class PosTransformer(object):
         return (pixel_points.reshape((2,1)))
 
 
-class OmniRobotSimulator(object):
+class OmniRobotEnvRender(Process):
     """
-    Class for controlling Omnirobot, and interact with the simulator
+    Class for rendering Omnirobot environment
     """
     def __init__(self, init_x, init_y, init_yaw, origin_size, cropped_size,\
-                 back_ground_img, camera_info_path, \
+                 back_ground_path, camera_info_path, \
                 robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,\
                 robot_marker_code, target_marker_code,\
-                robot_marker_length, target_marker_length):
-        super(OmniRobotSimulator, self).__init__()
+                robot_marker_length, target_marker_length, child_conn, output_size,**_):
+        super(OmniRobotEnvRender, self).__init__()
+
+        # store the pipe obj
+        self.child_conn = child_conn
+        self.output_size = output_size
 
         # Initialize the direction
         self.init_pos = [init_x, init_y]
@@ -131,6 +135,7 @@ class OmniRobotSimulator(object):
         self.cropped_range = np.array([self.cropped_margin[0],self.cropped_margin[0]+self.cropped_size[0],\
               self.cropped_margin[1],self.cropped_margin[1]+self.cropped_size[1]]).astype(np.int)
         
+        back_ground_img = cv2.imread(back_ground_path)
         if(back_ground_img.shape[0:2] != self.cropped_size):
             print("input back ground image's size: ", back_ground_img.shape)
             print("resize to ", self.cropped_size)
@@ -166,6 +171,107 @@ class OmniRobotSimulator(object):
             self.marker_finder.setMarkerCode('robot', robot_marker_code, robot_marker_length)
             self.marker_finder.setMarkerCode('target', target_marker_code, target_marker_length)        
     
+
+
+    def run(self):
+        episode_idx = 0
+        while True:
+            msg = self.child_conn.recv()
+            command = msg.get('command', '')
+            if command == 'reset':
+                #print('Environment reset, choose random position')
+                action = None
+                episode_idx += 1
+                episode_step = 0
+
+                if SECOND_CAM_TOPIC is not None:
+                    assert NotImplementedError
+
+            elif command == 'action':
+                action = Move(msg['action'])
+
+            elif command == "exit":
+                break
+            else:
+                raise ValueError("Unknown command: {}".format(msg))
+
+            has_bumped = False
+            # We are always facing North
+            if action == Move.FORWARD:
+                if self.robot_pos[0] < MAX_X:
+                    self.forward()
+                else:
+                    has_bumped = True
+            elif action == Move.STOP:
+                pass
+            elif action == Move.RIGHT:
+                if self.robot_pos[1] > MIN_Y:
+                    self.right()
+                else:
+                    has_bumped = True
+            elif action == Move.LEFT:
+                if self.robot_pos[1] < MAX_Y:
+                    self.left()
+                else:
+                    has_bumped = True
+            elif action == Move.BACKWARD:
+                if self.robot_pos[0] > MIN_X:
+                    self.backward()
+                else:
+                    has_bumped = True
+            elif action is None:
+                # Env reset
+                random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
+                random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
+                
+                self.setRobotCmd(random_init_x, random_init_y, 0)
+                
+                # target reset
+                random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
+                random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
+                self.setTargetCmd(random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
+                #print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
+
+                # render the target
+                self.renderTarget()
+            else:
+                print("Unsupported action")
+
+
+            self.renderRobot()
+            
+            original_image = self.getCroppedImage()
+            original_image = self.renderEnvLuminosityNoise(original_image, noise_var=0.03, in_RGB=False, out_RGB=True)
+            original_image = cv2.resize(original_image, tuple(self.output_size))
+            reward = REWARD_NOTHING
+            # Consider that we reached the target if we are close enough
+            # we detect that computing the difference in area between TARGET_INITIAL_AREA
+            # current detected area of the target
+            if np.linalg.norm(np.array(self.robot_pos) - np.array(self.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
+                reward = REWARD_TARGET_REACH
+                #print("Target reached!")
+
+            if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+                reward = REWARD_BUMP_WALL
+                #print("Bumped into wall")
+                #print()
+            #print("reward: {}".format(reward))
+
+            #print("omni_robot position", omni_robot.robot_pos)
+            #print("target position", omni_robot.target_pos)
+            self.child_conn.send(
+                {
+                    # XYZ position
+                    "position": self.robot_pos.tolist(),
+                    "reward": reward,
+                    "target_pos": self.target_pos.tolist()
+                }
+            )
+            img = np.ascontiguousarray(original_image, dtype=np.uint8)
+            self.child_conn.send(img)
+        self.child_conn.close()
+        return
+
     def renderEnvLuminosityNoise(self, origin_image, noise_var=0.1, in_RGB=False, out_RGB=False):
         """
         render the different environment luminosity
@@ -195,7 +301,7 @@ class OmniRobotSimulator(object):
         self.image = self.robot_render.addMarker(self.target_bg_img, \
                              self.pos_transformer.phyPosGround2PixelPos( self.robot_pos.reshape(2,1)),\
                              self.robot_yaw, np.random.randn() * 0.05 + 1.0)
-                             # variation of scale 0.1
+        
     def getCroppedImage(self):
         return self.image[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3],:]
     def findMarkers(self):
@@ -261,7 +367,8 @@ class OmniRobotSimulator(object):
         
     def right(self):
         self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] -  self.step_distance, self.robot_yaw_cmd)
-        
+    
+
 
     @staticmethod
     def normalizeAngle(angle):
@@ -275,170 +382,44 @@ class OmniRobotSimulator(object):
             angle += 2 * np.pi
         return angle
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Server for omnirobot simulator")
-    parser.add_argument('--port', default=SERVER_PORT,help='socket port for omnirobot server',
-                        type=int)
-    parser.add_argument('--camera-info-path', default="real_robots/omnirobot_simulator_utils/cam_calib_info.yaml",type=str,
-                        help="camera calibration file generated by ros calibrate")
-    parser.add_argument('--robot-marker-path', default="real_robots/omnirobot_simulator_utils/robot_margin3_pixel_only_tag.png", type=str,
-                        help="robot marker's path")
-    parser.add_argument('--target-marker-path', default="real_robots/omnirobot_simulator_utils/target_margin4_pixel.png", type=str,
-                        help="target marker's path")
-    parser.add_argument('--background-path', default="real_robots/omnirobot_simulator_utils/back_ground.jpg", type=str,
-                        help="target marker's path")
-    parser.add_argument('--robot-marker-margin', default=[3,3,3,3], type=int, nargs='+',
-                        help="robot marker's margin in pixel")
-    parser.add_argument('--target-marker-margin', default=[4,4,4,4], type=int, nargs='+',
-                        help="target marker's margin in pixel")
-    parser.add_argument('--output-size', default=[224, 224], type=int, nargs='+', help="output size of each frame, default [224,224]")
-    args = parser.parse_args()
-
-    assert len(args.robot_marker_margin) == 4
-    assert len(args.target_marker_margin) == 4
-    assert len(args.output_size) == 2
-    
-
-    print('Starting up on port number {}'.format(args.port))
-    context = zmq.Context()
-    socket = context.socket(zmq.PAIR)
-
-    socket.bind("tcp://*:{}".format(args.port))
-
-    print("Waiting for client...")
-    socket.send_json({'msg': 'hello'})
-    print("Connected to client on port {}".format(args.port))
-
-    action = 0
-    episode_step = 0
-    episode_idx = -1
-    episode_folder = None
-    
-    back_ground_img = cv2.imread(args.background_path)
-    
-    omni_robot = OmniRobotSimulator(0, 0, 0, [640,480],[480,480],back_ground_img=back_ground_img, camera_info_path=args.camera_info_path,\
-                                robot_marker_path=args.robot_marker_path, robot_marker_margin=args.robot_marker_margin,\
-                                target_marker_path=args.target_marker_path, target_marker_margin=args.target_marker_margin,\
-                                robot_marker_code=None, target_marker_code=None,\
-                                robot_marker_length=0.18, target_marker_length=0.18) # yaw is in rad
-    # target reset
-    random_init_x = np.random.random_sample() * (MAX_X -MIN_X) + MIN_X
-    random_init_y = np.random.random_sample() * (MAX_Y - MIN_Y) + MIN_Y
-    print(random_init_x,random_init_y )
-    omni_robot.setTargetCmd(random_init_x, random_init_y, 0)
-    
-    # render the target
-    omni_robot.renderTarget()
-    print("initial target position: ", omni_robot.target_pos)
-    while not should_exit[0]:
-        #print("wait for new command")
-        msg = socket.recv_json()
-
-        #print("msg: {}".format(msg))
-        command = msg.get('command', '')
-
-        if command == 'reset':
-            #print('Environment reset, choose random position')
-            action = None
-            episode_idx += 1
-            episode_step = 0
-
-            if SECOND_CAM_TOPIC is not None:
-                assert NotImplementedError
-                episode_folder = "record_{:03d}".format(episode_idx)
-                try:
-                    os.makedirs("srl_zoo/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
-                except OSError:
-                    pass
-
-        elif command == 'action':
-            #print("action (int)", msg['action'])
-            action = Move(msg['action'])
-            #print("action (move):", action)
-
-        elif command == "exit":
-            break
-        else:
-            raise ValueError("Unknown command: {}".format(msg))
-
-        has_bumped = False
-        # We are always facing North
-        if action == Move.FORWARD:
-            if omni_robot.robot_pos[0] < MAX_X:
-                omni_robot.forward()
-            else:
-                has_bumped = True
-        elif action == Move.STOP:
-            pass
-        elif action == Move.RIGHT:
-            if omni_robot.robot_pos[1] > MIN_Y:
-                omni_robot.right()
-            else:
-                has_bumped = True
-        elif action == Move.LEFT:
-            if omni_robot.robot_pos[1] < MAX_Y:
-                omni_robot.left()
-            else:
-                has_bumped = True
-        elif action == Move.BACKWARD:
-            if omni_robot.robot_pos[0] > MIN_X:
-                omni_robot.backward()
-            else:
-                has_bumped = True
-        elif action is None:
-            # Env reset
-            random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
-            random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
-            
-            omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
-            
-            # target reset
-            random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
-            random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
-            omni_robot.setTargetCmd(random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
-            #print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
-
-            # render the target
-            omni_robot.renderTarget()
-        else:
-            print("Unsupported action")
-
-
-        omni_robot.renderRobot()
+class OmniRobotSimulatorSocket():
+    def __init__(self, **args):
+        '''
+        :param **args  arguments 
+        '''
+        defalt_args = {
+            "back_ground_path":"real_robots/omnirobot_simulator_utils/back_ground.jpg", 
+            "camera_info_path":"real_robots/omnirobot_simulator_utils/cam_calib_info.yaml",
+            "robot_marker_path":"real_robots/omnirobot_simulator_utils/robot_margin3_pixel_only_tag.png",
+            "robot_marker_margin":[3,3,3,3],
+            "target_marker_path":"real_robots/omnirobot_simulator_utils/target_margin4_pixel.png", 
+            "target_marker_margin":[4,4,4,4],
+            "robot_marker_code":None, 
+            "target_marker_code":None,
+            "robot_marker_length":0.18, 
+            "target_marker_length":0.18,
+            "output_size" : [224,224],
+            "init_x" : 0, 
+            "init_y" : 0,
+            "init_yaw" : 0, 
+            "origin_size" : [640,480], 
+            "cropped_size" : [480,480]
+        }
+        self.parent_conn, child_conn = Pipe()
+        self.new_args = {"child_conn":child_conn,**defalt_args, **args } #overwrite the args if it exists
         
-        original_image = np.copy(omni_robot.getCroppedImage())
-        original_image = omni_robot.renderEnvLuminosityNoise(original_image, noise_var=0.03, in_RGB=False, out_RGB=True)
-        original_image = cv2.resize(original_image, tuple(args.output_size))
-        reward = REWARD_NOTHING
-        # Consider that we reached the target if we are close enough
-        # we detect that computing the difference in area between TARGET_INITIAL_AREA
-        # current detected area of the target
-        if np.linalg.norm(np.array(omni_robot.robot_pos) - np.array(omni_robot.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
-            reward = REWARD_TARGET_REACH
-            #print("Target reached!")
+        assert len(self.new_args['robot_marker_margin']) == 4
+        assert len(self.new_args['target_marker_margin']) == 4
+        assert len(self.new_args['output_size']) == 2
 
-        if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-            reward = REWARD_BUMP_WALL
-            #print("Bumped into wall")
-            #print()
-        #print("reward: {}".format(reward))
+        self.p = OmniRobotEnvRender(**self.new_args)
+        self.p.start()
+    def __del__(self):
+        self.parent_conn.close()
+        self.p.terminate()
 
-        #print("omni_robot position", omni_robot.robot_pos)
-        #print("target position", omni_robot.target_pos)
-        socket.send_json(
-            {
-                # XYZ position
-                "position": omni_robot.robot_pos.tolist(),
-                "reward": reward,
-                "target_pos": omni_robot.target_pos.tolist()
-            },
-            flags=zmq.SNDMORE
-        )
+    def send_json(self, msg):
+        self.parent_conn.send(msg)
+    def recv_json(self):
+        return self.parent_conn.recv()
     
-        # to contiguous, otherwise ZMQ will complain
-        img = np.ascontiguousarray(original_image, dtype=np.uint8)
-        sendMatrix(socket, img)
-
-    print("Exiting server - closing socket...")
-    socket.close()

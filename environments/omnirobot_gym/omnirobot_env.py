@@ -10,13 +10,21 @@ import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
 import subprocess
-import atexit
 
 from environments.srl_env import SRLGymEnv
 from real_robots.constants import Move, SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, \
                                 REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
-from real_robots.utils import recvMatrix
+
+
 from state_representation.episode_saver import EpisodeSaver
+
+if USING_OMNIROBOT_SIMULATOR:
+    from real_robots.omnirobot_simulator_server import OmniRobotSimulatorSocket
+    def recvMatrix(socket):
+        return socket.recv_json()
+
+else:
+    from real_robots.utils import recvMatrix
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
@@ -117,22 +125,20 @@ class OmniRobotEnv(SRLGymEnv):
                                       relative_pos=RELATIVE_POS,
                                       learn_states=learn_states, path=save_path)
 
-        # Initialize Baxter effector by connecting to the Gym bridge ROS node:
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.PAIR)
-        self.socket.connect("tcp://{}:{}".format(HOSTNAME, self.server_port))
-
-        # note: if takes too long, run first client, then server
-        print("Waiting for server connection...")
-
         if USING_OMNIROBOT_SIMULATOR:
-            print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
-            self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
-                                            "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)])#, stdout=subprocess.DEVNULL)
-            #atexit.register(self.process.terminate)
+            self.socket = OmniRobotSimulatorSocket(output_size=[RENDER_WIDTH, RENDER_HEIGHT])
+        else:
+            # Initialize Baxter effector by connecting to the Gym bridge ROS node:
+            self.context = zmq.Context()
+            self.socket = self.context.socket(zmq.PAIR)
+            self.socket.connect("tcp://{}:{}".format(HOSTNAME, self.server_port))
+
+            # note: if takes too long, run first client, then server
+            print("Waiting for server connection...")
+
             # hide the output of server
-        msg = self.socket.recv_json()
-        print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
+            msg = self.socket.recv_json()
+            print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
 
 
         self.action = [0, 0]
@@ -143,8 +149,7 @@ class OmniRobotEnv(SRLGymEnv):
         # Initialize the state  
         if self._renders:
             self.image_plot = None
-    def __del__(self):
-        self.process.terminate()
+            
 
     def actionPolicyTowardTarget(self):
         """
