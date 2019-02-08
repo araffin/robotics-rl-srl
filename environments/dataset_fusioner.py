@@ -6,6 +6,8 @@ import os
 import shutil
 
 import numpy as np
+from tqdm import tqdm
+
 
 # TODO add merge (useful when you want to add events by hand)
 #      add update-max-distance (when you want to change the max dist)
@@ -58,16 +60,20 @@ def main():
             for arr in gt_load.files:
                 if arr == "images_path":
                     # here, we want to rename just the folder containing the records, hence the black magic
-                    for i in range(len(gt_load["images_path"])):
+                    # find the "record_" position
+                    path = gt_load["images_path"][0]
+                    end_pos = path.find("/record_")
+                    index_slash = args.merge[2].find("/")
+                    inter_pos = path[end_pos:][8:].find("f") + end_pos + 8 #pos in the complete path.
+                    for i in tqdm(range(len(gt_load["images_path"]))):
                         path = gt_load["images_path"][i]
-                        end_pos = path.find("/record_")
-                        index_slash = args.merge[2].find("/")
-                        new_record_path = path[end_pos:]
                         if idx_ > 1:
-                            inter_pos = path[end_pos:][8:].find("f")
-                            episode = str(num_episode_dataset_1 + int(path[end_pos:][8:][:inter_pos - 1]))
+                            episode = str(num_episode_dataset_1 + int(path[end_pos+8:inter_pos - 1]))
                             episode = episode.zfill(3)
-                            new_record_path = "/record_" + episode + "/" + path[end_pos:][8:][inter_pos:]
+                            new_record_path = "/record_" + episode + "/" + path[inter_pos:]
+                            
+                        else:
+                            new_record_path = path[end_pos:]
                         ground_truth["images_path"].append(args.merge[2][index_slash+1:] + new_record_path)
                 else:
                     # anything that isnt image_path, we dont need to change
