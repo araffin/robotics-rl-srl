@@ -62,7 +62,7 @@ class PosTransformer(object):
         return pixel_points.reshape((2,1))
 
 
-class OmniRobotEnvRender(Process):
+class OmniRobotEnvRender():
     """
     Class for rendering Omnirobot environment
     """
@@ -70,11 +70,9 @@ class OmniRobotEnvRender(Process):
                  back_ground_path, camera_info_path,
                  robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
                  robot_marker_code, target_marker_code,
-                 robot_marker_length, target_marker_length, child_conn, output_size,**_):
+                 robot_marker_length, target_marker_length, output_size,**_):
         super(OmniRobotEnvRender, self).__init__()
 
-        # store the pipe obj
-        self.child_conn = child_conn
         self.output_size = output_size
 
         # store the size of robot marker
@@ -162,96 +160,7 @@ class OmniRobotEnvRender(Process):
             self.marker_finder.setMarkerCode('robot', robot_marker_code, robot_marker_length)
             self.marker_finder.setMarkerCode('target', target_marker_code, target_marker_length)        
 
-    def run(self):
-        episode_idx = 0
-        while True:
-            msg = self.child_conn.recv()
-            command = msg.get('command', '')
-            if command == 'reset':
-                action = None
-                episode_idx += 1
-                episode_step = 0
 
-                if SECOND_CAM_TOPIC is not None:
-                    assert NotImplementedError
-
-            elif command == 'action':
-                action = Move(msg['action'])
-
-            elif command == "exit":
-                break
-            else:
-                raise ValueError("Unknown command: {}".format(msg))
-
-            has_bumped = False
-            # We are always facing North
-            if action == Move.FORWARD:
-                if self.robot_pos[0] < MAX_X:
-                    self.forward()
-                else:
-                    has_bumped = True
-            elif action == Move.STOP:
-                pass
-            elif action == Move.RIGHT:
-                if self.robot_pos[1] > MIN_Y:
-                    self.right()
-                else:
-                    has_bumped = True
-            elif action == Move.LEFT:
-                if self.robot_pos[1] < MAX_Y:
-                    self.left()
-                else:
-                    has_bumped = True
-            elif action == Move.BACKWARD:
-                if self.robot_pos[0] > MIN_X:
-                    self.backward()
-                else:
-                    has_bumped = True
-            elif action is None:
-                # Env reset
-                random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
-                random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
-                
-                self.setRobotCmd(random_init_x, random_init_y, 0)
-                self.robot_marker_size_proprotion = np.random.randn() * 0.05 + 1.0
-                # target reset
-                random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
-                random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
-                self.setTargetCmd(random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
-
-                # render the target
-                self.renderTarget()
-            else:
-                print("Unsupported action")
-
-
-            self.renderRobot()
-            
-            original_image = self.getCroppedImage()
-            original_image = self.renderEnvLuminosityNoise(original_image, noise_var=0.03, in_RGB=False, out_RGB=True)
-            original_image = cv2.resize(original_image, tuple(self.output_size))
-            reward = REWARD_NOTHING
-            # Consider that we reached the target if we are close enough
-            # we detect that computing the difference in area between TARGET_INITIAL_AREA
-            # current detected area of the target
-            if np.linalg.norm(np.array(self.robot_pos) - np.array(self.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
-                reward = REWARD_TARGET_REACH
-
-            if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-                reward = REWARD_BUMP_WALL
-
-            self.child_conn.send(
-                {
-                    # XYZ position
-                    "position": self.robot_pos.tolist(),
-                    "reward": reward,
-                    "target_pos": self.target_pos.tolist()
-                }
-            )
-            img = np.ascontiguousarray(original_image, dtype=np.uint8)
-            self.child_conn.send(img)
-        self.child_conn.close()
-        return
 
     def renderEnvLuminosityNoise(self, origin_image, noise_var=0.1, in_RGB=False, out_RGB=False):
         """
@@ -371,7 +280,9 @@ class OmniRobotEnvRender(Process):
 class OmniRobotSimulatorSocket():
     def __init__(self, **args):
         '''
+        Simulate the zmq socket like real omnirobot server 
         :param **args  arguments 
+        
         '''
         defalt_args = {
             "back_ground_path":"real_robots/omnirobot_simulator_utils/back_ground.jpg", 
@@ -391,22 +302,110 @@ class OmniRobotSimulatorSocket():
             "origin_size" : [640,480], 
             "cropped_size" : [480,480]
         }
-        self.parent_conn, child_conn = Pipe()
-        self.new_args = {"child_conn":child_conn,**defalt_args, **args } #overwrite the args if it exists
+        self.new_args = {**defalt_args, **args } #overwrite the args if it exists
         
         assert len(self.new_args['robot_marker_margin']) == 4
         assert len(self.new_args['target_marker_margin']) == 4
         assert len(self.new_args['output_size']) == 2
 
-        self.p = OmniRobotEnvRender(**self.new_args)
-        self.p.start()
-
-    def __del__(self):
-        self.parent_conn.close()
-        self.p.terminate()
+        self.render = OmniRobotEnvRender(**self.new_args)
+        self.episode_idx = 0
 
     def send_json(self, msg):
-        self.parent_conn.send(msg)
+        # env send msg to render
+        command = msg.get('command', '')
+        if command == 'reset':
+            action = None
+            self.episode_idx += 1
+
+            if SECOND_CAM_TOPIC is not None:
+                assert NotImplementedError
+
+        elif command == 'action':
+            action = Move(msg['action'])
+
+        elif command == "exit":
+            return
+        else:
+            raise ValueError("Unknown command: {}".format(msg))
+
+        has_bumped = False
+        # We are always facing North
+        if action == Move.FORWARD:
+            if self.render.robot_pos[0] < MAX_X:
+                self.render.forward()
+            else:
+                has_bumped = True
+        elif action == Move.STOP:
+            pass
+        elif action == Move.RIGHT:
+            if self.render.robot_pos[1] > MIN_Y:
+                self.render.right()
+            else:
+                has_bumped = True
+        elif action == Move.LEFT:
+            if self.render.robot_pos[1] < MAX_Y:
+                self.render.left()
+            else:
+                has_bumped = True
+        elif action == Move.BACKWARD:
+            if self.render.robot_pos[0] > MIN_X:
+                self.render.backward()
+            else:
+                has_bumped = True
+        elif action is None:
+            # Env reset
+            random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
+            random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
+            
+            self.render.setRobotCmd(random_init_x, random_init_y, 0)
+            self.robot_marker_size_proprotion = np.random.randn() * 0.05 + 1.0
+            # target reset
+            random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
+            random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
+            self.render.setTargetCmd(random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
+
+            # render the target
+            self.render.renderTarget()
+        else:
+            print("Unsupported action")
+
+
+        self.render.renderRobot()
+        
+        original_image = self.render.getCroppedImage()
+        original_image = self.render.renderEnvLuminosityNoise(original_image, noise_var=0.03, in_RGB=False, out_RGB=True)
+        original_image = cv2.resize(original_image, tuple(self.render.output_size))
+        reward = REWARD_NOTHING
+        # Consider that we reached the target if we are close enough
+        # we detect that computing the difference in area between TARGET_INITIAL_AREA
+        # current detected area of the target
+        if np.linalg.norm(np.array(self.render.robot_pos) - np.array(self.render.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
+            reward = REWARD_TARGET_REACH
+
+        if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+            reward = REWARD_BUMP_WALL
+
+        self.img = original_image
+        self.reward = reward
 
     def recv_json(self):
-        return self.parent_conn.recv()
+        msg = {
+            # XYZ position
+            "position": self.render.robot_pos.tolist(),
+            "reward": self.reward,
+            "target_pos": self.render.target_pos.tolist()
+        }
+        return msg
+
+    def recv_image(self):
+        return self.img
+
+
+
+
+
+
+
+
+

@@ -21,7 +21,7 @@ from state_representation.episode_saver import EpisodeSaver
 if USING_OMNIROBOT_SIMULATOR:
     from real_robots.omnirobot_simulator_server import OmniRobotSimulatorSocket
     def recvMatrix(socket):
-        return socket.recv_json()
+        return socket.recv_image()
 
 else:
     from real_robots.utils import recvMatrix
