@@ -42,6 +42,7 @@ if USING_REAL_BAXTER:
     # Set the second cam topic to None if there is only one camera
     SECOND_CAM_TOPIC = "/camera/rgb/image_raw"
     DATA_FOLDER_SECOND_CAM = "real_baxter_second_cam"
+
 elif USING_ROBOBO:
 
     # ROS Topics
@@ -84,7 +85,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     SECOND_CAM_TOPIC = None # not support currently
    
     # Max number of steps per episode
-    MAX_STEPS = 30
+    MAX_STEPS = 250 #30
     # Boundaries
     MIN_X, MAX_X = -0.85, 0.85
     MIN_Y, MAX_Y = -0.85, 0.85

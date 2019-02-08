@@ -52,8 +52,8 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         "record_data": not args.no_record_data,
         "multi_view": args.multi_view,
         "save_path": args.save_path,
-        "shape_reward": args.shape_reward,
-        "env_rank": thread_num
+        "shape_reward": args.shape_reward #,
+        #"env_rank": thread_num
     }
 
     if partition:
@@ -66,7 +66,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     # Additional env when using a trained ppo agent to generate data
     # instead of a random agent
-    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False, "env_rank":100+thread_num})
+    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False}) #, "env_rank":100+thread_num})
     train_env = DummyVecEnv([lambda: train_env])
     train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
 

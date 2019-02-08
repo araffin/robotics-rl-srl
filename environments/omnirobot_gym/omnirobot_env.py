@@ -20,7 +20,7 @@ from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-RELATIVE_POS = False
+RELATIVE_POS = True
 N_CONTACTS_BEFORE_TERMINATION = 3
 
 
@@ -272,12 +272,13 @@ class OmniRobotEnv(SRLGymEnv):
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
             return True
-        if np.abs(self.reward - REWARD_BUMP_WALL) < 0.000001: # bump the wall
-            return True
+        #if np.abs(self.reward - REWARD_BUMP_WALL) < 0.000001: # bump the wall
+        #    return True
+
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001: # reach the target
             self.n_contacts += 1
-            if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
-                return True
+            #if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
+            #    return True
         else:
             self.n_contacts = 0
         return False
