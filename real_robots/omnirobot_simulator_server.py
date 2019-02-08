@@ -88,6 +88,9 @@ class OmniRobotEnvRender(Process):
         self.child_conn = child_conn
         self.output_size = output_size
 
+        # store the size of robot marker
+        self.robot_marker_size_proprotion = 1.0
+
         # Initialize the direction
         self.init_pos = [init_x, init_y]
         self.init_yaw = init_yaw
@@ -225,7 +228,7 @@ class OmniRobotEnvRender(Process):
                 random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
                 
                 self.setRobotCmd(random_init_x, random_init_y, 0)
-                
+                self.robot_marker_size_proprotion = np.random.randn() * 0.05 + 1.0
                 # target reset
                 random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
                 random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
@@ -300,7 +303,7 @@ class OmniRobotEnvRender(Process):
         
         self.image = self.robot_render.addMarker(self.target_bg_img, \
                              self.pos_transformer.phyPosGround2PixelPos( self.robot_pos.reshape(2,1)),\
-                             self.robot_yaw, np.random.randn() * 0.05 + 1.0)
+                             self.robot_yaw, self.robot_marker_size_proprotion)
         
     def getCroppedImage(self):
         return self.image[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3],:]
