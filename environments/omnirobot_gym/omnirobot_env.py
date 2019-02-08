@@ -20,7 +20,7 @@ from state_representation.episode_saver import EpisodeSaver
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-RELATIVE_POS = False
+RELATIVE_POS = True
 N_CONTACTS_BEFORE_TERMINATION = 3
 
 
@@ -72,7 +72,7 @@ class OmniRobotEnv(SRLGymEnv):
                                         srl_pipe=srl_pipe)
         if action_repeat != 1:
             raise NotImplementedError
-        self.server_port = SERVER_PORT + env_rank
+        self.server_port = SERVER_PORT + env_rank + 90
         self.n_contacts = 0
         use_ground_truth = srl_model == 'ground_truth'
         use_srl = srl_model != 'raw_pixels'
@@ -86,7 +86,7 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = state_dim
-        
+
         self._renders = renders
         self._shape_reward = shape_reward
         self.cuda = th.cuda.is_available()
@@ -127,7 +127,7 @@ class OmniRobotEnv(SRLGymEnv):
 
         if USING_OMNIROBOT_SIMULATOR:
             print("using omnirobot simulator, launch the simulator server with port {}...".format(self.server_port))
-            self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server", 
+            self.process = subprocess.Popen(["python", "-m", "real_robots.omnirobot_simulator_server",
                                             "--output-size", str(RENDER_WIDTH), str(RENDER_HEIGHT) ,"--port", str(self.server_port)])#, stdout=subprocess.DEVNULL)
             #atexit.register(self.process.terminate)
             # hide the output of server
@@ -140,7 +140,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.robot_pos = np.array([0, 0])
 
 
-        # Initialize the state  
+        # Initialize the state
         if self._renders:
             self.image_plot = None
     def __del__(self):
@@ -164,7 +164,7 @@ class OmniRobotEnv(SRLGymEnv):
         """
         assert self.action_space.contains(action)
         # Convert int action to action in (x,y,z) space
-        
+
         # serialize the action
         if isinstance(action, np.ndarray):
             self.action = action.tolist()
@@ -172,9 +172,9 @@ class OmniRobotEnv(SRLGymEnv):
             self.action = action.item()
         else:
             self.action = action
-            
+
         self._env_step_counter += 1
-        
+
         # Send the action to the server
         self.socket.send_json({"command": "action", "action": self.action})
 
@@ -310,4 +310,3 @@ class OmniRobotEnv(SRLGymEnv):
             # Wait a bit, so that plot is visible
             plt.pause(0.0001)
         return self.observation
-
