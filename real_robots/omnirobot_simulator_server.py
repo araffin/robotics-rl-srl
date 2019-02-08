@@ -1,22 +1,12 @@
 from __future__ import division, print_function, absolute_import
 
-import os
-import signal
-import time
 from multiprocessing import Process, Pipe
 
 
 # TODO !!!!!!!!!!!!!!!!!!!!!!!!!
 # undistort origin image -> add undistort target marker -> redistort image
 
-import numpy as np
-import zmq
-import cv2
-import yaml
-import argparse
-#Konwn issue:
-#- No module named 'scipy.spatial.transform'
-#To resolve, try pip3 install scipy==1.2
+# Konwn issue: - No module named 'scipy.spatial.transform', To resolve, try pip3 install scipy==1.2
 from scipy.spatial.transform import Rotation as R
 
 from .constants import *
@@ -44,7 +34,6 @@ class PosTransformer(object):
         
         self.ground_2_camera_trans = np.linalg.inv(self.camera_2_ground_trans)
 
-
     def phyPosCam2PhyPosGround(self, pos_coord_cam):
         """
         Transform physical position in camera coordinate to physical position in ground coordinate
@@ -68,20 +57,20 @@ class PosTransformer(object):
         else:
             homo_pos[0:3,:] = pos_coord_ground
         homo_pos = np.matmul(self.ground_2_camera_trans, homo_pos)
-        pixel_points, _ =cv2.projectPoints(homo_pos[0:3,:].reshape(1,1,3), np.zeros((3,1)), np.zeros((3,1)),\
-                                           self.camera_mat, self.dist_coeffs if return_distort_image_pos else None) 
-        return (pixel_points.reshape((2,1)))
+        pixel_points, _ = cv2.projectPoints(homo_pos[0:3,:].reshape(1,1,3), np.zeros((3,1)), np.zeros((3,1)),
+                                            self.camera_mat, self.dist_coeffs if return_distort_image_pos else None)
+        return pixel_points.reshape((2,1))
 
 
 class OmniRobotEnvRender(Process):
     """
     Class for rendering Omnirobot environment
     """
-    def __init__(self, init_x, init_y, init_yaw, origin_size, cropped_size,\
-                 back_ground_path, camera_info_path, \
-                robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,\
-                robot_marker_code, target_marker_code,\
-                robot_marker_length, target_marker_length, child_conn, output_size,**_):
+    def __init__(self, init_x, init_y, init_yaw, origin_size, cropped_size,
+                 back_ground_path, camera_info_path,
+                 robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
+                 robot_marker_code, target_marker_code,
+                 robot_marker_length, target_marker_length, child_conn, output_size,**_):
         super(OmniRobotEnvRender, self).__init__()
 
         # store the pipe obj
@@ -103,7 +92,6 @@ class OmniRobotEnvRender(Process):
         self.robot_pos_cmd = np.float32(self.init_pos[:])
         self.robot_yaw_cmd = self.init_yaw
 
-
         # Target's set position on the grid
         self.target_pos_cmd = np.float32([0,0])
         self.target_yaw_cmd = 0.0
@@ -111,7 +99,6 @@ class OmniRobotEnvRender(Process):
         # Target's real position on the grid
         self.target_pos = np.float32([0,0])
         self.target_yaw = 0
-
 
         # status of moving
         self.move_finished = False
@@ -135,24 +122,25 @@ class OmniRobotEnvRender(Process):
         self.bg_img = np.zeros([*self.origin_size,3], np.uint8)
 
         self.cropped_margin = (self.origin_size - self.cropped_size)/2.0
-        self.cropped_range = np.array([self.cropped_margin[0],self.cropped_margin[0]+self.cropped_size[0],\
-              self.cropped_margin[1],self.cropped_margin[1]+self.cropped_size[1]]).astype(np.int)
+        self.cropped_range = np.array([self.cropped_margin[0],self.cropped_margin[0]+self.cropped_size[0],
+                                       self.cropped_margin[1],
+                                       self.cropped_margin[1]+self.cropped_size[1]]).astype(np.int)
         
         back_ground_img = cv2.imread(back_ground_path)
         if(back_ground_img.shape[0:2] != self.cropped_size):
             print("input back ground image's size: ", back_ground_img.shape)
             print("resize to ", self.cropped_size)
-            self.bg_img[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3],:] \
+            self.bg_img[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3], :] \
                 = cv2.resize(back_ground_img, tuple(self.cropped_size)) # background image
         else:
-            self.bg_img[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3],:] \
+            self.bg_img[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3], :] \
                 = back_ground_img # background image
                 
         self.bg_img = cv2.undistort(self.bg_img, self.camera_matrix, self.dist_coeffs)
         #Currently cannot find a solution to re-distort a image...
         
-        self.target_bg_img = self.bg_img # background image with target.
-        self.image = self.bg_img # image with robot and target
+        self.target_bg_img = self.bg_img  # background image with target.
+        self.image = self.bg_img  # image with robot and target
         
         
 
@@ -161,8 +149,8 @@ class OmniRobotEnvRender(Process):
         r = R.from_euler('xyz', [0, 180, 0], degrees=True)
         camera_rot_mat_coord_ground = r.as_dcm()
 
-        self.pos_transformer = PosTransformer( self.camera_matrix, self.dist_coeffs,\
-                                              camera_pos_coord_ground, camera_rot_mat_coord_ground)
+        self.pos_transformer = PosTransformer( self.camera_matrix, self.dist_coeffs,
+                                               camera_pos_coord_ground, camera_rot_mat_coord_ground)
 
         self.target_render = MarkerRender(noise_var=2)
         self.robot_render = MarkerRender(noise_var=2)
@@ -173,8 +161,6 @@ class OmniRobotEnvRender(Process):
             self.marker_finder = MakerFinder(camera_info_path)
             self.marker_finder.setMarkerCode('robot', robot_marker_code, robot_marker_length)
             self.marker_finder.setMarkerCode('target', target_marker_code, target_marker_length)        
-    
-
 
     def run(self):
         episode_idx = 0
@@ -182,7 +168,6 @@ class OmniRobotEnvRender(Process):
             msg = self.child_conn.recv()
             command = msg.get('command', '')
             if command == 'reset':
-                #print('Environment reset, choose random position')
                 action = None
                 episode_idx += 1
                 episode_step = 0
@@ -233,7 +218,6 @@ class OmniRobotEnvRender(Process):
                 random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
                 random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
                 self.setTargetCmd(random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
-                #print("new target position: {:.4f} {:4f}".format(omni_robot.target_pos[0],omni_robot.target_pos[1]))
 
                 # render the target
                 self.renderTarget()
@@ -252,16 +236,10 @@ class OmniRobotEnvRender(Process):
             # current detected area of the target
             if np.linalg.norm(np.array(self.robot_pos) - np.array(self.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
                 reward = REWARD_TARGET_REACH
-                #print("Target reached!")
 
             if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
                 reward = REWARD_BUMP_WALL
-                #print("Bumped into wall")
-                #print()
-            #print("reward: {}".format(reward))
 
-            #print("omni_robot position", omni_robot.robot_pos)
-            #print("target position", omni_robot.target_pos)
             self.child_conn.send(
                 {
                     # XYZ position
@@ -291,40 +269,44 @@ class OmniRobotEnvRender(Process):
         """
         render the target
         """        
-        #print("pixel pos: ",self.pos_transformer.phyPosGround2PixelPos(self.target_pos_cmd.reshape(2,1)))
-        self.target_bg_img = self.target_render.addMarker(self.bg_img, \
-                              self.pos_transformer.phyPosGround2PixelPos(self.target_pos.reshape(2,1)),\
-                              self.target_yaw, np.random.randn() * 0.05 + 1.0)
+        self.target_bg_img = self.target_render.addMarker(self.bg_img,
+                                                          self.pos_transformer.phyPosGround2PixelPos(
+                                                              self.target_pos.reshape(2,1)),
+                                                          self.target_yaw, np.random.randn() * 0.05 + 1.0)
 
     def renderRobot(self):
         """
         render the image.
         """
         
-        self.image = self.robot_render.addMarker(self.target_bg_img, \
-                             self.pos_transformer.phyPosGround2PixelPos( self.robot_pos.reshape(2,1)),\
-                             self.robot_yaw, self.robot_marker_size_proprotion)
+        self.image = self.robot_render.addMarker(self.target_bg_img,
+                                                 self.pos_transformer.phyPosGround2PixelPos(
+                                                     self.robot_pos.reshape(2,1)),
+                                                 self.robot_yaw, self.robot_marker_size_proprotion)
         
     def getCroppedImage(self):
-        return self.image[self.cropped_range[0]:self.cropped_range[1],self.cropped_range[2]:self.cropped_range[3],:]
+        return self.image[self.cropped_range[0]:self.cropped_range[1], self.cropped_range[2]:self.cropped_range[3], :]
+
     def findMarkers(self):
         assert NotImplementedError
         # this is not tested
         tags_trans_coord_cam, tags_rot_coord_cam = self.marker_finder.getMarkerPose(self.image, ['robot','target'], True)
         if 'robot' in tags_trans_coord_cam.keys():
             self.robot_pos = self.pos_transformer.phyPosCam2PhyPosGround(tags_trans_coord_cam['robot'])
-            tag_rot_coord_ground = np.matmul(self.pos_transformer.camera_2_ground_trans[0:3,0:3],tags_rot_coord_cam['robot'])[0:3,0:3]
+            tag_rot_coord_ground = np.matmul(
+                self.pos_transformer.camera_2_ground_trans[0:3,0:3],tags_rot_coord_cam['robot'])[0:3, 0:3]
             self.robot_yaw = R.from_dcm(tag_rot_coord_ground).as_euler('zyx', degree=False)
             print("robot_error: ". self.robot_pos - self.robot_pos_cmd)
             print("robot_yaw_error: ". self.robot_yaw - self.robot_yaw_cmd)
+
         if 'target' in tags_trans_coord_cam.keys():
             self.target_pos = self.pos_transformer.phyPosCam2PhyPosGround(tags_trans_coord_cam['target'])
-            tag_rot_coord_ground = np.matmul(self.pos_transformer.camera_2_ground_trans[0:3,0:3],tags_rot_coord_cam['target'])[0:3,0:3]
+            tag_rot_coord_ground = np.matmul(self.pos_transformer.camera_2_ground_trans[0:3, 0:3],
+                                             tags_rot_coord_cam['target'])[0:3, 0:3]
             self.target_yaw = R.from_dcm(tag_rot_coord_ground).as_euler('zyx', degree=False)
             print("target_error: ", self.target_pos - self.target_pos_cmd)
             print("target_yaw_error: ", self.target_yaw - self.target_yaw_cmd)
 
-       
     def setRobotCmdConstrained(self, x, y, yaw):
         self.robot_pos_cmd[0] = max(x, MIN_X)
         self.robot_pos_cmd[0] = min(x, MAX_X)
@@ -332,13 +314,14 @@ class OmniRobotEnvRender(Process):
         self.robot_pos_cmd[1] = max(y, MIN_Y)
         self.robot_pos_cmd[1] = min(y, MAX_Y) 
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
+
     def setRobotCmd(self, x, y, yaw):
         self.robot_pos_cmd[0] = x
         self.robot_pos_cmd[1] = y
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
         
         self.robot_pos = self.robot_pos_cmd + np.random.randn(2) * 0.02  # 0.02 m variance
-        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd + np.random.randn() * np.pi/180* 5 )# 5 degree variance
+        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd + np.random.randn() * np.pi/180* 5 )  #5 degree variance
 
     def setTargetCmd(self, x, y, yaw):
         self.target_pos_cmd[0] = x
@@ -372,7 +355,6 @@ class OmniRobotEnvRender(Process):
         self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] -  self.step_distance, self.robot_yaw_cmd)
     
 
-
     @staticmethod
     def normalizeAngle(angle):
         """
@@ -384,6 +366,7 @@ class OmniRobotEnvRender(Process):
         while angle < -np.pi:
             angle += 2 * np.pi
         return angle
+
 
 class OmniRobotSimulatorSocket():
     def __init__(self, **args):
@@ -417,12 +400,13 @@ class OmniRobotSimulatorSocket():
 
         self.p = OmniRobotEnvRender(**self.new_args)
         self.p.start()
+
     def __del__(self):
         self.parent_conn.close()
         self.p.terminate()
 
     def send_json(self, msg):
         self.parent_conn.send(msg)
+
     def recv_json(self):
         return self.parent_conn.recv()
-    
