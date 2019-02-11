@@ -229,8 +229,9 @@ class OmniRobotEnvRender():
         self.robot_pos_cmd[1] = y
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
         
-        self.robot_pos = self.robot_pos_cmd + np.random.randn(2) * 0.02  # 0.02 m variance
-        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd + np.random.randn() * np.pi/180* 5 )  #5 degree variance
+        self.robot_pos = self.robot_pos_cmd + np.random.randn(2) * 0.01  # 0.01 m variance
+        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd +
+                                             np.random.randn() * np.pi/180* 2.5 )  # 2.5 degree variance
 
     def setTargetCmd(self, x, y, yaw):
         self.target_pos_cmd[0] = x
