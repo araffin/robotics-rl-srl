@@ -6,10 +6,9 @@ import os
 import shutil
 
 import numpy as np
+from tqdm import tqdm
 
-# TODO add merge (useful when you want to add events by hand)
-#      add update-max-distance (when you want to change the max dist)
-import cv2
+
 def main():
     parser = argparse.ArgumentParser(description='Dataset Manipulator: useful to fusion two datasets by concatenating '
                                                  'episodes. PS: Deleting sources after fusion into destination folder.')
@@ -54,21 +53,29 @@ def main():
         ground_truth["images_path"] = []
         num_episode_dataset = num_episode_dataset_1
 
+        index_slash = args.merge[2].find("/")
+        index_margin_str = len("/record_")
+        directory_str = args.merge[2][index_slash+1:]
+
         for idx_, gt_load in enumerate([ground_truth_load, ground_truth_load_2], 1):
             for arr in gt_load.files:
                 if arr == "images_path":
                     # here, we want to rename just the folder containing the records, hence the black magic
-                    for i in range(len(gt_load["images_path"])):
+
+                    for i in tqdm(range(len(gt_load["images_path"])),
+                                  desc="Update of paths (Folder " + str(1+idx_) + ")"):
+                        # find the "record_" position
                         path = gt_load["images_path"][i]
                         end_pos = path.find("/record_")
-                        index_slash = args.merge[2].find("/")
-                        new_record_path = path[end_pos:]
+                        inter_pos = path.find("/frame")  # pos in the complete path.
+
                         if idx_ > 1:
-                            inter_pos = path[end_pos:][8:].find("f")
-                            episode = str(num_episode_dataset_1 + int(path[end_pos:][8:][:inter_pos - 1]))
+                            episode = str(num_episode_dataset_1 + int(path[end_pos + index_margin_str: inter_pos]))
                             episode = episode.zfill(3)
-                            new_record_path = "/record_" + episode + "/" + path[end_pos:][8:][inter_pos:]
-                        ground_truth["images_path"].append(args.merge[2][index_slash+1:] + new_record_path)
+                            new_record_path = "/record_" + episode + path[inter_pos:]
+                        else:
+                            new_record_path = path[end_pos:]
+                        ground_truth["images_path"].append(directory_str + new_record_path)
                 else:
                     # anything that isnt image_path, we dont need to change
                     gt_arr = gt_load[arr]

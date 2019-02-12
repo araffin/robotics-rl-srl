@@ -14,8 +14,13 @@ from .omnirobot_simulator_utils import *
 
 
 assert USING_OMNIROBOT_SIMULATOR, "Please set USING_OMNIROBOT_SIMULATOR to True in real_robots/constants.py"
-
-
+NOISE_VAR_ROBOT_POS = 0.01 #meter
+NOISE_VAR_ROBOT_YAW = np.pi/180* 2.5 # 5 Deg
+NOISE_VAR_TARGET_PIXEL = 2 # pixel noise on target marker
+NOISE_VAR_ROBOT_PIXEL = 2
+NOISE_VAR_ENVIRONMENT = 0.03 # pixel noise of final image on LAB space
+NOISE_VAR_ROBOT_SIZE_PROPOTION = 0.05 # noise of robot size propotion
+NOISE_VAR_TARGET_SIZE_PROPOTION = 0.05 
 class PosTransformer(object):
     def __init__(self, camera_mat:np.ndarray, dist_coeffs:np.ndarray,\
                  pos_camera_coord_ground:np.ndarray, rot_mat_camera_coord_ground:np.ndarray):
@@ -53,7 +58,7 @@ class PosTransformer(object):
         if pos_coord_ground.shape == (2,1):
             # by default, z =0 since it's on the ground
             homo_pos[0:2,:] = pos_coord_ground
-            homo_pos[2,:] = (np.random.rand() - 0.5) * 0.4 # add noise to the z-axis
+            homo_pos[2,:] = 0 #(np.random.randn() - 0.5) * 0.05 # add noise to the z-axis
         else:
             homo_pos[0:3,:] = pos_coord_ground
         homo_pos = np.matmul(self.ground_2_camera_trans, homo_pos)
@@ -150,8 +155,8 @@ class OmniRobotEnvRender():
         self.pos_transformer = PosTransformer( self.camera_matrix, self.dist_coeffs,
                                                camera_pos_coord_ground, camera_rot_mat_coord_ground)
 
-        self.target_render = MarkerRender(noise_var=2)
-        self.robot_render = MarkerRender(noise_var=2)
+        self.target_render = MarkerRender(noise_var=NOISE_VAR_TARGET_PIXEL)
+        self.robot_render = MarkerRender(noise_var=NOISE_VAR_ROBOT_PIXEL)
         self.robot_render.setMarkerImage(cv2.imread(robot_marker_path,cv2.IMREAD_COLOR), robot_marker_margin)
         self.target_render.setMarkerImage(cv2.imread(target_marker_path,cv2.IMREAD_COLOR), target_marker_margin)
 
@@ -181,13 +186,12 @@ class OmniRobotEnvRender():
         self.target_bg_img = self.target_render.addMarker(self.bg_img,
                                                           self.pos_transformer.phyPosGround2PixelPos(
                                                               self.target_pos.reshape(2,1)),
-                                                          self.target_yaw, np.random.randn() * 0.05 + 1.0)
+                                                          self.target_yaw, np.random.randn() * NOISE_VAR_TARGET_SIZE_PROPOTION + 1.0)
 
     def renderRobot(self):
         """
         render the image.
         """
-        
         self.image = self.robot_render.addMarker(self.target_bg_img,
                                                  self.pos_transformer.phyPosGround2PixelPos(
                                                      self.robot_pos.reshape(2,1)),
@@ -229,8 +233,8 @@ class OmniRobotEnvRender():
         self.robot_pos_cmd[1] = y
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
         
-        self.robot_pos = self.robot_pos_cmd + np.random.randn(2) * 0.02  # 0.02 m variance
-        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd + np.random.randn() * np.pi/180* 5 )  #5 degree variance
+        self.robot_pos = self.robot_pos_cmd  + np.random.randn(2) * NOISE_VAR_ROBOT_POS  # add noise
+        self.robot_yaw = self.normalizeAngle(self.robot_yaw_cmd + np.random.randn() * NOISE_VAR_ROBOT_YAW )  #add noise
 
     def setTargetCmd(self, x, y, yaw):
         self.target_pos_cmd[0] = x
@@ -359,7 +363,7 @@ class OmniRobotSimulatorSocket():
             random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
             
             self.render.setRobotCmd(random_init_x, random_init_y, 0)
-            self.robot_marker_size_proprotion = np.random.randn() * 0.05 + 1.0
+            self.robot_marker_size_proprotion = np.random.randn() * NOISE_VAR_ROBOT_SIZE_PROPOTION + 1.0
             # target reset
             random_init_x = np.random.random_sample() * (TARGET_MAX_X -TARGET_MIN_X) + TARGET_MIN_X
             random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + TARGET_MIN_Y
@@ -373,9 +377,9 @@ class OmniRobotSimulatorSocket():
 
         self.render.renderRobot()
         
-        original_image = self.render.getCroppedImage()
-        original_image = self.render.renderEnvLuminosityNoise(original_image, noise_var=0.03, in_RGB=False, out_RGB=True)
-        original_image = cv2.resize(original_image, tuple(self.render.output_size))
+        self.img = self.render.getCroppedImage()
+        self.img = self.render.renderEnvLuminosityNoise(self.img, noise_var=NOISE_VAR_ENVIRONMENT, in_RGB=False, out_RGB=True)
+        self.img = cv2.resize(self.img, tuple(self.render.output_size))
         reward = REWARD_NOTHING
         # Consider that we reached the target if we are close enough
         # we detect that computing the difference in area between TARGET_INITIAL_AREA
@@ -386,7 +390,6 @@ class OmniRobotSimulatorSocket():
         if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
             reward = REWARD_BUMP_WALL
 
-        self.img = original_image
         self.reward = reward
 
     def recv_json(self):
