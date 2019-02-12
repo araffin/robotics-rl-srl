@@ -293,7 +293,7 @@ class OmniRobotSimulatorSocket():
             "camera_info_path":"real_robots/omnirobot_simulator_utils/cam_calib_info.yaml",
             "robot_marker_path":"real_robots/omnirobot_simulator_utils/robot_margin3_pixel_only_tag.png",
             "robot_marker_margin":[3,3,3,3],
-            "target_marker_path":"real_robots/omnirobot_simulator_utils/target_margin4_pixel.png", 
+            "target_marker_path":"real_robots/omnirobot_simulator_utils/red_target_margin4_pixel_480x480.png", #for black target, use target_margin4_pixel.png", 
             "target_marker_margin":[4,4,4,4],
             "robot_marker_code":None, 
             "target_marker_code":None,
