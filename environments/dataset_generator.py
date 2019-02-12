@@ -94,7 +94,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             if use_ppo2:
                 action, _ = model.predict([obs])
             else:
-                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion::
+                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     action = [env.action_space.sample()]
