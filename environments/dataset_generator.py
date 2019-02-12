@@ -87,13 +87,14 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         obs = env.reset()
         done = False
         t = 0
+        episode_toward_target_on = False
         while not done:
             env.render()
 
             if use_ppo2:
                 action, _ = model.predict([obs])
             else:
-                if np.random.rand() < args.toward_target_timesteps_proportion:
+                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion::
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     action = [env.action_space.sample()]
@@ -102,6 +103,10 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             frames += 1
             t += 1
             if done:
+                if np.random.rand() <  args.toward_target_timesteps_proportion:
+                    episode_toward_target_on = True
+                else:
+                    episode_toward_target_on = False
                 print("Episode finished after {} timesteps".format(t + 1))
 
         if thread_num == 0:
@@ -138,7 +143,7 @@ def main():
                         help='runs a ppo2 agent instead of a random agent')
     parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
-    parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0, 
+    parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
                         help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
     args = parser.parse_args()
 
