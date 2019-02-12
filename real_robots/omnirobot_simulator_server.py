@@ -14,8 +14,8 @@ from .omnirobot_simulator_utils import *
 
 
 assert USING_OMNIROBOT_SIMULATOR, "Please set USING_OMNIROBOT_SIMULATOR to True in real_robots/constants.py"
-NOISE_VAR_ROBOT_POS = 0.01#0.01
-NOISE_VAR_ROBOT_YAW = np.pi/180* 5 # 5 Deg
+NOISE_VAR_ROBOT_POS = 0.01 #meter
+NOISE_VAR_ROBOT_YAW = np.pi/180* 2.5 # 5 Deg
 NOISE_VAR_TARGET_PIXEL = 2 # pixel noise on target marker
 NOISE_VAR_ROBOT_PIXEL = 2
 NOISE_VAR_ENVIRONMENT = 0.03 # pixel noise of final image on LAB space
