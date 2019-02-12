@@ -134,7 +134,7 @@ class OmniRobotEnv(SRLGymEnv):
             self.socket.connect("tcp://{}:{}".format(HOSTNAME, self.server_port))
 
             # note: if takes too long, run first client, then server
-            print("Waiting for server connection...")
+            print("Waiting for server connection at port {}...".format(self.server_port))
 
             # hide the output of server
             msg = self.socket.recv_json()
