@@ -15,7 +15,6 @@ from environments.srl_env import SRLGymEnv
 from real_robots.constants import Move, SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, \
                                 REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
 
-
 from state_representation.episode_saver import EpisodeSaver
 
 if USING_OMNIROBOT_SIMULATOR:
@@ -31,7 +30,7 @@ RENDER_WIDTH = 224
 RELATIVE_POS = True
 N_CONTACTS_BEFORE_TERMINATION = 3
 
-
+DELTA_POS = 0.1  # DELTA_POS for continuous actions
 N_DISCRETE_ACTIONS = 4
 
 # Init seaborn
@@ -70,7 +69,7 @@ class OmniRobotEnv(SRLGymEnv):
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
-    def __init__(self, renders=False,name="Omnirobot", is_discrete=True,save_path='srl_zoo/data/', state_dim=-1,
+    def __init__(self, renders=False, name="Omnirobot", is_discrete=True,save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1,
                  shape_reward=False, env_rank=0, srl_pipe=None,**_):
 
@@ -94,6 +93,7 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = state_dim
+        self._delta_pos = 0.1
         
         self._renders = renders
         self._shape_reward = shape_reward
@@ -156,20 +156,29 @@ class OmniRobotEnv(SRLGymEnv):
         :return: (int) action
         """
         if abs(self.robot_pos[0] - self.target_pos[0]) > abs(self.robot_pos[1] - self.target_pos[1]):
-            return int(Move.FORWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.BACKWARD)
+
+            if self._is_discrete:
+                return int(Move.FORWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.BACKWARD)
                 #forward                                        # backward
+            else:
+                return DELTA_POS if self.robot_pos[0] < self.target_pos[0] else -DELTA_POS
         else:
-            # left                                          # right
-            return int(Move.LEFT) if self.robot_pos[1] < self.target_pos[1] else int(Move.RIGHT)
+            if self._is_discrete:
+                # left                                          # right
+                return int(Move.LEFT) if self.robot_pos[1] < self.target_pos[1] else int(Move.RIGHT)
+            else:
+                return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
     def step(self, action):
         """
         :action: (int)
         :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
         """
+        if not self._is_discrete:
+            action = np.array(action)
         assert self.action_space.contains(action)
+
         # Convert int action to action in (x,y,z) space
-        
         # serialize the action
         if isinstance(action, np.ndarray):
             self.action = action.tolist()
@@ -181,7 +190,7 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter += 1
         
         # Send the action to the server
-        self.socket.send_json({"command": "action", "action": self.action})
+        self.socket.send_json({"command": "action", "action": self.action, "is_discrete":self._is_discrete})
 
         # Receive state data (position, etc), important to update state related values
         self.getEnvState()
@@ -277,13 +286,9 @@ class OmniRobotEnv(SRLGymEnv):
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
             return True
-        #if np.abs(self.reward - REWARD_BUMP_WALL) < 0.000001: # bump the wall
-        #    return True
 
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001: # reach the target
             self.n_contacts += 1
-            #if self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION:
-            #    return True
         else:
             self.n_contacts = 0
         return False

@@ -244,29 +244,35 @@ class OmniRobotEnvRender():
         self.target_pos = self.target_pos_cmd
         self.target_yaw = self.normalizeAngle(self.target_yaw_cmd)
 
-    def forward(self):
+    def forward(self, action=None):
         """
         Move one step forward (Translation)
-        """ 
+        """
         self.setRobotCmd(self.robot_pos_cmd[0] + self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
-        
 
-    def backward(self):
+    def backward(self, action=None):
         """
         Move one step backward
         """
         self.setRobotCmd(self.robot_pos_cmd[0] - self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
-        
 
-    def left(self):
+    def left(self, action=None):
         """
-        Translate in left
+        Translate to the left
         """
-        self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] +  self.step_distance, self.robot_yaw_cmd)
+        self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] + self.step_distance, self.robot_yaw_cmd)
         
-    def right(self):
-        self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] -  self.step_distance, self.robot_yaw_cmd)
+    def right(self, action=None):
+        """
+        Translate to the right
+        """
+        self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] - self.step_distance, self.robot_yaw_cmd)
     
+    def moveContinous(self, action):
+        """
+        Perform a continuous displacement of dx, dy
+        """
+        self.setRobotCmd(self.robot_pos_cmd[0] + action[0], self.robot_pos_cmd[1] + action[1], self.robot_yaw_cmd)
 
     @staticmethod
     def normalizeAngle(angle):
@@ -326,7 +332,10 @@ class OmniRobotSimulatorSocket():
                 assert NotImplementedError
 
         elif command == 'action':
-            action = Move(msg['action'])
+            if msg.get('is_discrete', False):
+                action = Move(msg['action'])
+            else:
+                action = 'Continuous'
 
         elif command == "exit":
             return
@@ -357,6 +366,7 @@ class OmniRobotSimulatorSocket():
                 self.render.backward()
             else:
                 has_bumped = True
+
         elif action is None:
             # Env reset
             random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
@@ -371,6 +381,13 @@ class OmniRobotSimulatorSocket():
 
             # render the target
             self.render.renderTarget()
+
+        elif action == 'Continuous':
+            if  MIN_X < self.render.robot_pos[0] + msg['action'][0] < MAX_X and \
+                    MIN_Y < self.render.robot_pos[1] + msg['action'][1] < MAX_Y:
+                self.render.moveContinous(msg['action'])
+            else:
+                has_bumped = True
         else:
             print("Unsupported action")
 

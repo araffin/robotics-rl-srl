@@ -97,9 +97,20 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
                 if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
                     action = [env.actionPolicyTowardTarget()]
                 else:
-                    action = [env.action_space.sample()]
+                    if not env_kwargs.get("is_discrete", False) and env_class.__name__ == "OmniRobotEnv":
+                        x_delta_rand = 2 * env._delta_pos * np.random.rand() - env._delta_pos
+                        y_delta_rand = 2 * env._delta_pos * np.random.rand() - env._delta_pos
+                        action = [x_delta_rand, y_delta_rand]
+                    else:
+                        action = [env.action_space.sample()]
 
-            _, _, done, _ = env.step(action[0])
+            action_to_step = action[0]
+
+            if not env_kwargs.get("is_discrete", False) and env_class.__name__ == "OmniRobotEnv":
+                action_to_step = action
+
+            _, _, done, _ = env.step(action_to_step)
+
             frames += 1
             t += 1
             if done:
