@@ -108,7 +108,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
             if not env_kwargs.get("is_discrete", False) and env_class.__name__ == "OmniRobotEnv":
                 action_to_step = action
-
+            #print("action to step: ", action_to_step)
             _, _, done, _ = env.step(action_to_step)
 
             frames += 1

@@ -19,6 +19,7 @@ from state_representation.episode_saver import EpisodeSaver
 
 if USING_OMNIROBOT_SIMULATOR:
     from real_robots.omnirobot_simulator_server import OmniRobotSimulatorSocket
+
     def recvMatrix(socket):
         return socket.recv_image()
 
@@ -93,7 +94,7 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = state_dim
-        self._delta_pos = 0.1
+        self._delta_pos = 0.25
         
         self._renders = renders
         self._shape_reward = shape_reward

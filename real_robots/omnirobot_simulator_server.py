@@ -14,16 +14,18 @@ from .omnirobot_simulator_utils import *
 
 
 assert USING_OMNIROBOT_SIMULATOR, "Please set USING_OMNIROBOT_SIMULATOR to True in real_robots/constants.py"
-NOISE_VAR_ROBOT_POS = 0.01 #meter
-NOISE_VAR_ROBOT_YAW = np.pi/180* 2.5 # 5 Deg
-NOISE_VAR_TARGET_PIXEL = 2 # pixel noise on target marker
+NOISE_VAR_ROBOT_POS = 0.01  # meter
+NOISE_VAR_ROBOT_YAW = np.pi/180 * 2.5  # 5 Deg
+NOISE_VAR_TARGET_PIXEL = 2  # pixel noise on target marker
 NOISE_VAR_ROBOT_PIXEL = 2
-NOISE_VAR_ENVIRONMENT = 0.03 # pixel noise of final image on LAB space
-NOISE_VAR_ROBOT_SIZE_PROPOTION = 0.05 # noise of robot size propotion
-NOISE_VAR_TARGET_SIZE_PROPOTION = 0.05 
+NOISE_VAR_ENVIRONMENT = 0.03  # pixel noise of final image on LAB space
+NOISE_VAR_ROBOT_SIZE_PROPOTION = 0.05  # noise of robot size propotion
+NOISE_VAR_TARGET_SIZE_PROPOTION = 0.05
+
+
 class PosTransformer(object):
-    def __init__(self, camera_mat:np.ndarray, dist_coeffs:np.ndarray,\
-                 pos_camera_coord_ground:np.ndarray, rot_mat_camera_coord_ground:np.ndarray):
+    def __init__(self, camera_mat: np.ndarray, dist_coeffs: np.ndarray,
+                 pos_camera_coord_ground: np.ndarray, rot_mat_camera_coord_ground: np.ndarray):
         """
        
         """
@@ -89,7 +91,7 @@ class OmniRobotEnvRender():
 
         # OmniRobot's real position on the grid
         self.robot_pos = np.float32([0, 0])
-        self.robot_yaw = 0 # in rad
+        self.robot_yaw = 0  # in rad
         
         # OmniRobot's position command on the grid
         self.robot_pos_cmd = np.float32(self.init_pos[:])
@@ -395,13 +397,15 @@ class OmniRobotSimulatorSocket():
         self.render.renderRobot()
         
         self.img = self.render.getCroppedImage()
-        self.img = self.render.renderEnvLuminosityNoise(self.img, noise_var=NOISE_VAR_ENVIRONMENT, in_RGB=False, out_RGB=True)
+        self.img = self.render.renderEnvLuminosityNoise(self.img, noise_var=NOISE_VAR_ENVIRONMENT, in_RGB=False,
+                                                        out_RGB=True)
         self.img = cv2.resize(self.img, tuple(self.render.output_size))
         reward = REWARD_NOTHING
         # Consider that we reached the target if we are close enough
         # we detect that computing the difference in area between TARGET_INITIAL_AREA
         # current detected area of the target
-        if np.linalg.norm(np.array(self.render.robot_pos) - np.array(self.render.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
+        if np.linalg.norm(np.array(self.render.robot_pos) - np.array(self.render.target_pos)) \
+                < DIST_TO_TARGET_THRESHOLD:
             reward = REWARD_TARGET_REACH
 
         if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
