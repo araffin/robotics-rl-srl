@@ -74,15 +74,31 @@ class PosTransformer(object):
 
 
 class OmniRobotEnvRender():
-    """
-    Class for rendering Omnirobot environment
-    """
-
     def __init__(self, init_x, init_y, init_yaw, origin_size, cropped_size,
                  back_ground_path, camera_info_path,
                  robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
                  robot_marker_code, target_marker_code,
                  robot_marker_length, target_marker_length, output_size, **_):
+        """
+        Class for rendering Omnirobot environment
+        :param init_x: (float) initial x position of robot
+        :param init_y: (float) initial y position of robot
+        :param init_yaw: (float) initial yaw position of robot
+        :param origin_size: (list of int) original camera's size (eg. [640,480]), the camera matrix should be corresponding to this size
+        :param cropped_size: (list of int) cropped image's size (eg. [480,480])
+        :param back_ground_path: (str) back ground image's path, the image should be undistorted.
+        :param camera_info_path: (str) camera info file's path (containing camera matrix)
+        :param robot_marker_path: (str) robot maker's path, the marker should have a margin with several pixels 
+        :param robot_marker_margin: (list of int) marker's margin (eg. [3,3,3,3])
+        :param target_marker_path: (str) target maker's path, the marker should have a margin with several pixels 
+        :param target_marker_margin: (list of int) marker's margin (eg. [3,3,3,3])
+        :param robot_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional, the code of robot marker, only used for detecting position directly from the image.
+        :param target_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional, the code of target marker, only used for detecting position directly from the image.
+        :param robot_marker_length: (float) the physical length of the marker (in meter)
+        :param target_marker_length: (float) the physical length of the marker (in meter)
+        :param output_size: (list of int) the output image's size (eg. [224,224])
+        :param **_: other input params not used, so they are dropped
+        """
         super(OmniRobotEnvRender, self).__init__()
 
         self.output_size = output_size
