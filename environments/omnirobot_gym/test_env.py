@@ -14,14 +14,14 @@ timesteps = 500  # must be greater than MAX_STEPS
 episodes = 50
 env.seed(1)
 i = 0
-
-print('Starting episodes..., "30%_action use torward target policy, 70%_action use random policy ')
+TORWARD_TARGET_PROPORTION = 0.3
+print('Starting episodes..., {}%_action use torward target policy, {}%_action use random policy'.format(TORWARD_TARGET_PROPORTION, 1-TORWARD_TARGET_PROPORTION))
 start_time = time.time()
 try:
     for _ in range(episodes):
         observation = env.reset()
         for t in range(timesteps):
-                if np.random.rand() < 0.7:
+                if np.random.rand() > TORWARD_TARGET_PROPORTION:
                     action = env.action_space.sample()
                 else:
                     action = env.actionPolicyTowardTarget()     
