@@ -13,7 +13,7 @@ import subprocess
 
 from environments.srl_env import SRLGymEnv
 from real_robots.constants import Move, SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, \
-                                REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
+    REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
 
 from state_representation.episode_saver import EpisodeSaver
 
@@ -70,14 +70,14 @@ class OmniRobotEnv(SRLGymEnv):
     :param srl_pipe: (Queue, [Queue]) contains the input and output of the SRL model
     """
 
-    def __init__(self, renders=False, name="Omnirobot", is_discrete=True,save_path='srl_zoo/data/', state_dim=-1,
+    def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1,
-                 shape_reward=False, env_rank=0, srl_pipe=None,**_):
+                 shape_reward=False, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
-                                        relative_pos=RELATIVE_POS,
-                                        env_rank=env_rank,
-                                        srl_pipe=srl_pipe)
+                                           relative_pos=RELATIVE_POS,
+                                           env_rank=env_rank,
+                                           srl_pipe=srl_pipe)
         if action_repeat != 1:
             raise NotImplementedError
         self.server_port = SERVER_PORT + env_rank
@@ -95,7 +95,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.episode_terminated = False
         self.state_dim = state_dim
         self._delta_pos = 0.25
-        
+
         self._renders = renders
         self._shape_reward = shape_reward
         self.cuda = th.cuda.is_available()
@@ -108,13 +108,15 @@ class OmniRobotEnv(SRLGymEnv):
             action_dim = 2
             self._action_bound = 1
             action_bounds = np.array([self._action_bound] * action_dim)
-            self.action_space = spaces.Box(-action_bounds, action_bounds, dtype=np.float32)
+            self.action_space = spaces.Box(-action_bounds,
+                                           action_bounds, dtype=np.float32)
         # SRL model
         if self.use_srl:
             if use_ground_truth:
                 self.state_dim = self.getGroundTruthDim()
             self.dtype = np.float32
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
+            self.observation_space = spaces.Box(
+                low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
             self.dtype = np.uint8
             self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
@@ -127,30 +129,31 @@ class OmniRobotEnv(SRLGymEnv):
                                       learn_states=learn_states, path=save_path)
 
         if USING_OMNIROBOT_SIMULATOR:
-            self.socket = OmniRobotSimulatorSocket(output_size=[RENDER_WIDTH, RENDER_HEIGHT])
+            self.socket = OmniRobotSimulatorSocket(
+                output_size=[RENDER_WIDTH, RENDER_HEIGHT])
         else:
             # Initialize Baxter effector by connecting to the Gym bridge ROS node:
             self.context = zmq.Context()
             self.socket = self.context.socket(zmq.PAIR)
-            self.socket.connect("tcp://{}:{}".format(HOSTNAME, self.server_port))
+            self.socket.connect(
+                "tcp://{}:{}".format(HOSTNAME, self.server_port))
 
             # note: if takes too long, run first client, then server
-            print("Waiting for server connection at port {}...".format(self.server_port))
+            print("Waiting for server connection at port {}...".format(
+                self.server_port))
 
             # hide the output of server
             msg = self.socket.recv_json()
-            print("Connected to server on port {} (received message: {})".format(self.server_port, msg))
-
+            print("Connected to server on port {} (received message: {})".format(
+                self.server_port, msg))
 
         self.action = [0, 0]
         self.reward = 0
         self.robot_pos = np.array([0, 0])
 
-
-        # Initialize the state  
+        # Initialize the state
         if self._renders:
             self.image_plot = None
-            
 
     def actionPolicyTowardTarget(self):
         """
@@ -160,7 +163,7 @@ class OmniRobotEnv(SRLGymEnv):
 
             if self._is_discrete:
                 return int(Move.FORWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.BACKWARD)
-                #forward                                        # backward
+                # forward                                        # backward
             else:
                 return DELTA_POS if self.robot_pos[0] < self.target_pos[0] else -DELTA_POS
         else:
@@ -183,15 +186,16 @@ class OmniRobotEnv(SRLGymEnv):
         # serialize the action
         if isinstance(action, np.ndarray):
             self.action = action.tolist()
-        elif hasattr(action, 'dtype'): # convert numpy type to python type
+        elif hasattr(action, 'dtype'):  # convert numpy type to python type
             self.action = action.item()
         else:
             self.action = action
-            
+
         self._env_step_counter += 1
-        
+
         # Send the action to the server
-        self.socket.send_json({"command": "action", "action": self.action, "is_discrete":self._is_discrete})
+        self.socket.send_json(
+            {"command": "action", "action": self.action, "is_discrete": self._is_discrete})
 
         # Receive state data (position, etc), important to update state related values
         self.getEnvState()
@@ -203,7 +207,8 @@ class OmniRobotEnv(SRLGymEnv):
         self.render()
 
         if self.saver is not None:
-            self.saver.step(self.observation, action, self.reward, done, self.getGroundTruth())
+            self.saver.step(self.observation, action,
+                            self.reward, done, self.getGroundTruth())
         if self.use_srl:
             return self.getSRLState(self.observation), self.reward, done, {}
         else:
@@ -230,7 +235,8 @@ class OmniRobotEnv(SRLGymEnv):
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
         # Resize it:
-        self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        self.observation = cv2.resize(
+            self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getTargetPos(self):
@@ -275,7 +281,8 @@ class OmniRobotEnv(SRLGymEnv):
         self.getEnvState()
         self.observation = self.getObservation()
         if self.saver is not None:
-            self.saver.reset(self.observation, self.getTargetPos(), self.getGroundTruth())
+            self.saver.reset(self.observation,
+                             self.getTargetPos(), self.getGroundTruth())
         if self.use_srl:
             return self.getSRLState(self.observation)
         else:
@@ -288,7 +295,7 @@ class OmniRobotEnv(SRLGymEnv):
         if self.episode_terminated or self._env_step_counter > MAX_STEPS:
             return True
 
-        if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001: # reach the target
+        if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001:  # reach the target
             self.n_contacts += 1
         else:
             self.n_contacts = 0
@@ -322,4 +329,3 @@ class OmniRobotEnv(SRLGymEnv):
             # Wait a bit, so that plot is visible
             plt.pause(0.0001)
         return self.observation
-

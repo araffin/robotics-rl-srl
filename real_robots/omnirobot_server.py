@@ -9,7 +9,8 @@ import time
 
 import numpy as np
 import zmq
-import argparse, yaml
+import argparse
+import yaml
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
@@ -31,11 +32,11 @@ should_exit = [False]
 
 
 class OmniRobot(object):
-    """
-    Class for controlling Robobo
-    """
-
     def __init__(self, init_x, init_y, init_yaw):
+        """
+        Class for controlling omnirobot based on topic mechanism of ros
+        """
+
         super(OmniRobot, self).__init__()
 
         # Initialize the direction
@@ -44,17 +45,15 @@ class OmniRobot(object):
 
         # OmniRobot's real position on the grid
         self.robot_pos = [0, 0]
-        self.robot_yaw = 0 # in rad
-        
+        self.robot_yaw = 0  # in rad
+
         # OmniRobot's position command on the grid
         self.robot_pos_cmd = self.init_pos[:]
         self.robot_yaw_cmd = self.init_yaw
 
-
         # Target's real position on the grid
-        self.target_pos = [0,0]
+        self.target_pos = [0, 0]
         self.target_yaw = 0
-
 
         # status of moving
         self.move_finished = False
@@ -63,42 +62,58 @@ class OmniRobot(object):
         # Distance for each step
         self.step_distance = 0.07
 
+        self.visual_robot_sub = rospy.Subscriber(
+            "/visual_robot_pose", PoseStamped, self.visualRobotCallback, queue_size=10)
+        self.visual_target_sub = rospy.Subscriber(
+            "/visual_target_pose", PoseStamped, self.visualTargetCallback, queue_size=10)
 
-        self.visual_robot_sub = rospy.Subscriber("/visual_robot_pose", PoseStamped, self.visualRobotCallback, queue_size=10)
-        self.visual_target_sub = rospy.Subscriber("/visual_target_pose", PoseStamped, self.visualTargetCallback, queue_size=10)
-         
-        self.pos_cmd_pub = rospy.Publisher("/position_commands", Vector3, queue_size=10)
-        self.move_finished_sub = rospy.Subscriber("/finished", Bool, self.moveFinishedCallback, queue_size=10)
+        self.pos_cmd_pub = rospy.Publisher(
+            "/position_commands", Vector3, queue_size=10)
+        self.move_finished_sub = rospy.Subscriber(
+            "/finished", Bool, self.moveFinishedCallback, queue_size=10)
         self.stop_signal_pub = rospy.Publisher("/stop", Bool, queue_size=10)
-        self.reset_odom_pub = rospy.Publisher("/reset_odom", Vector3, queue_size=10)
+        self.reset_odom_pub = rospy.Publisher(
+            "/reset_odom", Vector3, queue_size=10)
         self.reset_signal_pub = rospy.Publisher("/reset", Bool, queue_size=10)
 
-
-        rospy.sleep(1) #known issues, without sleep 1 second, publishers could not been setup
-                        #https://answers.ros.org/question/9665/test-for-when-a-rospy-publisher-become-available/?answer=14125#post-id-14125
-        
+        # known issues, without sleep 1 second, publishers could not been setup
+        rospy.sleep(1)
+        # https://answers.ros.org/question/9665/test-for-when-a-rospy-publisher-become-available/?answer=14125#post-id-14125
 
     def setRobotCmdConstrained(self, x, y, yaw):
+        """
+        set the position command for the robot, the command will be automatically constrained
+        x, y, yaw are in the global frame
+        Note: the command will be not published until pubPosCmd() is called
+        """
         self.robot_pos_cmd[0] = max(x, MIN_X)
         self.robot_pos_cmd[0] = min(x, MAX_X)
 
         self.robot_pos_cmd[1] = max(y, MIN_Y)
         self.robot_pos_cmd[1] = min(y, MAX_Y)
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
+
     def setRobotCmd(self, x, y, yaw):
+        """
+        set the position command for the robot
+        x, y, yaw are in the global frame
+        Note: the command will be not published until pubPosCmd() is called
+        """
         self.robot_pos_cmd[0] = x
         self.robot_pos_cmd[1] = y
         self.robot_yaw_cmd = self.normalizeAngle(yaw)
-        
+
     def pubPosCmd(self):
         """
         Publish the position command for the robot
         x, y, yaw are in the global frame
         """
-        msg = Vector3(self.robot_pos_cmd[0], self.robot_pos_cmd[1], self.robot_yaw_cmd)
+        msg = Vector3(
+            self.robot_pos_cmd[0], self.robot_pos_cmd[1], self.robot_yaw_cmd)
         self.pos_cmd_pub.publish(msg)
         self.move_finished = False
-        print("move to x: {:.4f} y:{:.4f} yaw: {:.4f}".format(msg.x, msg.y, msg.z))
+        print("move to x: {:.4f} y:{:.4f} yaw: {:.4f}".format(
+            msg.x, msg.y, msg.z))
 
     def resetOdom(self, x, y, yaw):
         """
@@ -109,7 +124,7 @@ class OmniRobot(object):
         msg.y = y
         msg.z = yaw
         self.reset_odom_pub.publish(msg)
-    
+
     def reset(self):
         """
         Publish the reset signal to robot (quit the stop state)
@@ -139,7 +154,7 @@ class OmniRobot(object):
                                                 pose_stamped_msg.pose.orientation.z, pose_stamped_msg.pose.orientation.w])[2]
 
         if NO_TARGET_MODE and self.target_pos_changed:
-            #simulate the target's position update
+            # simulate the target's position update
             self.target_pos[0] = 0.0
             self.target_pos[1] = 0.0
             self.target_yaw = 0.0
@@ -149,50 +164,64 @@ class OmniRobot(object):
         """
         Callback for ROS topic
         Get the new updated position of robot from camera
+        Only update when target position should have been moved (eg. reset env)
         :param pose_stamped_msg: (PoseStamped ROS message)
         """
-        
+
         if self.target_pos_changed:
             if pose_stamped_msg.pose.position.x < TARGET_MAX_X and pose_stamped_msg.pose.position.x > TARGET_MIN_X  \
-                and pose_stamped_msg.pose.position.y > TARGET_MIN_Y and pose_stamped_msg.pose.position.y < TARGET_MAX_Y:
+                    and pose_stamped_msg.pose.position.y > TARGET_MIN_Y and pose_stamped_msg.pose.position.y < TARGET_MAX_Y:
                 self.target_pos[0] = pose_stamped_msg.pose.position.x
                 self.target_pos[1] = pose_stamped_msg.pose.position.y
                 self.target_yaw = euler_from_quaternion([pose_stamped_msg.pose.orientation.x, pose_stamped_msg.pose.orientation.y,
-                                                        pose_stamped_msg.pose.orientation.z, pose_stamped_msg.pose.orientation.w])[2]
+                                                         pose_stamped_msg.pose.orientation.z, pose_stamped_msg.pose.orientation.w])[2]
                 self.target_pos_changed = False
 
-
-    
     def moveFinishedCallback(self, move_finished_msg):
         """
         Callback for ROS topic
         receive 'finished' signal when robot moves to the target
         """
         self.move_finished = move_finished_msg.data
-        
-        
+
     def forward(self):
         """
         Move one step forward (Translation)
-        """ 
-        self.setRobotCmd(self.robot_pos_cmd[0] + self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
+        """
+        self.setRobotCmd(
+            self.robot_pos_cmd[0] + self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
         self.pubPosCmd()
 
     def backward(self):
         """
         Move one step backward
         """
-        self.setRobotCmd(self.robot_pos_cmd[0] - self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
+        self.setRobotCmd(
+            self.robot_pos_cmd[0] - self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
         self.pubPosCmd()
 
     def left(self):
         """
-        Translate in left
+        Translate to the left
         """
-        self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] +  self.step_distance, self.robot_yaw_cmd)
+        self.setRobotCmd(
+            self.robot_pos_cmd[0], self.robot_pos_cmd[1] + self.step_distance, self.robot_yaw_cmd)
         self.pubPosCmd()
+
     def right(self):
-        self.setRobotCmd(self.robot_pos_cmd[0] , self.robot_pos_cmd[1] -  self.step_distance, self.robot_yaw_cmd)
+        """
+        Translate to the right
+        """
+        self.setRobotCmd(
+            self.robot_pos_cmd[0], self.robot_pos_cmd[1] - self.step_distance, self.robot_yaw_cmd)
+        self.pubPosCmd()
+
+    def moveContinous(self, action):
+        """
+        Perform a continuous displacement of dx, dy
+        """
+        self.setRobotCmd(
+            self.robot_pos_cmd[0] + action[0], self.robot_pos_cmd[1] + action[1], self.robot_yaw_cmd)
         self.pubPosCmd()
 
     @staticmethod
@@ -222,31 +251,34 @@ class ImageCallback(object):
         self.distortion_coefficients = distortion_coefficients
 
     def imageCallback(self, msg):
-        try:    
+        try:
             # Convert your ROS Image message to OpenCV
             cv2_img = bridge.imgmsg_to_cv2(msg, "rgb8")
-            
+
             if self.first_msg:
                 shape = cv2_img.shape
                 min_length = min(shape[0], shape[1])
                 up_margin = int((shape[0] - min_length) / 2)  # row
                 left_margin = int((shape[1] - min_length) / 2)  # col
-                self.valid_box = [up_margin, up_margin + min_length, left_margin, left_margin + min_length]
-                print("origin size: {}x{}".format(shape[0],shape[1]))
-                print("crop each image to a square image, cropped size: {}x{}".format(min_length, min_length))
+                self.valid_box = [up_margin, up_margin +
+                                  min_length, left_margin, left_margin + min_length]
+                print("origin size: {}x{}".format(shape[0], shape[1]))
+                print("crop each image to a square image, cropped size: {}x{}".format(
+                    min_length, min_length))
                 self.first_msg = False
-            
+
             #undistort_image = cv2.undistort(cv2_img, self.camera_matrix, self.distortion_coefficients)
             #self.valid_img = undistort_image[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
 
             # for right now, use this processing, making output same with the simulator
             self.valid_img = np.zeros(cv2_img.shape, np.uint8)
             self.valid_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]] = \
-                                cv2_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
-            self.valid_img = cv2.undistort(self.valid_img, self.camera_matrix, self.distortion_coefficients)
+                cv2_img[self.valid_box[0]:self.valid_box[1],
+                        self.valid_box[2]:self.valid_box[3]]
+            self.valid_img = cv2.undistort(
+                self.valid_img, self.camera_matrix, self.distortion_coefficients)
         except CvBridgeError as e:
             print("CvBridgeError:", e)
-
 
 
 def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam"):
@@ -257,15 +289,22 @@ def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam
     :param episode_step: (int)
     :param path: (str)
     """
-    image_path = "{}/{}/frame{:06d}.jpg".format(path, episode_folder, episode_step)
+    image_path = "{}/{}/frame{:06d}.jpg".format(
+        path, episode_folder, episode_step)
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     cv2.imwrite("srl_zoo/data/{}".format(image_path), im)
 
+
 def waitTargetUpdate(omni_robot, timeout):
+    """
+    Wait for target updating
+    :param omni_robot: (OmniRobot)
+    :param timeout: (time to wait for updating)
+    """
     omni_robot.target_pos_changed = True
-    time = 0.0 #second
-    while time < timeout and not rospy.is_shutdown() :
-        if not omni_robot.target_pos_changed: #updated
+    time = 0.0  # second
+    while time < timeout and not rospy.is_shutdown():
+        if not omni_robot.target_pos_changed:  # updated
             return True
         else:
             rospy.sleep(0.1)
@@ -273,32 +312,35 @@ def waitTargetUpdate(omni_robot, timeout):
     return False
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Server for omnirobot")
-    parser.add_argument('--camera-info-path', default="real_robots/omnirobot_simulator_utils/cam_calib_info.yaml",type=str,
+    parser.add_argument('--camera-info-path', default="real_robots/omnirobot_simulator_utils/cam_calib_info.yaml", type=str,
                         help="camera calibration file generated by ros calibrate")
     args = parser.parse_args()
     with open(args.camera_info_path, 'r') as stream:
-            try:
-                contents = yaml.load(stream)
-                camera_matrix = np.array(contents['camera_matrix']['data'])
-                distortion_coefficients = np.array(contents['distortion_coefficients']['data'])
-            except yaml.YAMLError as exc:
-                print(exc)
+        try:
+            contents = yaml.load(stream)
+            camera_matrix = np.array(contents['camera_matrix']['data'])
+            distortion_coefficients = np.array(
+                contents['distortion_coefficients']['data'])
+        except yaml.YAMLError as exc:
+            print(exc)
     rospy.init_node('omni_robot_server', anonymous=True)
     # warning for no target mode
     if NO_TARGET_MODE:
-        rospy.logwarn("ATTENTION: This script is running under NO TARGET mode!!!")
+        rospy.logwarn(
+            "ATTENTION: This script is running under NO TARGET mode!!!")
     # Connect to ROS Topics
     if IMAGE_TOPIC is not None:
         image_cb_wrapper = ImageCallback()
-        img_sub = rospy.Subscriber(IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback, queue_size=1)
+        img_sub = rospy.Subscriber(
+            IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback, queue_size=1)
 
     if SECOND_CAM_TOPIC is not None:
         assert NotImplementedError
         image_cb_wrapper_2 = ImageCallback()
-        img_2_sub = rospy.Subscriber(SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
+        img_2_sub = rospy.Subscriber(
+            SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
 
     print('Starting up on port number {}'.format(SERVER_PORT))
     context = zmq.Context()
@@ -315,14 +357,13 @@ if __name__ == '__main__':
     episode_idx = -1
     episode_folder = None
 
-    omni_robot = OmniRobot(0, 0, 0) # yaw is in rad
-    omni_robot.stop() # after stop, the robot need to be reset
+    omni_robot = OmniRobot(0, 0, 0)  # yaw is in rad
+    omni_robot.stop()  # after stop, the robot need to be reset
     omni_robot.resetOdom(0, 0, 0)
     omni_robot.reset()
 
-
     omni_robot.pubPosCmd()
-    r = rospy.Rate(10) # 10hz
+    r = rospy.Rate(10)  # 10hz
     while not rospy.is_shutdown():
         print("wait for new command")
         msg = socket.recv_json()
@@ -336,20 +377,23 @@ if __name__ == '__main__':
             episode_idx += 1
             episode_step = 0
             omni_robot.reset()
-            
 
             if SECOND_CAM_TOPIC is not None:
                 assert NotImplementedError
                 episode_folder = "record_{:03d}".format(episode_idx)
                 try:
-                    os.makedirs("srl_zoo/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
+                    os.makedirs(
+                        "srl_zoo/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
                 except OSError:
                     pass
 
         elif command == 'action':
-            print("action (int)", msg['action'])
-            action = Move(msg['action'])
-            print("action (move):", action)
+            if msg.get('is_discrete', False):
+                print("action (int)", msg['action'])
+                action = Move(msg['action'])
+                print("action (move):", action)
+            else:
+                action = 'Continuous'
 
         elif command == "exit":
             break
@@ -382,28 +426,34 @@ if __name__ == '__main__':
                 has_bumped = True
         elif action is None:
             # Env reset
-            random_init_x = np.random.random_sample() * (INIT_MAX_X -INIT_MIN_X) + INIT_MIN_X
+            random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
             random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
-            
+
             omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
             omni_robot.pubPosCmd()
-            
-            while True: # check the new target can be seen
+
+            while True:  # check the new target can be seen
                 if not NO_TARGET_MODE:
-                    raw_input("please set the target position, then press 'enter' !")
-                
+                    raw_input(
+                        "please set the target position, then press 'enter' !")
+
                 if waitTargetUpdate(omni_robot, timeout=0.5):
                     break
-                else: 
+                else:
                     print("Can't see the target, please move it into the boundary!")
-                   
-            
-            
+
+        elif action == 'Continuous':
+            if MIN_X < omni_robot.robot_pos[0] + msg['action'][0] < MAX_X and \
+                    MIN_Y < omni_robot.robot_pos[1] + msg['action'][1] < MAX_Y:
+                omni_robot.moveContinous(msg['action'])
+            else:
+                has_bumped = True
+
         else:
             print("Unsupported action")
 
-        # wait for robot to finish the action, timeout 20s
-        timeout = 20 # second
+        # wait for robot to finish the action, timeout 30s
+        timeout = 30  # second
         for i in range(timeout):
             readable_list, _, _ = zmq.select([socket], [], [], 0)
 
@@ -413,13 +463,11 @@ if __name__ == '__main__':
             if omni_robot.move_finished:
                 print("action done")
                 break
-            
-            elif i == timeout -1:
-                print("Error: timeout for action finished signal")  
+
+            elif i == timeout - 1:
+                print("Error: timeout for action finished signal")
                 exit()
             time.sleep(1)
-            
-
 
         if IMAGE_TOPIC is not None:
             # Retrieve last image from image topic
@@ -429,11 +477,11 @@ if __name__ == '__main__':
         # Consider that we reached the target if we are close enough
         # we detect that computing the difference in area between TARGET_INITIAL_AREA
         # current detected area of the target
-        if np.linalg.norm(np.array(omni_robot.robot_pos) - np.array(omni_robot.target_pos)) <  DIST_TO_TARGET_THRESHOLD:
+        if np.linalg.norm(np.array(omni_robot.robot_pos) - np.array(omni_robot.target_pos)) < DIST_TO_TARGET_THRESHOLD:
             reward = REWARD_TARGET_REACH
             print("Target reached!")
 
-        if has_bumped:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+        if has_bumped:
             reward = REWARD_BUMP_WALL
             print("Bumped into wall")
             print()
@@ -452,7 +500,8 @@ if __name__ == '__main__':
         )
 
         if SECOND_CAM_TOPIC is not None:
-            saveSecondCamImage(image_cb_wrapper_2.valid_img, episode_folder, episode_step, DATA_FOLDER_SECOND_CAM)
+            saveSecondCamImage(image_cb_wrapper_2.valid_img,
+                               episode_folder, episode_step, DATA_FOLDER_SECOND_CAM)
             episode_step += 1
 
         if IMAGE_TOPIC is not None:
