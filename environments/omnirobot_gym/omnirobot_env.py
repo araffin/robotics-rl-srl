@@ -93,7 +93,6 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = state_dim
-        self._delta_pos = 0.25
 
         self._renders = renders
         self._shape_reward = shape_reward

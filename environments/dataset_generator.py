@@ -101,8 +101,6 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
                     action = [env.action_space.sample()]
 
             action_to_step = action[0]
-
-            #print("action to step: ", action_to_step)
             _, _, done, _ = env.step(action_to_step)
 
             frames += 1

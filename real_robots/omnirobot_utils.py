@@ -3,6 +3,8 @@ from gym import spaces
 from gym import logger
 import gym
 from .constants import *
+
+
 class OmnirobotManagerBase(object):
     def __init__(self, second_cam_topic=None):
         """
@@ -13,10 +15,12 @@ class OmnirobotManagerBase(object):
         super(OmnirobotManagerBase, self).__init__()
         self.second_cam_topic = SECOND_CAM_TOPIC
         self.episode_idx = 0
-        self.robot = None # the abstract object for robot, 
-                          # can be the real robot (Omnirobot class)
-                          #  or the robot simulator (OmniRobotEnvRender class)
-    
+
+        # the abstract object for robot,
+        # can be the real robot (Omnirobot class)
+        #  or the robot simulator (OmniRobotEnvRender class)
+        self.robot = None
+
     def rightAction(self):
         """
         Let robot excute right action, and checking the boudary
@@ -28,6 +32,7 @@ class OmnirobotManagerBase(object):
         else:
             has_bumped = True
         return has_bumped
+
     def leftAction(self):
         """
         Let robot excute left action, and checking the boudary
@@ -39,6 +44,7 @@ class OmnirobotManagerBase(object):
         else:
             has_bumped = True
         return has_bumped
+
     def forwardAction(self):
         """
         Let robot excute forward action, and checking the boudary
@@ -69,7 +75,7 @@ class OmnirobotManagerBase(object):
         :return has_bumped: (bool) 
         """
         if MIN_X < self.robot.robot_pos[0] + msg['action'][0] < MAX_X and \
-            MIN_Y < self.robot.robot_pos[1] + msg['action'][1] < MAX_Y:
+                MIN_Y < self.robot.robot_pos[1] + msg['action'][1] < MAX_Y:
             self.robot.moveContinous(msg['action'])
             has_bumped = False
         else:
@@ -77,7 +83,6 @@ class OmnirobotManagerBase(object):
         return has_bumped
 
     def sampleRobotInitalPosition(self):
-
         random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
         random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
         return [random_init_x, random_init_y]
@@ -93,7 +98,6 @@ class OmnirobotManagerBase(object):
         random_init_position = self.sampleRobotInitalPosition()
         self.robot.setRobotCmd(random_init_position[0], random_init_position[1], 0)
 
-       
     def processMsg(self, msg):
         """
         Using this steps' msg command the determinate the correct position that the robot should be at next step,
@@ -136,7 +140,7 @@ class OmnirobotManagerBase(object):
         elif action == None:
             pass
         else:
-            print("Unsupported action")
+            print("Unsupported action: ", action)
 
         # Determinate the reward for this step
         
@@ -150,6 +154,7 @@ class OmnirobotManagerBase(object):
             self.reward = REWARD_BUMP_WALL
         else:
             self.reward = REWARD_NOTHING
+<<<<<<< HEAD
 
 
 
@@ -213,3 +218,5 @@ class RingBox(gym.Space):
     def __eq__(self, other):
         return np.allclose(self.positive_low, other.positive_low) and np.allclose(self.positive_high, other.positive_high) \
             and np.allclose(self.negative_low, other.negative_low) and np.allclose(self.negative_high, other.negative_high)
+=======
+>>>>>>> 3a82827e9d0531b1dd83632eda83c1e0351ac058
