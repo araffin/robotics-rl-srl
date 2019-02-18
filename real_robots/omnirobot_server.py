@@ -22,7 +22,7 @@ from tf.transformations import euler_from_quaternion
 
 from real_robots.constants import *
 from real_robots.utils import sendMatrix
-
+from real_robots.omnirobot_utils import OmnirobotManagerBase
 assert USING_OMNIROBOT, "Please set USING_OMNIROBOT to True in real_robots/constants.py"
 
 NO_TARGET_MODE = False
@@ -306,6 +306,50 @@ def waitTargetUpdate(omni_robot, timeout):
             time += 0.1
     return False
 
+class OmnirobotManager(OmnirobotManagerBase):
+    """
+    Omnirobot magager for real robot
+    """
+    def __init__(self):
+        super(OmnirobotManager, self).__init__(second_cam_topic=SECOND_CAM_TOPIC)
+        self.robot = OmniRobot(0,0,0) # assign the real robot object to manager
+        self.episode_idx = 0
+        self.episode_step = 0
+    def resetEpisode(self):
+        """
+        override orignal method
+        Give the correct sequance of commands to the robot 
+        to rest environment between the different episodes
+        """
+        if self.second_cam_topic is not None:
+            assert NotImplementedError
+            episode_folder = "record_{:03d}".format(episode_idx)
+            try:
+                os.makedirs(
+                    "srl_zoo/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
+            except OSError:
+                pass
+
+        print('Environment reset, choose random position')
+        self.episode_idx += 1
+        self.episode_step = 0
+        self.robot.reset()
+
+        # Env reset
+        random_init_position = self.sampleRobotInitalPosition()
+        self.robot.setRobotCmd(random_init_position[0], random_init_position[1], 0)
+        self.robot.pubPosCmd()
+
+        while True:  # check the new target can be seen
+            if not NO_TARGET_MODE:
+                raw_input(
+                    "please set the target position, then press 'enter' !")
+
+            if waitTargetUpdate(self.robot, timeout=0.5):
+                break
+            else:
+                print("Can't see the target, please move it into the boundary!")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Server for omnirobot")
@@ -352,100 +396,20 @@ if __name__ == '__main__':
     episode_idx = -1
     episode_folder = None
 
-    omni_robot = OmniRobot(0, 0, 0)  # yaw is in rad
-    omni_robot.stop()  # after stop, the robot need to be reset
-    omni_robot.resetOdom(0, 0, 0)
-    omni_robot.reset()
+    omnirobot_manager = OmnirobotManager()
+    omnirobot_manager.robot = OmniRobot(0, 0, 0)  # yaw is in rad
+    omnirobot_manager.robot.stop()  # after stop, the robot need to be reset
+    omnirobot_manager.robot.resetOdom(0, 0, 0)
+    omnirobot_manager.robot.reset()
 
-    omni_robot.pubPosCmd()
+    omnirobot_manager.robot.pubPosCmd()
     r = rospy.Rate(10)  # 10hz
     while not rospy.is_shutdown():
         print("wait for new command")
         msg = socket.recv_json()
 
         print("msg: {}".format(msg))
-        command = msg.get('command', '')
-
-        if command == 'reset':
-            print('Environment reset, choose random position')
-            action = None
-            episode_idx += 1
-            episode_step = 0
-            omni_robot.reset()
-
-            if SECOND_CAM_TOPIC is not None:
-                assert NotImplementedError
-                episode_folder = "record_{:03d}".format(episode_idx)
-                try:
-                    os.makedirs(
-                        "srl_zoo/data/{}/{}".format(DATA_FOLDER_SECOND_CAM, episode_folder))
-                except OSError:
-                    pass
-
-        elif command == 'action':
-            if msg.get('is_discrete', False):
-                print("action (int)", msg['action'])
-                action = Move(msg['action'])
-                print("action (move):", action)
-            else:
-                action = 'Continuous'
-
-        elif command == "exit":
-            break
-        else:
-            raise ValueError("Unknown command: {}".format(msg))
-
-        has_bumped = False
-        # We are always facing North
-        if action == Move.FORWARD:
-            if omni_robot.robot_pos[0] < MAX_X:
-                omni_robot.forward()
-            else:
-                has_bumped = True
-        elif action == Move.STOP:
-            omni_robot.stop()
-        elif action == Move.RIGHT:
-            if omni_robot.robot_pos[1] > MIN_Y:
-                omni_robot.right()
-            else:
-                has_bumped = True
-        elif action == Move.LEFT:
-            if omni_robot.robot_pos[1] < MAX_Y:
-                omni_robot.left()
-            else:
-                has_bumped = True
-        elif action == Move.BACKWARD:
-            if omni_robot.robot_pos[0] > MIN_X:
-                omni_robot.backward()
-            else:
-                has_bumped = True
-        elif action is None:
-            # Env reset
-            random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
-            random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
-
-            omni_robot.setRobotCmd(random_init_x, random_init_y, 0)
-            omni_robot.pubPosCmd()
-
-            while True:  # check the new target can be seen
-                if not NO_TARGET_MODE:
-                    raw_input(
-                        "please set the target position, then press 'enter' !")
-
-                if waitTargetUpdate(omni_robot, timeout=0.5):
-                    break
-                else:
-                    print("Can't see the target, please move it into the boundary!")
-
-        elif action == 'Continuous':
-            if MIN_X < omni_robot.robot_pos[0] + msg['action'][0] < MAX_X and \
-                    MIN_Y < omni_robot.robot_pos[1] + msg['action'][1] < MAX_Y:
-                omni_robot.moveContinous(msg['action'])
-            else:
-                has_bumped = True
-
-        else:
-            print("Unsupported action")
+        omnirobot_manager.processMsg(msg)
 
         # wait for robot to finish the action, timeout 30s
         timeout = 30  # second
@@ -455,7 +419,7 @@ if __name__ == '__main__':
             if len(readable_list) > 0:
                 print("New command incomes, ignore the current command")
                 continue
-            if omni_robot.move_finished:
+            if omnirobot_manager.robot.move_finished:
                 print("action done")
                 break
 
@@ -468,28 +432,15 @@ if __name__ == '__main__':
             # Retrieve last image from image topic
             original_image = np.copy(image_cb_wrapper.valid_img)
 
-        reward = REWARD_NOTHING
-        # Consider that we reached the target if we are close enough
-        # we detect that computing the difference in area between TARGET_INITIAL_AREA
-        # current detected area of the target
-        if np.linalg.norm(np.array(omni_robot.robot_pos) - np.array(omni_robot.target_pos)) < DIST_TO_TARGET_THRESHOLD:
-            reward = REWARD_TARGET_REACH
-            print("Target reached!")
-
-        if has_bumped:
-            reward = REWARD_BUMP_WALL
-            print("Bumped into wall")
-            print()
-        print("reward: {}".format(reward))
-
-        print("omni_robot position", omni_robot.robot_pos)
-        print("target position", omni_robot.target_pos)
+        print("reward: {}".format(omnirobot_manager.reward))
+        print("omni_robot position", omnirobot_manager.robot.robot_pos)
+        print("target position", omnirobot_manager.robot.target_pos)
         socket.send_json(
             {
                 # XYZ position
-                "position": omni_robot.robot_pos,
-                "reward": reward,
-                "target_pos": omni_robot.target_pos
+                "position": omnirobot_manager.robot.robot_pos,
+                "reward": omnirobot_manager.reward,
+                "target_pos": omnirobot_manager.robot.target_pos
             },
             flags=zmq.SNDMORE if IMAGE_TOPIC is not None else 0
         )
