@@ -13,7 +13,7 @@ import subprocess
 
 from environments.srl_env import SRLGymEnv
 from real_robots.constants import *
-from real_robots.omnirobot_utils import RingBox
+from real_robots.omnirobot_utils.utils import RingBox
 from state_representation.episode_saver import EpisodeSaver
 
 if USING_OMNIROBOT_SIMULATOR:

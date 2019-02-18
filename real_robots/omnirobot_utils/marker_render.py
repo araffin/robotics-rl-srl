@@ -130,9 +130,9 @@ class MarkerRender(object):
 
 if __name__ == "__main__":
     # example, add the Marker image to the observation image
-    origin_image = cv2.imread("omnirobot_simulator_utils/back_ground.jpg",cv2.IMREAD_COLOR)
+    origin_image = cv2.imread("omnirobot_utils/back_ground.jpg",cv2.IMREAD_COLOR)
     origin_image = cv2.resize(origin_image,(480,480))
-    marker_image_with_margin = cv2.imread("omnirobot_simulator_utils/robot_margin3_pixel_only_tag.png",cv2.IMREAD_COLOR)
+    marker_image_with_margin = cv2.imread("omnirobot_utils/robot_margin3_pixel_only_tag.png",cv2.IMREAD_COLOR)
     plt.imshow(origin_image)
     plt.show()
     marker_render = MarkerRender(noise_var=1.0)

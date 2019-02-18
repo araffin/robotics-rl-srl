@@ -1,18 +1,15 @@
 from __future__ import division, print_function, absolute_import
 
 from multiprocessing import Process, Pipe
-
-
-# TODO !!!!!!!!!!!!!!!!!!!!!!!!!
-# undistort origin image -> add undistort target marker -> redistort image
-
+import yaml
+import cv2
 # Konwn issue: - No module named 'scipy.spatial.transform', To resolve, try pip3 install scipy==1.2
 from scipy.spatial.transform import Rotation as R
 
-from .constants import *
-from .omnirobot_simulator_utils import *
-from .omnirobot_utils import OmnirobotManagerBase
-
+from real_robots.constants import *
+from real_robots.omnirobot_utils.marker_finder import MakerFinder
+from real_robots.omnirobot_utils.marker_render import MarkerRender
+from real_robots.omnirobot_utils.omnirobot_manager_base import OmnirobotManagerBase
 assert USING_OMNIROBOT_SIMULATOR, "Please set USING_OMNIROBOT_SIMULATOR to True in real_robots/constants.py"
 NOISE_VAR_ROBOT_POS = 0.01  # meter
 NOISE_VAR_ROBOT_YAW = np.pi/180 * 2.5  # 5 Deg
@@ -340,12 +337,12 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         '''
         super(OmniRobotSimulatorSocket, self).__init__(second_cam_topic=SECOND_CAM_TOPIC)
         defalt_args = {
-            "back_ground_path": "real_robots/omnirobot_simulator_utils/back_ground.jpg",
-            "camera_info_path": "real_robots/omnirobot_simulator_utils/cam_calib_info.yaml",
-            "robot_marker_path": "real_robots/omnirobot_simulator_utils/robot_margin3_pixel_only_tag.png",
+            "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
+            "camera_info_path": "real_robots/omnirobot_utils/cam_calib_info.yaml",
+            "robot_marker_path": "real_robots/omnirobot_utils/robot_margin3_pixel_only_tag.png",
             "robot_marker_margin": [3, 3, 3, 3],
             # for black target, use target_margin4_pixel.png",
-            "target_marker_path": "real_robots/omnirobot_simulator_utils/red_target_margin4_pixel_480x480.png",
+            "target_marker_path": "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png",
             "target_marker_margin": [4, 4, 4, 4],
             "robot_marker_code": None,
             "target_marker_code": None,

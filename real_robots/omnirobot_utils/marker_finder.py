@@ -34,7 +34,7 @@ class MakerFinder():
         self.marker_img = None
 
     def setMarkerCode(self, marker_id, marker_code, real_length):
-        self.marker_code[marker_id] = (np.zeros((4,*marker_code.shape[0:2])))
+        self.marker_code[marker_id] = np.zeros((4,marker_code.shape[0], marker_code.shape[1]))
         
         self.marker_code[marker_id][0,:,:] = marker_code
         for i in range(1,4):
