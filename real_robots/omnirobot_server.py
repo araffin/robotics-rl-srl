@@ -14,11 +14,12 @@ import yaml
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Vector3, PoseStamped
+from geometry_msgs.msg import Vector3, PoseStamped, Twist
 from std_msgs.msg import Bool
+from omnirobot_msgs.msg import WheelSpeeds
 
 
-from tf.transformations import euler_from_quaternion
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 from real_robots.constants import *
 from real_robots.utils import sendMatrix
@@ -75,10 +76,20 @@ class OmniRobot(object):
         self.reset_odom_pub = rospy.Publisher(
             "/reset_odom", Vector3, queue_size=10)
         self.reset_signal_pub = rospy.Publisher("/reset", Bool, queue_size=10)
+        self.switch_velocity_controller_pub = rospy.Publisher("/switch/velocity_controller", Bool, queue_size=10)
+        self.switch_pos_controller_pub = rospy.Publisher("/switch/pos_controller", Bool, queue_size=10)
 
+        self.wheel_speeds_command_pub = rospy.Publisher("/wheel_speeds_commands", WheelSpeeds, queue_size=10)
+        self.velocity_command_pub = rospy.Publisher("/velocity_commands", Twist,  queue_size=10)
         # known issues, without sleep 1 second, publishers could not been setup
         rospy.sleep(1)
         # https://answers.ros.org/question/9665/test-for-when-a-rospy-publisher-become-available/?answer=14125#post-id-14125
+
+        # enable pos_controller, velocity_controller by default
+        self.enabled_pos_controller = True
+        self.enabled_velocity_controller = True
+        self.switch_pos_controller_pub.publish(Bool(True))
+        self.switch_velocity_controller_pub.publish(Bool(True))
 
     def setRobotCmdConstrained(self, x, y, yaw):
         """
@@ -108,6 +119,8 @@ class OmniRobot(object):
         Publish the position command for the robot
         x, y, yaw are in the global frame
         """
+        assert self.enabled_pos_controller and self.enabled_velocity_controller, \
+            "pos_controller and velocity_controller should be both enabled to execute positional command"
         msg = Vector3(
             self.robot_pos_cmd[0], self.robot_pos_cmd[1], self.robot_yaw_cmd)
         self.pos_cmd_pub.publish(msg)
@@ -223,6 +236,90 @@ class OmniRobot(object):
         self.setRobotCmd(
             self.robot_pos_cmd[0] + action[0], self.robot_pos_cmd[1] + action[1], self.robot_yaw_cmd)
         self.pubPosCmd()
+
+    def disableVelocityController(self):
+        """
+        Disable the velocity controller, this server send the wheel_speed_command instead
+        """
+        msg = Bool(False)
+        self.switch_velocity_controller_pub.publish(msg)
+        self.enabled_velocity_controller = False
+
+    def enableVelocityController(self):
+        """
+        enable the velocity controller
+        """
+        msg = Bool(True)
+        self.switch_velocity_controller_pub.publish(msg)
+        self.enabled_velocity_controller = True
+    
+    def disablePosController(self):
+        """
+        Disable the pos controller
+        """
+        msg = Bool(False)
+        self.switch_pos_controller_pub.publish(msg)
+        self.enabled_pos_controller = False
+
+    def enablePosController(self):
+        """
+        enable the pos controller
+        """
+        msg = Bool(True)
+        self.switch_pos_controller_pub.publish(msg)
+        self.enabled_pos_controller = True
+
+    def moveByWheelsCmd(self, left_speed, front_speed, right_speed):
+        """
+        Send wheel speeds command to robot directly
+        Attention: to use this function, you should firstly 
+                   make sure pos_controller and velocity_controller are disabled. 
+        A single wheel speed commands will only be executed within 1 second maximum,  
+        after 1 second, if no new command come in, the robot will brake, thus make 
+        sure this function called by a frequency more than 1Hz.
+        In contrary, if new wheel speed commands arrives within 1 second, the robot
+        will execute new command immediately. 
+        
+        :param left_speed: (float) linear speed of left wheel (meter)
+        :param front_speed: (float) linear speed of front wheel (meter)
+        :param right_speed: (float) linear speed of right wheel (meter)
+        """
+        assert self.enabled_pos_controller == False and self.enabled_velocity_controller == False,\
+            "you should disable pos_controller and velocity controller before controlling wheel speed directly"
+        wheel_speed_msg = WheelSpeeds()
+        wheel_speed_msg.stamp = rospy.now()
+        wheel_speed_msg.left = left_speed
+        wheel_speed_msg.front = front_speed
+        wheel_speed_msg.right = right_speed
+        self.wheel_speeds_command_pub.publish(wheel_speed_msg)
+
+    def moveByVelocityCmd(self, speed_x, speed_y, speed_yaw):
+        """
+        Send velocity command to robot directly, the velocity should be presented in robot local frame.
+        positive x: front, positive y: left
+        Attention: to use this function, you should firstly 
+                   make sure pos_controller is disabled. 
+        A single velocity commands will only be executed within 1 second maximum, 
+        after 1 second, if no new command come in, the robot will brake, thus make 
+        sure this function called by a frequency more than 1Hz.
+        In contrary, if new velocity commands arrives within 1 second, the robot 
+        will execute new command immediately. 
+        
+        :param speed_x: (float) linear speed along x-axis (m/s) (forward-backward)
+        :param speed_y: (float) linear speed along y-axis (m/s) (left-right)
+        :param speed_yaw: (float) rotation speed of robot around z-axis (rad/s)
+        """
+        assert self.enabled_pos_controller == False and self.enabled_velocity_controller == True, \
+            "you should disable pos_controller but enable velocity controller before controlling robot velocity directly"
+        velocity_command_msg = Twist()
+        velocity_command_msg.linear.x = speed_x
+        velocity_command_msg.linear.y = speed_y
+        velocity_command_msg.linear.z = 0
+        velocity_command_msg.angular.x = 0
+        velocity_command_msg.angular.y = 0
+        velocity_command_msg.angular.z = speed_yaw
+        self.velocity_command_pub.publish(velocity_command_msg)
+        
 
     @staticmethod
     def normalizeAngle(angle):
