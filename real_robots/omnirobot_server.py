@@ -268,11 +268,6 @@ class ImageCallback(object):
             undistort_image = cv2.undistort(cv2_img, self.camera_matrix, self.distortion_coefficients)
             self.valid_img = undistort_image[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
 
-            # for right now, use this processing, making output same with the simulator
-            #self.valid_img = np.zeros(cv2_img.shape, np.uint8)
-            #self.valid_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]] = \
-            #                    cv2_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
-            #self.valid_img = cv2.undistort(self.valid_img, self.camera_matrix, self.distortion_coefficients)
         except CvBridgeError as e:
             print("CvBridgeError:", e)
 

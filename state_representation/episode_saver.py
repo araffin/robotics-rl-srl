@@ -120,16 +120,6 @@ class EpisodeSaver(object):
         :param ground_truth_state: (numpy array)
         """
         
-        #if self.episode_step == 0 and done:
-            # drop this episode (it has only one frame), remove last element
-            #self.actions.pop()
-            #self.rewards.pop()
-            #self.episode_starts.pop()
-            #self.ground_truth_states.pop()
-            #self.images_path.pop()
-            #self.n_steps -= 1
-            #return
-        
         self.episode_step += 1
         self.n_steps += 1
         self.rewards.append(reward)

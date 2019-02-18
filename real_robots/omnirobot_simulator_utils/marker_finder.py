@@ -1,22 +1,24 @@
 import numpy as np
 import cv2
-from matplotlib import pyplot as plt
 from os.path import join
 import yaml
+
 
 def rotateMatrix90(matrix):
     new_matrix = np.transpose(matrix)
     new_matrix = np.flip(new_matrix, axis=1)
     return new_matrix
-            
+
+
 def hammingDistance(s1, s2):
     assert len(s1) == len(s2)
     return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
 
+
 class MakerFinder():
-    '''
+    """
     Find the exact physical position of marker in the coordinate of camera.
-    '''
+    """
     def __init__(self, camera_info_path):
         self.min_area = 70
         self.marker_code = {}
@@ -30,6 +32,7 @@ class MakerFinder():
             except yaml.YAMLError as exc:
                 print(exc)
         self.marker_img = None
+
     def setMarkerCode(self, marker_id, marker_code, real_length):
         self.marker_code[marker_id] = (np.zeros((4,*marker_code.shape[0:2])))
         
@@ -37,9 +40,9 @@ class MakerFinder():
         for i in range(1,4):
             self.marker_code[marker_id][i,:,:] = rotateMatrix90(self.marker_code[marker_id][i-1,:,:])
         self.marker_rows, self.marker_cols = 90, 90
-        self.marker_square_pts = np.float32([[0,0],[0,self.marker_cols],[self.marker_rows,self.marker_cols], [self.marker_rows,0]\
-                                            ]).reshape(-1,1,2)
-        self.marker_real_corners =  np.float32([[0,0,0], [0,real_length,0], [real_length,real_length,0],\
+        self.marker_square_pts = np.float32([[0,0],[0,self.marker_cols],[self.marker_rows,self.marker_cols],
+                                             [self.marker_rows,0]]).reshape(-1,1,2)
+        self.marker_real_corners =  np.float32([[0,0,0], [0,real_length,0], [real_length,real_length,0],
                                                 [real_length,0,0]]) - np.float32([real_length/2.0, real_length/2.0,0])
         self.marker_real_corners = self.marker_real_corners.reshape(-1,1,3)
     def intersection(self, l1, l2):
@@ -54,7 +57,6 @@ class MakerFinder():
         if tmp==0:
             tmp = 1
 
-        #if(/*tmp <= 1.f && tmp >= -1.f && */tmp != 0.f && ang > 0.1)
         s = (vy*wx-vx*wy) / (tmp)
         px = l2[2]+s*ux
         py = l2[3]+s*uy
@@ -121,7 +123,7 @@ class MakerFinder():
                 # append this line's point to array 'line_pts'
                 for l in range(length):
                     ll = (k0+l+1)%len(candidate_contours[i])
-                    line_pts[0,l,:] = candidate_contours[i][ll]
+                    line_pts[0, l, :] = candidate_contours[i][ll]
 
                 # Fit edge and put to vector of edges
                 [vx,vy,x,y] = cv2.fitLine(line_pts, cv2.DIST_L2, 0, 0.01, 0.01)
@@ -129,8 +131,8 @@ class MakerFinder():
                 if visualise:
                     #Finally draw the line
                     # Now find two extreme points on the line to draw line
-                    left = [0,0]
-                    right =[0,0]
+                    left = [0, 0]
+                    right =[0, 0]
                     length = 100
                     left[0] = x - vx * length
                     left[1] = y - vy * length
@@ -163,17 +165,13 @@ class MakerFinder():
         for i in range(num_step):
             for j in range(num_step):
                 if np.average(transformed_img[i*step:i*step+step,j*step:j*step+step]) < 100:
-                    #print("i,j:",i," ",j," average: ",np.average(transformed_img[i*step:i*step+step,j*step:j*step+step]))
-                    
-                    #plt.imshow(cv2.cvtColor(transformed_img[i*step:i*step+step,j*step:j*step+step], cv2.COLOR_GRAY2RGB))
-                    #plt.show()
                     code[i,j] = 1
                 else:
                     code[i,j] = 0
         return code
                 
     def rotateCorners(self, corner, i):
-        return np.array([corner[i%4,:], corner[(i+1)%4,:], corner[(i+2)%4,:],corner[(i+3)%4,:]])
+        return np.array([corner[i%4, :], corner[(i + 1) % 4, :], corner[(i+2)%4, :],corner[(i + 3) % 4, :]])
     def setMarkerImg(self, img):
         self.marker_img = img
     def findMarker(self, marker_id, visualise=False):
@@ -181,12 +179,13 @@ class MakerFinder():
         print("find marker_id: ", marker_id)
         for i_square in range(self.blob_corners.shape[0]):
             # create marker's mask
-            self.marker_mask = np.zeros(self.gray.shape[0:3],np.uint8)
-            cv2.fillConvexPoly( self.marker_mask, self.blob_corners[i_square,:,:].astype(np.int32).reshape(-1,1,2), 255);
+            self.marker_mask = np.zeros(self.gray.shape[0: 3], np.uint8)
+            cv2.fillConvexPoly( self.marker_mask,
+                                self.blob_corners[i_square, :, :].astype(np.int32).reshape(-1, 1, 2), 255);
             
-            H , _ = cv2.findHomography(self.blob_corners[i_square,:,:], self.marker_square_pts, cv2.LMEDS)
+            H, _ = cv2.findHomography(self.blob_corners[i_square, :, :], self.marker_square_pts, cv2.LMEDS)
 
-            marker_transformed = cv2.warpPerspective(self.edge, H, self.gray.shape[0:2])[0:self.marker_rows, 0:self.marker_cols]
+            marker_transformed = cv2.warpPerspective(self.edge, H, self.gray.shape[0:2])[0: self.marker_rows, 0: self.marker_cols]
             if visualise:
                 cv2.imshow('frame', marker_transformed)
                 cv2.imshow('edge', self.edge)
@@ -195,7 +194,8 @@ class MakerFinder():
             code = self.decode(marker_transformed)
             distance = np.zeros(4)
             for i_rotate in range(4): # determinate 0, 90, 180, 270 degree
-                distance[i_rotate] = hammingDistance(code.reshape((-1,)), self.marker_code[marker_id][i_rotate,:,:].reshape((-1,)))
+                distance[i_rotate] = hammingDistance(code.reshape((-1, )),
+                                                     self.marker_code[marker_id][i_rotate, :, :].reshape((-1,)))
             dist_min_arg = np.argmin(distance)
             if visualise:
                 print("minimum hangming distance: ",distance[dist_min_arg])
@@ -203,13 +203,15 @@ class MakerFinder():
             if distance[dist_min_arg] < 3:
                 # find the correct marker!
                 # rotate the corners to the correct angle
-                self.blob_corners[i_square,:,:] = self.rotateCorners(self.blob_corners[i_square,:,:], dist_min_arg)
+                self.blob_corners[i_square, :, :] = self.rotateCorners(self.blob_corners[i_square, :, :], dist_min_arg)
+
                 # compute the correct H
                 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-                self.blob_corners[i_square,:,:] = cv2.cornerSubPix(self.gray,self.blob_corners[i_square,:,:],(11,11),(-1,-1),criteria)
+                self.blob_corners[i_square, :, :] = cv2.cornerSubPix(self.gray, self.blob_corners[i_square, :, :], (11, 11), (-1, -1), criteria)
+
                 # Find the rotation and translation vectors. (camera to tag)
-                retval, rot_vec, trans_vec = cv2.solvePnP(self.marker_real_corners, self.blob_corners[i_square,:,:], \
-                                                         self.camera_matrix.astype(np.float32), self.distortion_coefficients.astype(np.float32))
+                retval, rot_vec, trans_vec = cv2.solvePnP(self.marker_real_corners, self.blob_corners[i_square, :, :],
+                                                          self.camera_matrix.astype(np.float32), self.distortion_coefficients.astype(np.float32))
                
                 rot_mat,_ = cv2.Rodrigues(rot_vec)
                 # reverse the rotation and translation (tag to camera)
@@ -217,8 +219,8 @@ class MakerFinder():
                 tag_rot_coord_cam = np.linalg.inv(rot_mat)
                 
                 if visualise and self.marker_img is not None:
-                    marker_img_corner = np.float32([[0,0], [self.marker_img.shape[0],0], \
-                                                    [self.marker_img.shape[0],self.marker_img.shape[1]],\
+                    marker_img_corner = np.float32([[0,0], [self.marker_img.shape[0],0],
+                                                    [self.marker_img.shape[0],self.marker_img.shape[1]],
                                                     [0,self.marker_img.shape[1]]]).reshape(-1,1,2)
                     
                     H , _ = cv2.findHomography(marker_img_corner,self.blob_corners[i_square,:,:])

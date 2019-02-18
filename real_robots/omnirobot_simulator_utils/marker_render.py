@@ -61,18 +61,12 @@ class MarkerRender(object):
         self.M_marker_with_margin[1,2] += self.marker_pixel_pos_fraction[0] + self.roi_half_length - \
                                             self.marker_image_with_margin.shape[1]/2
 
-        #self.M_marker_with_margin[0,2] += self.marker_pixel_pos[0] - self.marker_image_with_margin.shape[0]/2
-        #self.M_marker_with_margin[1,2] += self.marker_pixel_pos[1] -  self.marker_image_with_margin.shape[1]/2
-
-
-            
         self.marker_image_transformed = cv2.warpAffine(self.marker_image_with_margin,self.M_marker_with_margin,\
                                                        (self.roi_length,self.roi_length)) 
         
         self.marker_weight_transformed = cv2.warpAffine(self.marker_weight,self.M_marker_with_margin,\
                                                       (self.roi_length,self.roi_length))  # white: Marker part
-        
-        
+
         self.bg_weight = 1.0 - self.marker_weight_transformed # white: origin image part
 
     def generateNoise(self):

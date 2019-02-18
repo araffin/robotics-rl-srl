@@ -214,6 +214,12 @@ class OmniRobotEnv(SRLGymEnv):
         else:
             return self.observation, self.reward, done, {}
 
+    def getDeltaPos(self):
+        """
+        :return: (float) maximal delta pos when using continuous actions
+        """
+        return self._delta_pos
+
     def getEnvState(self):
         """
         Returns a dictionary containing info about the environment state.

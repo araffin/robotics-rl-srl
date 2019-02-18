@@ -1,5 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from .constants import *
+
+
 class OmnirobotManagerBase(object):
     def __init__(self, second_cam_topic=None):
         """
@@ -10,10 +12,12 @@ class OmnirobotManagerBase(object):
         super(OmnirobotManagerBase, self).__init__()
         self.second_cam_topic = SECOND_CAM_TOPIC
         self.episode_idx = 0
-        self.robot = None # the abstract object for robot, 
-                          # can be the real robot (Omnirobot class)
-                          #  or the robot simulator (OmniRobotEnvRender class)
-    
+
+        # the abstract object for robot,
+        # can be the real robot (Omnirobot class)
+        #  or the robot simulator (OmniRobotEnvRender class)
+        self.robot = None
+
     def rightAction(self):
         """
         Let robot excute right action, and checking the boudary
@@ -25,6 +29,7 @@ class OmnirobotManagerBase(object):
         else:
             has_bumped = True
         return has_bumped
+
     def leftAction(self):
         """
         Let robot excute left action, and checking the boudary
@@ -36,6 +41,7 @@ class OmnirobotManagerBase(object):
         else:
             has_bumped = True
         return has_bumped
+
     def forwardAction(self):
         """
         Let robot excute forward action, and checking the boudary
@@ -66,7 +72,7 @@ class OmnirobotManagerBase(object):
         :return has_bumped: (bool) 
         """
         if MIN_X < self.robot.robot_pos[0] + msg['action'][0] < MAX_X and \
-            MIN_Y < self.robot.robot_pos[1] + msg['action'][1] < MAX_Y:
+                MIN_Y < self.robot.robot_pos[1] + msg['action'][1] < MAX_Y:
             self.robot.moveContinous(msg['action'])
             has_bumped = False
         else:
@@ -74,7 +80,6 @@ class OmnirobotManagerBase(object):
         return has_bumped
 
     def sampleRobotInitalPosition(self):
-
         random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
         random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
         return [random_init_x, random_init_y]
@@ -90,7 +95,6 @@ class OmnirobotManagerBase(object):
         random_init_position = self.sampleRobotInitalPosition()
         self.robot.setRobotCmd(random_init_position[0], random_init_position[1], 0)
 
-       
     def processMsg(self, msg):
         """
         Using this steps' msg command the determinate the correct position that the robot should be at next step,
@@ -131,7 +135,7 @@ class OmnirobotManagerBase(object):
         elif action == 'Continuous':
             has_bumped = self.moveContinousAction(msg)
         else:
-            print("Unsupported action")
+            print("Unsupported action: ", action)
 
         # Determinate the reward for this step
         
@@ -144,4 +148,4 @@ class OmnirobotManagerBase(object):
         elif has_bumped:
             self.reward = REWARD_BUMP_WALL
         else:
-            self.reward = REWARD_BUMP_WALL
+            self.reward = REWARD_NOTHING

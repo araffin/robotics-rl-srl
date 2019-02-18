@@ -99,8 +99,8 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     if not env_kwargs.get("is_discrete", False) and env_class.__name__ == "OmniRobotEnv":
-                        x_delta_rand = 2 * env._delta_pos * np.random.rand() - env._delta_pos
-                        y_delta_rand = 2 * env._delta_pos * np.random.rand() - env._delta_pos
+                        x_delta_rand = 2 * env.getDeltaPos() * np.random.rand() - env.getDeltaPos()
+                        y_delta_rand = 2 * env.getDeltaPos() * np.random.rand() - env.getDeltaPos()
                         action = [x_delta_rand, y_delta_rand]
                     else:
                         action = [env.action_space.sample()]
@@ -109,7 +109,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
             if not env_kwargs.get("is_discrete", False) and env_class.__name__ == "OmniRobotEnv":
                 action_to_step = action
-            #print("action to step: ", action_to_step)
+
             _, _, done, _ = env.step(action_to_step)
 
             frames += 1
