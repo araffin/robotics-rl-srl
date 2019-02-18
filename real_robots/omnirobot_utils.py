@@ -154,7 +154,6 @@ class OmnirobotManagerBase(object):
             self.reward = REWARD_BUMP_WALL
         else:
             self.reward = REWARD_NOTHING
-<<<<<<< HEAD
 
 
 
@@ -218,5 +217,3 @@ class RingBox(gym.Space):
     def __eq__(self, other):
         return np.allclose(self.positive_low, other.positive_low) and np.allclose(self.positive_high, other.positive_high) \
             and np.allclose(self.negative_low, other.negative_low) and np.allclose(self.negative_high, other.negative_high)
-=======
->>>>>>> 3a82827e9d0531b1dd83632eda83c1e0351ac058
