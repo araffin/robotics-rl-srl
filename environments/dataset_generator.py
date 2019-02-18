@@ -64,14 +64,15 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
 
-    # Additional env when using a trained ppo agent to generate data
-    # instead of a random agent
-    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False}) #, "env_rank":100+thread_num})
-    train_env = DummyVecEnv([lambda: train_env])
-    train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
 
     model = None
     if use_ppo2:
+        # Additional env when using a trained ppo agent to generate data
+        # instead of a random agent
+        train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False})
+        train_env = DummyVecEnv([lambda: train_env])
+        train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
+
         model = PPO2(CnnPolicy, train_env).learn(args.ppo2_timesteps)
 
     frames = 0

@@ -251,35 +251,30 @@ class ImageCallback(object):
         self.distortion_coefficients = distortion_coefficients
 
     def imageCallback(self, msg):
-        try:
+        try:    
             # Convert your ROS Image message to OpenCV
             cv2_img = bridge.imgmsg_to_cv2(msg, "rgb8")
-
+            
             if self.first_msg:
                 shape = cv2_img.shape
                 min_length = min(shape[0], shape[1])
                 up_margin = int((shape[0] - min_length) / 2)  # row
                 left_margin = int((shape[1] - min_length) / 2)  # col
-                self.valid_box = [up_margin, up_margin +
-                                  min_length, left_margin, left_margin + min_length]
-                print("origin size: {}x{}".format(shape[0], shape[1]))
-                print("crop each image to a square image, cropped size: {}x{}".format(
-                    min_length, min_length))
+                self.valid_box = [up_margin, up_margin + min_length, left_margin, left_margin + min_length]
+                print("origin size: {}x{}".format(shape[0],shape[1]))
+                print("crop each image to a square image, cropped size: {}x{}".format(min_length, min_length))
                 self.first_msg = False
-
-            #undistort_image = cv2.undistort(cv2_img, self.camera_matrix, self.distortion_coefficients)
-            #self.valid_img = undistort_image[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
+            
+            undistort_image = cv2.undistort(cv2_img, self.camera_matrix, self.distortion_coefficients)
+            self.valid_img = undistort_image[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
 
             # for right now, use this processing, making output same with the simulator
-            self.valid_img = np.zeros(cv2_img.shape, np.uint8)
-            self.valid_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]] = \
-                cv2_img[self.valid_box[0]:self.valid_box[1],
-                        self.valid_box[2]:self.valid_box[3]]
-            self.valid_img = cv2.undistort(
-                self.valid_img, self.camera_matrix, self.distortion_coefficients)
+            #self.valid_img = np.zeros(cv2_img.shape, np.uint8)
+            #self.valid_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]] = \
+            #                    cv2_img[self.valid_box[0]:self.valid_box[1], self.valid_box[2]:self.valid_box[3]]
+            #self.valid_img = cv2.undistort(self.valid_img, self.camera_matrix, self.distortion_coefficients)
         except CvBridgeError as e:
             print("CvBridgeError:", e)
-
 
 def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam"):
     """
@@ -320,9 +315,9 @@ if __name__ == '__main__':
     with open(args.camera_info_path, 'r') as stream:
         try:
             contents = yaml.load(stream)
-            camera_matrix = np.array(contents['camera_matrix']['data'])
+            camera_matrix = np.array(contents['camera_matrix']['data']).reshape((3,3))
             distortion_coefficients = np.array(
-                contents['distortion_coefficients']['data'])
+                contents['distortion_coefficients']['data']).reshape((1, 5))
         except yaml.YAMLError as exc:
             print(exc)
     rospy.init_node('omni_robot_server', anonymous=True)
@@ -332,13 +327,13 @@ if __name__ == '__main__':
             "ATTENTION: This script is running under NO TARGET mode!!!")
     # Connect to ROS Topics
     if IMAGE_TOPIC is not None:
-        image_cb_wrapper = ImageCallback()
+        image_cb_wrapper = ImageCallback(camera_matrix, distortion_coefficients)
         img_sub = rospy.Subscriber(
             IMAGE_TOPIC, Image, image_cb_wrapper.imageCallback, queue_size=1)
 
     if SECOND_CAM_TOPIC is not None:
         assert NotImplementedError
-        image_cb_wrapper_2 = ImageCallback()
+        image_cb_wrapper_2 = ImageCallback(camera_matrix, distortion_coefficients)
         img_2_sub = rospy.Subscriber(
             SECOND_CAM_TOPIC, Image, image_cb_wrapper_2.imageCallback, queue_size=1)
 
