@@ -144,4 +144,4 @@ class OmnirobotManagerBase(object):
         elif has_bumped:
             self.reward = REWARD_BUMP_WALL
         else:
-            self.reward = REWARD_BUMP_WALL
+            self.reward = REWARD_NOTHING
