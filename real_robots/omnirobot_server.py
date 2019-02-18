@@ -60,7 +60,7 @@ class OmniRobot(object):
         self.target_pos_changed = False
 
         # Distance for each step
-        self.step_distance = 0.07
+        self.step_distance = STEP_DISTANCE
 
         self.visual_robot_sub = rospy.Subscriber(
             "/visual_robot_pose", PoseStamped, self.visualRobotCallback, queue_size=10)

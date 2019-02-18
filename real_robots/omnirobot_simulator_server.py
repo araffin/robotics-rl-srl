@@ -131,7 +131,7 @@ class OmniRobotEnvRender():
         self.target_pos_changed = False
 
         # Distance for each step
-        self.step_distance = 0.07
+        self.step_distance = STEP_DISTANCE
 
         with open(camera_info_path, 'r') as stream:
             try:

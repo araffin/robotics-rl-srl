@@ -12,9 +12,8 @@ import seaborn as sns
 import subprocess
 
 from environments.srl_env import SRLGymEnv
-from real_robots.constants import Move, SERVER_PORT, HOSTNAME, MAX_STEPS, USING_OMNIROBOT_SIMULATOR, \
-    REWARD_BUMP_WALL, REWARD_NOTHING, REWARD_TARGET_REACH
-
+from real_robots.constants import *
+from real_robots.omnirobot_utils import RingBox
 from state_representation.episode_saver import EpisodeSaver
 
 if USING_OMNIROBOT_SIMULATOR:
@@ -106,10 +105,9 @@ class OmniRobotEnv(SRLGymEnv):
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
             action_dim = 2
-            self._action_bound = 1
-            action_bounds = np.array([self._action_bound] * action_dim)
-            self.action_space = spaces.Box(-action_bounds,
-                                           action_bounds, dtype=np.float32)
+            self.action_space = RingBox(positive_low=ACTION_POSITIVE_LOW, positive_high=ACTION_POSITIVE_HIGH, \
+                                           negative_low=ACTION_NEGATIVE_LOW, negative_high=ACTION_NEGATIVE_HIGH, \
+                                           shape=[action_dim], dtype=np.float32)
         # SRL model
         if self.use_srl:
             if use_ground_truth:

@@ -99,6 +99,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     #error threshold
     DIST_TO_TARGET_THRESHOLD = 0.2
 
+    # For discrete action, 
     # Define the possible Moves
     class Move(IntEnum):
         FORWARD = 0
@@ -107,6 +108,14 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
         RIGHT = 3
         STOP = 4
 
+    STEP_DISTANCE = 0.07 #meter, distance for each step
+    
+    # For continuous action,
+    # Define the action_bounds
+    ACTION_POSITIVE_LOW = 0.04
+    ACTION_POSITIVE_HIGH = 0.1
+    ACTION_NEGATIVE_LOW = -0.1
+    ACTION_NEGATIVE_HIGH = -0.04
 
 # Gazebo
 else:
