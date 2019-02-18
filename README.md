@@ -110,9 +110,9 @@ All the environments we propose follow the OpenAI Gym interface. We also extende
 
 ### Available Environments
 
-| **Kuka environment**       | **Mobile Robot environment**       | **Racing car environment**       |
-| -------------------------- | ---------------------------------- | -------------------------------- |
-| <img src="imgs/kuka.gif"/> | <img src="imgs/mobile_robot.gif"/> | <img src="imgs/racing_car.gif"/> |
+| **Kuka environment**       | **Mobile Robot environment**       | **Racing car environment**       | **Omnidirectional robot environment**       |
+| -------------------------- | ---------------------------------- | -------------------------------- | ------------------------------------------- |
+| <img src="imgs/kuka.gif"/> | <img src="imgs/mobile_robot.gif"/> | <img src="imgs/racing_car.gif"/> | <img src="imgs/omnirobot.gif"/>             |
 
 
 | **Name**                          | **Action space (discrete)**                | **Action space (continuous)**                 | **Rewards**                                                                                                                                             | **ground truth**                                  |
@@ -126,6 +126,7 @@ All the environments we propose follow the OpenAI Gym interface. We also extende
 | **MobileRobot**<br>**1D**         | 2 actions (1D cardinal direction)          | 1 axis (1D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X position of the robot <sup>(4)</sup>        |
 | **MobileRobot**<br>**LineTarget** | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot <sup>(4)</sup>      |
 | **CarRacing**                     | 4 actions (left, right, accelerate, brake) | 3 axis (stearing, accelerate, brake)          | -100 when out of bounds, otherwise -0.1                                                                                                                 | the X,Y position of the car <sup>(4)</sup>        |
+| **OmniRobot**                     | 4 actions (2D cardinal direction)          | 2 axis (2D cardinal direction)                | 1 when target reached, -1 for a wall hit, otherwise 0 <sup>(2)</sup>                                                                                    | the X,Y position of the robot <sup>(4)</sup>      |
 
 <sub><sup>1. The action space can use 6 axis arm joints control with the `--joints` flag</sup></sub><br>
 <sup><sup>2. The reward can be the euclidian distance to the target with the `--shape-reward` flag</sup></sup><br>
@@ -150,6 +151,8 @@ the available environments are:
     - Baxter-v0: A bridge to use a baxter robot with ROS (in simulation, it uses Gazebo)
 - Robobo: A Robobo robot that must reach a target position.
     - RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
+- OmniRobot: An Omnidirectional robot on a 2d terrain that must reach a target position (see [Working With Real Robots: OmniRobot](https://github.com/GaspardQin/robotics-rl-srl/tree/master/real_robots))
+    - OmnirobotEnv-v0: Simulator but also a bridge to use an OmniRobot with ROS.
 
 Please read the [documentation](https://s-rl-toolbox.readthedocs.io/) for more details (e.g. adding a custom environment).
 
