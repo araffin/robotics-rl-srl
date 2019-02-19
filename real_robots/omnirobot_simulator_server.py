@@ -317,6 +317,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
 
         self.robot = OmniRobotEnvRender(**self.new_args)
         self.episode_idx = 0
+        self._random_target = self.new_args["random_target"]
+        self.resetEpisode() # for a random target initial position
 
     def resetEpisode(self):
         """
@@ -334,12 +336,13 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         ) * NOISE_VAR_ROBOT_SIZE_PROPOTION + 1.0
         
         # target reset
-        random_init_x = np.random.random_sample() * (TARGET_MAX_X - TARGET_MIN_X) + \
-            TARGET_MIN_X
-        random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + \
-            TARGET_MIN_Y
-        self.robot.setTargetCmd(
-            random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
+        if self._random_target or self.episode_idx == 0:
+            random_init_x = np.random.random_sample() * (TARGET_MAX_X - TARGET_MIN_X) + \
+                TARGET_MIN_X
+            random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + \
+                TARGET_MIN_Y
+            self.robot.setTargetCmd(
+                random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
 
         # render the target and robot
         self.robot.renderTarget()
