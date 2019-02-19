@@ -1,9 +1,9 @@
 from __future__ import division, print_function, absolute_import
 from gym import spaces
 from gym import logger
-import gym
 import numpy as np
 import cv2
+
 
 class PosTransformer(object):
     def __init__(self, camera_mat: np.ndarray, dist_coeffs: np.ndarray,
@@ -40,7 +40,7 @@ class PosTransformer(object):
         """
         pos_coord_ground = np.array(pos_coord_ground)
         if len(pos_coord_ground.shape) == 1:
-            pos_coord_ground = pos_coord_ground.reshape(-1,1)
+            pos_coord_ground = pos_coord_ground.reshape(-1, 1)
 
         assert pos_coord_ground.shape == (
             3, 1) or pos_coord_ground.shape == (2, 1)
@@ -60,18 +60,22 @@ class PosTransformer(object):
                                             self.camera_mat, self.dist_coeffs if return_distort_image_pos else None)
         return pixel_points.reshape((2, 1))
 
-class RingBox(gym.Space):
+
+class RingBox(spaces.Box):
     """
     A ring box in R^n.
     I.e., each coordinate is bounded.
     there are minimum constrains (absolute) on all of the coordinates 
     """
 
-    def __init__(self, positive_low=None, positive_high=None, negative_low=None, negative_high=None, shape=None, dtype=None):
+    def __init__(self, positive_low=None, positive_high=None, negative_low=None, negative_high=None, shape=None,
+                 dtype=None):
         """
         for each coordinate
         the value will be sampled from [positive_low, positive_hight] or [negative_low, negative_high]        
         """
+        super(RingBox, self).__init__(low=negative_low, high=positive_high, shape=shape, dtype=dtype)
+
         if shape is None:
             assert positive_low.shape == positive_high.shape == negative_low.shape == negative_high.shape
             shape = positive_low.shape
@@ -82,6 +86,7 @@ class RingBox(gym.Space):
             positive_high = positive_high + np.zeros(shape)
             negative_low = negative_low + np.zeros(shape)
             negative_high = negative_high + np.zeros(shape)
+
         if dtype is None:  # Autodetect type
             if (positive_high == 255).all():
                 dtype = np.uint8
@@ -95,7 +100,6 @@ class RingBox(gym.Space):
         self.negative_high = negative_high.astype(dtype)
         self.length_positive = self.positive_high - self.positive_low
         self.length_negative = self.negative_high - self.negative_low
-        super(RingBox, self).__init__(shape, dtype)
         self.np_random = np.random.RandomState()
 
     def seed(self, seed):
@@ -112,7 +116,8 @@ class RingBox(gym.Space):
 
     def contains(self, x):
         return x.shape == self.shape and np.logical_or(np.logical_and(x >= self.positive_low, x <= self.positive_high),
-                                                       np.logical_and(x <= self.negative_high,  x >= self.negative_low)).all()
+                                                       np.logical_and(x <= self.negative_high,
+                                                                      x >= self.negative_low)).all()
 
     def to_jsonable(self, sample_n):
         return np.array(sample_n).tolist()
@@ -124,5 +129,7 @@ class RingBox(gym.Space):
         return "RingBox" + str(self.shape)
 
     def __eq__(self, other):
-        return np.allclose(self.positive_low, other.positive_low) and np.allclose(self.positive_high, other.positive_high) \
-            and np.allclose(self.negative_low, other.negative_low) and np.allclose(self.negative_high, other.negative_high)
+        return np.allclose(self.positive_low, other.positive_low) and \
+               np.allclose(self.positive_high, other.positive_high) and \
+               np.allclose(self.negative_low, other.negative_low) and \
+               np.allclose(self.negative_high, other.negative_high)

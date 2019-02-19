@@ -110,7 +110,7 @@ class OmniRobotEnv(SRLGymEnv):
             action_dim = 2
             self.action_space = RingBox(positive_low=ACTION_POSITIVE_LOW, positive_high=ACTION_POSITIVE_HIGH, \
                                            negative_low=ACTION_NEGATIVE_LOW, negative_high=ACTION_NEGATIVE_HIGH, \
-                                           shape=[action_dim], dtype=np.float32)
+                                           shape=np.array([action_dim]), dtype=np.float32)
         # SRL model
         if self.use_srl:
             if use_ground_truth:
