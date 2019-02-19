@@ -24,7 +24,7 @@ class OmnirobotManagerBase(object):
         Let robot excute right action, and checking the boudary
         :return has_bumped: (bool) 
         """
-        if self.robot.robot_pos[1] > MIN_Y:
+        if self.robot.robot_pos[1] - STEP_DISTANCE > MIN_Y:
             self.robot.right()
             has_bumped = False
         else:
@@ -36,7 +36,7 @@ class OmnirobotManagerBase(object):
         Let robot excute left action, and checking the boudary
         :return has_bumped: (bool) 
         """
-        if self.robot.robot_pos[1] < MAX_Y:
+        if self.robot.robot_pos[1] + STEP_DISTANCE < MAX_Y:
             self.robot.left()
             has_bumped = False
         else:
@@ -48,7 +48,7 @@ class OmnirobotManagerBase(object):
         Let robot excute forward action, and checking the boudary
         :return has_bumped: (bool) 
         """
-        if self.robot.robot_pos[0] < MAX_X:
+        if self.robot.robot_pos[0] + STEP_DISTANCE < MAX_X:
             self.robot.forward()
             has_bumped = False
         else:
@@ -60,7 +60,7 @@ class OmnirobotManagerBase(object):
         Let robot excute backward action, and checking the boudary
         :return has_bumped: (bool) 
         """
-        if self.robot.robot_pos[0] > MIN_X:
+        if self.robot.robot_pos[0] - STEP_DISTANCE > MIN_X:
             self.robot.backward()
             has_bumped = False
         else:

@@ -10,6 +10,8 @@ from real_robots.constants import *
 from real_robots.omnirobot_utils.marker_finder import MakerFinder
 from real_robots.omnirobot_utils.marker_render import MarkerRender
 from real_robots.omnirobot_utils.omnirobot_manager_base import OmnirobotManagerBase
+from real_robots.omnirobot_utils.utils import PosTransformer
+
 assert USING_OMNIROBOT_SIMULATOR, "Please set USING_OMNIROBOT_SIMULATOR to True in real_robots/constants.py"
 NOISE_VAR_ROBOT_POS = 0.01  # meter
 NOISE_VAR_ROBOT_YAW = np.pi/180 * 2.5  # 5 Deg
@@ -20,54 +22,6 @@ NOISE_VAR_ROBOT_SIZE_PROPOTION = 0.05  # noise of robot size propotion
 NOISE_VAR_TARGET_SIZE_PROPOTION = 0.05
 
 
-class PosTransformer(object):
-    def __init__(self, camera_mat: np.ndarray, dist_coeffs: np.ndarray,
-                 pos_camera_coord_ground: np.ndarray, rot_mat_camera_coord_ground: np.ndarray):
-        """
-        Transform the position among physical position in camera coordinate,
-                                     physical position in ground coordinate,
-                                     pixel position of image
-        """
-        super(PosTransformer, self).__init__()
-        self.camera_mat = camera_mat
-
-        self.dist_coeffs = dist_coeffs
-
-        self.camera_2_ground_trans = np.zeros((4, 4), np.float)
-        self.camera_2_ground_trans[0:3, 0:3] = rot_mat_camera_coord_ground
-        self.camera_2_ground_trans[0:3, 3] = pos_camera_coord_ground
-        self.camera_2_ground_trans[3, 3] = 1.0
-
-        self.ground_2_camera_trans = np.linalg.inv(self.camera_2_ground_trans)
-
-    def phyPosCam2PhyPosGround(self, pos_coord_cam):
-        """
-        Transform physical position in camera coordinate to physical position in ground coordinate
-        """
-        assert pos_coord_cam.shape == (3, 1)
-        homo_pos = np.ones((4, 1), np.float32)
-        homo_pos[0:3, :] = pos_coord_cam
-        return (np.matmul(self.camera_2_ground_trans, homo_pos))[0:3, :]
-
-    def phyPosGround2PixelPos(self, pos_coord_ground, return_distort_image_pos=False):
-        """
-        Transform the physical position in ground coordinate to pixel position
-        """
-        assert pos_coord_ground.shape == (
-            3, 1) or pos_coord_ground.shape == (2, 1)
-
-        homo_pos = np.ones((4, 1), np.float32)
-        if pos_coord_ground.shape == (2, 1):
-            # by default, z =0 since it's on the ground
-            homo_pos[0:2, :] = pos_coord_ground
-            # (np.random.randn() - 0.5) * 0.05 # add noise to the z-axis
-            homo_pos[2, :] = 0
-        else:
-            homo_pos[0:3, :] = pos_coord_ground
-        homo_pos = np.matmul(self.ground_2_camera_trans, homo_pos)
-        pixel_points, _ = cv2.projectPoints(homo_pos[0:3, :].reshape(1, 1, 3), np.zeros((3, 1)), np.zeros((3, 1)),
-                                            self.camera_mat, self.dist_coeffs if return_distort_image_pos else None)
-        return pixel_points.reshape((2, 1))
 
 
 class OmniRobotEnvRender():
@@ -170,12 +124,11 @@ class OmniRobotEnvRender():
         self.image = self.bg_img  # image with robot and target
 
         # camera installation info
-        camera_pos_coord_ground = [0, 0, 2.9]
-        r = R.from_euler('xyz', [0, 180, 0], degrees=True)
+        r = R.from_euler('xyz', CAMERA_ROT_EULER_COORD_GROUND, degrees=True)
         camera_rot_mat_coord_ground = r.as_dcm()
 
         self.pos_transformer = PosTransformer(self.camera_matrix, self.dist_coeffs,
-                                              camera_pos_coord_ground, camera_rot_mat_coord_ground)
+                                              CAMERA_POS_COORD_GROUND, camera_rot_mat_coord_ground)
 
         self.target_render = MarkerRender(noise_var=NOISE_VAR_TARGET_PIXEL)
         self.robot_render = MarkerRender(noise_var=NOISE_VAR_ROBOT_PIXEL)
@@ -338,7 +291,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         super(OmniRobotSimulatorSocket, self).__init__(second_cam_topic=SECOND_CAM_TOPIC)
         defalt_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
-            "camera_info_path": "real_robots/omnirobot_utils/cam_calib_info.yaml",
+            "camera_info_path": CAMERA_INFO_PATH,
             "robot_marker_path": "real_robots/omnirobot_utils/robot_margin3_pixel_only_tag.png",
             "robot_marker_margin": [3, 3, 3, 3],
             # for black target, use target_margin4_pixel.png",
@@ -352,8 +305,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
             "init_x": 0,
             "init_y": 0,
             "init_yaw": 0,
-            "origin_size": [640, 480],
-            "cropped_size": [480, 480]
+            "origin_size": ORIGIN_SIZE,
+            "cropped_size": CROPPED_SIZE
         }
         # overwrite the args if it exists
         self.new_args = {**defalt_args, **args}
