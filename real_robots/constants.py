@@ -89,13 +89,20 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     # Boundaries
     MIN_X, MAX_X = -0.85, 0.85 # center of robot should be in this interval
     MIN_Y, MAX_Y = -0.85, 0.85
-    
+
     # inital position's boudnaries
     INIT_MIN_X, INIT_MAX_X = -0.7, 0.7
     INIT_MIN_Y, INIT_MAX_Y = -0.7, 0.7
+
     # Target Boundaries
     TARGET_MIN_X, TARGET_MAX_X = -0.7, 0.7
     TARGET_MIN_Y, TARGET_MAX_Y = -0.7, 0.7
+
+    # Control frequence when RL is used for controlling velocity or wheelspeeds directly
+    RL_CONTROL_FREQ = 20.0
+
+    # Geometry data of omnirobot
+    OMNIROBOT_L = 0.120 # m
 
     #error threshold
     DIST_TO_TARGET_THRESHOLD = 0.2

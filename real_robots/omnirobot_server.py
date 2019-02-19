@@ -280,9 +280,9 @@ class OmniRobot(object):
         In contrary, if new wheel speed commands arrives within 1 second, the robot
         will execute new command immediately. 
         
-        :param left_speed: (float) linear speed of left wheel (meter)
-        :param front_speed: (float) linear speed of front wheel (meter)
-        :param right_speed: (float) linear speed of right wheel (meter)
+        :param left_speed: (float) linear speed of left wheel (meter/s)
+        :param front_speed: (float) linear speed of front wheel (meter/s)
+        :param right_speed: (float) linear speed of right wheel (meter/s)
         """
         assert self.enabled_pos_controller == False and self.enabled_velocity_controller == False,\
             "you should disable pos_controller and velocity controller before controlling wheel speed directly"
@@ -305,9 +305,9 @@ class OmniRobot(object):
         In contrary, if new velocity commands arrives within 1 second, the robot 
         will execute new command immediately. 
         
-        :param speed_x: (float) linear speed along x-axis (m/s) (forward-backward)
-        :param speed_y: (float) linear speed along y-axis (m/s) (left-right)
-        :param speed_yaw: (float) rotation speed of robot around z-axis (rad/s)
+        :param speed_x: (float) linear speed along x-axis (m/s) (forward-backward), in robot local coordinate
+        :param speed_y: (float) linear speed along y-axis (m/s) (left-right), in robot local coordinate
+        :param speed_yaw: (float) rotation speed of robot around z-axis (rad/s), in robot local coordinate
         """
         assert self.enabled_pos_controller == False and self.enabled_velocity_controller == True, \
             "you should disable pos_controller but enable velocity controller before controlling robot velocity directly"
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     omnirobot_manager.robot.reset()
 
     omnirobot_manager.robot.pubPosCmd()
-    r = rospy.Rate(10)  # 10hz
+    r = rospy.Rate(RL_CONTROL_FREQ) 
     while not rospy.is_shutdown():
         print("wait for new command")
         msg = socket.recv_json()

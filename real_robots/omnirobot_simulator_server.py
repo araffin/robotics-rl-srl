@@ -22,8 +22,6 @@ NOISE_VAR_ROBOT_SIZE_PROPOTION = 0.05  # noise of robot size propotion
 NOISE_VAR_TARGET_SIZE_PROPOTION = 0.05
 
 
-
-
 class OmniRobotEnvRender():
     def __init__(self, init_x, init_y, init_yaw, origin_size, cropped_size,
                  back_ground_path, camera_info_path,
@@ -64,6 +62,15 @@ class OmniRobotEnvRender():
         # OmniRobot's real position on the grid
         self.robot_pos = np.float32([0, 0])
         self.robot_yaw = 0  # in rad
+
+        # Last velocity command, used for simulating the controlling of velocity directly
+        self.last_linear_velocity_cmd = np.float32(
+            [0, 0])  # in m/s, in robot local frame
+        self.last_rot_velocity_cmd = 0  # in rad/s
+
+        # last wheel speeds command, used for simulating the controlling of wheel speed directly
+        # [left_speed, front_speed, right_speed]
+        self.last_wheel_speeds_cmd = np.float32([0, 0, 0])
 
         # OmniRobot's position command on the grid
         self.robot_pos_cmd = np.float32(self.init_pos[:])
@@ -268,6 +275,72 @@ class OmniRobotEnvRender():
         self.setRobotCmd(
             self.robot_pos_cmd[0] + action[0], self.robot_pos_cmd[1] + action[1], self.robot_yaw_cmd)
 
+    def moveByVelocityCmd(self, speed_x, speed_y, speed_yaw):
+        """
+        simuate the robot moved by velocity command
+        This function is assumed to be called at a frequency RL_CONTROL_FREQ in the simulation world
+
+        :param speed_x: (float) linear speed along x-axis (m/s) (forward-backward), in robot local coordinate
+        :param speed_y: (float) linear speed along y-axis (m/s) (left-right), in robot local coordinate
+        :param speed_yaw: (float) rotation speed of robot around z-axis (rad/s), in robot local coordinate
+        """
+        # calculate the robot position that it should be at this moment, so it should be driven by last command
+        # Assume in 1/RL_CONTROL_FREQ, the heading remains the same (not true,
+        #   but should be approximately work if RL_CONTROL_FREQ is high enough)
+        # translate the last velocity cmd in robot local coordiante to position cmd in gound coordiante
+        cos_direction = np.cos(self.robot_yaw)
+        sin_direction = np.sin(self.robot_yaw)
+
+        ground_pos_cmd_x = self.robot_pos[0] + (self.last_linear_velocity_cmd[0] *
+                                                cos_direction - self.last_linear_velocity_cmd[1] * sin_direction)/RL_CONTROL_FREQ
+        ground_pos_cmd_y = self.robot_pos[1] + (self.last_linear_velocity_cmd[1] *
+                                                cos_direction + self.last_linear_velocity_cmd[0] * sin_direction)/RL_CONTROL_FREQ
+        ground_yaw_cmd = self.robot_yaw + self.last_rot_velocity_cmd/RL_CONTROL_FREQ
+        self.setRobotCmd(ground_pos_cmd_x, ground_pos_cmd_y, ground_yaw_cmd)
+
+        # save the command of this moment
+        self.last_linear_velocity_cmd[0] = speed_x
+        self.last_linear_velocity_cmd[1] = speed_y
+        self.last_rot_velocity_cmd = speed_yaw
+
+    def moveByWheelsCmd(self, left_speed, front_speed, right_speed):
+        """
+        simuate the robot moved by wheel speed command
+        This function is assumed to be called at a frequency RL_CONTROL_FREQ in the simulation world
+
+        :param left_speed: (float) linear speed of left wheel (meter/s)
+        :param front_speed: (float) linear speed of front wheel (meter/s)
+        :param right_speed: (float) linear speed of right wheel (meter/s)
+        """
+
+        # calculate the robot position by omnirobot's kinematic equations
+        # Assume in 1/RL_CONTROL_FREQ, the heading remains the same (not true,
+        # but should be approximately work if RL_CONTROL_FREQ is high enough)
+
+        # translate the last wheel speeds cmd in last velocity cmd
+        local_speed_x = self.last_wheel_speeds_cmd[0] / np.sqrt(3.0) \
+            - self.last_wheel_speeds_cmd[2] / np.sqrt(3.0)
+        local_speed_y = - self.last_wheel_speeds_cmd[1] / 1.5 + \
+            self.last_wheel_speeds_cmd[0] / 3.0 + \
+            self.last_wheel_speeds_cmd[2] / 3.0
+        local_rot_speed = - self.last_wheel_speeds_cmd[1] / (3.0 * OMNIROBOT_L) \
+            - self.last_wheel_speeds_cmd[0] / (3.0 * OMNIROBOT_L) \
+            - self.last_wheel_speeds_cmd[2] / (3.0 * OMNIROBOT_L)
+            
+        # translate the last velocity cmd in robot local coordiante to position cmd in gound coordiante
+        cos_direction = np.cos(self.robot_yaw)
+        sin_direction = np.sin(self.robot_yaw)
+
+        ground_pos_cmd_x = self.robot_pos[0] + (local_speed_x *
+                                                cos_direction - local_speed_y * sin_direction)/RL_CONTROL_FREQ
+        ground_pos_cmd_y = self.robot_pos[1] + (local_speed_y *
+                                                cos_direction + local_speed_x * sin_direction)/RL_CONTROL_FREQ
+        ground_yaw_cmd = self.robot_yaw + local_rot_speed/RL_CONTROL_FREQ
+        self.setRobotCmd(ground_pos_cmd_x, ground_pos_cmd_y, ground_yaw_cmd)
+
+        self.last_wheel_speeds_cmd = np.float32(
+            [left_speed, front_speed, right_speed])
+
     @staticmethod
     def normalizeAngle(angle):
         """
@@ -288,7 +361,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         :param **args  arguments 
 
         '''
-        super(OmniRobotSimulatorSocket, self).__init__(second_cam_topic=SECOND_CAM_TOPIC)
+        super(OmniRobotSimulatorSocket, self).__init__(
+            second_cam_topic=SECOND_CAM_TOPIC)
         defalt_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
             "camera_info_path": CAMERA_INFO_PATH,
@@ -318,7 +392,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         self.robot = OmniRobotEnvRender(**self.new_args)
         self.episode_idx = 0
         self._random_target = self.new_args["random_target"]
-        self.resetEpisode() # for a random target initial position
+        self.resetEpisode()  # for a random target initial position
 
     def resetEpisode(self):
         """
@@ -330,11 +404,12 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
             assert NotImplementedError
         # Env reset
         random_init_position = self.sampleRobotInitalPosition()
-        self.robot.setRobotCmd(random_init_position[0], random_init_position[1], 0)
-        
+        self.robot.setRobotCmd(
+            random_init_position[0], random_init_position[1], 0)
+
         self.robot_marker_size_proprotion = np.random.randn(
         ) * NOISE_VAR_ROBOT_SIZE_PROPOTION + 1.0
-        
+
         # target reset
         if self._random_target or self.episode_idx == 0:
             random_init_x = np.random.random_sample() * (TARGET_MAX_X - TARGET_MIN_X) + \
@@ -351,12 +426,12 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
     def send_json(self, msg):
         # env send msg to render
         self.processMsg(msg)
-       
+
         self.robot.renderRobot()
 
         self.img = self.robot.getCroppedImage()
         self.img = self.robot.renderEnvLuminosityNoise(self.img, noise_var=NOISE_VAR_ENVIRONMENT, in_RGB=False,
-                                                        out_RGB=True)
+                                                       out_RGB=True)
         self.img = cv2.resize(self.img, tuple(self.robot.output_size))
 
     def recv_json(self):
