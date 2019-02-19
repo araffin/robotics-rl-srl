@@ -70,7 +70,7 @@ class OmniRobotEnv(SRLGymEnv):
     """
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
-                 learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1,
+                 learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
                  shape_reward=False, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
@@ -99,6 +99,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.cuda = th.cuda.is_available()
         self.target_pos = None
         self.saver = None
+        self._random_target = random_target
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -127,7 +128,7 @@ class OmniRobotEnv(SRLGymEnv):
 
         if USING_OMNIROBOT_SIMULATOR:
             self.socket = OmniRobotSimulatorSocket(
-                output_size=[RENDER_WIDTH, RENDER_HEIGHT])
+                output_size=[RENDER_WIDTH, RENDER_HEIGHT], random_target=self._random_target)
         else:
             # Initialize Baxter effector by connecting to the Gym bridge ROS node:
             self.context = zmq.Context()

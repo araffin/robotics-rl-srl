@@ -407,6 +407,7 @@ class OmnirobotManager(OmnirobotManagerBase):
         self.robot = OmniRobot(0,0,0) # assign the real robot object to manager
         self.episode_idx = 0
         self.episode_step = 0
+
     def resetEpisode(self):
         """
         override orignal method
