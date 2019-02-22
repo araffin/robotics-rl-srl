@@ -34,7 +34,8 @@ def assertNeq(left, right):
 
 
 # ignoring 'acktr', as it will run out of memory and crash tensorflow's allocation
-@pytest.mark.parametrize("algo", ['a2c', 'acer', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac', 'trpo'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent',
+                                  'sac', 'trpo'])
 @pytest.mark.parametrize("model_type", ['raw_pixels'])
 def testBaselineTrain(algo, model_type):
     """
@@ -44,7 +45,7 @@ def testBaselineTrain(algo, model_type):
     """
     args = ['--algo', algo, '--srl-model', model_type, '--num-timesteps', NUM_TIMESTEP, '--seed', SEED,
             '--num-iteration', NUM_ITERATION, '--no-vis', '--env', DEFAULT_ENV]
-    if algo == "ddpg":
+    if algo == "ddpg" or algo == "sac":
         # Prevent RAM issue because of the replay buffer
         mem_limit = 100 if model_type == 'raw_pixels' else 100000
         args.extend(['-c', '--memory-limit', mem_limit])
@@ -91,7 +92,8 @@ def testEnvSRLTrain(model_type, env):
 
 @pytest.mark.fast
 @pytest.mark.parametrize("env", ["KukaRandButtonGymEnv-v0", "Kuka2ButtonGymEnv-v0", "KukaMovingButtonGymEnv-v0",
-                                 "MobileRobot2TargetGymEnv-v0", "MobileRobot1DGymEnv-v0", "MobileRobotLineTargetGymEnv-v0"])
+                                 "MobileRobot2TargetGymEnv-v0", "MobileRobot1DGymEnv-v0",
+                                 "MobileRobotLineTargetGymEnv-v0", "OmnirobotEnv-v0"])
 def testEnvTrain(env):
     """
     test the environment on the RL pipeline
@@ -108,7 +110,8 @@ def testEnvTrain(env):
 
 
 @pytest.mark.fast
-@pytest.mark.parametrize("env", ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0"])
+@pytest.mark.parametrize("env", ["KukaButtonGymEnv-v0", "MobileRobotGymEnv-v0", "CarRacingGymEnv-v0",
+                                 "OmnirobotEnv-v0"])
 @pytest.mark.parametrize("algo", ['a2c', 'ppo1', 'ppo2', 'sac', 'trpo'])
 def testContinousEnvTrain(env, algo):
     """

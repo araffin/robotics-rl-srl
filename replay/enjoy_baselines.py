@@ -9,7 +9,7 @@ from datetime import datetime
 import yaml
 import numpy as np
 import tensorflow as tf
-from baselines.common import set_global_seeds
+from stable_baselines.common import set_global_seeds
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
