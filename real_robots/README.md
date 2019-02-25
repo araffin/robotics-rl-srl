@@ -281,7 +281,5 @@ To make the simulator more general, and make RL/SRL more stable, several types o
     - Port is occupied by another client/server, you should kill it. If you cannot find the process which occupies this port, use `fuser 7777\tcp -k` to kill it directly. (7777 can be changed to any number of port).
 
 ### TODO
-  - ~~extract the same code from omnirobot and its simulator~~
-  - ~~add minimum constraint for continous action, using action space~~
   - joint states
   - second camera

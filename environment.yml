@@ -98,6 +98,7 @@ dependencies:
     - enum34==1.1.6
     - future==0.16.0
     - futures==3.1.1
+    - gym==0.11.0
     - git+https://github.com/hyperopt/hyperopt.git
     - idna==2.6
     - joblib==0.11

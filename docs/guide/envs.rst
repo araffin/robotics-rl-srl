@@ -57,6 +57,10 @@ You can find a recap table in the README.
 
    -  RoboboGymEnv-v0: A bridge to use a Robobo robot with ROS.
 
+-  Omnidirectional Robot: A mobile robot on a 2d terrain that must reach a target position.
+
+   -  OmnirobotEnv-v0: A bridge to use a real Omnirobot with ROS (also available in simulation).
+
 
 Generating Data
 ---------------
