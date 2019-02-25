@@ -8,7 +8,6 @@ import shutil
 import time
 
 import numpy as np
-from gym.spaces import prng
 from stable_baselines import PPO2
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines.common.policies import CnnPolicy
@@ -84,7 +83,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
                (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
 
         env.seed(seed)
-        prng.seed(seed)  # this is for the sample() function from gym.space
+        env.action_space.seed(seed)  # this is for the sample() function from gym.space
         obs = env.reset()
         done = False
         t = 0
