@@ -7,7 +7,7 @@ This repository was made to evaluate State Representation Learning methods using
 We also release customizable Gym environments for working with simulation (Kuka arm, Mobile Robot in PyBullet, running at 250 FPS on a 8-core machine) and real robots (Baxter Robot, Robobo with ROS).
 
 Related papers:
-- "Decoupling feature extraction from policy learning: assessing benefits of state representation learning in goal based robotics" (Raffin et al. 2018) [https://openreview.net/forum?id=Hkl-di09FQ](https://openreview.net/forum?id=Hkl-di09FQ)
+- "Decoupling feature extraction from policy learning: assessing benefits of state representation learning in goal based robotics" (Raffin et al. 2018) [https://arxiv.org/abs/1901.08651](https://arxiv.org/abs/1901.08651)
 - "S-RL Toolbox: Environments, Datasets and Evaluation Metrics for State Representation Learning" (Raffin et al., 2018) [https://arxiv.org/abs/1809.09369](https://arxiv.org/abs/1809.09369)
 
 <a href="https://youtu.be/qNsHMkIsqJc"><img src="imgs/rl_toolboxplay.jpg"/></a>
