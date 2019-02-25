@@ -48,7 +48,9 @@ def testBaselineTrain(algo, model_type):
     if algo == "ddpg" or algo == "sac":
         # Prevent RAM issue because of the replay buffer
         mem_limit = 100 if model_type == 'raw_pixels' else 100000
-        args.extend(['-c', '--memory-limit', mem_limit])
+        args.extend(['-c'])
+        if algo == "ddpg":
+            args.extend(['--memory-limit', mem_limit])
     elif algo == "acer":
         args.extend(['--num-stack', 4])
 

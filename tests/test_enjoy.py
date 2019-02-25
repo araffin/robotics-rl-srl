@@ -54,7 +54,9 @@ def testBaselineTrain(algo):
             '--num-iteration', NUM_ITERATION, '--no-vis', '--log-dir', DEFAULT_LOG_DIR, '--env', DEFAULT_ENV,
             '--min-episodes-save', 1]
     if algo == "ddpg" or algo == "sac":
-        args.extend(['-c', '--memory-limit', 100])
+        args.extend(['-c'])
+        if algo == "ddpg":
+            args.extend(['--memory-limit', 100])
     elif algo == "acer":
         args.extend(['--num-stack', 4])
 
