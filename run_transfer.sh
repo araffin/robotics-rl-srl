@@ -1,1 +1,0 @@
-python -m rl_baselines.train --load-rl-model-path logs/omnirobot_noise_model_split_200_states/OmnirobotEnv-v0/autoencoder/ppo2/19-02-05_03h25_21/ppo2.pkl --num-cpu 4 --log-dir logs/omnirobot_noise_model_split_200_states_transfer/ --env OmnirobotEnv-v0  --seed 1 --srl-model autoencoder --algo ppo2 --no-vis
