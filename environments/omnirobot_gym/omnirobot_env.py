@@ -9,9 +9,7 @@ from gym import spaces
 import torch as th
 import matplotlib.pyplot as plt
 import seaborn as sns
-import subprocess
 import yaml
-# Konwn issue: - No module named 'scipy.spatial.transform', To resolve, try pip3 install scipy==1.2
 from scipy.spatial.transform import Rotation as R
 
 from environments.srl_env import SRLGymEnv
