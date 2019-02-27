@@ -105,7 +105,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             frames += 1
             t += 1
             if done:
-                if np.random.rand() <  args.toward_target_timesteps_proportion:
+                if np.random.rand() < args.toward_target_timesteps_proportion:
                     episode_toward_target_on = True
                 else:
                     episode_toward_target_on = False
