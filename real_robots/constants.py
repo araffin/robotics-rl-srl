@@ -12,7 +12,7 @@ USING_REAL_BAXTER = False
 USING_ROBOBO = False
 USING_OMNIROBOT = False
 USING_OMNIROBOT_SIMULATOR = True
-assert (int(USING_REAL_BAXTER) + int(USING_ROBOBO) + int(USING_OMNIROBOT) + int(USING_OMNIROBOT_SIMULATOR) == 1), \
+assert sum([USING_REAL_BAXTER, USING_ROBOBO, USING_OMNIROBOT, USING_OMNIROBOT_SIMULATOR]) <= 1, \
     "You can only use one real robot at a time"
 # For compatibility with teleop_client
 Move = None
@@ -104,9 +104,9 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     RL_CONTROL_FREQ = 20.0
 
     # Geometry data of omnirobot
-    OMNIROBOT_L = 0.120 # m
+    OMNIROBOT_L = 0.120  # m
 
-    #error threshold
+    # error threshold
     DIST_TO_TARGET_THRESHOLD = 0.2
 
     # For discrete action, 
@@ -118,7 +118,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
         RIGHT = 3
         STOP = 4
 
-    STEP_DISTANCE = 0.1 # meter, distance for each step
+    STEP_DISTANCE = 0.1  # meter, distance for each step
     
     # For continuous action,
     # Define the action_bounds
@@ -132,7 +132,8 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
 
     # camera installation info
     CAMERA_POS_COORD_GROUND = [0, 0, 2.9]  # camera position in ground coordinate [x, y, z]
-    CAMERA_ROT_EULER_COORD_GROUND = [0, 180, 0]  # camera rotation in ground coordinate, euler angle presented in xyz, in degree
+    # camera rotation in ground coordinate, euler angle presented in xyz, in degree
+    CAMERA_ROT_EULER_COORD_GROUND = [0, 180, 0]
     ORIGIN_SIZE = [640, 480]  # camera's original resolution
     CROPPED_SIZE = [480, 480]  # cropped to a square, attention, this is not the output image size (RENDER_SIZE)
 # Gazebo

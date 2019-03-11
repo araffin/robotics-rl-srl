@@ -51,8 +51,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         "record_data": not args.no_record_data,
         "multi_view": args.multi_view,
         "save_path": args.save_path,
-        "shape_reward": args.shape_reward #,
-        #"env_rank": thread_num
+        "shape_reward": args.shape_reward
     }
 
     if partition:
@@ -62,7 +61,6 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-
 
     model = None
     if use_ppo2:
