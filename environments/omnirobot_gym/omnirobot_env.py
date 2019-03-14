@@ -72,7 +72,8 @@ class OmniRobotEnv(SRLGymEnv):
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
-                 shape_reward=False, env_rank=0, srl_pipe=None, **_):
+                 shape_reward=False, simple_continual_target=False, circular_continual_move=False,
+                 square_continual_move=False, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=RELATIVE_POS,
@@ -128,8 +129,11 @@ class OmniRobotEnv(SRLGymEnv):
                                       learn_states=learn_states, path=save_path)
 
         if USING_OMNIROBOT_SIMULATOR:
-            self.socket = OmniRobotSimulatorSocket(
-                output_size=[RENDER_WIDTH, RENDER_HEIGHT], random_target=self._random_target)
+            self.socket = OmniRobotSimulatorSocket(simple_continual_target=simple_continual_target,
+                                                   circular_continual_move=circular_continual_move,
+                                                   square_continual_move=square_continual_move,
+                                                   output_size=[RENDER_WIDTH, RENDER_HEIGHT],
+                                                   random_target=self._random_target)
         else:
             # Initialize Baxter effector by connecting to the Gym bridge ROS node:
             self.context = zmq.Context()
@@ -194,7 +198,8 @@ class OmniRobotEnv(SRLGymEnv):
 
         # Send the action to the server
         self.socket.send_json(
-            {"command": "action", "action": self.action, "is_discrete": self._is_discrete})
+            {"command": "action", "action": self.action, "is_discrete": self._is_discrete,
+             "step_counter": self._env_step_counter})
 
         # Receive state data (position, etc), important to update state related values
         self.getEnvState()
@@ -274,7 +279,7 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         # set n contact count
         self.n_contacts = 0
-        self.socket.send_json({"command": "reset"})
+        self.socket.send_json({"command": "reset", "step_counter": self._env_step_counter})
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
         self.getEnvState()

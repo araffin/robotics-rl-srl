@@ -51,7 +51,10 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         "record_data": not args.no_record_data,
         "multi_view": args.multi_view,
         "save_path": args.save_path,
-        "shape_reward": args.shape_reward
+        "shape_reward": args.shape_reward,
+        "simple_continual_target": args.simple_continual,
+        "circular_continual_move": args.circular_continual,
+        "square_continual_move": args.square_continual
     }
 
     if partition:
@@ -145,6 +148,16 @@ def main():
                         help='number of timesteps to run PPO2 on before generating the dataset')
     parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
                         help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
+    parser.add_argument('--simple-continual', action='store_true', default=False,
+                        help = 'Simple red dot target for task 1 of continual learning scenario. ' +
+                               'The task is: robot should reach the target.')
+    parser.add_argument('--circular-continual', action='store_true', default=False,
+                        help='Blue square target for task 2 of continual learning scenario. ' +
+                               'The task is: robot should turn in circle around the target.')
+    parser.add_argument('--square-continual', action='store_true', default=False,
+                        help = 'Green triangle target for task 3 of continual learning scenario. ' +
+                               'The task is: robot should turn in square around the target.')
+
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
@@ -157,6 +170,9 @@ def main():
     if args.num_cpu > args.num_episode:
         args.num_cpu = args.num_episode
         printYellow("num_cpu cannot be greater than num_episode, defaulting to {} cpus.".format(args.num_cpu))
+
+    assert sum([args.simple_continual, args.circular_continual, args.square_continual]) <= 1, \
+        "For continual SRL and RL, please provide only one scenario at the time !"
 
     # this is done so seed 0 and 1 are different and not simply offset of the same datasets.
     args.seed = np.random.RandomState(args.seed).randint(int(1e10))
