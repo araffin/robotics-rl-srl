@@ -27,7 +27,7 @@ class OmniRobotEnvRender():
                  back_ground_path, camera_info_path,
                  robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
                  robot_marker_code, target_marker_code,
-                 robot_marker_length, target_marker_length, output_size, **_):
+                 robot_marker_length, target_marker_length, output_size, history_size=10, **_):
         """
         Class for rendering Omnirobot environment
         :param init_x: (float) initial x position of robot
@@ -62,6 +62,9 @@ class OmniRobotEnvRender():
         # OmniRobot's real position on the grid
         self.robot_pos = np.float32([0, 0])
         self.robot_yaw = 0  # in rad
+
+        self.history_size = history_size
+        self.robot_pos_past_k_steps = []
 
         # Last velocity command, used for simulating the controlling of velocity directly
         self.last_linear_velocity_cmd = np.float32(
@@ -185,6 +188,14 @@ class OmniRobotEnvRender():
                                                  self.pos_transformer.phyPosGround2PixelPos(
                                                      self.robot_pos.reshape(2, 1)),
                                                  self.robot_yaw, self.robot_marker_size_proprotion)
+    def getHistorySize(self):
+        return self.history_size
+
+    def appendToHistory(self, pos):
+        self.robot_pos_past_k_steps.append(pos)
+
+    def popOfHistory(self):
+        self.robot_pos_past_k_steps.pop(0)
 
     def getCroppedImage(self):
         return self.image[self.cropped_range[0]:self.cropped_range[1], self.cropped_range[2]:self.cropped_range[3], :]
@@ -361,15 +372,11 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         :param **args  arguments 
 
         '''
-        super(OmniRobotSimulatorSocket, self).__init__(
-            second_cam_topic=SECOND_CAM_TOPIC)
-        defalt_args = {
+        default_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
             "camera_info_path": CAMERA_INFO_PATH,
             "robot_marker_path": "real_robots/omnirobot_utils/robot_margin3_pixel_only_tag.png",
             "robot_marker_margin": [3, 3, 3, 3],
-            # for black target, use target_margin4_pixel.png",
-            "target_marker_path": "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png",
             "target_marker_margin": [4, 4, 4, 4],
             "robot_marker_code": None,
             "target_marker_code": None,
@@ -380,10 +387,27 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
             "init_y": 0,
             "init_yaw": 0,
             "origin_size": ORIGIN_SIZE,
-            "cropped_size": CROPPED_SIZE
+            "cropped_size": CROPPED_SIZE,
+            "circular_move": False
         }
         # overwrite the args if it exists
-        self.new_args = {**defalt_args, **args}
+        self.new_args = {**default_args, **args}
+
+        if self.new_args["simple_continual_target"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/red_square.png"
+
+        elif self.new_args["circular_continual_move"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/blue_square.png"
+
+        elif self.new_args["square_continual_move"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/green_square.png"
+        else:
+            # for black target, use target_margin4_pixel.png",
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png"
+
+        super(OmniRobotSimulatorSocket, self).__init__(simple_continual_target=self.new_args["simple_continual_target"],
+                                                   circular_continual_move=self.new_args["circular_continual_move"],
+                                                   square_continual_move=self.new_args["square_continual_move"])
 
         assert len(self.new_args['robot_marker_margin']) == 4
         assert len(self.new_args['target_marker_margin']) == 4
