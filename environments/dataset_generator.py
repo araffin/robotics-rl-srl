@@ -148,15 +148,15 @@ def main():
                         help='number of timesteps to run PPO2 on before generating the dataset')
     parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
                         help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
-    parser.add_argument('--simple-continual', action='store_true', default=False,
-                        help = 'Simple red dot target for task 1 of continual learning scenario. ' +
-                               'The task is: robot should reach the target.')
-    parser.add_argument('--circular-continual', action='store_true', default=False,
+    parser.add_argument('-sc', '--simple-continual', action='store_true', default=False,
+                        help='Simple red square target for task 1 of continual learning scenario. ' +
+                             'The task is: robot should reach the target.')
+    parser.add_argument('-cc', '--circular-continual', action='store_true', default=False,
                         help='Blue square target for task 2 of continual learning scenario. ' +
-                               'The task is: robot should turn in circle around the target.')
-    parser.add_argument('--square-continual', action='store_true', default=False,
-                        help = 'Green triangle target for task 3 of continual learning scenario. ' +
-                               'The task is: robot should turn in square around the target.')
+                             'The task is: robot should turn in circle around the target.')
+    parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
+                        help='Green square target for task 3 of continual learning scenario. ' +
+                             'The task is: robot should turn in square around the target.')
 
     args = parser.parse_args()
 
