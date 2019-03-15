@@ -103,6 +103,11 @@ def loadConfigAndSetup(load_args):
     else:
         env_kwargs["force_down"] = env_globals.get('force_down', False)
 
+    if train_args["env"] == "OmnirobotEnv-v0":
+        env_kwargs["simple_continual_target"] = env_globals["simple_continual_target"]
+        env_kwargs["circular_continual_move"] = env_globals["circular_continual_move"]
+        env_kwargs["square_continual_move"] = env_globals["square_continual_move"]
+
     srl_model_path = None
     if train_args["srl_model"] != "raw_pixels":
         train_args["policy"] = "mlp"

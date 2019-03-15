@@ -98,6 +98,11 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
             srl_model_path = models['log_folder'] + path
             env_kwargs["srl_model_path"] = srl_model_path
 
+    # Use of continual learning env
+    env_kwargs["simple_continual_target"] = args.simple_continual
+    env_kwargs["circular_continual_move"] = args.circular_continual
+    env_kwargs["square_continual_move"] = args.square_continual
+
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
