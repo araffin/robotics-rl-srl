@@ -207,6 +207,15 @@ def main():
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
     parser.add_argument('--load-rl-model-path', type=str, default=None,
                         help="load the trained RL model, should be with the same algorithm type")
+    parser.add_argument('-sc', '--simple-continual', action='store_true', default=False,
+                        help='Simple red square target for task 1 of continual learning scenario. ' +
+                             'The task is: robot should reach the target.')
+    parser.add_argument('-cc', '--circular-continual', action='store_true', default=False,
+                        help='Blue square target for task 2 of continual learning scenario. ' +
+                             'The task is: robot should turn in circle around the target.')
+    parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
+                        help='Green square target for task 3 of continual learning scenario. ' +
+                             'The task is: robot should turn in square around the target.')
     
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -235,6 +244,9 @@ def main():
                 found = True
                 break
         assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
+
+    assert sum([args.simple_continual, args.circular_continual, args.square_continual]) <= 1 and args.env == "OmnirobotEnv-v0", \
+        "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
 
     ENV_NAME = args.env
     ALGO_NAME = args.algo
