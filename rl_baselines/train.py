@@ -285,6 +285,11 @@ def main():
     env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
     env_kwargs["random_target"] = args.random_target
+
+    #If in simple continual scenario, then the target should be initialized randomly.
+    if args.simple_continual == True:
+        env_kwargs["random_target"] = True
+
     # Allow up action
     # env_kwargs["force_down"] = False
 
@@ -308,7 +313,7 @@ def main():
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
     super_class = registered_env[args.env][1]
-    # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
+    # recursive search through all the super classes of the asked environment, in order to get all the arguments.
     rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _, _) in
                               registered_env.items()}
     while super_class != SRLGymEnv:

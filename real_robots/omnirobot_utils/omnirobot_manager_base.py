@@ -5,7 +5,7 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 lambda_c=1.0, radius=0.5):
+                 lambda_c=5.0):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,
@@ -18,7 +18,6 @@ class OmnirobotManagerBase(object):
         self.circular_continual_move = circular_continual_move
         self.square_continual_move =  square_continual_move
         self.lambda_c = lambda_c
-        self.radius = radius
 
         # the abstract object for robot,
         # can be the real robot (Omnirobot class)
@@ -27,7 +26,7 @@ class OmnirobotManagerBase(object):
 
     def rightAction(self):
         """
-        Let robot excute right action, and checking the boudary
+        Let robot execute right action, and checking the boundary
         :return has_bumped: (bool) 
         """
         if self.robot.robot_pos[1] - STEP_DISTANCE > MIN_Y:
@@ -39,7 +38,7 @@ class OmnirobotManagerBase(object):
 
     def leftAction(self):
         """
-        Let robot excute left action, and checking the boudary
+        Let robot execute left action, and checking the boundary
         :return has_bumped: (bool) 
         """
         if self.robot.robot_pos[1] + STEP_DISTANCE < MAX_Y:
@@ -51,7 +50,7 @@ class OmnirobotManagerBase(object):
 
     def forwardAction(self):
         """
-        Let robot excute forward action, and checking the boudary
+        Let robot execute forward action, and checking the boundary
         :return has_bumped: (bool) 
         """
         if self.robot.robot_pos[0] + STEP_DISTANCE < MAX_X:
@@ -63,7 +62,7 @@ class OmnirobotManagerBase(object):
 
     def backwardAction(self):
         """
-        Let robot excute backward action, and checking the boudary
+        Let robot execute backward action, and checking the boundary
         :return has_bumped: (bool) 
         """
         if self.robot.robot_pos[0] - STEP_DISTANCE > MIN_X:
@@ -75,7 +74,7 @@ class OmnirobotManagerBase(object):
 
     def moveContinousAction(self, msg):
         """
-        Let robot excute continous action, and checking the boudary
+        Let robot execute continous action, and checking the boundary
         :return has_bumped: (bool) 
         """
         if MIN_X < self.robot.robot_pos[0] + msg['action'][0] < MAX_X and \
@@ -157,14 +156,17 @@ class OmnirobotManagerBase(object):
             ord = None
             if self.square_continual_move:
                 ord = np.inf
-            self.reward = 1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - self.radius) ** 2
+            self.reward = 1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2
+            #print(self.reward, 'REWARD SQUARE/CIRCLE')
 
             if step_counter < self.robot.getHistorySize():
                 pass
             else:
                 self.robot.popOfHistory()
                 self.reward += \
-                    self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[-1])
+                    self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0])
+                #print(self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0]), 'ADDITIONAL REWARD')
+
 
         else:
             # Consider that we reached the target if we are close enough

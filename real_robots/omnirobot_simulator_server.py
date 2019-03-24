@@ -27,7 +27,7 @@ class OmniRobotEnvRender():
                  back_ground_path, camera_info_path,
                  robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
                  robot_marker_code, target_marker_code,
-                 robot_marker_length, target_marker_length, output_size, history_size=10, **_):
+                 robot_marker_length, target_marker_length, output_size, history_size=2, **_):
         """
         Class for rendering Omnirobot environment
         :param init_x: (float) initial x position of robot
@@ -84,7 +84,7 @@ class OmniRobotEnvRender():
         self.target_yaw_cmd = 0.0
 
         # Target's real position on the grid
-        self.target_pos = np.float32([0, 0])
+        self.target_pos = np.float32([0,0])
         self.target_yaw = 0
 
         # status of moving
@@ -435,7 +435,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         ) * NOISE_VAR_ROBOT_SIZE_PROPOTION + 1.0
 
         # target reset
-        if self._random_target or self.episode_idx == 0:
+        if self._random_target:
             random_init_x = np.random.random_sample() * (TARGET_MAX_X - TARGET_MIN_X) + \
                 TARGET_MIN_X
             random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + \

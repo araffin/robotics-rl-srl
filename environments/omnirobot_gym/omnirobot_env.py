@@ -102,6 +102,9 @@ class OmniRobotEnv(SRLGymEnv):
         self.target_pos = None
         self.saver = None
         self._random_target = random_target
+        self.simple_continual_target = simple_continual_target
+        self.circular_continual_move = circular_continual_move
+        self.square_continual_move = square_continual_move
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -358,10 +361,14 @@ class OmniRobotEnv(SRLGymEnv):
 
         self.boundary_coner_pixel_pos = np.zeros((2,4))
         # assume that image is undistorted
-        self.boundary_coner_pixel_pos[:,0] = pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y], return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,1] = pos_transformer.phyPosGround2PixelPos([MAX_X, MIN_Y], return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,2] = pos_transformer.phyPosGround2PixelPos([MAX_X, MAX_Y], return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,3] = pos_transformer.phyPosGround2PixelPos([MIN_X, MAX_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:,0] = pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y],
+                                                return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:,1] = pos_transformer.phyPosGround2PixelPos([MAX_X, MIN_Y],
+                                                return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:,2] = pos_transformer.phyPosGround2PixelPos([MAX_X, MAX_Y],
+                                                return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:,3] = pos_transformer.phyPosGround2PixelPos([MIN_X, MAX_Y],
+                                                return_distort_image_pos=False).squeeze()
 
         # transform the corresponding points into cropped image
         self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)).reshape(2,1) / 2.0
@@ -372,12 +379,54 @@ class OmniRobotEnv(SRLGymEnv):
         
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
 
+
+        if self.square_continual_move:
+
+
+            self.boundary_coner_pixel_pos_continual = np.zeros((2, 4))
+            # assume that image is undistorted
+            self.boundary_coner_pixel_pos_continual[:, 0] = pos_transformer.phyPosGround2PixelPos([-RADIUS, -RADIUS],
+                                                                                        return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 1] = pos_transformer.phyPosGround2PixelPos([RADIUS, -RADIUS],
+                                                                                        return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 2] = pos_transformer.phyPosGround2PixelPos([RADIUS, RADIUS],
+                                                                                        return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 3] = pos_transformer.phyPosGround2PixelPos([-RADIUS, RADIUS],
+                                                                                        return_distort_image_pos=False).squeeze()
+
+            # transform the corresponding points into cropped image
+            self.boundary_coner_pixel_pos_continual = self.boundary_coner_pixel_pos_continual - (
+                        np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
+
+            # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
+            self.boundary_coner_pixel_pos_continual[0, :] *= RENDER_WIDTH / CROPPED_SIZE[0]
+            self.boundary_coner_pixel_pos_continual[1, :] *= RENDER_HEIGHT / CROPPED_SIZE[1]
+
+            self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
+
+
     def visualizeBoundary(self):
         """
-        visualize the unvisible boundary, should call initVisualizeBoundary firstly
+        visualize the unvisible boundary, should call initVisualizeBoundary first
         """
         self.observation_with_boundary = self.observation.copy()
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,0]),tuple(self.boundary_coner_pixel_pos[:,1]),(200,0,0),3) 
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,1]),tuple(self.boundary_coner_pixel_pos[:,2]),(200,0,0),3) 
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,2]),tuple(self.boundary_coner_pixel_pos[:,3]),(200,0,0),3) 
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,3]),tuple(self.boundary_coner_pixel_pos[:,0]),(200,0,0),3) 
+        #Add boundary continual
+        if self.square_continual_move:
+            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,0]),
+                     tuple(self.boundary_coner_pixel_pos_continual[:,1]),(0,0,200),3)
+            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,1]),
+                     tuple(self.boundary_coner_pixel_pos_continual[:,2]),(0,0,200),3)
+            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,2]),
+                     tuple(self.boundary_coner_pixel_pos_continual[:,3]),(0,0,200),3)
+            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,3]),
+                     tuple(self.boundary_coner_pixel_pos_continual[:,0]),(0,0,200),3)
+
+        #Add boundary of env
+        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 0]),
+                 tuple(self.boundary_coner_pixel_pos[:, 1]), (200, 0, 0), 3)
+        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 1]),
+                 tuple(self.boundary_coner_pixel_pos[:, 2]), (200, 0, 0), 3)
+        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 2]),
+                 tuple(self.boundary_coner_pixel_pos[:, 3]), (200, 0, 0), 3)
+        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 3]),
+                 tuple(self.boundary_coner_pixel_pos[:, 0]), (200, 0, 0), 3)
