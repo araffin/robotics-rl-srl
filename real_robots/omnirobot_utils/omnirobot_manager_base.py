@@ -5,7 +5,7 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 lambda_c=1.0):
+                 lambda_c=10.0):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,
@@ -16,7 +16,7 @@ class OmnirobotManagerBase(object):
         self.episode_idx = 0
         self.simple_continual_target = simple_continual_target
         self.circular_continual_move = circular_continual_move
-        self.square_continual_move =  square_continual_move
+        self.square_continual_move = square_continual_move
         self.lambda_c = lambda_c
         #self.reward_total = []
 
@@ -155,7 +155,6 @@ class OmnirobotManagerBase(object):
 
         if self.circular_continual_move or self.square_continual_move:
             step_counter = msg.get("step_counter", None)
-            print(step_counter, 'step_counter')
             assert step_counter is not None
 
             self.robot.appendToHistory(self.robot.robot_pos)
@@ -163,20 +162,21 @@ class OmnirobotManagerBase(object):
             ord = None
             if self.square_continual_move:
                 ord = np.inf
-            #self.reward = 1 - 100 * (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2
-            self.reward = 0
-            #print(self.reward, 'REWARD SQUARE/CIRCLE')
 
+            self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+            
             if step_counter < self.robot.getHistorySize():
                 pass
             else:
                 self.robot.popOfHistory()
                 self.reward += \
                     self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0])
-                print(self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0]), 'ADDITIONAL REWARD')
 
             #self.reward_total.append(self.reward)
             #print(self.robot.robot_pos_past_k_steps)
+
+            if has_bumped:
+                self.reward += self.lambda_c * REWARD_BUMP_WALL
 
         else:
             # Consider that we reached the target if we are close enough

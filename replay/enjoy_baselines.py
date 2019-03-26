@@ -331,10 +331,11 @@ def main():
 
         n_done += np.sum(dones)
         if (n_done - last_n_done) > 1:
+
             last_n_done = n_done
             _, mean_reward = computeMeanReward(log_dir, n_done)
             print("{} episodes - Mean reward: {:.2f}".format(n_done, mean_reward))
-
+            print("print: ", n_done, log_dir)
     _, mean_reward = computeMeanReward(log_dir, n_done)
     print("{} episodes - Mean reward: {:.2f}".format(n_done, mean_reward))
 
