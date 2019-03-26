@@ -163,8 +163,8 @@ class OmnirobotManagerBase(object):
             if self.square_continual_move:
                 ord = np.inf
 
-            self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
-            
+            self.reward = 2 * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+
             if step_counter < self.robot.getHistorySize():
                 pass
             else:
