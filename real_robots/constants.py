@@ -161,4 +161,4 @@ R_KEY = 114  # the letter "r"
 
 
 # Constants for Continual setup
-RADIUS = 0.5 #Radius of square or circle in continual scenarios: square-continual and circle-continual
+RADIUS = 0.7 #Radius of square or circle in continual scenarios: square-continual and circle-continual

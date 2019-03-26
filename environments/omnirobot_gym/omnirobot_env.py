@@ -379,7 +379,7 @@ class OmniRobotEnv(SRLGymEnv):
         
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
 
-
+        # Create square for vizu of objective in continual square task
         if self.square_continual_move:
 
 
@@ -404,6 +404,32 @@ class OmniRobotEnv(SRLGymEnv):
 
             self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
 
+        elif self.circular_continual_move:
+            self.center_coordinates = pos_transformer.phyPosGround2PixelPos([0, 0],
+                return_distort_image_pos=False).squeeze()
+            self.center_coordinates = self.center_coordinates - (
+                np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)) / 2.0
+            # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
+            self.center_coordinates[0] *= RENDER_WIDTH / CROPPED_SIZE[0]
+            self.center_coordinates[1] *= RENDER_HEIGHT / CROPPED_SIZE[1]
+
+            self.center_coordinates = np.around(self.center_coordinates).astype(np.int)
+
+
+            # Points to convert radisu in env space
+            self.boundary_coner_pixel_pos_continual = pos_transformer.phyPosGround2PixelPos([0, RADIUS],
+                return_distort_image_pos=False).squeeze()
+
+            # transform the corresponding points into cropped image
+            self.boundary_coner_pixel_pos_continual = self.boundary_coner_pixel_pos_continual - (
+                        np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)) / 2.0
+
+            # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
+            self.boundary_coner_pixel_pos_continual[0] *= RENDER_WIDTH / CROPPED_SIZE[0]
+            self.boundary_coner_pixel_pos_continual[1] *= RENDER_HEIGHT / CROPPED_SIZE[1]
+
+            self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
+
 
     def visualizeBoundary(self):
         """
@@ -413,13 +439,16 @@ class OmniRobotEnv(SRLGymEnv):
         #Add boundary continual
         if self.square_continual_move:
             cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,0]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,1]),(0,0,200),3)
+                     tuple(self.boundary_coner_pixel_pos_continual[:,1]),(0,0,200),2)
             cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,1]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,2]),(0,0,200),3)
+                     tuple(self.boundary_coner_pixel_pos_continual[:,2]),(0,0,200),2)
             cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,2]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,3]),(0,0,200),3)
+                     tuple(self.boundary_coner_pixel_pos_continual[:,3]),(0,0,200),2)
             cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,3]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,0]),(0,0,200),3)
+                     tuple(self.boundary_coner_pixel_pos_continual[:,0]),(0,0,200),2)
+        elif self.circular_continual_move:
+            radius_converted = np.linalg.norm(self.center_coordinates - self.boundary_coner_pixel_pos_continual)
+            cv2.circle(self.observation_with_boundary, tuple(self.center_coordinates), np.float32(radius_converted), (0,0,200),2)
 
         #Add boundary of env
         cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 0]),

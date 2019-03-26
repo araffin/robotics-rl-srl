@@ -150,6 +150,7 @@ def callback(_locals, _globals):
 
         # Save Best model
         if mean_reward > best_mean_reward and n_episodes >= MIN_EPISODES_BEFORE_SAVE:
+        #if True:
             # Try saving the running average (only valid for mlp policy)
             try:
                 if 'env' in _locals:

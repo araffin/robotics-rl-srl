@@ -416,6 +416,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         self.robot = OmniRobotEnvRender(**self.new_args)
         self.episode_idx = 0
         self._random_target = self.new_args["random_target"]
+        if self.new_args["simple_continual_target"]:
+            self._random_target = True
         self.resetEpisode()  # for a random target initial position
 
     def resetEpisode(self):
