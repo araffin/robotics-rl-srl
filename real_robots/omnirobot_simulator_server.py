@@ -27,7 +27,7 @@ class OmniRobotEnvRender():
                  back_ground_path, camera_info_path,
                  robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
                  robot_marker_code, target_marker_code,
-                 robot_marker_length, target_marker_length, output_size, history_size=2, **_):
+                 robot_marker_length, target_marker_length, output_size, history_size=6, **_):
         """
         Class for rendering Omnirobot environment
         :param init_x: (float) initial x position of robot
@@ -196,6 +196,9 @@ class OmniRobotEnvRender():
 
     def popOfHistory(self):
         self.robot_pos_past_k_steps.pop(0)
+
+    def emptyHistory(self):
+        self.robot_pos_past_k_steps = []
 
     def getCroppedImage(self):
         return self.image[self.cropped_range[0]:self.cropped_range[1], self.cropped_range[2]:self.cropped_range[3], :]

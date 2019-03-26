@@ -18,6 +18,7 @@ class OmnirobotManagerBase(object):
         self.circular_continual_move = circular_continual_move
         self.square_continual_move =  square_continual_move
         self.lambda_c = lambda_c
+        #self.reward_total = []
 
         # the abstract object for robot,
         # can be the real robot (Omnirobot class)
@@ -101,6 +102,7 @@ class OmnirobotManagerBase(object):
         random_init_position = self.sampleRobotInitalPosition()
         self.robot.setRobotCmd(random_init_position[0], random_init_position[1], 0)
 
+
     def processMsg(self, msg):
         """
         Using this steps' msg command the determinate the correct position that the robot should be at next step,
@@ -112,6 +114,10 @@ class OmnirobotManagerBase(object):
         if command == 'reset':
             action = None
             self.episode_idx += 1
+
+            # empty list of previous states
+            self.robot.emptyHistory()
+
             self.resetEpisode()
 
         elif command == 'action':
@@ -149,6 +155,7 @@ class OmnirobotManagerBase(object):
 
         if self.circular_continual_move or self.square_continual_move:
             step_counter = msg.get("step_counter", None)
+            print(step_counter, 'step_counter')
             assert step_counter is not None
 
             self.robot.appendToHistory(self.robot.robot_pos)
@@ -156,8 +163,9 @@ class OmnirobotManagerBase(object):
             ord = None
             if self.square_continual_move:
                 ord = np.inf
-            self.reward = 1 - 100 * (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2
-            print(self.reward, 'REWARD SQUARE/CIRCLE')
+            #self.reward = 1 - 100 * (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2
+            self.reward = 0
+            #print(self.reward, 'REWARD SQUARE/CIRCLE')
 
             if step_counter < self.robot.getHistorySize():
                 pass
@@ -166,6 +174,9 @@ class OmnirobotManagerBase(object):
                 self.reward += \
                     self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0])
                 print(self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0]), 'ADDITIONAL REWARD')
+
+            #self.reward_total.append(self.reward)
+            #print(self.robot.robot_pos_past_k_steps)
 
         else:
             # Consider that we reached the target if we are close enough
