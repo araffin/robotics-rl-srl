@@ -136,6 +136,10 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     CAMERA_ROT_EULER_COORD_GROUND = [0, 180, 0]
     ORIGIN_SIZE = [640, 480]  # camera's original resolution
     CROPPED_SIZE = [480, 480]  # cropped to a square, attention, this is not the output image size (RENDER_SIZE)
+
+    # Constants for Continual setup
+    RADIUS = 0.6125  # Radius of square or circle in continual scenarios: square-continual and circle-continual
+
 # Gazebo
 else:
     LEFT_ARM_INIT_POS = [0.6, 0.30, 0.20]
@@ -158,7 +162,3 @@ EXIT_KEYS = [113, 27]  # Escape and q
 D_KEY = 100  # the letter "d"
 U_KEY = 117  # The letter "u"
 R_KEY = 114  # the letter "r"
-
-
-# Constants for Continual setup
-RADIUS = 0.7 #Radius of square or circle in continual scenarios: square-continual and circle-continual

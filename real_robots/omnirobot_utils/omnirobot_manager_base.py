@@ -18,7 +18,6 @@ class OmnirobotManagerBase(object):
         self.circular_continual_move = circular_continual_move
         self.square_continual_move = square_continual_move
         self.lambda_c = lambda_c
-        #self.reward_total = []
 
         # the abstract object for robot,
         # can be the real robot (Omnirobot class)
@@ -163,20 +162,16 @@ class OmnirobotManagerBase(object):
             if self.square_continual_move:
                 ord = np.inf
 
-            self.reward = 2 * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+            self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
 
             if step_counter < self.robot.getHistorySize():
                 pass
             else:
                 self.robot.popOfHistory()
-                self.reward += \
-                    self.lambda_c * np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0])
-
-            #self.reward_total.append(self.reward)
-            #print(self.robot.robot_pos_past_k_steps)
+                self.reward *= np.linalg.norm(self.robot.robot_pos - self.robot.robot_pos_past_k_steps[0])
 
             if has_bumped:
-                self.reward += self.lambda_c * REWARD_BUMP_WALL
+                self.reward += self.lambda_c * self.lambda_c * REWARD_BUMP_WALL
 
         else:
             # Consider that we reached the target if we are close enough
