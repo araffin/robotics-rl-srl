@@ -73,7 +73,7 @@ class OmniRobotEnv(SRLGymEnv):
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
                  shape_reward=False, simple_continual_target=False, circular_continual_move=False,
-                 square_continual_move=False, env_rank=0, srl_pipe=None, **_):
+                 square_continual_move=False, eight_continual_move=False, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=RELATIVE_POS,
@@ -105,6 +105,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.simple_continual_target = simple_continual_target
         self.circular_continual_move = circular_continual_move
         self.square_continual_move = square_continual_move
+        self.eight_continual_move = eight_continual_move
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -135,6 +136,7 @@ class OmniRobotEnv(SRLGymEnv):
             self.socket = OmniRobotSimulatorSocket(simple_continual_target=simple_continual_target,
                                                    circular_continual_move=circular_continual_move,
                                                    square_continual_move=square_continual_move,
+                                                   eight_continual_move=eight_continual_move,
                                                    output_size=[RENDER_WIDTH, RENDER_HEIGHT],
                                                    random_target=self._random_target)
         else:

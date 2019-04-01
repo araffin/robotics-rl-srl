@@ -102,6 +102,7 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["simple_continual_target"] = args.simple_continual
     env_kwargs["circular_continual_move"] = args.circular_continual
     env_kwargs["square_continual_move"] = args.square_continual
+    env_kwargs["eight_continual_move"] = args.eight_continual
 
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
@@ -150,7 +151,6 @@ def callback(_locals, _globals):
 
         # Save Best model
         if mean_reward > best_mean_reward and n_episodes >= MIN_EPISODES_BEFORE_SAVE:
-        #if True:
             # Try saving the running average (only valid for mlp policy)
             try:
                 if 'env' in _locals:
@@ -222,6 +222,9 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
+    parser.add_argument('-ec', '--eight-continual', action='store_true', default=False,
+                        help='Green square target for task 4 of continual learning scenario. ' +
+                             'The task is: robot should do the eigth with the target as center of the shape.')
     
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -251,7 +254,8 @@ def main():
                 break
         assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
 
-    assert sum([args.simple_continual, args.circular_continual, args.square_continual]) <= 1 and args.env == "OmnirobotEnv-v0", \
+    assert sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual]) \
+           <= 1 and args.env == "OmnirobotEnv-v0", \
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
 
     ENV_NAME = args.env

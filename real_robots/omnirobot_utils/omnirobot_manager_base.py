@@ -5,7 +5,7 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 lambda_c=10.0):
+                 eight_continual_move=False, lambda_c=10.0):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,
@@ -17,6 +17,7 @@ class OmnirobotManagerBase(object):
         self.simple_continual_target = simple_continual_target
         self.circular_continual_move = circular_continual_move
         self.square_continual_move = square_continual_move
+        self.eight_continual_move = eight_continual_move
         self.lambda_c = lambda_c
 
         # the abstract object for robot,
@@ -152,17 +153,25 @@ class OmnirobotManagerBase(object):
 
         # Determinate the reward for this step
 
-        if self.circular_continual_move or self.square_continual_move:
+        if self.circular_continual_move or self.square_continual_move or self.eight_continual_move:
             step_counter = msg.get("step_counter", None)
             assert step_counter is not None
 
             self.robot.appendToHistory(self.robot.robot_pos)
 
             ord = None
-            if self.square_continual_move:
+            if self.square_continual_move or self.eight_continual_move:
                 ord = np.inf
 
-            self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+            if self.circular_continual_move or self.square_continual_move:
+                self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+            elif self.eight_continual_move:
+                plus = self.robot.robot_pos[0]**2 + self.robot.robot_pos[1]**2
+                #np.linalg.norm(self.robot.robot_pos, ord=ord) ** 2  # self.robot.robot_pos[0] ** 4
+                minus = 2 * (RADIUS ** 2) * (self.robot.robot_pos[0] ** 2 - self.robot.robot_pos[1] ** 2)
+                self.reward = self.lambda_c * (1 - (plus - minus) ** 2)
+            else:
+                pass
 
             if step_counter < self.robot.getHistorySize():
                 pass

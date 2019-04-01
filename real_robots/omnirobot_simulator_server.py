@@ -402,7 +402,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         elif self.new_args["circular_continual_move"]:
             self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/blue_square.png"
 
-        elif self.new_args["square_continual_move"]:
+        elif self.new_args["square_continual_move"] or self.new_args["eight_continual_move"]:
             self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/green_square.png"
         else:
             # for black target, use target_margin4_pixel.png",
@@ -410,7 +410,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
 
         super(OmniRobotSimulatorSocket, self).__init__(simple_continual_target=self.new_args["simple_continual_target"],
                                                    circular_continual_move=self.new_args["circular_continual_move"],
-                                                   square_continual_move=self.new_args["square_continual_move"])
+                                                   square_continual_move=self.new_args["square_continual_move"],
+                                                   eight_continual_move=self.new_args["eight_continual_move"])
 
         assert len(self.new_args['robot_marker_margin']) == 4
         assert len(self.new_args['target_marker_margin']) == 4
