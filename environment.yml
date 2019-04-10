@@ -121,7 +121,7 @@ dependencies:
     - seaborn==0.8.1
     - scikit-learn==0.19.1
     - scipy==1.2.0
-    - stable-baselines==2.4.1
+    - stable-baselines==2.5.0
     - termcolor==1.1.0
     - torchfile==0.1.0
     - tornado==4.5.3
