@@ -135,3 +135,8 @@ CarRacingGymEnv-v0:
   autoencoder_inverse: 18-07-20_12h13_18_custom_cnn_ST_DIM200_autoencoder_inverse/srl_model.pth
   autoencoder_reward: 18-07-20_14h35_43_custom_cnn_ST_DIM200_autoencoder_reward/srl_model.pth
   srl_combination: 18-07-19_18h16_03_custom_cnn_ST_DIM200_reward_autoencoder_inverse/srl_model.pth
+
+DeepmindLab-v0:
+  # Base path to SRL log folder
+  log_folder: ''
+  vae: logs/placeholder.sh

@@ -15,6 +15,7 @@ from environments.mobile_robot.mobile_robot_1D_env import MobileRobot1DGymEnv
 from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLineTargetGymEnv
 from environments.gym_baxter.baxter_env import BaxterEnv
 from environments.robobo_gym.robobo_env import RoboboEnv
+from environments.deepmind_lab.env import DeepmindLab_v0
 
 
 def register(_id, **kvargs):
@@ -48,7 +49,8 @@ registered_env = {
     "MobileRobot1DGymEnv-v0":         (MobileRobot1DGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),
-    "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
+    "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
+    "DeepmindLab-v0":                (DeepmindLab_v0, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE)
 }
 
 # Environments only available when running in a terminal with X (hence only imported when available):

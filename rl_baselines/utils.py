@@ -173,7 +173,8 @@ class MultiprocessSRLModel:
         self.pipe = (Queue(), [Queue() for _ in range(num_cpu)])
         module_env, class_name, _ = dynamicEnvLoad(env_id)
         # we need to know the expected dim output of the SRL model, before it is created
-        self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
+        #self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None), module_env.__dict__[class_name])
+        self.state_dim = 256
         self.p = Process(target=self._run, args=(env_kwargs,))
         self.p.daemon = True
         self.p.start()

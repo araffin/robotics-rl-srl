@@ -1,14 +1,15 @@
 import json
 import pickle as pkl
-from collections import OrderedDict
 
 import numpy as np
 import torch as th
+import cv2
 
-import srl_zoo.preprocessing as preprocessing
-from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
+from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
 from srl_zoo.preprocessing import preprocessImage, getNChannels
+import srl_zoo.preprocessing as preprocessing
 from srl_zoo.utils import printGreen, printYellow
+
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
 
@@ -25,7 +26,7 @@ def getSRLDim(path=None, env_object=None):
         log_folder = '/'.join(path.split('/')[:-1]) + '/'
 
         with open(log_folder + 'exp_config.json', 'r') as f:
-            exp_config = json.load(f, object_pairs_hook=OrderedDict)
+            exp_config = json.load(f)
         try:
             return exp_config['state-dim']
         except KeyError:
@@ -47,34 +48,29 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
 
     model_type, losses, n_actions, model = None, None, None, None
 
-    if path is not None:
-        # Get path to the log folder
-        log_folder = '/'.join(path.split('/')[:-1]) + '/'
-        with open(log_folder + 'exp_config.json', 'r') as f:
-            # IMPORTANT: keep the order for the losses
-            # so the json is loaded as an OrderedDict
-            exp_config = json.load(f, object_pairs_hook=OrderedDict)
+    flatland = False
 
-        state_dim = exp_config.get('state-dim', None)
-        losses = exp_config.get('losses', None)  # None in the case of baseline models (pca, supervised)
-        n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
-        model_type = exp_config.get('model-type', None)
-        use_multi_view = exp_config.get('multi-view', False)
-        inverse_model_type = exp_config.get('inverse-model-type', 'linear')
+    if not flatland:
+        if path is not None:
+            # Get path to the log folder
+            log_folder = '/'.join(path.split('/')[:-1]) + '/'
+            with open(log_folder + 'exp_config.json', 'r') as f:
+                exp_config = json.load(f)
 
-        assert state_dim is not None, \
-            "Please make sure you are loading an up to date model with a conform exp_config file."
+            state_dim = exp_config.get('state-dim', None)
+            losses = exp_config.get('losses', None) # None in the case of baseline models (pca, supervised)
+            n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
+            model_type = exp_config.get('model-type', None)
+            use_multi_view = exp_config.get('multi-view', False)
 
-        split_dimensions = exp_config.get('split-dimensions')
-        if isinstance(split_dimensions, OrderedDict):
-            n_dims = sum(split_dimensions.values())
-            # Combine losses instead of splitting
-            if n_dims == 0:
-                split_dimensions = None
+            assert state_dim is not None, \
+                "Please make sure you are loading an up to date model with a conform exp_config file."
+        else:
+            assert env_object is not None or state_dim > 0, \
+                "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
+                to a srl_model.pth file with learned states."
     else:
-        assert env_object is not None or state_dim > 0, \
-            "When learning states, state_dim must be > 0. Otherwise, set SRL_MODEL_PATH \
-            to a srl_model.pth file with learned states."
+        model_type = 'flatland'
 
     if path is not None:
         if 'baselines' in path:
@@ -93,8 +89,10 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         if use_multi_view:
             preprocessing.preprocess.N_CHANNELS = 6
 
-        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses,
-                                 split_dimensions=split_dimensions, inverse_model_type=inverse_model_type)
+        if flatland:
+            model = SRLFlatland()
+        else:
+            model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses)
 
     model_name = model_type
     if 'baselines' not in path:
@@ -127,13 +125,9 @@ class SRLBaseClass(object):
         """
         raise NotImplementedError("load() not implemented")
 
-    def getState(self, observation, env_id=0):
+    def getState(self, observation):
         """
         Predict the state for a given observation
-
-        :param observation: (numpy Number) the input observation
-        :param env_id: (int) the environment ID for multi env systems (default=0)
-        :return: (numpy Number)
         """
         raise NotImplementedError("getState() not implemented")
 
@@ -141,46 +135,50 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_dimensions=None,
-                 inverse_model_type="linear"):
+    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None):
         """
         :param state_dim: (int)
         :param cuda: (bool)
         :param model_type: (string)
         :param n_actions: action space dimensions (int)
         :param losses: list of optimized losses defining the model (list of string)
-        :param split_dimensions: (OrderedDict) Number of dimensions for the different losses
-        :param inverse_model_type: (string)
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
 
         self.model_type = model_type
         if "supervised" in losses:
-            if "cnn" in model_type:
+            if model_type == "cnn":
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif isinstance(split_dimensions, OrderedDict):
-            self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                         cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
-                                         inverse_model_type=inverse_model_type)
         else:
             self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                    cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
+                                    cuda=self.cuda, losses=losses)
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
         self.model = self.model.to(self.device)
 
+
     def load(self, path):
+        """
+        :param path: (str)
+        """
         self.model.load_state_dict(th.load(path))
 
-    def getState(self, observation, env_id=0):
+    def getState(self, observation):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
         if getNChannels() > 3:
-            observation = np.dstack((preprocessImage(observation[:, :, :3], convert_to_rgb=False),
-                                     preprocessImage(observation[:, :, 3:], convert_to_rgb=False)))
+            observation[:, :, :3] = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_RGB2BGR)
+            observation[:, :, 3:] = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_RGB2BGR)
+            observation = np.dstack((preprocessImage(observation[:, :, :3]), preprocessImage(observation[:, :, 3:])))
         else:
-            observation = preprocessImage(observation, convert_to_rgb=False)
+            # preprocessImage expects a BGR image
+            observation = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
+            observation = preprocessImage(observation)
 
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
@@ -192,6 +190,45 @@ class SRLNeuralNetwork(SRLBaseClass):
             state = self.model.getStates(observation)[0]
         return state.to(th.device("cpu")).detach().numpy()
 
+class SRLFlatland(SRLBaseClass):
+    """SRL using a neural network as a state representation model"""
+
+    def __init__(self):
+        """
+        """
+        super(SRLFlatland, self).__init__()
+
+
+    def load(self, path):
+        """
+        :param path: (str)
+        """
+        self.model = th.load(path)
+
+    def getState(self, observation):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
+        o_t = observation/255.
+
+        # VAE predict
+        o_t = o_t.reshape((1,) + INPUT_DIM).transpose((0,2,3,1)) # reshape into (1,64,64,3)
+        if GPU_MODE:
+            o_t = torch.from_numpy(o_t).cuda()
+        else:
+            o_t = torch.from_numpy(o_t)
+        z_t = self.vae.forward(o_t, encode=True) # get latent vector
+
+        feature = z_t
+
+        '''recon = self.vae.forward(z_t, decode=True)
+        np.save('recon', recon.detach().cpu().numpy())'''
+
+        return feature.detach().cpu().numpy()
+
+
+
 
 class SRLPCA(SRLBaseClass):
     """PCA as a state representation"""
@@ -200,6 +237,9 @@ class SRLPCA(SRLBaseClass):
         super(SRLPCA, self).__init__(state_dim)
 
     def load(self, path):
+        """
+        :param path: (str)
+        """
         try:
             with open(path, "rb") as f:
                 self.model = pkl.load(f)
@@ -208,7 +248,11 @@ class SRLPCA(SRLBaseClass):
             with open(path, "rb") as f:
                 self.model = pkl.load(f, encoding='latin1')
 
-    def getState(self, observation, env_id=0):
+    def getState(self, observation):
+        """
+        :param observation: (numpy tensor)
+        :return: (numpy matrix)
+        """
         observation = observation[None]  # Add a dimension
         # n_features = width * height * n_channels
         n_features = np.prod(observation.shape[1:])

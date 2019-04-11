@@ -81,6 +81,7 @@ def _make(id_, env_kwargs=None):
         # create the env, with the original kwargs, and the new ones overriding them if needed
         env = cls(**{**spec._kwargs, **env_kwargs})
 
+
     # Make the enviroment aware of which spec it came from.
     env.unwrapped.spec = spec
 
