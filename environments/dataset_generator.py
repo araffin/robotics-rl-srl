@@ -53,13 +53,12 @@ def vecEnv(env_kwargs_local, env_class):
     return train_env
 
 
-def env_thread(args, thread_num, partition=True, use_ppo2=False):
+def env_thread(args, thread_num, partition=True):
     """
     Run a session of an environment
     :param args: (ArgumentParser object)
     :param thread_num: (int) The thread ID of the environment session
     :param partition: (bool) If the output should be in multiple parts (default=True)
-    :param use_ppo2: (bool) Use ppo2 to generate the dataset
     """
     env_kwargs = {
         "max_distance": args.max_distance,
@@ -93,12 +92,13 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
     model = None
-    if use_ppo2 or args.run_policy == 'custom':
+
+    if args.run_policy in ['custom', 'ppo2']:
 
         # Additional env when using a trained agent to generate data
         train_env = vecEnv(env_kwargs, env_class)
 
-        if use_ppo2:
+        if args.run_policy == 'ppo2':
             model = PPO2(CnnPolicy, train_env).learn(args.ppo2_timesteps)
         else:
             _, _, algo_args = createEnv(args, train_args, algo_name, algo_class, env_kwargs)
@@ -127,7 +127,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         while not done:
             env.render()
 
-            if use_ppo2:
+            if args.run_policy == 'ppo2':
                 action, _ = model.predict([obs])
             elif args.run_policy == 'custom':
                 action = [model.getAction(obs, done)]
@@ -218,7 +218,7 @@ def main():
     assert sum([args.simple_continual, args.circular_continual, args.square_continual]) <= 1, \
         "For continual SRL and RL, please provide only one scenario at the time !"
 
-    assert len(args.log_custom_policy) >= 0 and args.run_policy == "custom", \
+    assert not (args.log_custom_policy == '' and args.run_policy == 'custom'), \
         "If using a custom policy, please specify a valid log folder for loading it."
 
     # this is done so seed 0 and 1 are different and not simply offset of the same datasets.
@@ -236,13 +236,13 @@ def main():
         os.mkdir(args.save_path + args.name)
 
     if args.num_cpu == 1:
-        env_thread(args, 0, partition=False, use_ppo2=args.run_policy=="ppo2")
+        env_thread(args, 0, partition=False)
     else:
         # try and divide into multiple processes, with an environment each
         try:
             jobs = []
             for i in range(args.num_cpu):
-                process = multiprocessing.Process(target=env_thread, args=(args, i, True, args.run_policy=="ppo2"))
+                process = multiprocessing.Process(target=env_thread, args=(args, i, True))
                 jobs.append(process)
 
             for j in jobs:
