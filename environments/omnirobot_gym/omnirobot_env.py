@@ -181,7 +181,7 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
-    def step(self, action):
+    def step(self, action, generated_observation=None):
         """
         :action: (int)
         :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
@@ -210,7 +210,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.getEnvState()
 
         #  Receive a camera image from the server
-        self.observation = self.getObservation()
+        self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         done = self._hasEpisodeTerminated()
 
         self.render()
@@ -274,7 +274,7 @@ class OmniRobotEnv(SRLGymEnv):
         """
         return self.robot_pos
 
-    def reset(self):
+    def reset(self, generated_observation=None):
         """
         Reset the environment
         :return: (numpy ndarray) first observation of the env
@@ -288,7 +288,7 @@ class OmniRobotEnv(SRLGymEnv):
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
         self.getEnvState()
-        self.observation = self.getObservation()
+        self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         if self.saver is not None:
             self.saver.reset(self.observation,
                              self.getTargetPos(), self.getGroundTruth())
