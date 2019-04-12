@@ -20,9 +20,10 @@ from stable_baselines.common.policies import CnnPolicy
 from environments import ThreadingType
 from environments.registry import registered_env
 from replay.enjoy_baselines import createEnv, loadConfigAndSetup
+from rl_baselines.utils import MultiprocessSRLModel
 from srl_zoo.utils import printRed, printYellow
 from srl_zoo.preprocessing.utils import deNormalize
-from state_representation.models import loadSRLModel
+from state_representation.models import loadSRLModel, getSRLDim
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
@@ -95,12 +96,15 @@ def env_thread(args, thread_num, partition=True):
 
         train_args, load_path, algo_name, algo_class, _, env_kwargs_extra = loadConfigAndSetup(args)
         env_kwargs["srl_model"] = env_kwargs_extra["srl_model"]
+        env_kwargs["srl_model_path"] = env_kwargs_extra.get("srl_model_path", None)
+        env_kwargs["state_dim"] = getSRLDim(env_kwargs_extra.get("srl_model_path", None))
+        srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
+        env_kwargs["srl_pipe"] = srl_model.pipe
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
     model = None
     generated_obs = None
-
     if args.run_policy in ['custom', 'ppo2']:
 
         # Additional env when using a trained agent to generate data
@@ -110,18 +114,18 @@ def env_thread(args, thread_num, partition=True):
             model = PPO2(CnnPolicy, train_env).learn(args.ppo2_timesteps)
         else:
             _, _, algo_args = createEnv(args, train_args, algo_name, algo_class, env_kwargs)
-
             tf.reset_default_graph()
             set_global_seeds(args.seed)
             printYellow("Compiling Policy function....")
             model = algo_class.load(load_path, args=algo_args)
 
-    if args.replay_generative_model:
+    if len(args.replay_generative_model) > 0:
         use_cuda = args.cuda_generative_replay
         device = th.device("cuda" if th.cuda.is_available() and use_cuda else "cpu")
         srl_model = loadSRLModel(args.log_generative_model, th.cuda.is_available())
         srl_state_dim = srl_model.state_dim
         srl_model = srl_model.model.model
+
     frames = 0
     start_time = time.time()
     # divide evenly, then do an extra one for only some of them in order to get the right count
@@ -134,14 +138,13 @@ def env_thread(args, thread_num, partition=True):
             env.seed(seed)
             env.action_space.seed(seed)  # this is for the sample() function from gym.space
 
-        if args.replay_generative_model:
+        if len(args.replay_generative_model) > 0:
             sample = Variable(th.randn(1, srl_state_dim))
             if th.cuda.is_available():
                 sample = sample.cuda()
             generated_obs = srl_model.decode(sample)
             generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
             generated_obs = deNormalize(generated_obs)
-
         obs = env.reset(generated_observation=generated_obs)
         done = False
         t = 0
@@ -159,7 +162,7 @@ def env_thread(args, thread_num, partition=True):
                 else:
                     action = [env.action_space.sample()]
 
-            if args.replay_generative_model:
+            if len(args.replay_generative_model) > 0:
                 sample = Variable(th.randn(1, srl_state_dim))
                 if th.cuda.is_available():
                     sample = sample.cuda()
@@ -218,7 +221,7 @@ def main():
                              '(random, localy pretrained ppo2, pretrained custom policy)')
     parser.add_argument('--log-custom-policy', type=str, default='',
                         help='Logs of the custom pretained policy to run for data collection')
-    parser.add_argument('-rgm', '--replay-generative-model', type=str, default="vae", choices=['vae'],
+    parser.add_argument('-rgm', '--replay-generative-model', type=str, default="", choices=['vae'],
                         help='Generative model to replay for generating a dataset (for Continual Learning purposes)')
     parser.add_argument('--log-generative-model', type=str, default='',
                         help='Logs of the custom pretained policy to run for data collection')
