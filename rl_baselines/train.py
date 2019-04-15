@@ -78,7 +78,7 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["shape_reward"] = args.shape_reward
     # Actions in joint space or relative position space
     env_kwargs["action_joints"] = args.action_joints
-    args.log_dir += args.env + "/"
+    args.log_dir += ENV_NAME + "/"
 
     models = all_models[args.env]
     PLOT_TITLE = args.srl_model
@@ -259,6 +259,14 @@ def main():
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
 
     ENV_NAME = args.env
+    if(args.circular_continual):
+        ENV_NAME+="-cc"
+    if(args.eight_continual):
+        ENV_NAME+="-ec"    
+    if(args.simple_continual):
+        ENV_NAME+="-sc"  
+    if(args.square_continual):
+        ENV_NAME+="-sqc"  
     ALGO_NAME = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
@@ -271,6 +279,7 @@ def main():
     algo = algo_class()
     ALGO = algo
     
+
 
     # if callback frequency needs to be changed
     LOG_INTERVAL = algo.LOG_INTERVAL
