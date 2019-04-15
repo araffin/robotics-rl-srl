@@ -229,7 +229,9 @@ def main():
                         help='Dataset folder of the teacher(s) policy(ies)', required=True)
     parser.add_argument('--epochs-distillation', type=int, default=30, metavar='N',
                         help='number of epochs to train for distillation(default: 30)')
-    
+    parser.add_argument('--distillation-training-set-size', type=int, default=-1,
+                        help='Limit size (number of samples) of the training set (default: -1)')
+
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
