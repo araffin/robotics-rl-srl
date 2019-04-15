@@ -1,28 +1,17 @@
-import time
-import pickle
-
 import numpy as np
-from stable_baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
-from stable_baselines.common.vec_env.vec_normalize import VecNormalize
-
-from rl_baselines.base_classes import BaseRLObject
-from environments import ThreadingType
-from environments.registry import registered_env
-from environments.utils import makeEnv
-from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel, softmax
-from srl_zoo.utils import printYellow
-
-
-############ DEV ################
-from tqdm import tqdm
+import pickle
 from torch import nn
 from torch.nn import functional as F
+from sklearn.model_selection import train_test_split
+
+from rl_baselines.base_classes import BaseRLObject
+from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel, softmax
 from srl_zoo.preprocessing.data_loader import SupervisedDataLoader
 from srl_zoo.utils import loadData
-from sklearn.model_selection import train_test_split
+
 BATCH_SIZE = 32
 TEST_BATCH_SIZE = 256
+
 
 class MLP(nn.Module):
     def __init__(self, output_size, input_size, hidden_size=400):
@@ -186,4 +175,3 @@ class PolicyDistillationModel(BaseRLObject):
                 self.optimizer.step()
                 train_loss += loss.item()
                 epoch_train_loss[epoch].append(loss.item())
-
