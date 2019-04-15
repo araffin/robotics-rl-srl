@@ -5,14 +5,14 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 eight_continual_move=False, lambda_c=10.0):
+                 eight_continual_move=False, lambda_c=10.0, second_cam_topic=None):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,
         to determinate the position it should go at instant t+1, and the immediate reward it can get at instant t
         """
         super(OmnirobotManagerBase, self).__init__()
-        self.second_cam_topic = SECOND_CAM_TOPIC
+        self.second_cam_topic = second_cam_topic
         self.episode_idx = 0
         self.simple_continual_target = simple_continual_target
         self.circular_continual_move = circular_continual_move
