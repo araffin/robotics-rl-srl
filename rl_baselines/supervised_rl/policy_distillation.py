@@ -20,6 +20,7 @@ TEST_BATCH_SIZE = 256
 VALIDATION_SIZE = 0.2  # 20% of training data for validation
 MAX_BATCH_SIZE_GPU = 256  # For plotting, max batch_size before having memory issues
 
+
 class MLP(nn.Module):
     def __init__(self, output_size, input_size, hidden_size=400):
         super(MLP, self).__init__()
@@ -95,18 +96,14 @@ class PolicyDistillationModel(BaseRLObject):
         self.model.eval()
         return np.argmax(self.model.forward(observation))
 
-    def loss_fn_kd(self, outputs, teacher_outputs):
+    def loss_fn_kd(self, outputs, labels, teacher_outputs):
         """
         inspired from : https://github.com/peterliht/knowledge-distillation-pytorch
         Compute the knowledge-distillation (KD) loss given outputs, labels.
-        "Hyperparameters": temperature and alpha
         NOTE: the KL Divergence for PyTorch comparing the softmaxs of teacher
         and student expects the input tensor to be log probabilities! See Issue #2
 
-        # formula from https://github.com/peterliht/knowledge-distillation-pytorch
-        # KD_loss = nn.KLDivLoss()(F.log_softmax(outputs / T, dim=1),
-        #                          F.softmax(teacher_outputs / T, dim=1)) * (alpha * T * T) + \
-        #           F.cross_entropy(outputs, labels) * (1. - alpha)
+        Hyperparameters: temperature and alpha
         :param outputs: output from the student model
         :param labels: label
         :param teacher_outputs: output from the teacher_outputs model
@@ -116,7 +113,8 @@ class PolicyDistillationModel(BaseRLObject):
         alpha = 0.9
         T = 0.01  # temperature empirically found in "policy distillation"
         KD_loss = nn.KLDivLoss()(F.log_softmax(outputs / T, dim=1),
-                                 F.softmax(teacher_outputs / T, dim=1))
+                                 F.softmax(teacher_outputs / T, dim=1)) * (alpha * T * T) + \
+                  F.cross_entropy(outputs, labels) * (1. - alpha)
         return KD_loss
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
@@ -216,18 +214,21 @@ class PolicyDistillationModel(BaseRLObject):
                 actions_proba_st = actions_proba[minibatchlist[minibatch_idx]]
 
                 if not args.continuous_actions:
-                    # Discrete actions, rearrange action to have n_minibatch ligns and one column, containing the int action
-                    actions_st = th.from_numpy(actions_st).view(-1, 1).requires_grad_(False).to(self.device)
-                    actions_proba_st = th.from_numpy(actions_proba_st).view(-1, 1).requires_grad_(False).to(self.device)
+                    # Discrete actions, rearrange action to have n_minibatch ligns and one column,
+                    # containing the int action
+                    #print("shapes:", actions_st.shape, actions_proba_st.shape)
+                    actions_st = th.from_numpy(actions_st).requires_grad_(False).to(self.device)
+                    actions_proba_st = th.from_numpy(actions_proba_st).requires_grad_(False).to(self.device)
                 else:
                     # Continuous actions, rearrange action to have n_minibatch ligns and dim_action columns
                     actions_st = th.from_numpy(actions_st).view(-1, self.dim_action).requires_grad_(False).to(
                         self.device)
 
-                state = self.srl_model.model.getStates(obs)[0].to(self.device).detach()
+                state = self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.policy(state)
                 self.optimizer.zero_grad()
-                loss = self.loss_fn_kd(pred_action, actions_proba_st)
+                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
+
                 loss.backward()
                 if validation_mode:
                     val_loss += loss.item()
@@ -238,7 +239,7 @@ class PolicyDistillationModel(BaseRLObject):
                     epoch_loss += loss.item()
                     epoch_batches += 1
                 pbar.update(1)
-            pbar.close()
-
             train_loss = epoch_loss / float(epoch_batches)
             val_loss /= float(n_val_batches)
+            pbar.close()
+            print("Epoch {:3}/{}, train_loss:{:.4f} val_loss:{:.4f}".format(epoch + 1, N_EPOCHS, train_loss, val_loss))
