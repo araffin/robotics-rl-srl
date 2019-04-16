@@ -206,3 +206,4 @@ if __name__ == '__main__':
     plotGatheredExperiments(folders, train_args['algo'], y_limits=y_limits, window=args.episode_window,
                             title=title, min_num_x=args.min_x, no_display=args.no_display,
                             timesteps=args.timesteps, output_file=args.output_file)
+#python -m replay.aggregate_plots --log-dir logs/OmnirobotEnv-v0/srl_combination/ppo2/  --timesteps --min-x 1000 -o logs/plot/
