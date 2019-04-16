@@ -37,17 +37,26 @@ def loadEpisodesData(folder):
 def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,truncate_x=-1,normalization=False):
     assert len(legends)==len(y_list)
     printGreen("{} Experiments".format(len(y_list)))
-    #print("Min, Max rewards:", np.min(y_list), np.max(y_list))
 
     lengths = list(map(len, x_list))
     min_x, max_x = np.min(lengths), np.max(lengths)
-
-
     if truncate_x > 0:
         min_x = min(truncate_x, min_x)
     x = np.array(x_list[0][:min_x])
 
-    print(lengths,x.shape)
+    #To reformulize the data by the min_x
+    for i in range(len(y_list)):
+        y_list[i]=y_list[i][:, :min_x]
+    y_list=np.array(y_list)
+
+    print("Min, Max rewards:", np.min(y_list), np.max(y_list))
+
+
+    #Normalize the data between 0 and 1.
+    if (normalization):
+        y_limits = [-0.05, 1.05]
+        y_list   =(y_list-np.min(y_list))/(np.max(y_list)-np.min(y_list))
+
     fig = plt.figure(title)
     for i in range(len(y_list)):
         label = legends[i]
@@ -68,8 +77,10 @@ def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,
         fig.axes[0].xaxis.set_major_formatter(formatter)
     else:
         plt.xlabel('Number of Episodes')
-    plt.ylabel('Rewards')
-
+    if(normalization):
+        plt.ylabel('Normalized Rewards')
+    else:
+        plt.ylabel('Rewards')
     plt.title(title, **fontstyle)
     plt.ylim(y_limits)
 
@@ -232,4 +243,4 @@ if __name__ == '__main__':
             timesteps=args.timesteps, truncate_x=args.truncate_x,normalization=args.norm)
 
 
-#python -m replay.pipeline -i logs/OmnirobotEnv-v0/ --algo ppo2 --title cc
+#python -m replay.pipeline -i logs_to_plot_with_200Combination/OmnirobotEnv-v0-cc --algo ppo2 --title cc --timesteps

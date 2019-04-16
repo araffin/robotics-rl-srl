@@ -12,10 +12,21 @@ from rl_baselines.registry import registered_rl
 from environments.registry import registered_env
 from state_representation.registry import registered_srl
 from state_representation import SRLType
-from srl_zoo.utils import printGreen, printRed
+from srl_zoo.utils import printGreen, printRed, printYellow
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
+
+'''
+example:
+------------------------------------------------------------------------------
+python -m rl_baselines.pipeline_cross --algo ppo2 --log-dir logs/ 
+--srl-model srl_combination ground_truth --num-iteration 1 --num-timesteps 100000 
+--task sc cc 
+--srl-config-file config/srl_models.yaml config/srl_models_test.yaml
+------------------------------------------------------------------------------
+--srl-config-file : a list of config_file which should have the same number as tasks. (or only one, it will take this one for all tasks by default)
+'''
 
 def main():
     parser = argparse.ArgumentParser(description="OpenAI RL Baselines Benchmark",
@@ -24,8 +35,8 @@ def main():
     parser.add_argument('--algo', type=str, default='ppo2', help='OpenAI baseline to use',
                         choices=list(registered_rl.keys()))
     parser.add_argument('--env', type=str, nargs='+', default=["OmnirobotEnv-v0"], help='environment ID(s)',
-                        choices=list(registered_env.keys()))
-    parser.add_argument('--srl-model', type=str, nargs='+', default=["raw_pixels"], 
+                        choices=["OmnirobotEnv-v0"])#list(registered_env.keys()))
+    parser.add_argument('--srl-model', type=str, nargs='+', default=["ground_truth"],
                         help='SRL model(s) to use',
                         choices=list(registered_srl.keys()))
     parser.add_argument('--num-timesteps', type=int, default=1e6, help='number of timesteps the baseline should run')
@@ -35,7 +46,7 @@ def main():
                              ' and srl-model.')
     parser.add_argument('--seed', type=int, default=0,
                         help='initial seed for each unique combination of environment and srl-model.')
-    parser.add_argument('--srl-config-file', type=str, default="config/srl_models.yaml",
+    parser.add_argument('--srl-config-file', nargs='+', type=str, default=["config/srl_models.yaml"],
                         help='Set the location of the SRL model path configuration.')
     
     parser.add_argument('--tasks', type=str, nargs='+', default=["cc"],
@@ -45,9 +56,7 @@ def main():
     # returns the parsed arguments, and the rest are assumed to be arguments for rl_baselines.train
     args, train_args = parser.parse_known_args()
 
-    print("--------------")
-    print("The tasks that will be exacuted: {}".format(args.tasks))
-    print('****************')
+
 
     
 
@@ -63,47 +72,58 @@ def main():
     srl_models.sort()
     envs.sort()
     tasks=['-'+t  for t in tasks]
-    
+    config_files=args.srl_config_file
+
     # LOAD SRL models list
-    assert os.path.exists(args.srl_config_file), \
-        "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
-    with open(args.srl_config_file, 'rb') as f:
-        all_models = yaml.load(f)
-        
-#    print(all_models)  
 
 
+    if len(config_files)==1:
+        printYellow("Your are using the same config file: {} for all training tasks".format(config_files[0]))
 
-    # Checking definition and presence of all requested srl_models
-    valid = True
-    for env in envs:
-        # validated the env definition
-        if env not in all_models:
-            printRed("Error: 'srl_models.yaml' missing definition for environment {}".format(env))
-            valid = False
-            continue  # skip to the next env, this one is not valid
+        config_files = [config_files[0] for i in range(len(tasks))]
+    else:
+        assert len(config_files)==len(tasks), \
+            "Error:  {} config files given for {} tasks".format(len(config_files),len(tasks))
 
-        # checking log_folder for current env
-        missing_log = "log_folder" not in all_models[env]
-        if missing_log:
-            printRed("Error: 'srl_models.yaml' missing definition for log_folder in environment {}".format(env))
-            valid = False
+    for file in config_files:
+        assert os.path.exists(file), \
+            "Error: cannot load \"--srl-config-file {}\", file not found!".format(file)
 
-        # validate each model for the current env definition
-        for model in srl_models:
-            if registered_srl[model][0] == SRLType.ENVIRONMENT:
-                continue  # not an srl model, skip to the next model
-            elif model not in all_models[env]:
-                printRed("Error: 'srl_models.yaml' missing srl_model {} for environment {}".format(model, env))
+    for file in config_files:
+        with open(file, 'rb') as f:
+            all_models = yaml.load(f)
+        # Checking definition and presence of all requested srl_models
+        valid = True
+        for env in envs:
+            # validated the env definition
+            if env not in all_models:
+                printRed("Error: 'srl_models.yaml' missing definition for environment {}".format(env))
                 valid = False
-            elif (not missing_log) and (not os.path.exists(all_models[env]["log_folder"] + all_models[env][model])):
-                # checking presence of srl_model path, if and only if log_folder exists
-                printRed("Error: srl_model {} for environment {} was defined in ".format(model, env) +
-                         "'srl_models.yaml', however the file {} it was tagetting does not exist.".format(
-                             all_models[env]["log_folder"] + all_models[env][model]))
+                continue  # skip to the next env, this one is not valid
+
+            # checking log_folder for current env
+            missing_log = "log_folder" not in all_models[env]
+            if missing_log:
+                printRed("Error: '{}' missing definition for log_folder in environment {}".format(file, env))
                 valid = False
 
-    assert valid, "Errors occured due to malformed 'srl_models.yaml', cannot continue."
+            # validate each model for the current env definition
+            for model in srl_models:
+                if registered_srl[model][0] == SRLType.ENVIRONMENT:
+                    continue  # not an srl model, skip to the next model
+                elif model not in all_models[env]:
+                    printRed("Error: '{}' missing srl_model {} for environment {}".format(file, model, env))
+                    valid = False
+                elif (not missing_log) and (not os.path.exists(all_models[env]["log_folder"] + all_models[env][model])):
+                    # checking presence of srl_model path, if and only if log_folder exists
+                    printRed("Error: srl_model {} for environment {} was defined in ".format(model, env) +
+                             "'{}', however the file {} it was tagetting does not exist.".format(
+                                 file, all_models[env]["log_folder"] + all_models[env][model]))
+                    valid = False
+
+        assert valid, "Errors occurred due to malformed {}, cannot continue.".format(file)
+
+
 
     # check that all the SRL_models can be run on all the environments
     valid = True
@@ -134,22 +154,29 @@ def main():
     print("environments:\t{}".format(envs))
     print("verbose:\t{}".format(args.verbose))
     print("timesteps:\t{}".format(args.num_timesteps))
-    
+
+    num_tasks=len(tasks)
+
+
+    printGreen("The tasks that will be exacuted: {}".format(args.tasks))
+    printGreen("with following config files: {}".format(config_files))
 
 
     for model in srl_models:
+
         for env in envs:
-            for task in tasks: 
+            for iter_task in range(num_tasks):
+
                 for i in range(args.num_iteration):
     
                     printGreen(
-                        "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}' , Task='{}'".format(i, seeds[i], env, model, task))
+                        "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}' , Task='{}', Config_file='{}'".format(i, seeds[i], env, model, tasks[iter_task]),config_files[iter_task])
     
                     # redefine the parsed args for rl_baselines.train
                     loop_args = ['--srl-model', model, '--seed', str(seeds[i]),
                                  '--algo', args.algo, '--env', env,
                                  '--num-timesteps', str(int(args.num_timesteps)), 
-                                 '--srl-config-file', args.srl_config_file, task]
+                                 '--srl-config-file', config_files[iter_task], tasks[iter_task]]
                     ok = subprocess.call(['python', '-m', 'rl_baselines.train'] + train_args + loop_args, stdout=stdout)
     
                     if ok != 0:
