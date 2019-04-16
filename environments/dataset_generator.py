@@ -156,6 +156,7 @@ def env_thread(args, thread_num, partition=True):
                 action, _ = model.predict([obs])
             elif args.run_policy == 'custom':
                 action = [model.getAction(obs, done)]
+                action_proba = model.getActionProba(obs, done)
             else:
                 if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
                     action = [env.actionPolicyTowardTarget()]
@@ -171,7 +172,8 @@ def env_thread(args, thread_num, partition=True):
                 generated_obs = deNormalize(generated_obs)
 
             action_to_step = action[0]
-            new_obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs)
+            new_obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs,
+                                           action_proba=action_proba)
 
             if args.run_policy == 'custom':
                 obs = new_obs

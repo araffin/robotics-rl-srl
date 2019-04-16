@@ -181,7 +181,7 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
-    def step(self, action, generated_observation=None):
+    def step(self, action, generated_observation=None, action_proba=None):
         """
         :action: (int)
         :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
@@ -217,7 +217,7 @@ class OmniRobotEnv(SRLGymEnv):
 
         if self.saver is not None:
             self.saver.step(self.observation, action,
-                            self.reward, done, self.getGroundTruth())
+                            self.reward, done, self.getGroundTruth(), action_proba=action_proba)
         if self.use_srl:
             return self.getSRLState(self.observation), self.reward, done, {}
         else:
