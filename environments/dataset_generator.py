@@ -147,6 +147,7 @@ def env_thread(args, thread_num, partition=True):
             generated_obs = deNormalize(generated_obs)
         obs = env.reset(generated_observation=generated_obs)
         done = False
+        action_proba = None
         t = 0
         episode_toward_target_on = False
         while not done:
