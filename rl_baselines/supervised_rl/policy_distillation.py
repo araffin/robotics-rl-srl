@@ -94,7 +94,7 @@ class PolicyDistillationModel(BaseRLObject):
 
         self.model.eval()
         observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
-        return np.argmax(self.model.forward(observation).detach().cpu().numpy())
+        return [np.argmax(self.model.forward(observation).detach().cpu().numpy())]
 
     def loss_fn_kd(self, outputs, labels, teacher_outputs):
         """
