@@ -67,8 +67,7 @@ def main():
     # Removing duplicates and sort
     srl_models = list(set(args.srl_model))
     envs = list(set(args.env))
-    tasks=list(set(args.tasks))
-    tasks.sort()
+    tasks=args.tasks
     srl_models.sort()
     envs.sort()
     tasks=['-'+t  for t in tasks]
@@ -80,7 +79,8 @@ def main():
     if len(config_files)==1:
         printYellow("Your are using the same config file: {} for all training tasks".format(config_files[0]))
 
-        config_files = [config_files[0] for i in range(len(tasks))]
+        for i in range(len(tasks)-1):
+            config_files.append(config_files[0])
     else:
         assert len(config_files)==len(tasks), \
             "Error:  {} config files given for {} tasks".format(len(config_files),len(tasks))
@@ -156,7 +156,7 @@ def main():
     print("timesteps:\t{}".format(args.num_timesteps))
 
     num_tasks=len(tasks)
-
+    print(num_tasks)
 
     printGreen("The tasks that will be exacuted: {}".format(args.tasks))
     printGreen("with following config files: {}".format(config_files))
@@ -168,9 +168,8 @@ def main():
             for iter_task in range(num_tasks):
 
                 for i in range(args.num_iteration):
-    
                     printGreen(
-                        "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}' , Task='{}', Config_file='{}'".format(i, seeds[i], env, model, tasks[iter_task]),config_files[iter_task])
+                        "\nIteration_num={} (seed: {}), Environment='{}', SRL-Model='{}' , Task='{}',Config_file='{}'".format(i, seeds[i], env, model, tasks[iter_task],config_files[iter_task]))
     
                     # redefine the parsed args for rl_baselines.train
                     loop_args = ['--srl-model', model, '--seed', str(seeds[i]),
