@@ -110,14 +110,7 @@ class PolicyDistillationModel(BaseRLObject):
         :param teacher_outputs: output from the teacher_outputs model
         :return: loss
         """
-
-        alpha = 0.9
-        T = 0.01  # temperature empirically found in "policy distillation"
-        KD_loss = nn.KLDivLoss()(F.log_softmax(outputs / T, dim=1),
-                                 F.softmax(teacher_outputs / T, dim=1))
-                  # * (alpha * T * T) + \
-                  # F.cross_entropy(outputs, labels) * (1. - alpha)
-        return KD_loss
+        return nn.MSELoss()(outputs, teacher_outputs)
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
 
