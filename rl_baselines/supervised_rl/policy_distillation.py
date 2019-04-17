@@ -34,7 +34,6 @@ class MLP(nn.Module):
         self.fc4 = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input):
-
         input=input.view(-1, self.input_size)
 
         x = F.relu(self.fc1(input))
@@ -52,7 +51,7 @@ class PolicyDistillationModel(BaseRLObject):
         super(PolicyDistillationModel, self).__init__()
 
     def save(self, save_path, _locals=None):
-        assert self.M is not None, "Error: must train or load model before use"
+        assert self.model is not None, "Error: must train or load model before use"
         with open(save_path, "wb") as f:
             pickle.dump(self.__dict__, f)
 
@@ -62,6 +61,7 @@ class PolicyDistillationModel(BaseRLObject):
             class_dict = pickle.load(f)
         loaded_model = PolicyDistillationModel()
         loaded_model.__dict__ = class_dict
+
         return loaded_model
 
     def customArguments(self, parser):
@@ -93,7 +93,8 @@ class PolicyDistillationModel(BaseRLObject):
         assert self.model is not None, "Error: must train or load model before use"
 
         self.model.eval()
-        return np.argmax(self.model.forward(observation))
+        observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
+        return np.argmax(self.model.forward(observation).detach().cpu().numpy())
 
     def loss_fn_kd(self, outputs, labels, teacher_outputs):
         """
@@ -112,8 +113,9 @@ class PolicyDistillationModel(BaseRLObject):
         alpha = 0.9
         T = 0.01  # temperature empirically found in "policy distillation"
         KD_loss = nn.KLDivLoss()(F.log_softmax(outputs / T, dim=1),
-                                 F.softmax(teacher_outputs / T, dim=1)) * (alpha * T * T) + \
-                  F.cross_entropy(outputs, labels) * (1. - alpha)
+                                 F.softmax(teacher_outputs / T, dim=1))
+                  # * (alpha * T * T) + \
+                  # F.cross_entropy(outputs, labels) * (1. - alpha)
         return KD_loss
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
@@ -126,13 +128,19 @@ class PolicyDistillationModel(BaseRLObject):
         print('Loading data for distillation ')
         training_data, ground_truth, true_states, _ = loadData(args.teacher_data_folder, absolute_path=True)
         rewards, episode_starts = training_data['rewards'], training_data['episode_starts']
+
         images_path = ground_truth['images_path']
-        images_path_copy = ["srl_zoo/data/" + images_path[k] for k in range(images_path.shape[0])]
-        images_path = np.array(images_path_copy)
         actions = training_data['actions']
         actions_proba = training_data['actions_proba']
-        limit = args.distillation_training_set_size
-        actions = actions[:limit]
+
+        if args.distillation_training_set_size > 0:
+            limit = args.distillation_training_set_size
+            actions = actions[:limit]
+            images_path = images_path[:limit]
+            episode_starts = episode_starts[:limit]
+
+        images_path_copy = ["srl_zoo/data/" + images_path[k] for k in range(images_path.shape[0])]
+        images_path = np.array(images_path_copy)
 
         num_samples = images_path.shape[0] - 1  # number of samples
 
@@ -186,12 +194,15 @@ class PolicyDistillationModel(BaseRLObject):
                                                    th.cuda.is_available(), self.state_dim, env_object=None)
         self.device = th.device("cuda" if th.cuda.is_available() else "cpu")
 
-        self.policy = MLP(input_size=self.state_dim, hidden_size=400, output_size=n_actions)
+        self.model = MLP(input_size=self.state_dim, hidden_size=400, output_size=n_actions)
         if th.cuda.is_available():
-            self.policy.cuda()
+            self.model.cuda()
 
-        learnable_params = [param for param in self.policy.parameters() if param.requires_grad]
+        learnable_params = [param for param in self.model.parameters() if param.requires_grad]
         self.optimizer = th.optim.Adam(learnable_params, lr=1e-3)
+
+        best_error = np.inf
+        best_model_path = "{}/distillation_model.pkl".format(args.log_dir)
 
         for epoch in range(N_EPOCHS):
             # In each epoch, we do a full pass over the training data:
@@ -204,9 +215,9 @@ class PolicyDistillationModel(BaseRLObject):
                 obs = obs.to(self.device)
                 validation_mode = minibatch_idx in val_indices
                 if validation_mode:
-                    self.policy.eval()
+                    self.model.eval()
                 else:
-                    self.policy.train()
+                    self.model.train()
 
                 # Actions associated to the observations of the current minibatch
                 actions_st = actions[minibatchlist[minibatch_idx]]
@@ -223,7 +234,7 @@ class PolicyDistillationModel(BaseRLObject):
                         self.device)
 
                 state = self.srl_model.model.getStates(obs).to(self.device).detach()
-                pred_action = self.policy(state)
+                pred_action = self.model(state)
                 self.optimizer.zero_grad()
                 loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
 
@@ -241,3 +252,8 @@ class PolicyDistillationModel(BaseRLObject):
             val_loss /= float(n_val_batches)
             pbar.close()
             print("Epoch {:3}/{}, train_loss:{:.4f} val_loss:{:.4f}".format(epoch + 1, N_EPOCHS, train_loss, val_loss))
+
+            # Save best model
+            if val_loss < best_error:
+                best_error = val_loss
+                self.save(best_model_path)
