@@ -79,7 +79,8 @@ class PolicyDistillationModel(BaseRLObject):
         :return: (numpy float)
         """
         assert self.model is not None, "Error: must train or load model before use"
-        action = self.model.forward(observation)
+        observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
+        action = self.model.forward(observation).detach().cpu().numpy()
         return softmax(action)
 
     def getAction(self, observation, dones=None, delta=0):
