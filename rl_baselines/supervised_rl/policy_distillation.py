@@ -5,7 +5,6 @@ import torch as th
 from tqdm import tqdm
 from torch import nn
 from torch.nn import functional as F
-from sklearn.model_selection import train_test_split
 
 from rl_baselines.base_classes import BaseRLObject
 from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel, softmax
@@ -125,7 +124,7 @@ class PolicyDistillationModel(BaseRLObject):
         print("We assumed SRL training already done")
 
         print('Loading data for distillation ')
-        training_data, ground_truth, true_states, _ = loadData(args.teacher_data_folder, complete=True)
+        training_data, ground_truth, true_states, _ = loadData(args.teacher_data_folder, absolute_path=True)
         rewards, episode_starts = training_data['rewards'], training_data['episode_starts']
         images_path = ground_truth['images_path']
         images_path_copy = ["srl_zoo/data/" + images_path[k] for k in range(images_path.shape[0])]
@@ -146,11 +145,11 @@ class PolicyDistillationModel(BaseRLObject):
         minibatchlist = [np.array(sorted(indices[start_idx:start_idx + self.batch_size]))
                          for start_idx in range(0, len(indices) - self.batch_size + 1, self.batch_size)]
         data_loader = DataLoader(minibatchlist, images_path, n_workers=N_WORKERS, multi_view=False,
-                                 use_triplets=False, is_training=True, complete_path=True)
+                                 use_triplets=False, is_training=True, absolute_path=True)
 
         test_minibatchlist = DataLoader.createTestMinibatchList(len(images_path), MAX_BATCH_SIZE_GPU)
         test_data_loader = DataLoader(test_minibatchlist, images_path, n_workers=N_WORKERS, multi_view=False,
-                                      use_triplets=False, max_queue_len=1, is_training=False, complete_path=True)
+                                      use_triplets=False, max_queue_len=1, is_training=False, absolute_path=True)
 
         # Number of minibatches used for validation:
         n_val_batches = np.round(VALIDATION_SIZE * len(minibatchlist)).astype(np.int64)
@@ -216,7 +215,6 @@ class PolicyDistillationModel(BaseRLObject):
                 if not args.continuous_actions:
                     # Discrete actions, rearrange action to have n_minibatch ligns and one column,
                     # containing the int action
-                    #print("shapes:", actions_st.shape, actions_proba_st.shape)
                     actions_st = th.from_numpy(actions_st).requires_grad_(False).to(self.device)
                     actions_proba_st = th.from_numpy(actions_proba_st).requires_grad_(False).to(self.device)
                 else:
