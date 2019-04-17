@@ -97,7 +97,7 @@ class PolicyDistillationModel(BaseRLObject):
         observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
         return [np.argmax(self.model.forward(observation).detach().cpu().numpy())]
 
-    def loss_fn_kd(self, outputs, labels, teacher_outputs):
+    def loss_fn_kd(self, outputs, teacher_outputs):
         """
         inspired from : https://github.com/peterliht/knowledge-distillation-pytorch
         Compute the knowledge-distillation (KD) loss given outputs, labels.
@@ -106,7 +106,6 @@ class PolicyDistillationModel(BaseRLObject):
 
         Hyperparameters: temperature and alpha
         :param outputs: output from the student model
-        :param labels: label
         :param teacher_outputs: output from the teacher_outputs model
         :return: loss
         """
@@ -118,6 +117,11 @@ class PolicyDistillationModel(BaseRLObject):
                   # * (alpha * T * T) + \
                   # F.cross_entropy(outputs, labels) * (1. - alpha)
         return KD_loss
+
+    def loss_mse(self, outputs, teacher_outputs):
+        MSELoss = nn.MSELoss()(outputs, teacher_outputs)
+
+        return MSELoss
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
 
@@ -237,7 +241,8 @@ class PolicyDistillationModel(BaseRLObject):
                 state = self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.model(state)
                 self.optimizer.zero_grad()
-                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
+                #loss = self.loss_fn_kd(pred_action, actions_proba_st)
+                loss = self.loss_mse(pred_action, actions_proba_st)
 
                 loss.backward()
                 if validation_mode:
