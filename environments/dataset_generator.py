@@ -186,6 +186,7 @@ def env_thread(args, thread_num, partition=True):
                 generated_obs = deNormalize(generated_obs)
 
             action_to_step = action[0]
+
             obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs, action_proba=action_proba)
 
             frames += 1

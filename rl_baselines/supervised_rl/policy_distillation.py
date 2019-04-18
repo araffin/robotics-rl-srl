@@ -35,8 +35,8 @@ class MLP(nn.Module):
         self.fc4 = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input):
-        input=input.view(-1, self.input_size)
 
+        input = input.view(-1, self.input_size)
         x = F.relu(self.fc1(input))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
@@ -182,17 +182,17 @@ class PolicyDistillationModel(BaseRLObject):
             print('Action dimension: {}'.format(self.dim_action))
 
         # Here the default SRL model is assumed to be raw_pixels
-        self.state_dim = RENDER_HEIGHT *RENDER_WIDTH
+        self.state_dim = RENDER_HEIGHT * RENDER_WIDTH * 3
         self.srl_model = None
 
         # TODO: add sanity checks & test for all possible SRL for distillation
-        if env_kwargs["srl_model"] is "raw_pixels":
+        if env_kwargs["srl_model"] != "raw_pixels":
             self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None))
             self.srl_model = loadSRLModel(env_kwargs.get("srl_model_path", None),
                                           th.cuda.is_available(), self.state_dim, env_object=None)
         self.device = th.device("cuda" if th.cuda.is_available() else "cpu")
 
-        self.model = MLP(input_size=self.state_dim, hidden_size=400, output_size=n_actions)
+        self.model = MLP(n_actions, self.state_dim, hidden_size=400)
         if th.cuda.is_available():
             self.model.cuda()
 
@@ -231,10 +231,10 @@ class PolicyDistillationModel(BaseRLObject):
                     actions_st = th.from_numpy(actions_st).view(-1, self.dim_action).requires_grad_(False).to(
                         self.device)
 
-                state = obs if self.srl_model is None else self.srl_model.model.getStates(obs).to(self.device).detach()
+                state = obs.detach() if self.srl_model is None else self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.model(state)
                 self.optimizer.zero_grad()
-                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
+                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st.float())
 
                 loss.backward()
                 if validation_mode:
