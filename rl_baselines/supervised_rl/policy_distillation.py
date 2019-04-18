@@ -18,7 +18,8 @@ BATCH_SIZE = 32
 TEST_BATCH_SIZE = 256
 VALIDATION_SIZE = 0.2  # 20% of training data for validation
 MAX_BATCH_SIZE_GPU = 256  # For plotting, max batch_size before having memory issues
-
+RENDER_HEIGHT = 224
+RENDER_WIDTH = 224
 
 class MLP(nn.Module):
     def __init__(self, output_size, input_size, hidden_size=400):
@@ -180,12 +181,15 @@ class PolicyDistillationModel(BaseRLObject):
             print('Continuous action space:')
             print('Action dimension: {}'.format(self.dim_action))
 
-        assert env_kwargs is not None and registered_srl[args.srl_model][0] == SRLType.SRL, \
-            "Please specify a valid srl model for training your policy !"
+        # Here the default SRL model is assumed to be raw_pixels
+        self.state_dim = RENDER_HEIGHT *RENDER_WIDTH
+        self.srl_model = None
 
-        self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None))
-        self.srl_model = loadSRLModel(env_kwargs.get("srl_model_path", None),
-                                                   th.cuda.is_available(), self.state_dim, env_object=None)
+        # TODO: add sanity checks & test for all possible SRL for distillation
+        if env_kwargs["srl_model"] is "raw_pixels":
+            self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None))
+            self.srl_model = loadSRLModel(env_kwargs.get("srl_model_path", None),
+                                          th.cuda.is_available(), self.state_dim, env_object=None)
         self.device = th.device("cuda" if th.cuda.is_available() else "cpu")
 
         self.model = MLP(input_size=self.state_dim, hidden_size=400, output_size=n_actions)
@@ -227,7 +231,7 @@ class PolicyDistillationModel(BaseRLObject):
                     actions_st = th.from_numpy(actions_st).view(-1, self.dim_action).requires_grad_(False).to(
                         self.device)
 
-                state = self.srl_model.model.getStates(obs).to(self.device).detach()
+                state = obs if self.srl_model is None else self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.model(state)
                 self.optimizer.zero_grad()
                 loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
