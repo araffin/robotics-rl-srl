@@ -225,7 +225,13 @@ def main():
     parser.add_argument('-ec', '--eight-continual', action='store_true', default=False,
                         help='Green square target for task 4 of continual learning scenario. ' +
                              'The task is: robot should do the eigth with the target as center of the shape.')
-    
+    parser.add_argument('--teacher-data-folder', type=str, default="",
+                        help='Dataset folder of the teacher(s) policy(ies)', required=False)
+    parser.add_argument('--epochs-distillation', type=int, default=30, metavar='N',
+                        help='number of epochs to train for distillation(default: 30)')
+    parser.add_argument('--distillation-training-set-size', type=int, default=-1,
+                        help='Limit size (number of samples) of the training set (default: -1)')
+
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
@@ -257,6 +263,9 @@ def main():
     assert sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual]) \
            <= 1 and args.env == "OmnirobotEnv-v0", \
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
+
+    assert not(args.algo == "distillation" and (args.teacher_data_folder == '' or args.continuous_actions is True)), \
+        "For performing policy distillation, make sure use specify a valid teacher dataset and discrete actions !"
 
     ENV_NAME = args.env
     ALGO_NAME = args.algo

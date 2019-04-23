@@ -36,6 +36,7 @@ class EpisodeSaver(object):
             printYellow("Folder already exist")
 
         self.actions = []
+        self.actions_proba = []
         self.rewards = []
         self.images = []
         self.target_positions = []
@@ -111,10 +112,11 @@ class EpisodeSaver(object):
             self.ground_truth_states.append(ground_truth)
             self.saveImage(observation)
 
-    def step(self, observation, action, reward, done, ground_truth_state):
+    def step(self, observation, action, reward, done, ground_truth_state, action_proba=None):
         """
         :param observation: (numpy matrix) BGR Image
         :param action: (int)
+        :param action_proba: (list float) probability of taking each action
         :param reward: (float)
         :param done: (bool) whether the episode is done or not
         :param ground_truth_state: (numpy array)
@@ -124,6 +126,9 @@ class EpisodeSaver(object):
         self.n_steps += 1
         self.rewards.append(reward)
         self.actions.append(action)
+        if action_proba is not None:
+            self.actions_proba.append(action_proba)
+
         if reward > 0:
             self.episode_success = True
 
@@ -145,10 +150,12 @@ class EpisodeSaver(object):
         assert len(self.actions) == len(self.images_path)
         assert len(self.actions) == len(self.ground_truth_states)
         assert len(self.target_positions) == self.episode_idx + 1
+        assert len(self.actions_proba) == 0 or len(self.actions_proba) == len(self.actions)
 
         data = {
             'rewards': np.array(self.rewards),
             'actions': np.array(self.actions),
+            'actions_proba': np.array(self.actions_proba),
             'episode_starts': np.array(self.episode_starts)
         }
 
