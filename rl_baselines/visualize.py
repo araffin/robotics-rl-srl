@@ -213,3 +213,39 @@ def timestepsPlot(viz, win, folder, game, name, bin_size=100, smooth=1, title=""
         "legend": [name]
     }
     return viz.line(ty, tx, win=win, opts=opts)
+
+def episodesEvalPlot(viz, win, folder, game, name, window=1, title=""):
+
+    folder+='episode_eval.npy'
+    if(os.path.isfile(folder)):
+        result = np.load(folder)
+    else:
+        return win
+
+    if len(result) == 0:
+        return win
+
+
+    y = np.mean(result[:,:-1,:], axis=2)
+
+    x = result[:,  -1,:][:,0][:,None]
+    x = x*np.ones(shape=y.shape)
+    print(y.shape,x.shape,name)
+
+    if y.shape[0] < window:
+        return win
+
+    # y = movingAverage(y, window)
+
+    if len(y) == 0:
+        return win
+
+
+    opts = {
+        "title": "{}\n{}".format(game, title),
+        "xlabel": "Episodes",
+        "ylabel": "Rewards",
+        "legend": name
+    }
+
+    return viz.line(y, x, win=win, opts=opts)

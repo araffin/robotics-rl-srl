@@ -5,7 +5,10 @@ import glob
 import multiprocessing
 import os
 import shutil
+import tensorflow as tf
 import time
+import torch as th
+from torch.autograd import Variable
 
 import numpy as np
 from stable_baselines import PPO2
@@ -13,14 +16,18 @@ from stable_baselines.common import set_global_seeds
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines.common.policies import CnnPolicy
 
-import tensorflow as tf
-
 from environments import ThreadingType
 from environments.registry import registered_env
 from replay.enjoy_baselines import createEnv, loadConfigAndSetup
-from rl_baselines.utils import WrapFrameStack
+from rl_baselines.utils import MultiprocessSRLModel
 from srl_zoo.utils import printRed, printYellow
+from srl_zoo.preprocessing.utils import deNormalize
+from state_representation.models import loadSRLModel, getSRLDim
 
+RENDER_HEIGHT = 224
+RENDER_WIDTH = 224
+VALID_MODELS = ["forward", "inverse", "reward", "priors", "episode-prior", "reward-prior", "triplet",
+                "autoencoder", "vae", "dae", "random"]
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
@@ -73,13 +80,18 @@ def env_thread(args, thread_num, partition=True):
         "simple_continual_target": args.simple_continual,
         "circular_continual_move": args.circular_continual,
         "square_continual_move": args.square_continual
-
     }
 
     if partition:
         env_kwargs["name"] = args.name + "_part-" + str(thread_num)
     else:
         env_kwargs["name"] = args.name
+
+    load_path, train_args, algo_name, algo_class = None, None, None, None
+    model = None
+    srl_model = None
+    srl_state_dim = 0
+    generated_obs = None
 
     if args.run_policy == "custom":
         args.log_dir = args.log_custom_policy
@@ -88,10 +100,16 @@ def env_thread(args, thread_num, partition=True):
 
         train_args, load_path, algo_name, algo_class, _, env_kwargs_extra = loadConfigAndSetup(args)
         env_kwargs["srl_model"] = env_kwargs_extra["srl_model"]
+        env_kwargs["random_target"] = env_kwargs_extra.get("random_target", False)
+        env_kwargs["use_srl"] = env_kwargs_extra.get("use_srl", False)
+        if env_kwargs["use_srl"]:
+            env_kwargs["srl_model_path"] = env_kwargs_extra.get("srl_model_path", None)
+            env_kwargs["state_dim"] = getSRLDim(env_kwargs_extra.get("srl_model_path", None))
+            srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
+            env_kwargs["srl_pipe"] = srl_model.pipe
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-    model = None
 
     if args.run_policy in ['custom', 'ppo2']:
 
@@ -102,11 +120,15 @@ def env_thread(args, thread_num, partition=True):
             model = PPO2(CnnPolicy, train_env).learn(args.ppo2_timesteps)
         else:
             _, _, algo_args = createEnv(args, train_args, algo_name, algo_class, env_kwargs)
-
             tf.reset_default_graph()
             set_global_seeds(args.seed)
             printYellow("Compiling Policy function....")
             model = algo_class.load(load_path, args=algo_args)
+
+    if len(args.replay_generative_model) > 0:
+        srl_model = loadSRLModel(args.log_generative_model, th.cuda.is_available())
+        srl_state_dim = srl_model.state_dim
+        srl_model = srl_model.model.model
 
     frames = 0
     start_time = time.time()
@@ -120,28 +142,51 @@ def env_thread(args, thread_num, partition=True):
             env.seed(seed)
             env.action_space.seed(seed)  # this is for the sample() function from gym.space
 
-        obs = env.reset()
+        if len(args.replay_generative_model) > 0:
+
+            sample = Variable(th.randn(1, srl_state_dim))
+            if th.cuda.is_available():
+                sample = sample.cuda()
+
+            generated_obs = srl_model.decode(sample)
+            generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
+            generated_obs = deNormalize(generated_obs)
+
+        obs = env.reset(generated_observation=generated_obs)
         done = False
+        action_proba = None
         t = 0
         episode_toward_target_on = False
-        while not done:
-            env.render()
 
+        while not done:
+
+            env.render()
             if args.run_policy == 'ppo2':
                 action, _ = model.predict([obs])
+
             elif args.run_policy == 'custom':
                 action = [model.getAction(obs, done)]
+                action_proba = model.getActionProba(obs, done)
+
             else:
                 if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     action = [env.action_space.sample()]
 
-            action_to_step = action[0]
-            new_obs, _, done, _ = env.step(action_to_step)
+            if len(args.replay_generative_model) > 0:
 
-            if args.run_policy == 'custom':
-                obs = new_obs
+                sample = Variable(th.randn(1, srl_state_dim))
+
+                if th.cuda.is_available():
+                    sample = sample.cuda()
+
+                generated_obs = srl_model.decode(sample)
+                generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
+                generated_obs = deNormalize(generated_obs)
+
+            action_to_step = action[0]
+            obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs, action_proba=action_proba)
 
             frames += 1
             t += 1
@@ -155,6 +200,7 @@ def env_thread(args, thread_num, partition=True):
 
         if thread_num == 0:
             print("{:.2f} FPS".format(frames * args.num_cpu / (time.time() - start_time)))
+
 
 def main():
     parser = argparse.ArgumentParser(description='Deteministic dataset generator for SRL training ' +
@@ -188,6 +234,10 @@ def main():
                              '(random, localy pretrained ppo2, pretrained custom policy)')
     parser.add_argument('--log-custom-policy', type=str, default='',
                         help='Logs of the custom pretained policy to run for data collection')
+    parser.add_argument('-rgm', '--replay-generative-model', type=str, default="", choices=['vae'],
+                        help='Generative model to replay for generating a dataset (for Continual Learning purposes)')
+    parser.add_argument('--log-generative-model', type=str, default='',
+                        help='Logs of the custom pretained policy to run for data collection')
     parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
     parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
@@ -219,6 +269,9 @@ def main():
         "For continual SRL and RL, please provide only one scenario at the time !"
 
     assert not (args.log_custom_policy == '' and args.run_policy == 'custom'), \
+        "If using a custom policy, please specify a valid log folder for loading it."
+
+    assert not (args.log_generative_model == '' and args.replay_generative_model == 'custom'), \
         "If using a custom policy, please specify a valid log folder for loading it."
 
     # this is done so seed 0 and 1 are different and not simply offset of the same datasets.

@@ -20,7 +20,8 @@ from rl_baselines import AlgoType, ActionType
 from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
-from rl_baselines.visualize import timestepsPlot, episodePlot
+from rl_baselines.visualize import timestepsPlot, episodePlot,episodesEvalPlot
+from rl_baselines.cross_eval import episodeEval,policyCrossEval
 from srl_zoo.utils import printGreen, printYellow
 from state_representation import SRLType
 from state_representation.registry import registered_srl
@@ -33,6 +34,8 @@ ALGO_NAME = ""
 ENV_NAME = ""
 PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
+EVAL_TASK=['cc','sc','sqc']
+
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 0  # initialised during loading of the algorithm
@@ -41,7 +44,7 @@ MIN_EPISODES_BEFORE_SAVE = 100  # Number of episodes to train on before saving b
 params_saved = False
 best_mean_reward = -10000
 
-win, win_smooth, win_episodes = None, None, None
+win, win_smooth, win_episodes, win_crossEval= None, None, None, None
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
@@ -78,7 +81,7 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["shape_reward"] = args.shape_reward
     # Actions in joint space or relative position space
     env_kwargs["action_joints"] = args.action_joints
-    args.log_dir += ENV_NAME + "/"
+    args.log_dir += args.env + "/"
 
     models = all_models[args.env]
     PLOT_TITLE = args.srl_model
@@ -120,7 +123,7 @@ def callback(_locals, _globals):
     :param _locals: (dict)
     :param _globals: (dict)
     """
-    global win, win_smooth, win_episodes, n_steps, viz, params_saved, best_mean_reward
+    global win, win_smooth, win_episodes, win_crossEval,n_steps, viz, params_saved, best_mean_reward
     # Create vizdom object only if needed
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
@@ -163,6 +166,11 @@ def callback(_locals, _globals):
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
+        if n_episodes >0 and n_episodes%20==0:
+            # Cross evaluation for all tasks:
+            ALGO.save(LOG_DIR + ALGO_NAME +"_"+str(n_episodes)+ "_model.pkl", _locals)
+            printYellow(EVAL_TASK)
+            episodeEval(LOG_DIR, EVAL_TASK)
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
@@ -171,6 +179,8 @@ def callback(_locals, _globals):
                                    is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
+        win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
+                                        title=PLOT_TITLE +" [Cross Evaluation]")
     n_steps += 1
     return True
 
@@ -225,7 +235,15 @@ def main():
     parser.add_argument('-ec', '--eight-continual', action='store_true', default=False,
                         help='Green square target for task 4 of continual learning scenario. ' +
                              'The task is: robot should do the eigth with the target as center of the shape.')
-    
+    parser.add_argument('--teacher-data-folder', type=str, default="",
+                        help='Dataset folder of the teacher(s) policy(ies)')
+    parser.add_argument('--epochs-distillation', type=int, default=30, metavar='N',
+                        help='number of epochs to train for distillation(default: 30)')
+    parser.add_argument('--distillation-training-set-size', type=int, default=-1,
+                        help='Limit size (number of samples) of the training set (default: -1)')
+    parser.add_argument('--eval-tasks', type=str, nargs='+', default=['cc','sqc','sc'],
+                        help='A cross evaluation from the latest stored model to all tasks')
+
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
@@ -258,19 +276,15 @@ def main():
            <= 1 and args.env == "OmnirobotEnv-v0", \
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
 
+    assert not(args.algo == "distillation" and (args.teacher_data_folder == '' or args.continuous_actions is True)), \
+        "For performing policy distillation, make sure use specify a valid teacher dataset and discrete actions !"
+
     ENV_NAME = args.env
-    if(args.circular_continual):
-        ENV_NAME+="-cc"
-    if(args.eight_continual):
-        ENV_NAME+="-ec"    
-    if(args.simple_continual):
-        ENV_NAME+="-sc"  
-    if(args.square_continual):
-        ENV_NAME+="-sqc"  
     ALGO_NAME = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
     MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
+
 
     if args.no_vis:
         viz = False
@@ -279,7 +293,6 @@ def main():
     algo = algo_class()
     ALGO = algo
     
-
 
     # if callback frequency needs to be changed
     LOG_INTERVAL = algo.LOG_INTERVAL
@@ -363,7 +376,8 @@ def main():
         hyperparams["learning_rate"] = lambda f: f * 1.0e-4
         
     # Train the agent
-
+    # episodeEval(LOG_DIR,EVAL_TASK)
+    # return
     if args.load_rl_model_path is not None:
         algo.setLoadPath(args.load_rl_model_path)
     algo.train(args, callback, env_kwargs=env_kwargs, train_kwargs=hyperparams)
