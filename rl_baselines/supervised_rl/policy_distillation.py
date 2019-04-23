@@ -7,11 +7,10 @@ from torch import nn
 from torch.nn import functional as F
 
 from rl_baselines.base_classes import BaseRLObject
-from rl_baselines.utils import loadRunningAverage, MultiprocessSRLModel, softmax
+from srl_zoo.models.models import CustomCNN
 from srl_zoo.preprocessing.data_loader import SupervisedDataLoader, DataLoader
 from srl_zoo.utils import loadData
 from state_representation.models import loadSRLModel, getSRLDim
-from state_representation.registry import registered_srl, SRLType
 
 N_WORKERS = 4
 BATCH_SIZE = 32
@@ -21,9 +20,10 @@ MAX_BATCH_SIZE_GPU = 256  # For plotting, max batch_size before having memory is
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 
-class MLP(nn.Module):
+
+class MLPPolicy(nn.Module):
     def __init__(self, output_size, input_size, hidden_size=400):
-        super(MLP, self).__init__()
+        super(MLPPolicy, self).__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -40,8 +40,17 @@ class MLP(nn.Module):
         x = F.relu(self.fc1(input))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
+        x = F.softmax(self.fc4(x), dim=1)
         return x
+
+
+class CNNPolicy(nn.Module):
+    def __init__(self, output_size):
+        super(CNNPolicy, self).__init__()
+        self.model = CustomCNN(state_dim=output_size)
+
+    def forward(self, input):
+        return F.softmax(self.model(input), dim=1)
 
 
 class PolicyDistillationModel(BaseRLObject):
@@ -80,9 +89,11 @@ class PolicyDistillationModel(BaseRLObject):
         :return: (numpy float)
         """
         assert self.model is not None, "Error: must train or load model before use"
+        if len(observation.shape) > 2:
+            observation = np.transpose(observation, (0, 3, 2, 1))
         observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
         action = self.model.forward(observation).detach().cpu().numpy()
-        return softmax(action)
+        return action #softmax(action)
 
     def getAction(self, observation, dones=None, delta=0):
         """
@@ -95,6 +106,8 @@ class PolicyDistillationModel(BaseRLObject):
         assert self.model is not None, "Error: must train or load model before use"
 
         self.model.eval()
+        if len(observation.shape) > 2:
+            observation = np.transpose(observation, (0, 3, 2, 1))
         observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
         return [np.argmax(self.model.forward(observation).detach().cpu().numpy())]
 
@@ -111,7 +124,7 @@ class PolicyDistillationModel(BaseRLObject):
         :param teacher_outputs: output from the teacher_outputs model
         :return: loss
         """
-        return nn.MSELoss()(outputs, teacher_outputs)
+        return (outputs - teacher_outputs).pow(2).sum(1).mean()
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
 
@@ -186,17 +199,20 @@ class PolicyDistillationModel(BaseRLObject):
         self.srl_model = None
 
         # TODO: add sanity checks & test for all possible SRL for distillation
-        if env_kwargs["srl_model"] != "raw_pixels":
+        if env_kwargs["srl_model"] == "raw_pixels":
+            self.model = CNNPolicy(n_actions)
+        else:
             self.state_dim = getSRLDim(env_kwargs.get("srl_model_path", None))
             self.srl_model = loadSRLModel(env_kwargs.get("srl_model_path", None),
                                           th.cuda.is_available(), self.state_dim, env_object=None)
+            self.model = MLPPolicy(n_actions, self.state_dim)
+
         self.device = th.device("cuda" if th.cuda.is_available() else "cpu")
 
-        self.model = MLP(n_actions, self.state_dim, hidden_size=400)
         if th.cuda.is_available():
             self.model.cuda()
 
-        learnable_params = [param for param in self.model.parameters() if param.requires_grad]
+        learnable_params = self.model.parameters()
         self.optimizer = th.optim.Adam(learnable_params, lr=1e-3)
 
         best_error = np.inf
@@ -231,10 +247,11 @@ class PolicyDistillationModel(BaseRLObject):
                     actions_st = th.from_numpy(actions_st).view(-1, self.dim_action).requires_grad_(False).to(
                         self.device)
 
-                state = obs.detach() if self.srl_model is None else self.srl_model.model.getStates(obs).to(self.device).detach()
-                pred_action = self.model(state)
-                self.optimizer.zero_grad()
-                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st.float())
+                state = obs.detach() if self.srl_model is None \
+                    else self.srl_model.model.getStates(obs).to(self.device).detach()
+                pred_action = self.model.forward(state)
+
+                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
 
                 loss.backward()
                 if validation_mode:
@@ -246,6 +263,8 @@ class PolicyDistillationModel(BaseRLObject):
                     epoch_loss += loss.item()
                     epoch_batches += 1
                 pbar.update(1)
+                self.optimizer.zero_grad()
+
             train_loss = epoch_loss / float(epoch_batches)
             val_loss /= float(n_val_batches)
             pbar.close()
