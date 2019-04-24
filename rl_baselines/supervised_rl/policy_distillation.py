@@ -126,9 +126,8 @@ class PolicyDistillationModel(BaseRLObject):
         return (outputs - teacher_outputs).pow(2).sum(1).mean()
 
     def loss_mse(self, outputs, teacher_outputs):
-        MSELoss = nn.MSELoss()(outputs, teacher_outputs)
-
-        return MSELoss
+        #MSELoss = nn.MSELoss()(outputs, teacher_outputs)
+        return (outputs - teacher_outputs).pow(2).sum(1).mean()
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
 
