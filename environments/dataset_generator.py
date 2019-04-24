@@ -2,7 +2,6 @@ from __future__ import division, absolute_import, print_function
 
 import argparse
 import glob
-import cv2
 import multiprocessing
 import os
 import shutil
@@ -80,14 +79,20 @@ def env_thread(args, thread_num, partition=True):
         "shape_reward": args.shape_reward,
         "simple_continual_target": args.simple_continual,
         "circular_continual_move": args.circular_continual,
-        "square_continual_move": args.square_continual
-
+        "square_continual_move": args.square_continual,
+        "short_episodes":  args.short_episodes
     }
 
     if partition:
         env_kwargs["name"] = args.name + "_part-" + str(thread_num)
     else:
         env_kwargs["name"] = args.name
+
+    load_path, train_args, algo_name, algo_class = None, None, None, None
+    model = None
+    srl_model = None
+    srl_state_dim = 0
+    generated_obs = None
 
     if args.run_policy == "custom":
         args.log_dir = args.log_custom_policy
@@ -96,15 +101,17 @@ def env_thread(args, thread_num, partition=True):
 
         train_args, load_path, algo_name, algo_class, _, env_kwargs_extra = loadConfigAndSetup(args)
         env_kwargs["srl_model"] = env_kwargs_extra["srl_model"]
-        env_kwargs["srl_model_path"] = env_kwargs_extra.get("srl_model_path", None)
-        env_kwargs["state_dim"] = getSRLDim(env_kwargs_extra.get("srl_model_path", None))
-        srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
-        env_kwargs["srl_pipe"] = srl_model.pipe
+        env_kwargs["random_target"] = env_kwargs_extra.get("random_target", False)
+        env_kwargs["use_srl"] = env_kwargs_extra.get("use_srl", False)
+        if env_kwargs["use_srl"]:
+            env_kwargs["srl_model_path"] = env_kwargs_extra.get("srl_model_path", None)
+            env_kwargs["state_dim"] = getSRLDim(env_kwargs_extra.get("srl_model_path", None))
+            srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
+            env_kwargs["srl_pipe"] = srl_model.pipe
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-    model = None
-    generated_obs = None
+
     if args.run_policy in ['custom', 'ppo2']:
 
         # Additional env when using a trained agent to generate data
@@ -120,8 +127,6 @@ def env_thread(args, thread_num, partition=True):
             model = algo_class.load(load_path, args=algo_args)
 
     if len(args.replay_generative_model) > 0:
-        use_cuda = args.cuda_generative_replay
-        device = th.device("cuda" if th.cuda.is_available() and use_cuda else "cpu")
         srl_model = loadSRLModel(args.log_generative_model, th.cuda.is_available())
         srl_state_dim = srl_model.state_dim
         srl_model = srl_model.model.model
@@ -139,25 +144,31 @@ def env_thread(args, thread_num, partition=True):
             env.action_space.seed(seed)  # this is for the sample() function from gym.space
 
         if len(args.replay_generative_model) > 0:
+
             sample = Variable(th.randn(1, srl_state_dim))
             if th.cuda.is_available():
                 sample = sample.cuda()
+
             generated_obs = srl_model.decode(sample)
             generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
             generated_obs = deNormalize(generated_obs)
+
         obs = env.reset(generated_observation=generated_obs)
         done = False
         action_proba = None
         t = 0
         episode_toward_target_on = False
-        while not done:
-            env.render()
 
+        while not done:
+
+            env.render()
             if args.run_policy == 'ppo2':
                 action, _ = model.predict([obs])
+
             elif args.run_policy == 'custom':
                 action = [model.getAction(obs, done)]
                 action_proba = model.getActionProba(obs, done)
+
             else:
                 if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
                     action = [env.actionPolicyTowardTarget()]
@@ -165,19 +176,19 @@ def env_thread(args, thread_num, partition=True):
                     action = [env.action_space.sample()]
 
             if len(args.replay_generative_model) > 0:
+
                 sample = Variable(th.randn(1, srl_state_dim))
+
                 if th.cuda.is_available():
                     sample = sample.cuda()
+
                 generated_obs = srl_model.decode(sample)
                 generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
                 generated_obs = deNormalize(generated_obs)
 
             action_to_step = action[0]
-            new_obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs,
-                                           action_proba=action_proba)
 
-            if args.run_policy == 'custom':
-                obs = new_obs
+            obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs, action_proba=action_proba)
 
             frames += 1
             t += 1
@@ -191,6 +202,7 @@ def env_thread(args, thread_num, partition=True):
 
         if thread_num == 0:
             print("{:.2f} FPS".format(frames * args.num_cpu / (time.time() - start_time)))
+
 
 def main():
     parser = argparse.ArgumentParser(description='Deteministic dataset generator for SRL training ' +
@@ -228,7 +240,6 @@ def main():
                         help='Generative model to replay for generating a dataset (for Continual Learning purposes)')
     parser.add_argument('--log-generative-model', type=str, default='',
                         help='Logs of the custom pretained policy to run for data collection')
-    parser.add_argument('--cuda-generative-replay', action='store_true', default=False, help='enables CUDA for replay')
     parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
     parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
@@ -242,6 +253,8 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
+    parser.add_argument('--short-episodes', action='store_true', default=False,
+                        help='Generate short episodes (only 10 contacts with the target allowed).')
 
     args = parser.parse_args()
 

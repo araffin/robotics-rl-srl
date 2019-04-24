@@ -25,7 +25,6 @@ def main():
         assert (not os.path.exists(args.merge[2])), "Error: dataset '{}' already exists, cannot rename '{}' to '{}'"\
                                                           .format(args.merge[2], args.merge[0], args.merge[2])
         # create the output
-        print(args)
         os.mkdir(args.merge[2])
 
         # copy files from first source
@@ -103,11 +102,19 @@ def main():
         for prepro_load in [preprocessed_load, preprocessed_load_2]:
             for arr in prepro_load.files:
                 pr_arr = prepro_load[arr]
-                preprocessed[arr] = np.concatenate((preprocessed.get(arr, []), pr_arr), axis=0)
+
+                to_class = None
                 if arr == "episode_starts":
-                    preprocessed[arr] = preprocessed[arr].astype(bool)
+                    to_class = bool
+                elif arr == "actions_proba":
+                    to_class = float
                 else:
-                    preprocessed[arr] = preprocessed[arr].astype(int)
+                    to_class = int
+                if preprocessed.get(arr, None) is None:
+                    preprocessed[arr] = pr_arr.astype(to_class)
+                else:
+                    preprocessed[arr] = np.concatenate((preprocessed[arr].astype(to_class),
+                                                        pr_arr.astype(to_class)), axis=0)
 
         np.savez(args.merge[2] + "/preprocessed_data.npz", ** preprocessed)
 
