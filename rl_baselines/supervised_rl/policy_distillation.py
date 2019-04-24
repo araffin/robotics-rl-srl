@@ -20,6 +20,8 @@ MAX_BATCH_SIZE_GPU = 256  # For plotting, max batch_size before having memory is
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 
+TEMPERATURE = 1
+
 
 class MLPPolicy(nn.Module):
     def __init__(self, output_size, input_size, hidden_size=400):
@@ -113,22 +115,21 @@ class PolicyDistillationModel(BaseRLObject):
 
     def loss_fn_kd(self, outputs, teacher_outputs):
         """
-        inspired from : https://github.com/peterliht/knowledge-distillation-pytorch
-        Compute the knowledge-distillation (KD) loss given outputs, labels.
-        NOTE: the KL Divergence for PyTorch comparing the softmaxs of teacher
-        and student expects the input tensor to be log probabilities! See Issue #2
-
         Hyperparameters: temperature and alpha
         :param outputs: output from the student model
         :param teacher_outputs: output from the teacher_outputs model
         :return: loss
         """
-        return (outputs - teacher_outputs).pow(2).sum(1).mean()
+        T = TEMPERATURE
+        KD_loss = F.softmax(teacher_outputs/T) * F.log((F.softmax(teacher_outputs/T) / F.softmax(outputs)))
+
+        print(KD_loss.shape, 'DEBUG FOR KL LOSS')
+
+        return KD_loss.mean()
 
     def loss_mse(self, outputs, teacher_outputs):
-        MSELoss = nn.MSELoss()(outputs, teacher_outputs)
-
-        return MSELoss
+        #MSELoss = nn.MSELoss()(outputs, teacher_outputs)
+        return (outputs - teacher_outputs).pow(2).sum(1).mean()
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
 
