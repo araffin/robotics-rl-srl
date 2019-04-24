@@ -24,9 +24,9 @@ python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simpl
 ```
 cd srl_zoo
 # Dataset 1
-python train.py --data-folder data/Omnibot_random_simple  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
+python train.py --data-folder data/Omnibot_random_simple  -bs 32 --num-cpu 6 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
 # Dataset 2
-python train.py --data-folder data/Omnibot_circular  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
+python train.py --data-folder data/Omnibot_circular  -bs 32 --num-cpu 6 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
 ```
 
 
@@ -52,9 +52,9 @@ python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-times
 
 ```
 # Dataset 1
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 8 --run-policy custom --log-custom-policy logs/simple-continual -f
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 6 --run-policy custom --log-custom-policy logs/simple-continual -f
 # Dataset 2
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 8 --run-policy custom --log-custom-policy logs/circular-continual -f
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 6 --run-policy custom --log-custom-policy logs/circular-continual -f
 # Merge Datasets
 
 ?
