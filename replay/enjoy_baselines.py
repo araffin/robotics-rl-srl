@@ -6,10 +6,12 @@ import json
 import os
 from datetime import datetime
 
+import yaml
 import numpy as np
 import tensorflow as tf
 from stable_baselines.common import set_global_seeds
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 import seaborn as sns
 
@@ -58,6 +60,18 @@ def parseArguments():
                         help='display in the latent space the current observation.')
     parser.add_argument('--action-proba', action='store_true', default=False,
                         help='display the probability of actions')
+    parser.add_argument('-sc', '--simple-continual', action='store_true', default=False,
+                        help='Simple red square target for task 1 of continual learning scenario. ' +
+                             'The task is: robot should reach the target.')
+    parser.add_argument('-cc', '--circular-continual', action='store_true', default=False,
+                        help='Blue square target for task 2 of continual learning scenario. ' +
+                             'The task is: robot should turn in circle around the target.')
+    parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
+                        help='Green square target for task 3 of continual learning scenario. ' +
+                             'The task is: robot should turn in square around the target.')
+    args, unknown = parser.parse_known_args()
+    assert sum([args.simple_continual, args.circular_continual, args.square_continual]) <= 1, \
+        "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
     return parser.parse_args()
 
 
@@ -106,6 +120,12 @@ def loadConfigAndSetup(load_args):
         env_kwargs["circular_continual_move"] = env_globals.get("circular_continual_move", False)
         env_kwargs["square_continual_move"] = env_globals.get("square_continual_move", False)
         env_kwargs["eight_continual_move"] = env_globals.get("eight_continual_move", False)
+
+    if sum([load_args.simple_continual, load_args.circular_continual, load_args.square_continual]) >= 1:
+        env_kwargs["simple_continual_target"] = load_args.simple_continual
+        env_kwargs["circular_continual_move"] = load_args.circular_continual
+        env_kwargs["square_continual_move"] = load_args.square_continual
+        env_kwargs["random_target"] = not (load_args.circular_continual or load_args.square_continual)
 
     srl_model_path = None
     if train_args["srl_model"] != "raw_pixels":
