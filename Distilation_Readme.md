@@ -13,20 +13,20 @@
 ### 0 - Generate datasets for SRL (random policy)
 
 ```
-cd srl_zoo
 # Dataset 1
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --env OmnirobotEnv-v0 --simple-continual --num-episode 250
+python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --env OmnirobotEnv-v0 --simple-continual --num-episode 250 -f
 # Dataset 2
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --circular-continual --num-episode 250
+python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --circular-continual --num-episode 250 -f
 ```
 
 ### 1.1) Train SRL
 
 ```
+cd srl_zoo
 # Dataset 1
-python train.py --data-folder data/simple-continual  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
+python train.py --data-folder data/Omnibot_random_simple  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
 # Dataset 2
-python train.py --data-folder data/circular-continual  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
+python train.py --data-folder data/Omnibot_circular  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
 ```
 
 
@@ -52,9 +52,9 @@ python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-times
 
 ```
 # Dataset 1
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 8 --run-policy custom --log-custom-policy logs/simple-continual
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 8 --run-policy custom --log-custom-policy logs/simple-continual -f
 # Dataset 2
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 8 --run-policy custom --log-custom-policy logs/circular-continual
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 50 --num-cpu 8 --run-policy custom --log-custom-policy logs/circular-continual -f
 # Merge Datasets
 
 ?
@@ -76,5 +76,5 @@ python train.py --data-folder data/circular_continual_on_policy  -bs 32 --epochs
 # Dataset 1
 python -m rl_baselines.train --algo distillation --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/simple/ --simple-continual  --latest --teacher-data-folder srl_zoo/data/simple_continual_on_policy/
 # Dataset 2
-python -m rl_baselines.train --algo distillation --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circular/ --circular-continual  --latest --teacher-data-folder srl_zoo/data/circular_continual_on_policy/
+python -m rl_baselines.train --algo distillation --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circularOmnirobotEnv-v0/OmnirobotEnv-v0/ --circular-continual  --latest --teacher-data-folder srl_zoo/data/circular_continual/
 ```
