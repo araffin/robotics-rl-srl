@@ -102,7 +102,6 @@ class OmnirobotManagerBase(object):
         random_init_position = self.sampleRobotInitalPosition()
         self.robot.setRobotCmd(random_init_position[0], random_init_position[1], 0)
 
-
     def processMsg(self, msg):
         """
         Using this steps' msg command the determinate the correct position that the robot should be at next step,
@@ -146,7 +145,7 @@ class OmnirobotManagerBase(object):
             has_bumped = self.backwardAction()
         elif action == 'Continuous':
             has_bumped = self.moveContinousAction(msg)
-        elif action == None:
+        elif action is None:
             pass
         else:
             print("Unsupported action: ", action)

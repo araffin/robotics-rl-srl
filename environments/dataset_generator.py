@@ -79,7 +79,8 @@ def env_thread(args, thread_num, partition=True):
         "shape_reward": args.shape_reward,
         "simple_continual_target": args.simple_continual,
         "circular_continual_move": args.circular_continual,
-        "square_continual_move": args.square_continual
+        "square_continual_move": args.square_continual,
+        "short_episodes":  args.short_episodes
     }
 
     if partition:
@@ -252,6 +253,8 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
+    parser.add_argument('--short-episodes', action='store_true', default=False,
+                        help='Generate short episodes (only 10 contacts with the target allowed).')
 
     args = parser.parse_args()
 

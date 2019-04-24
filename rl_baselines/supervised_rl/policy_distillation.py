@@ -182,7 +182,6 @@ class PolicyDistillationModel(BaseRLObject):
             action_set = set(actions)
             n_actions = int(np.max(actions) + 1)
             print("{} unique actions / {} actions".format(len(action_set), n_actions))
-            n_pairs_per_action = np.zeros(n_actions, dtype=np.int64)
             n_obs_per_action = np.zeros(n_actions, dtype=np.int64)
             for i in range(n_actions):
                 n_obs_per_action[i] = np.sum(actions == i)
@@ -250,8 +249,7 @@ class PolicyDistillationModel(BaseRLObject):
                 state = obs.detach() if self.srl_model is None \
                     else self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.model.forward(state)
-
-                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st)
+                loss = self.loss_fn_kd(pred_action, actions_st, actions_proba_st.float())
 
                 loss.backward()
                 if validation_mode:
