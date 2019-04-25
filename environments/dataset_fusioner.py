@@ -8,10 +8,16 @@ import shutil
 import numpy as np
 from tqdm import tqdm
 
+CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
+CL_LABEL_KEY = "continual_learning_label"
+
 
 def main():
     parser = argparse.ArgumentParser(description='Dataset Manipulator: useful to fusion two datasets by concatenating '
                                                  'episodes. PS: Deleting sources after fusion into destination folder.')
+    parser.add_argument('--continual-learning-labels', type=str, nargs=2, metavar=('label_1', 'label_2'),
+                       default=argparse.SUPPRESS,
+                       help='Labels for the continual learning RL distillation task.')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--merge', type=str, nargs=3, metavar=('source_1', 'source_2', 'destination'),
                        default=argparse.SUPPRESS,
@@ -24,6 +30,10 @@ def main():
         assert os.path.exists(args.merge[0]), "Error: dataset '{}' could not be found".format(args.merge[0])
         assert (not os.path.exists(args.merge[2])), "Error: dataset '{}' already exists, cannot rename '{}' to '{}'"\
                                                           .format(args.merge[2], args.merge[0], args.merge[2])
+        if 'continual_learning_labels' in args:
+            assert args.continual_learning_labels[0] in CONTINUAL_LEARNING_LABELS \
+                   and args.continual_learning_labels[1] in CONTINUAL_LEARNING_LABELS, \
+                   "Please specify a valid Continual learning label to each dataset to be used for RL distillation !"
         # create the output
         os.mkdir(args.merge[2])
 
@@ -99,7 +109,10 @@ def main():
         preprocessed_load = np.load(args.merge[0] + "/preprocessed_data.npz")
         preprocessed_load_2 = np.load(args.merge[1] + "/preprocessed_data.npz")
 
-        for prepro_load in [preprocessed_load, preprocessed_load_2]:
+        dataset_1_size = preprocessed_load["actions"].shape[0]
+        dataset_2_size = preprocessed_load_2["actions"].shape[0]
+
+        for idx, prepro_load in enumerate([preprocessed_load, preprocessed_load_2]):
             for arr in prepro_load.files:
                 pr_arr = prepro_load[arr]
 
@@ -115,6 +128,13 @@ def main():
                 else:
                     preprocessed[arr] = np.concatenate((preprocessed[arr].astype(to_class),
                                                         pr_arr.astype(to_class)), axis=0)
+            if 'continual_learning_labels' in args:
+                if preprocessed.get(CL_LABEL_KEY, None) is None:
+                    preprocessed[CL_LABEL_KEY] = np.array([args.continual_learning_labels[idx] for _ in range(dataset_1_size)])
+                else:
+                    preprocessed[CL_LABEL_KEY] = np.concatenate((preprocessed[CL_LABEL_KEY],
+                                                        np.array([args.continual_learning_labels[idx]
+                                                                  for _ in range(dataset_2_size)])), axis=0)
 
         np.savez(args.merge[2] + "/preprocessed_data.npz", ** preprocessed)
 
