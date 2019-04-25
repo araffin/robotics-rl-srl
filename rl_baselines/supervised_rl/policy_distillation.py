@@ -20,7 +20,12 @@ MAX_BATCH_SIZE_GPU = 256  # For plotting, max batch_size before having memory is
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 
-TEMPERATURE = 1
+CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
+CL_LABEL_KEY = "continual_learning_label"
+
+TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.1}
+# run with 0.1 to have good results!
+# 0.01 worse reward for CC, better SC
 
 
 class MLPPolicy(nn.Module):
@@ -95,7 +100,7 @@ class PolicyDistillationModel(BaseRLObject):
             observation = np.transpose(observation, (0, 3, 2, 1))
         observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
         action = self.model.forward(observation).detach().cpu().numpy()
-        return action #softmax(action)
+        return action
 
     def getAction(self, observation, dones=None, delta=0, sample=False):
         """
@@ -118,21 +123,26 @@ class PolicyDistillationModel(BaseRLObject):
         else:
             return [np.argmax(self.model.forward(observation).detach().cpu().numpy())]
 
-    def loss_fn_kd(self, outputs, teacher_outputs):
+    def loss_fn_kd(self, outputs, teacher_outputs, labels=None, adaptive_temperature=False):
         """
         Hyperparameters: temperature and alpha
         :param outputs: output from the student model
         :param teacher_outputs: output from the teacher_outputs model
         :return: loss
         """
-        T = TEMPERATURE
-        KD_loss = F.softmax(teacher_outputs/T, dim=1) * \
-                  th.log((F.softmax(teacher_outputs/T, dim=1) / F.softmax(outputs, dim=1)))
+        if labels is not None and adaptive_temperature:
+            T = th.from_numpy(np.array([TEMPERATURES[labels[idx_elm]] for idx_elm in range(BATCH_SIZE)])).cuda().float()
 
+            KD_loss = F.softmax(th.div(teacher_outputs.transpose(1, 0), T).transpose(1, 0), dim=1) * \
+                      th.log((F.softmax(th.div(teacher_outputs.transpose(1, 0).transpose(1, 0), T), dim=1) / F.softmax(
+                          th.div(outputs.transpose(1, 0).transpose(1, 0), T), dim=1)))
+        else:
+            T = TEMPERATURES["default"]
+            KD_loss = F.softmax(teacher_outputs/T, dim=1) * \
+                th.log((F.softmax(teacher_outputs/T, dim=1) / F.softmax(outputs, dim=1)))
         return KD_loss.mean()
 
     def loss_mse(self, outputs, teacher_outputs):
-        #MSELoss = nn.MSELoss()(outputs, teacher_outputs)
         return (outputs - teacher_outputs).pow(2).sum(1).mean()
 
     def train(self, args, callback, env_kwargs=None, train_kwargs=None):
@@ -149,6 +159,7 @@ class PolicyDistillationModel(BaseRLObject):
         images_path = ground_truth['images_path']
         actions = training_data['actions']
         actions_proba = training_data['actions_proba']
+        cl_labels = training_data[CL_LABEL_KEY]
 
         if args.distillation_training_set_size > 0:
             limit = args.distillation_training_set_size
@@ -244,6 +255,7 @@ class PolicyDistillationModel(BaseRLObject):
                 # Actions associated to the observations of the current minibatch
                 actions_st = actions[minibatchlist[minibatch_idx]]
                 actions_proba_st = actions_proba[minibatchlist[minibatch_idx]]
+                cl_labels_st = cl_labels[minibatchlist[minibatch_idx]]
 
                 if not args.continuous_actions:
                     # Discrete actions, rearrange action to have n_minibatch ligns and one column,
@@ -258,8 +270,9 @@ class PolicyDistillationModel(BaseRLObject):
                 state = obs.detach() if self.srl_model is None \
                     else self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.model.forward(state)
-                loss = self.loss_fn_kd(pred_action, actions_proba_st)
-                #loss = self.loss_mse(pred_action, actions_proba_st.float())
+
+                loss = self.loss_fn_kd(pred_action, actions_proba_st.float(),
+                                       labels=cl_labels_st, adaptive_temperature=True)
 
                 loss.backward()
                 if validation_mode:
@@ -276,7 +289,7 @@ class PolicyDistillationModel(BaseRLObject):
             train_loss = epoch_loss / float(epoch_batches)
             val_loss /= float(n_val_batches)
             pbar.close()
-            print("Epoch {:3}/{}, train_loss:{:.4f} val_loss:{:.4f}".format(epoch + 1, N_EPOCHS, train_loss, val_loss))
+            print("Epoch {:3}/{}, train_loss:{:.6f} val_loss:{:.6f}".format(epoch + 1, N_EPOCHS, train_loss, val_loss))
 
             # Save best model
             if val_loss < best_error:
