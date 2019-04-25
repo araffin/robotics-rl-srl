@@ -15,9 +15,9 @@
 ```
 cd srl_zoo
 # Dataset 1 (random reaching target)
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --env OmnirobotEnv-v0 --simple-continual --num-episode 250
+python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --simple-continual --num-episode 250
 # Dataset 2 (Circular task)
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --circular-continual --num-episode 250
+python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --env OmnirobotEnv-v0 --circular-continual --num-episode 250
 ```
 
 ### 1.1) Train SRL
@@ -32,6 +32,8 @@ python train.py --data-folder data/circular-continual  -bs 32 --epochs 30 --stat
 
 
 ### 1.2) Train policy
+
+Train
 
 ```
 cd ..
@@ -49,6 +51,17 @@ python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-times
 
 # restore config file
 cp config/srl_models_temp.yaml config/srl_models.yaml
+```
+
+Visualize and plot
+
+```
+# Visualize episodes 
+
+python -m replay.enjoy_baselines --log-dir *file* --num-timesteps 10000 --render --action-proba
+example : python -m replay.enjoy_baselines --log-dir logs/simple/OmnirobotEnv-v0/srl_combination/ppo2/19-04-25_10h19_42/ --num-timesteps 10000 --render --action-proba
+
+
 
 # plot results
 python -m replay.plots --log-dir /logs/simple/OmnirobotEnv-v0/srl_combination/ppo/ --latest
