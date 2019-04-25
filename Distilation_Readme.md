@@ -15,9 +15,9 @@
 ```
 cd srl_zoo
 # Dataset 1 (random reaching target)
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --simple-continual --num-episode 250
+python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --simple-continual --num-episode 250 -f
 # Dataset 2 (Circular task)
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --env OmnirobotEnv-v0 --circular-continual --num-episode 250
+python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --env OmnirobotEnv-v0 --circular-continual --num-episode 250 -f
 ```
 
 ### 1.1) Train SRL
@@ -25,9 +25,9 @@ python -m environments.dataset_generator --num-cpu 6 --name Omnibot_circular --e
 ```
 cd srl_zoo
 # Dataset 1 (random reaching target)
-python train.py --data-folder data/simple-continual  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
+python train.py --data-folder data/Omnibot_random_simple  -bs 32 --epochs 20 --state-dim 200 --training-set-size 20000 --losses autoencoder inverse
 # Dataset 2 (Circular task)
-python train.py --data-folder data/circular-continual  -bs 32 --epochs 30 --state-dim 200 --training-set-size 30000 --losses autoencoder inverse
+python train.py --data-folder data/Omnibot_circular  -bs 32 --epochs 20 --state-dim 200 --training-set-size 20000 --losses autoencoder inverse
 ```
 
 
@@ -43,7 +43,7 @@ cp config/srl_models.yaml config/srl_models_temp.yaml
 
 # Dataset 1 (random reaching target)
 cp config/srl_models_simple.yaml config/srl_models.yaml
-python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/simple/  --num-cpu 6 --simple-continual  --latest
+python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/simple/  --num-cpu 8 --simple-continual  --latest
 
 # Dataset 2 (Circular task)
 cp config/srl_models_circular.yaml config/srl_models.yaml
