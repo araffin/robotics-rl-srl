@@ -23,7 +23,7 @@ RENDER_WIDTH = 224
 CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
 USE_ADAPTIVE_TEMPERATURE = False
-TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.001}
+TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.1}
 # run with 0.1 to have good results!
 # 0.01 worse reward for CC, better SC
 
