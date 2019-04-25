@@ -22,8 +22,8 @@ RENDER_WIDTH = 224
 
 CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
-
-TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.1}
+USE_ADAPTIVE_TEMPERATURE = False
+TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.001}
 # run with 0.1 to have good results!
 # 0.01 worse reward for CC, better SC
 
@@ -159,7 +159,10 @@ class PolicyDistillationModel(BaseRLObject):
         images_path = ground_truth['images_path']
         actions = training_data['actions']
         actions_proba = training_data['actions_proba']
-        cl_labels = training_data[CL_LABEL_KEY]
+        if USE_ADAPTIVE_TEMPERATURE:
+            cl_labels = training_data[CL_LABEL_KEY]
+        else:
+            cl_labels_st = None
 
         if args.distillation_training_set_size > 0:
             limit = args.distillation_training_set_size
@@ -255,7 +258,9 @@ class PolicyDistillationModel(BaseRLObject):
                 # Actions associated to the observations of the current minibatch
                 actions_st = actions[minibatchlist[minibatch_idx]]
                 actions_proba_st = actions_proba[minibatchlist[minibatch_idx]]
-                cl_labels_st = cl_labels[minibatchlist[minibatch_idx]]
+
+                if USE_ADAPTIVE_TEMPERATURE:
+                    cl_labels_st = cl_labels[minibatchlist[minibatch_idx]]
 
                 if not args.continuous_actions:
                     # Discrete actions, rearrange action to have n_minibatch ligns and one column,
@@ -272,7 +277,7 @@ class PolicyDistillationModel(BaseRLObject):
                 pred_action = self.model.forward(state)
 
                 loss = self.loss_fn_kd(pred_action, actions_proba_st.float(),
-                                       labels=cl_labels_st, adaptive_temperature=False)
+                                       labels=cl_labels_st, adaptive_temperature=USE_ADAPTIVE_TEMPERATURE)
 
                 loss.backward()
                 if validation_mode:
