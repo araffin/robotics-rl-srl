@@ -133,9 +133,9 @@ class PolicyDistillationModel(BaseRLObject):
         if labels is not None and adaptive_temperature:
             T = th.from_numpy(np.array([TEMPERATURES[labels[idx_elm]] for idx_elm in range(BATCH_SIZE)])).cuda().float()
 
-            KD_loss = F.softmax(th.div(teacher_outputs.transpose(1, 0), T).transpose(1, 0), dim=1) * \
-                      th.log((F.softmax(th.div(teacher_outputs.transpose(1, 0).transpose(1, 0), T), dim=1) / F.softmax(
-                          th.div(outputs.transpose(1, 0).transpose(1, 0), T), dim=1)))
+            KD_loss = F.softmax(th.div(teacher_outputs.transpose(1, 0), T), dim=1) * \
+                      th.log((F.softmax(th.div(teacher_outputs.transpose(1, 0), T), dim=1) / F.softmax(
+                          th.div(outputs.transpose(1, 0), T), dim=1)))
         else:
             T = TEMPERATURES["default"]
             KD_loss = F.softmax(teacher_outputs/T, dim=1) * \
@@ -272,7 +272,7 @@ class PolicyDistillationModel(BaseRLObject):
                 pred_action = self.model.forward(state)
 
                 loss = self.loss_fn_kd(pred_action, actions_proba_st.float(),
-                                       labels=cl_labels_st, adaptive_temperature=True)
+                                       labels=cl_labels_st, adaptive_temperature=False)
 
                 loss.backward()
                 if validation_mode:
