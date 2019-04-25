@@ -97,7 +97,7 @@ class PolicyDistillationModel(BaseRLObject):
         action = self.model.forward(observation).detach().cpu().numpy()
         return action #softmax(action)
 
-    def getAction(self, observation, dones=None, delta=0):
+    def getAction(self, observation, dones=None, delta=0, sample=False):
         """
         From an observation returns the associated action
         :param observation: (numpy int or numpy float)
@@ -111,7 +111,12 @@ class PolicyDistillationModel(BaseRLObject):
         if len(observation.shape) > 2:
             observation = np.transpose(observation, (0, 3, 2, 1))
         observation = th.from_numpy(observation).float().requires_grad_(False).to(self.device)
-        return [np.argmax(self.model.forward(observation).detach().cpu().numpy())]
+
+        if sample:
+            proba_actions = self.model.forward(observation).detach().cpu().numpy().flatten()
+            return np.random.choice(range(len(proba_actions)), 1, p=proba_actions)
+        else:
+            return [np.argmax(self.model.forward(observation).detach().cpu().numpy())]
 
     def loss_fn_kd(self, outputs, teacher_outputs):
         """
@@ -121,9 +126,8 @@ class PolicyDistillationModel(BaseRLObject):
         :return: loss
         """
         T = TEMPERATURE
-        KD_loss = F.softmax(teacher_outputs/T) * F.log((F.softmax(teacher_outputs/T) / F.softmax(outputs)))
-
-        print(KD_loss.shape, 'DEBUG FOR KL LOSS')
+        KD_loss = F.softmax(teacher_outputs/T, dim=1) * \
+                  th.log((F.softmax(teacher_outputs/T, dim=1) / F.softmax(outputs, dim=1)))
 
         return KD_loss.mean()
 
@@ -254,8 +258,8 @@ class PolicyDistillationModel(BaseRLObject):
                 state = obs.detach() if self.srl_model is None \
                     else self.srl_model.model.getStates(obs).to(self.device).detach()
                 pred_action = self.model.forward(state)
-                #loss = self.loss_fn_kd(pred_action, actions_proba_st)
-                loss = self.loss_mse(pred_action, actions_proba_st.float())
+                loss = self.loss_fn_kd(pred_action, actions_proba_st)
+                #loss = self.loss_mse(pred_action, actions_proba_st.float())
 
                 loss.backward()
                 if validation_mode:
