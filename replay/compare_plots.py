@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from matplotlib.ticker import FuncFormatter
+from matplotlib import rc
 
 from replay.aggregate_plots import lightcolors, darkcolors, Y_LIM_SHAPED_REWARD, Y_LIM_SPARSE_REWARD, millions
 from srl_zoo.utils import printGreen, printRed
@@ -12,8 +13,8 @@ from srl_zoo.utils import printGreen, printRed
 # Init seaborn
 sns.set()
 # Style for the title
-fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 16}
-
+fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 22, 'fontweight': 'bold'}
+rc('font', weight='bold')
 
 def comparePlots(path, plots, y_limits, title="Learning Curve",
                  timesteps=False, truncate_x=-1, no_display=False):
@@ -63,16 +64,16 @@ def comparePlots(path, plots, y_limits, title="Learning Curve",
 
     if timesteps:
         formatter = FuncFormatter(millions)
-        plt.xlabel('Number of Timesteps')
+        plt.xlabel('Number of Timesteps', fontsize=20, fontweight='bold')
         fig.axes[0].xaxis.set_major_formatter(formatter)
     else:
         plt.xlabel('Number of Episodes')
-    plt.ylabel('Rewards')
+    plt.ylabel('Rewards', fontsize=20, fontweight='bold')
 
     plt.title(title, **fontstyle)
     plt.ylim(y_limits)
 
-    plt.legend(framealpha=0.8, frameon=True, labelspacing=0.01, loc='lower right', fontsize=16)
+    plt.legend(framealpha=0.8, frameon=True, labelspacing=0.01, loc='lower right', fontsize=18)
 
     if not no_display:
         plt.show()

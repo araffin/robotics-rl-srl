@@ -81,7 +81,7 @@ class SRLGymEnv(gym.Env):
         # TODO: implement close function to close GUI
         pass
 
-    def step(self, action):
+    def step(self, action, generated_observation=None, action_proba=None):
         """
         :param action: (int or [float])
         """

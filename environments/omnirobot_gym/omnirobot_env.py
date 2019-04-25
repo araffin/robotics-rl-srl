@@ -29,7 +29,7 @@ else:
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 RELATIVE_POS = True
-N_CONTACTS_BEFORE_TERMINATION = 3
+N_CONTACTS_BEFORE_TERMINATION = 10
 
 DELTA_POS = 0.1  # DELTA_POS for continuous actions
 N_DISCRETE_ACTIONS = 4
@@ -73,7 +73,8 @@ class OmniRobotEnv(SRLGymEnv):
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
                  shape_reward=False, simple_continual_target=False, circular_continual_move=False,
-                 square_continual_move=False, eight_continual_move=False, env_rank=0, srl_pipe=None, **_):
+                 square_continual_move=False, eight_continual_move=False, short_episodes=False, env_rank=0,
+                 srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=RELATIVE_POS,
@@ -106,6 +107,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.circular_continual_move = circular_continual_move
         self.square_continual_move = square_continual_move
         self.eight_continual_move = eight_continual_move
+        self.short_episodes = short_episodes
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -181,7 +183,7 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
-    def step(self, action):
+    def step(self, action, generated_observation=None, action_proba=None):
         """
         :action: (int)
         :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
@@ -210,14 +212,14 @@ class OmniRobotEnv(SRLGymEnv):
         self.getEnvState()
 
         #  Receive a camera image from the server
-        self.observation = self.getObservation()
+        self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         done = self._hasEpisodeTerminated()
 
         self.render()
 
         if self.saver is not None:
             self.saver.step(self.observation, action,
-                            self.reward, done, self.getGroundTruth())
+                            self.reward, done, self.getGroundTruth(), action_proba=action_proba)
         if self.use_srl:
             return self.getSRLState(self.observation), self.reward, done, {}
         else:
@@ -274,7 +276,7 @@ class OmniRobotEnv(SRLGymEnv):
         """
         return self.robot_pos
 
-    def reset(self):
+    def reset(self, generated_observation=None):
         """
         Reset the environment
         :return: (numpy ndarray) first observation of the env
@@ -288,7 +290,7 @@ class OmniRobotEnv(SRLGymEnv):
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
         self.getEnvState()
-        self.observation = self.getObservation()
+        self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         if self.saver is not None:
             self.saver.reset(self.observation,
                              self.getTargetPos(), self.getGroundTruth())
@@ -301,13 +303,15 @@ class OmniRobotEnv(SRLGymEnv):
         """
         Returns True if the episode is over and False otherwise
         """
-        if self.episode_terminated or self._env_step_counter > MAX_STEPS:
+        if self.episode_terminated or self._env_step_counter > MAX_STEPS or \
+                (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes) or \
+                (self._env_step_counter > MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES and self.short_episodes):
             return True
 
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001:  # reach the target
             self.n_contacts += 1
         else:
-            self.n_contacts = 0
+            self.n_contacts += 0
         return False
 
     def closeServerConnection(self):
@@ -450,7 +454,8 @@ class OmniRobotEnv(SRLGymEnv):
                      tuple(self.boundary_coner_pixel_pos_continual[:,0]),(0,0,200),2)
         elif self.circular_continual_move:
             radius_converted = np.linalg.norm(self.center_coordinates - self.boundary_coner_pixel_pos_continual)
-            cv2.circle(self.observation_with_boundary, tuple(self.center_coordinates), np.float32(radius_converted), (0,0,200),2)
+            cv2.circle(self.observation_with_boundary, tuple(self.center_coordinates), np.float32(radius_converted),
+                       (0, 0, 200), 2)
 
         #Add boundary of env
         cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 0]),
