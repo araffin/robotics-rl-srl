@@ -88,6 +88,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
    
     # Max number of steps per episode
     MAX_STEPS = 250
+    MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES = 75
     # Boundaries
     MIN_X, MAX_X = -0.85, 0.85  # center of robot should be in this interval
     MIN_Y, MAX_Y = -0.85, 0.85

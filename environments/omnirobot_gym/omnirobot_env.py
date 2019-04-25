@@ -304,7 +304,8 @@ class OmniRobotEnv(SRLGymEnv):
         Returns True if the episode is over and False otherwise
         """
         if self.episode_terminated or self._env_step_counter > MAX_STEPS or \
-                (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes):
+                (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes) or \
+                (self._env_step_counter > MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES and self.short_episodes):
             return True
 
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001:  # reach the target
