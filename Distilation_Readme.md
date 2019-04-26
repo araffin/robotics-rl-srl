@@ -73,13 +73,17 @@ python -m replay.plots --log-dir /logs/circular/OmnirobotEnv-v0/srl_combination/
 
 ### 2.1) Generate dataset on Policy
 
+(le dossier "data" ne se créé pas tout seul donc executer :  "mkdir data" si besoin)
+
+
+(pas completement automatisé "log_custom_policy" doit etre mis manuellement)
 
 ```
 # Dataset 1 (random reaching target)
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 600 --run-policy custom --log-custom-policy logs/simple-continual --short-episodes --save-path data/ --name reaching_on_policy -sc
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 600 --run-policy custom --log-custom-policy logs/*path2policy* --short-episodes --save-path data/ --name reaching_on_policy -sc
 
 # Dataset 2 (Circular task)
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy logs/circular-continual --save-path data/ --name circular_on_policy -cc
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy logs/*path2policy* --short-episodes --save-path data/ --name circular_on_policy -cc
 
 # Merge Datasets
 python -m environments.dataset_fusioner --merge data/circular_on_policy/ data/reaching_on_policy/ data/merge_CC_SC
@@ -91,8 +95,9 @@ cp -r data/merge_CC_SC srl_zoo/data/merge_CC_SC
 ### 2.3) Train SRL 1&2
 
 ```
+cd srl_zoo
 # Dataset 1
-python train.py --data-folder data/merge_CC_SC  -bs 32 --epochs 2 --state-dim 200 --training-set-size 30000--losses autoencoder inverse
+python train.py --data-folder data/merge_CC_SC  -bs 32 --epochs 20 --state-dim 200 --training-set-size 30000--losses autoencoder inverse
 
 # Update your RL logs to load the proper SRL model for future distillation, i.e distillation: new-log/srl_model.pth
 ```
@@ -103,7 +108,8 @@ python train.py --data-folder data/merge_CC_SC  -bs 32 --epochs 2 --state-dim 20
 ```
 # make a new log folder
 mkdir logs/CL_SC_CC
+cp config/srl_models_merged.yaml config/srl_models.yaml
 
 # Merged Dataset 
-python -m rl_baselines.train --algo distillation --srl-model srl_combination --env OmnirobotEnv-v0 --log-dir logs/CL_SC_CC --teacher-data-folder srl_zoo/data/merge_CC_SC -cc --distillation-training-set-size 40000 --epochs-distillation 20
+python -m rl_baselines.train --algo distillation --srl-model srl_combination --env OmnirobotEnv-v0 --log-dir logs/CL_SC_CC --teacher-data-folder srl_zoo/data/merge_CC_SC -cc --distillation-training-set-size 40000 --epochs-distillation 20 --latest
 ```
