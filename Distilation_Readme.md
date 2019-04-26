@@ -82,10 +82,10 @@ python -m replay.plots --log-dir /logs/circular/OmnirobotEnv-v0/srl_combination/
 
 ```
 # Dataset 1 (random reaching target)
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 600 --run-policy custom --log-custom-policy logs/simple-continual --short-episodes --save-path data/ --name reaching_on_policy -sc
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 600 --run-policy custom --log-custom-policy logs/*path2policy* --short-episodes --save-path data/ --name reaching_on_policy -sc
 
 # Dataset 2 (Circular task)
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy logs/circular-continual --save-path data/ --name circular_on_policy -cc
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy logs/*path2policy* --short-episodes --save-path data/ --name circular_on_policy -cc
 
 # Merge Datasets
 python -m environments.dataset_fusioner --merge data/circular_on_policy/ data/reaching_on_policy/ data/merge_CC_SC
