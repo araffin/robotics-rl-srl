@@ -31,6 +31,12 @@ VALID_MODELS = ["forward", "inverse", "reward", "priors", "episode-prior", "rewa
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
+def latestPath(path):
+    """
+    :param path: path to the log folder (defined in srl_model.yaml) (str)
+    :return: path to latest learned model in the same dataset folder (str)
+    """
+    return max([path + d for d in os.listdir(path) if os.path.isdir(path + "/" + d)],key=os.path.getmtime) + '/'
 
 def convertImagePath(args, path, record_id_start):
     """
@@ -95,7 +101,7 @@ def env_thread(args, thread_num, partition=True):
     generated_obs = None
 
     if args.run_policy == "custom":
-        args.log_dir = args.log_custom_policy
+        args.log_dir = latestPath(args.log_custom_policy)
         args.render = args.display
         args.plotting, args.action_proba = False, False
 
@@ -253,6 +259,7 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
+
     parser.add_argument('--short-episodes', action='store_true', default=False,
                         help='Generate short episodes (only 10 contacts with the target allowed).')
 
