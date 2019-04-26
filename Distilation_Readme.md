@@ -13,7 +13,7 @@
 ### 0 - Generate datasets for SRL (random policy)
 
 ```
-cd srl_zoo
+cd robotics-rl-srl
 # Dataset 1 (random reaching target)
 python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --simple-continual --num-episode 250 -f
 # Dataset 2 (Circular task)
@@ -42,12 +42,10 @@ cd ..
 cp config/srl_models.yaml config/srl_models_temp.yaml
 
 # Dataset 1 (random reaching target)
-cp config/srl_models_simple.yaml config/srl_models.yaml
-python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/simple/  --num-cpu 8 --simple-continual  --latest
+python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --srl-config-file config/srl_models_simple.yaml --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/simple/  --num-cpu 8 --simple-continual  --latest
 
 # Dataset 2 (Circular task)
-cp config/srl_models_circular.yaml config/srl_models.yaml
-python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circular/  --num-cpu 6 --circular-continual  --latest
+python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --srl-config-file config/srl_models_circular.yaml --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circular/  --num-cpu 6 --circular-continual  --latest
 
 # restore config file
 cp config/srl_models_temp.yaml config/srl_models.yaml
