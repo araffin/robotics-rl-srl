@@ -13,7 +13,7 @@
 ### 0 - Generate datasets for SRL (random policy)
 
 ```
-cd srl_zoo
+cd robotics-rl-srl
 # Dataset 1 (random reaching target)
 python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env OmnirobotEnv-v0 --simple-continual --num-episode 250 -f
 # Dataset 2 (Circular task)
