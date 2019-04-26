@@ -8,7 +8,7 @@ import json
 import numpy as np
 import tensorflow as tf
 import pickle
-from rl_baselines.utils import WrapFrameStack,computeMeanReward
+from rl_baselines.utils import WrapFrameStack,computeMeanReward,printGreen
 from stable_baselines.common import set_global_seeds
 from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
@@ -186,9 +186,6 @@ def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=1000,n
     episode_reward=np.array(episode_reward)
     envs.close()
     return episode_reward
-
-
-
 
 
 
