@@ -14,8 +14,13 @@ import pickle
 
 def dict2array(tasks,data):
     res=[]
+
     for t in tasks:
-        res.append(data[t])
+        if(t=='sc'):
+            max_reward=250
+        else:
+            max_reward=1850
+        res.append(data[t]/max_reward)
     res=np.array(res)
     return res
 
