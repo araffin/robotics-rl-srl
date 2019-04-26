@@ -278,6 +278,9 @@ def main():
     assert not (args.log_generative_model == '' and args.replay_generative_model == 'custom'), \
         "If using a custom policy, please specify a valid log folder for loading it."
 
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
+
     # this is done so seed 0 and 1 are different and not simply offset of the same datasets.
     args.seed = np.random.RandomState(args.seed).randint(int(1e10))
 
