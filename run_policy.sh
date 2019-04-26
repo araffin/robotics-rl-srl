@@ -9,9 +9,9 @@ env="OmnirobotEnv-v0"
 
 ### 0 - Generate datasets for SRL (random policy)
 # Dataset 1 (random reaching target)
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_simple --env $env --simple-continual --num-episode 250 -f
+python -m environments.dataset_generator --num-cpu 8 --name Omnibot_random_simple --env $env --simple-continual --num-episode 250 -f
 # Dataset 2 (Circular task)
-python -m environments.dataset_generator --num-cpu 6 --name Omnibot_random_circular --env $env --circular-continual --num-episode 250 -f
+python -m environments.dataset_generator --num-cpu 8 --name Omnibot_random_circular --env $env --circular-continual --num-episode 250 -f
 
 
 ### 1.1) Train SRL
@@ -31,21 +31,20 @@ python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-times
 
 # Dataset 2 (Circular task)
 cp config/srl_models_circular.yaml config/srl_models.yaml
-python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circular/  --num-cpu 6 --circular-continual  --latest
+python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circular/  --num-cpu 8 --circular-continual  --latest
 
 
 
 # Dataset 1 (random reaching target)
 
-
+# Dataset 1 (random reaching target)
 path2policy="logs/simple/OmnirobotEnv-v0/srl_combination/ppo2/"
-
 python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy $path2policy --short-episodes --save-path data/ --name reaching_on_policy -sc --latest
 
 
-path2policy="logs/circular/OmnirobotEnv-v0/srl_combination/ppo2/"
 # Dataset 2 (Circular task)
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy logs/*path2policy* --short-episodes --save-path data/ --name circular_on_policy -cc --latest
+path2policy="logs/circular/OmnirobotEnv-v0/srl_combination/ppo2/"
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy $path2policy --short-episodes --save-path data/ --name circular_on_policy -cc --latest
 
 # Merge Datasets
 
