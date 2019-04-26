@@ -101,7 +101,10 @@ def env_thread(args, thread_num, partition=True):
     generated_obs = None
 
     if args.run_policy == "custom":
-        args.log_dir = latestPath(args.log_custom_policy)
+        if args.latest:
+            args.log_dir = latestPath(args.log_custom_policy)
+        else:
+            args.log_dir = args.log_custom_policy
         args.render = args.display
         args.plotting, args.action_proba = False, False
 
@@ -242,6 +245,8 @@ def main():
                              '(random, localy pretrained ppo2, pretrained custom policy)')
     parser.add_argument('--log-custom-policy', type=str, default='',
                         help='Logs of the custom pretained policy to run for data collection')
+    parser.add_argument('--latest', action='store_true', default=False,
+                        help='load the latest learned model (location: args.log-custom-policy)')
     parser.add_argument('-rgm', '--replay-generative-model', type=str, default="", choices=['vae'],
                         help='Generative model to replay for generating a dataset (for Continual Learning purposes)')
     parser.add_argument('--log-generative-model', type=str, default='',
