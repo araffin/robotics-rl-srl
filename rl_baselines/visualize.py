@@ -224,18 +224,15 @@ def episodesEvalPlot(viz, win, folder, game, name, window=1, title=""):
 
     if len(result) == 0:
         return win
+    print(result.shape)
+   
+    y = np.mean(result[:, :, 1:], axis=2).T
 
 
-    y = np.mean(result[:,:-1,:], axis=2)
-
-    x = result[:,  -1,:][:,0][:,None]
-    x = x*np.ones(shape=y.shape)
-    print(y.shape,x.shape,name)
+    x = result[:, :, 0].T
 
     if y.shape[0] < window:
         return win
-
-    # y = movingAverage(y, window)
 
     if len(y) == 0:
         return win

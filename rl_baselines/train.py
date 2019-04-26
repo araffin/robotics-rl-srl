@@ -21,7 +21,7 @@ from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
 from rl_baselines.visualize import timestepsPlot, episodePlot,episodesEvalPlot
-from rl_baselines.cross_eval import episodeEval,policyCrossEval
+from rl_baselines.cross_eval import episodeEval
 from srl_zoo.utils import printGreen, printYellow
 from state_representation import SRLType
 from state_representation.registry import registered_srl
