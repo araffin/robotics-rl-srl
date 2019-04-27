@@ -73,8 +73,8 @@ class OmniRobotEnv(SRLGymEnv):
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
                  shape_reward=False, simple_continual_target=False, circular_continual_move=False,
-                 square_continual_move=False, eight_continual_move=False, short_episodes=False, env_rank=0,
-                 srl_pipe=None, **_):
+                 square_continual_move=False, eight_continual_move=False, short_episodes=False,
+                 state_init_override=None, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=RELATIVE_POS,
@@ -140,7 +140,8 @@ class OmniRobotEnv(SRLGymEnv):
                                                    square_continual_move=square_continual_move,
                                                    eight_continual_move=eight_continual_move,
                                                    output_size=[RENDER_WIDTH, RENDER_HEIGHT],
-                                                   random_target=self._random_target)
+                                                   random_target=self._random_target,
+                                                   state_init_override=state_init_override)
         else:
             # Initialize Baxter effector by connecting to the Gym bridge ROS node:
             self.context = zmq.Context()
@@ -196,7 +197,6 @@ class OmniRobotEnv(SRLGymEnv):
             action_to_step = action
             action_from_teacher = None
         else:
-            print('walker policy on!')
             action_to_step = action_grid_walker
             action_from_teacher = action
             assert self.action_space.contains(action_from_teacher)
@@ -306,7 +306,6 @@ class OmniRobotEnv(SRLGymEnv):
         # metadata that allow reading the observation image
         self.getEnvState()
         self.robot_pos = np.array([0, 0]) if state_override is None else state_override
-
         self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         if self.saver is not None:
             self.saver.reset(self.observation,

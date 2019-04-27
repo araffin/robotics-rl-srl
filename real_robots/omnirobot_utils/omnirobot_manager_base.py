@@ -5,7 +5,7 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 eight_continual_move=False, lambda_c=10.0, second_cam_topic=None):
+                 eight_continual_move=False, lambda_c=10.0, second_cam_topic=None, state_init_override=None):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,
@@ -19,6 +19,7 @@ class OmnirobotManagerBase(object):
         self.square_continual_move = square_continual_move
         self.eight_continual_move = eight_continual_move
         self.lambda_c = lambda_c
+        self.state_init_override = state_init_override
 
         # the abstract object for robot,
         # can be the real robot (Omnirobot class)

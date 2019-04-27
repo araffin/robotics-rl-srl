@@ -33,6 +33,7 @@ VALID_POLICIES = ['walker', 'random', 'ppo2', 'custom']
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
+
 def latestPath(path):
     """
     :param path: path to the log folder (defined in srl_model.yaml) (str)
@@ -40,15 +41,21 @@ def latestPath(path):
     """
     return max([path + d for d in os.listdir(path) if os.path.isdir(path + "/" + d)],key=os.path.getmtime) + '/'
 
+
 def walkerPath():
     """
 
     :return:
     """
     eps = 0.01
-    left = [2 for _ in range(100)] #np.linspace(MIN_X + eps, MAX_X - eps, 100, endpoint=True)
-    right = [3 for _ in range(100)] #np.linspace(MIN_Y + eps, MAX_Y - eps, 100, endpoint=True)
-    path = left + right #+ left + right
+    N_times = 14
+    path = []
+    left = [0 for _ in range(N_times)]
+    right = [1 for _ in range(N_times)]
+
+    for idx in range(N_times * 2):
+        path += left if idx % 2 == 0 else right
+        path += [3] if idx < N_times else [2]
 
     return path
 
@@ -128,6 +135,9 @@ def env_thread(args, thread_num, partition=True):
         env_kwargs["srl_model"] = env_kwargs_extra["srl_model"]
         env_kwargs["random_target"] = env_kwargs_extra.get("random_target", False)
         env_kwargs["use_srl"] = env_kwargs_extra.get("use_srl", False)
+        eps = 0.2
+        env_kwargs["state_init_override"] = np.array([MIN_X + eps, MAX_X - eps]) \
+            if args.run_policy == 'walker' else None
         if env_kwargs["use_srl"]:
             env_kwargs["srl_model_path"] = env_kwargs_extra.get("srl_model_path", None)
             env_kwargs["state_dim"] = getSRLDim(env_kwargs_extra.get("srl_model_path", None))
@@ -184,7 +194,7 @@ def env_thread(args, thread_num, partition=True):
             generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
             generated_obs = deNormalize(generated_obs)
 
-        obs = env.reset(generated_observation=generated_obs, state_override=state_init_for_walker)
+        obs = env.reset(generated_observation=generated_obs)
         done = False
         action_proba = None
         t = 0
@@ -203,8 +213,7 @@ def env_thread(args, thread_num, partition=True):
                 action = [model.getAction(obs, done)]
                 action_proba = model.getActionProba(obs, done)
                 if args.run_policy == 'walker':
-                    print("POLICY: walker policy to be used")
-                    action_walker = [walker_path[t]]
+                    action_walker = np.array(walker_path[t])
 
             # Random Policy
             else:
