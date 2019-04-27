@@ -183,23 +183,36 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
-    def step(self, action, generated_observation=None, action_proba=None):
+    def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
         """
-        :action: (int)
+
+        :param :action: (int)
+        :param generated_observation:
+        :param action_proba:
+        :param action_grid_walker: # Whether or not we want to override the action with the one from a grid walker
         :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
         """
+        if action_grid_walker is None:
+            action_to_step = action
+            action_from_teacher = None
+        else:
+            print('walker policy on!')
+            action_to_step = action_grid_walker
+            action_from_teacher = action
+            assert self.action_space.contains(action_from_teacher)
+
         if not self._is_discrete:
-            action = np.array(action)
-        assert self.action_space.contains(action)
+            action_to_step = np.array(action_to_step)
+        assert self.action_space.contains(action_to_step)
 
         # Convert int action to action in (x,y,z) space
         # serialize the action
-        if isinstance(action, np.ndarray):
-            self.action = action.tolist()
-        elif hasattr(action, 'dtype'):  # convert numpy type to python type
+        if isinstance(action_to_step, np.ndarray):
+            self.action = action_to_step.tolist()
+        elif hasattr(action_to_step, 'dtype'):  # convert numpy type to python type
             self.action = action.item()
         else:
-            self.action = action
+            self.action = action_to_step
 
         self._env_step_counter += 1
 
@@ -218,7 +231,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.render()
 
         if self.saver is not None:
-            self.saver.step(self.observation, action,
+            self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else action_to_step,
                             self.reward, done, self.getGroundTruth(), action_proba=action_proba)
         if self.use_srl:
             return self.getSRLState(self.observation), self.reward, done, {}
@@ -276,9 +289,11 @@ class OmniRobotEnv(SRLGymEnv):
         """
         return self.robot_pos
 
-    def reset(self, generated_observation=None):
+    def reset(self, generated_observation=None, state_override=None):
         """
         Reset the environment
+        :param generated_observation:
+        :param state_override:
         :return: (numpy ndarray) first observation of the env
         """
         self.episode_terminated = False
@@ -290,6 +305,8 @@ class OmniRobotEnv(SRLGymEnv):
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
         self.getEnvState()
+        self.robot_pos = np.array([0, 0]) if state_override is None else state_override
+
         self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         if self.saver is not None:
             self.saver.reset(self.observation,
