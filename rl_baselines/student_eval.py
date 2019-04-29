@@ -38,19 +38,24 @@ def srl_train(teacher_path):
 
 
 
-def DatasetGenerator(teacher_path,output_name,task_id,
-                            env_name='OmnirobotEnv-v0',  num_cpu=1,num_eps=600):
-    command_line = ['python','-m', 'environments.dataset_generator','--run-policy', 'custom']
+def DatasetGenerator(teacher_path,output_name,task_id,episode=-1,
+                            env_name='OmnirobotEnv-v0',  num_cpu=1,num_eps=200):
+    command_line = ['python','-m', 'environments.dataset_generator_student','--run-policy', 'custom']
     cpu_command  = ['--num-cpu',str(num_cpu)]
     name_command = ['--name',output_name]
     env_command  = ['--env',env_name]
     task_command = [task_id]
     episode_command= ['--num-episode', str(num_eps)]
     policy_command = ['--log-custom-policy',teacher_path]
+    if(episode==-1):
+        eps_policy = []
+    else:
+        eps_policy = ['--episode', str(episode)]
 
-    ok=subprocess.call(command_line + cpu_command +policy_command
-                       +name_command+env_command
-                       +task_command +episode_command)
+    command=command_line + cpu_command +policy_command+name_command+env_command+task_command +episode_command +eps_policy
+    if(task_id=='-sc' or task_id=='--simple-continual'):
+        command+=['--short-episodes']
+    ok=subprocess.call(command)
 
 
 
@@ -103,9 +108,17 @@ def mergeData(teacher_dataset_1,teacher_dataset_2,merge_dataset):
     subprocess.call(['python', '-m', 'environments.dataset_fusioner']+merge_command)
 
 
+
+def evaluateStudent():
+    #TODO
+
+    return
+
 if __name__ == '__main__':
     teacher_path='logs/circular/OmnirobotEnv-v0/srl_combination/ppo2/19-04-26_12h02_30/'
-    teacher_path = 'logs/ground_truth/ppo2/19-04-23_17h35_17/'
+    teacher_path = 'logs_copy/cc2sc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-26_20h17_37/'
+
+
     teacher_data_path='srl_zoo/data/circular_teacher/'
     task_id='-cc'
     output_name='circular_on_policy1'
@@ -117,4 +130,38 @@ if __name__ == '__main__':
     #mergeData(t1,t2,merge_path)
     #print(newPolicy([1,2,3],teacher_path))
     #trainStudent(teacher_data_path,task_id)
-    print(allPolicy(teacher_path)[1])
+
+
+    task_pro,task_learn='-sc','-cc'
+    teacher_pro   = 'logs_copy/cc2sc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-26_20h17_37/'
+    teacher_learn = 'logs_copy/cc2sc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-26_20h17_37/'
+
+    #The output path generate from the
+    teacher_pro_data   = 'srl_zoo/data/Untitled Folder/'+task_pro[1:]+'/'
+    teacher_learn_data = 'srl_zoo/data/Untitled Folder/'+task_learn[1:]+'/'
+
+
+
+    episodes, policy_path = allPolicy(teacher_path)
+
+
+    for eps in episodes:
+        print('OK')
+    #generate data from Professional teacher
+    DatasetGenerator(teacher_pro,teacher_pro_data,task_pro,episodes[5],num_eps=200)
+    #Generate data from learning teacher
+    DatasetGenerator(teacher_learn, teacher_learn_data, task_learn, episodes[5],num_eps=200)
+    #merge the data
+    mergeData(teacher_pro_data, teacher_learn_data,merge_path)
+
+    #train on the merged data
+    log_dir = 'logs/student/'
+    yaml_file ='config/srl_models.yaml'
+
+
+    trainStudent(merge_path, task_id, yaml_file=yaml_file, log_dir=log_dir,
+                 srl_model='srl_combination', env_name='OmnirobotEnv-v0',training_size=40000, epochs=20)
+
+    evaluateStudent(log_dir)
+
+

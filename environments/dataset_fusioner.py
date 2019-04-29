@@ -28,8 +28,13 @@ def main():
     if 'merge' in args:
         # let make sure everything is in order
         assert os.path.exists(args.merge[0]), "Error: dataset '{}' could not be found".format(args.merge[0])
-        assert (not os.path.exists(args.merge[2])), "Error: dataset '{}' already exists, cannot rename '{}' to '{}'"\
-                                                          .format(args.merge[2], args.merge[0], args.merge[2])
+        # assert (not os.path.exists(args.merge[2])), "Error: dataset '{}' already exists, cannot rename '{}' to '{}'"\
+        #                                                   .format(args.merge[2], args.merge[0], args.merge[2])
+        #############################################
+        #If the merge file exists already, delete it for the convenince of updating student's policy
+        if (os.path.exists(args.merge[2])):
+            shutil.rmtree(args.merge[2])
+        #############################################
         if 'continual_learning_labels' in args:
             assert args.continual_learning_labels[0] in CONTINUAL_LEARNING_LABELS \
                    and args.continual_learning_labels[1] in CONTINUAL_LEARNING_LABELS, \

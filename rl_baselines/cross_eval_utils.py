@@ -9,6 +9,7 @@ import numpy as np
 import tensorflow as tf
 import pickle
 from rl_baselines.utils import WrapFrameStack,computeMeanReward,printGreen
+from srl_zoo.utils import printRed
 from stable_baselines.common import set_global_seeds
 from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
@@ -32,7 +33,7 @@ def loadConfigAndSetup(log_dir):
     env_globals = json.load(open(log_dir + "env_globals.json", 'r'))
     train_args = json.load(open(log_dir + "args.json", 'r'))
     env_kwargs = {
-        "renders": False,
+        "renders":False,
         "shape_reward": False,  #TODO, since we dont use simple target, we should elimanate this choice?
         "action_joints": train_args["action_joints"],
         "is_discrete": not train_args["continuous_actions"],
@@ -147,7 +148,7 @@ def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=1000,n
 
     tf.reset_default_graph()
 
-    method = algo_class.load(model_path, args=algo_args)
+    method = algo_class.load(model_path,  args=algo_args)
 
     using_custom_vec_env = isinstance(envs, WrapFrameStack)
 
@@ -177,15 +178,18 @@ def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=1000,n
             last_n_done = n_done
             _, mean_reward = computeMeanReward(log_dir, n_done)
             episode_reward.append(mean_reward)
-            #printRed('Episode:{} Reward:{}'.format(n_done,mean_reward))
+            printRed('Episode:{} Reward:{}'.format(n_done,mean_reward))
     _, mean_reward = computeMeanReward(log_dir, n_done)
-    #printRed('Episode:{} Reward:{}'.format(n_done, mean_reward))
+    printRed('Episode:{} Reward:{}'.format(n_done, mean_reward))
 
     episode_reward.append(mean_reward)
 
     episode_reward=np.array(episode_reward)
     envs.close()
     return episode_reward
+
+
+
 
 
 
@@ -214,36 +218,27 @@ def latestPolicy(log_dir,algo_name):
         return 0,'',False
 
 def policyCrossEval(log_dir,task,num_timesteps=2000,num_cpu=1):
-    """
-    Given several tasks and a logdir, to evaluate the policy on different environments corresponding to the tasks
-    :param log_dir:
-    :param tasks:
-    :param num_timesteps:
-    :return:
-    """
-
     train_args, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(log_dir)
-
-    episode, model_path,OK=latestPolicy(log_dir,algo_name)
+    episode, model_path, OK = latestPolicy(log_dir, algo_name)
     env_kwargs = EnvsKwargs(task, env_kwargs)
 
-    OK=True
-    if(not OK):
-        #no latest model saved yet
-        return  None, False
+    OK = True
+    if (not OK):
+        # no latest model saved yet
+        return None, False
     else:
         pass
-    printGreen("Evaluation from the model saved at: {}, with evaluation time steps: {}".format(model_path, num_timesteps))
+    printGreen(
+        "Evaluation from the model saved at: {}, with evaluation time steps: {}".format(model_path, num_timesteps))
 
-    log_dir, environment, algo_args = createEnv(log_dir, train_args, algo_name, algo_class, env_kwargs,num_cpu=num_cpu)
+    log_dir, environment, algo_args = createEnv(log_dir, train_args, algo_name, algo_class, env_kwargs, num_cpu=num_cpu)
 
+    reward = policyEval(environment, model_path, log_dir, algo_class, algo_args, num_timesteps, num_cpu)
 
-    reward=policyEval(environment, model_path, log_dir,  algo_class, algo_args, num_timesteps,num_cpu)
-
-
-    #Just a trick to save the episode number of the reward,but need a little bit more space to store
-    reward=np.append(episode,reward)
+    # Just a trick to save the episode number of the reward,but need a little bit more space to store
+    reward = np.append(episode, reward)
     return reward, True
+
 
 
 

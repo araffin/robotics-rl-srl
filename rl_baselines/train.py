@@ -166,11 +166,17 @@ def callback(_locals, _globals):
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
-        # if n_episodes >0 and n_episodes%100==0:
-        #     # Cross evaluation for all tasks:
-        #     ALGO.save(LOG_DIR + ALGO_NAME +"_"+str(n_episodes)+ "_model.pkl", _locals)
-        #     printYellow(EVAL_TASK)
-        #     episodeEval(LOG_DIR, EVAL_TASK)
+        if n_episodes >0 :
+            if (n_episodes>=70 and n_episodes%40==0):
+                ALGO.save(LOG_DIR + ALGO_NAME +"_"+str(n_episodes)+ "_model.pkl", _locals)
+                printYellow(EVAL_TASK)
+                episodeEval(LOG_DIR, EVAL_TASK)
+
+            if(n_episodes>=800 and n_episodes%200==0):
+                ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
+                printYellow(EVAL_TASK)
+                episodeEval(LOG_DIR, EVAL_TASK)
+
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
@@ -179,8 +185,8 @@ def callback(_locals, _globals):
                                    is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
-        # win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
-        #                                 title=PLOT_TITLE +" [Cross Evaluation]")
+        win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
+                                         title=PLOT_TITLE +" [Cross Evaluation]")
     n_steps += 1
     return True
 
@@ -372,8 +378,8 @@ def main():
     
     if args.load_rl_model_path is not None:
         #use a small learning rate
-        print("use a small learning rate: {:f}".format(1.0e-4))
-        hyperparams["learning_rate"] = lambda f: f * 1.0e-4
+        print("use a small learning rate: {:f}".format(1.0e-8))
+        hyperparams["learning_rate"] = lambda f: f * 1.0e-8
         
     # Train the agent
     # episodeEval(LOG_DIR,EVAL_TASK)

@@ -20,7 +20,8 @@ def dict2array(tasks,data):
             max_reward=250
         else:
             max_reward=1850
-        res.append(data[t]/max_reward)
+        data[t][:,1:]=data[t][:,1:]/max_reward
+        res.append(data[t])
     res=np.array(res)
     return res
 
@@ -39,9 +40,9 @@ def episodeEval(log_dir, tasks,num_timesteps=1000,num_cpu=1):
     file_name=log_dir+'episode_eval.npy'
     np.save(file_name, eval_reward)
 
-# if __name__ == '__main__':
-#
-#     log_dir = 'logs/OmnirobotEnv-v0/srl_combination/ppo2/19-04-24_10h36_52/'
-#     tasks=['cc','sc','sqc']
-#     episodeEval(log_dir, tasks, num_timesteps=800, num_cpu=1)
+if __name__ == '__main__':
+
+    log_dir = 'logs_copy/cc2sc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-26_20h17_37/'
+    tasks=['cc','sc','sqc']
+    episodeEval(log_dir, tasks, num_timesteps=800, num_cpu=1)
 
