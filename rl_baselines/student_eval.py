@@ -3,8 +3,9 @@ import glob
 import numpy as np
 import os
 import subprocess
-import yaml
+# import yaml
 
+from environments.registry import registered_env
 from rl_baselines.cross_eval_utils import loadConfigAndSetup, latestPolicy
 from srl_zoo.utils import printRed, printYellow
 from state_representation.registry import registered_srl
@@ -13,8 +14,8 @@ CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
 
 
-def DatasetGenerator(teacher_path, output_name, task_id, episode=-1,
-                            env_name='OmnirobotEnv-v0',  num_cpu=1, num_eps=200):
+def DatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='OmnirobotEnv-v0',  num_cpu=1,
+                     num_eps=200):
     """
 
     :param teacher_path:
@@ -26,21 +27,21 @@ def DatasetGenerator(teacher_path, output_name, task_id, episode=-1,
     :param num_eps:
     :return:
     """
-    command_line = ['python','-m', 'environments.dataset_generator_student','--run-policy', 'custom']
-    cpu_command = ['--num-cpu',str(num_cpu)]
-    name_command = ['--name',output_name]
+    command_line = ['python', '-m', 'environments.dataset_generator_student', '--run-policy', 'custom']
+    cpu_command = ['--num-cpu', str(num_cpu)]
+    name_command = ['--name', output_name]
     save_path = ['--save-path', "data/"]
-    env_command = ['--env',env_name]
-    task_command = ["-sc" if task_id is "SC" else '-cc']
+    env_command = ['--env', env_name]
+    task_command = ["-sc" if task_id == "SC" else '-cc']
     episode_command = ['--num-episode', str(num_eps)]
-    policy_command = ['--log-custom-policy',teacher_path]
-    if(episode==-1):
+    policy_command = ['--log-custom-policy', teacher_path]
+    if episode == -1:
         eps_policy = []
     else:
         eps_policy = ['--episode', str(episode)]
 
-    command=command_line + cpu_command +policy_command + name_command + env_command + task_command + \
-            episode_command + eps_policy + save_path + ['-f']
+    command = command_line + cpu_command + policy_command + name_command + env_command + task_command + \
+        episode_command + eps_policy + save_path + ['-f']
 
     if task_id == 'SC':
         command += ['--short-episodes']
@@ -50,37 +51,48 @@ def DatasetGenerator(teacher_path, output_name, task_id, episode=-1,
 
 
 def allPolicy(log_dir):
+    """
+
+    :param log_dir:
+    :return:
+    """
     train_args, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(log_dir)
-    files = glob.glob(os.path.join(log_dir+algo_name+'_*_model.pkl'))
+    files = glob.glob(os.path.join(log_dir + algo_name + '_*_model.pkl'))
     files_list = []
     for file in files:
         eps = int((file.split('_')[-2]))
-        files_list.append((eps,file))
+        files_list.append((eps, file))
 
     def sortFirst(val):
+        """
+
+        :param val:
+        :return:
+        """
         return val[0]
 
     files_list.sort(key=sortFirst)
     res = np.array(files_list)
-    #print("res: ", res)
-    return res[:,0], res[:,1]
+    return res[:, 0], res[:, 1]
 
 
 def newPolicy(episodes, file_path):
-    train_args, algo_name, algo_class, srl_model_path, env_kwargs=loadConfigAndSetup(file_path)
-    episode, model_path,OK=latestPolicy(file_path,algo_name)
-    if(episode in episodes):
-        return -1,'', False
+    """
+
+    :param episodes:
+    :param file_path:
+    :return:
+    """
+    train_args, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(file_path)
+    episode, model_path, OK = latestPolicy(file_path, algo_name)
+    if episode in episodes:
+        return -1, '', False
     else:
-        return episode, model_path,True
+        return episode, model_path, True
 
 
-def trainStudent(teacher_data_path, task_id,
-                 yaml_file='config/srl_models.yaml',
-                 log_dir='logs/',
-                 srl_model='srl_combination',
-                 env_name='OmnirobotEnv-v0',
-                 training_size=40000, epochs=20):
+def trainStudent(teacher_data_path, task_id, yaml_file='config/srl_models.yaml', log_dir='logs/',
+                 srl_model='srl_combination', env_name='OmnirobotEnv-v0', training_size=40000, epochs=20):
     """
 
     :param teacher_data_path:
@@ -93,33 +105,27 @@ def trainStudent(teacher_data_path, task_id,
     :param epochs:
     :return:
     """
-    command_line = ['python','-m', 'rl_baselines.train', '--latest', '--algo', 'distillation', '--log-dir',log_dir]
-    srl_command = ['--srl-model',srl_model]
+    command_line = ['python', '-m', 'rl_baselines.train', '--latest', '--algo', 'distillation', '--log-dir', log_dir]
+    srl_command = ['--srl-model', srl_model]
     env_command = ['--env', env_name]
     policy_command = ['--teacher-data-folder', teacher_data_path]
-    size_epochs = ['--distillation-training-set-size',str(training_size),'--epochs-distillation',str(epochs)]
+    size_epochs = ['--distillation-training-set-size', str(training_size), '--epochs-distillation', str(epochs)]
     task_command = ["-sc" if task_id is "SC" else '-cc']
     ok = subprocess.call(command_line + srl_command
-                         + env_command + policy_command + size_epochs + task_command +['--srl-config-file',yaml_file])
+                         + env_command + policy_command + size_epochs + task_command + ['--srl-config-file', yaml_file])
 
 
-def mergeData(teacher_dataset_1,teacher_dataset_2,merge_dataset):
-    merge_command=['--merge',teacher_dataset_1,teacher_dataset_2,merge_dataset]
-    subprocess.call(['python', '-m', 'environments.dataset_fusioner']+merge_command)
-
-
-def evaluateStudent():
-    #TODO
-
-    return
+def mergeData(teacher_dataset_1, teacher_dataset_2, merge_dataset):
+    merge_command = ['--merge', teacher_dataset_1, teacher_dataset_2, merge_dataset]
+    subprocess.call(['python', '-m', 'environments.dataset_fusioner'] + merge_command)
 
 
 def main():
     # Global variables for callback
-    global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz
-    global SAVE_INTERVAL, EPISODE_WINDOW, MIN_EPISODES_BEFORE_SAVE
     parser = argparse.ArgumentParser(description="Evaluation script for distillation from two teacher policies")
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
+    parser.add_argument('--env', type=str, help='environment ID', default='OmnirobotEnv-v0',
+                        choices=list(registered_env.keys()))
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--log-dir-teacher-one', default='/tmp/gym/', type=str,
@@ -145,16 +151,16 @@ def main():
                         help='SRL model to use for the student RL policy')
     parser.add_argument('--epochs-teacher-datasets', type=int, default=30, metavar='N',
                         help='number of epochs for generating both RL teacher datasets (default: 30)')
-    parser.add_argument('--num-iteration', type=int, default=15,
+    parser.add_argument('--num-iteration', type=int, default=1,
                         help='number of time each algorithm should be run the eval (N seeds).')
 
     args, unknown = parser.parse_known_args()
 
     if 'continual_learning_labels' in args:
-        assert args.continual_learning_labels[0] in CONTINUAL_LEARNING_LABELS \
-               and args.continual_learning_labels[1] in CONTINUAL_LEARNING_LABELS, \
-            "Please specify a valid Continual learning label to each dataset to be used for RL distillation !"
-
+        assert args.continual_learning_labels[0] in CONTINUAL_LEARNING_LABELS and args.continual_learning_labels[1] \
+               in CONTINUAL_LEARNING_LABELS, "Please specify a valid Continual learning label to each dataset to be " \
+                                             "used for RL distillation !"
+    print(args.continual_learning_labels)
     assert os.path.exists(args.srl_config_file_one), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file_one)
     assert os.path.exists(args.srl_config_file_two), \
@@ -164,37 +170,37 @@ def main():
     assert os.path.exists(args.log_dir_teacher_two), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file_two)
 
-    with open(args.srl_config_file_one, 'rb') as f:
-        model_one = yaml.load(f)
+    # with open(args.srl_config_file_one, 'rb') as f:
+    #    model_one = yaml.load(f)
 
-    with open(args.srl_config_file_two, 'rb') as f:
-        model_two = yaml.load(f)
+    # with open(args.srl_config_file_two, 'rb') as f:
+    #    model_two = yaml.load(f)
 
     teacher_pro = args.log_dir_teacher_one
     teacher_learn = args.log_dir_teacher_two
 
-    #The output path generate from the
+    # The output path generate from the
     teacher_pro_data = args.continual_learning_labels[0] + '/'
     teacher_learn_data = args.continual_learning_labels[1] + '/'
     merge_path = "data/on_policy_merged"
 
     print(teacher_pro_data, teacher_learn_data)
     episodes, policy_path = allPolicy(teacher_learn)
-    student_path = args.log_dir_student  #"+ '/' + args.student_srl_model + "/distillation/"
 
     rewards_at_episode = {}
     for eps in episodes[:2]:
+        student_path = args.log_dir_student
         printRed("\n\nEvaluation at episode " + str(eps))
         # generate data from Professional teacher
         printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
 
-        DatasetGenerator(teacher_pro, teacher_pro_data, args.continual_learning_labels[0],
-                         num_eps=args.epochs_teacher_datasets, episode=-1)
+        DatasetGenerator(teacher_pro, teacher_pro_data, task_id=args.continual_learning_labels[0],
+                         num_eps=args.epochs_teacher_datasets, episode=-1, env_name=args.env)
 
         # Generate data from learning teacher
         printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[1])
-        DatasetGenerator(teacher_learn, teacher_learn_data, args.continual_learning_labels[1], eps,
-                         num_eps=args.epochs_teacher_datasets)
+        DatasetGenerator(teacher_learn, teacher_learn_data, task_id=args.continual_learning_labels[1], episode=eps,
+                         num_eps=args.epochs_teacher_datasets, env_name=args.env)
 
         # # merge the data
         mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path)
@@ -206,17 +212,19 @@ def main():
         # Train a policy with distillation on the merged teacher's datasets
         trainStudent(merge_path, args.continual_learning_labels[1], yaml_file=args.srl_config_file_one,
                      log_dir=args.log_dir_student,
-                     srl_model=args.student_srl_model, env_name='OmnirobotEnv-v0',
+                     srl_model=args.student_srl_model, env_name=args.env,
                      training_size=args.distillation_training_set_size, epochs=args.epochs_distillation)
-        latest_student_path = max([student_path + "/" + d for d in os.listdir(student_path) if os.path.isdir(student_path + "/" + d)],
-            key=os.path.getmtime)
+        student_path += args.env + '/' + args.student_srl_model + "/distillation/"
+        latest_student_path = max([student_path + "/" + d for d in os.listdir(student_path)
+                                   if os.path.isdir(student_path + "/" + d)], key=os.path.getmtime) + '/'
         rewards = {}
         printRed(latest_student_path)
         for task_label in ["-sc", "-cc"]:
             rewards[task_label] = []
+
             for seed_i in range(args.num_iteration):
-                printYellow("\nEvaluating student on task: " + task_label +" for seed: " + str(seed_i))
-                command_line_enjoy_student = ['python','-m', 'replay.enjoy_baselines','--num-timesteps', '251',
+                printYellow("\nEvaluating student on task: " + task_label + " for seed: " + str(seed_i))
+                command_line_enjoy_student = ['python', '-m', 'replay.enjoy_baselines', '--num-timesteps', '251',
                                               '--log-dir', latest_student_path, task_label, "--seed", str(seed_i)]
                 ok = subprocess.check_output(command_line_enjoy_student)
                 ok = ok.decode('utf-8')
@@ -226,7 +234,7 @@ def main():
                 idx_after = ok.find(str_after)
                 seed_reward = float(ok[idx_before: idx_after])
                 rewards[task_label].append(seed_reward)
-        print("rewards at eps : ", rewards)
+        print("rewards at eps ", eps, ": ", rewards)
         rewards_at_episode[eps] = rewards
     print("All rewards: ", rewards_at_episode)
 

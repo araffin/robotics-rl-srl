@@ -167,14 +167,15 @@ def callback(_locals, _globals):
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
-        if n_episodes >0 :
-            if (n_episodes>=70 and n_episodes%40==0):
-                ALGO.save(LOG_DIR + ALGO_NAME +"_"+str(n_episodes)+ "_model.pkl", _locals)
+
+        if n_episodes > 0:
+            if n_episodes >= 70 and n_episodes % 40 == 0:
+                ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
                 printYellow(EVAL_TASK)
                 if CROSS_EVAL:
                     episodeEval(LOG_DIR, EVAL_TASK)
 
-            if(n_episodes>=800 and n_episodes%200==0):
+            if n_episodes >= 800 and n_episodes % 200 == 0:
                 ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
                 printYellow(EVAL_TASK)
                 if CROSS_EVAL:
@@ -253,7 +254,6 @@ def main():
     parser.add_argument('--perform-cross-evaluation-cc', action='store_true', default=False,
                         help='A cross evaluation from the latest stored model to all tasks')
 
-
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
@@ -296,7 +296,6 @@ def main():
     MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
     CROSS_EVAL = args.perform_cross_evaluation_cc
 
-
     if args.no_vis:
         viz = False
 
@@ -304,7 +303,6 @@ def main():
     algo = algo_class()
     ALGO = algo
     
-
     # if callback frequency needs to be changed
     LOG_INTERVAL = algo.LOG_INTERVAL
     SAVE_INTERVAL = algo.SAVE_INTERVAL
@@ -324,8 +322,8 @@ def main():
     # Random init position for button
     env_kwargs["random_target"] = args.random_target
 
-    #If in simple continual scenario, then the target should be initialized randomly.
-    if args.simple_continual == True:
+    # If in simple continual scenario, then the target should be initialized randomly.
+    if args.simple_continual is True:
         env_kwargs["random_target"] = True
 
     # Allow up action
@@ -382,7 +380,7 @@ def main():
     hyperparams = algo.parserHyperParam(hyperparams)
     
     if args.load_rl_model_path is not None:
-        #use a small learning rate
+        # use a small learning rate
         print("use a small learning rate: {:f}".format(1.0e-8))
         hyperparams["learning_rate"] = lambda f: f * 1.0e-8
         

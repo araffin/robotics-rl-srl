@@ -104,7 +104,6 @@ def loadConfigAndSetup(load_args):
     return train_args, load_path, algo_name, algo_class, srl_model_path, env_kwargs
 
 
-
 def convertImagePath(args, path, record_id_start):
     """
     Used to convert an image path, from one location, to another
