@@ -1,5 +1,7 @@
 import argparse
+import datetime
 import glob
+import json
 import numpy as np
 import os
 import subprocess
@@ -188,7 +190,7 @@ def main():
     episodes, policy_path = allPolicy(teacher_learn)
 
     rewards_at_episode = {}
-    for eps in episodes[:2]:
+    for eps in episodes:
         student_path = args.log_dir_student
         printRed("\n\nEvaluation at episode " + str(eps))
         # generate data from Professional teacher
@@ -218,7 +220,7 @@ def main():
         latest_student_path = max([student_path + "/" + d for d in os.listdir(student_path)
                                    if os.path.isdir(student_path + "/" + d)], key=os.path.getmtime) + '/'
         rewards = {}
-        printRed(latest_student_path)
+        printRed("\nSaving the student at path: " + latest_student_path)
         for task_label in ["-sc", "-cc"]:
             rewards[task_label] = []
 
@@ -237,6 +239,13 @@ def main():
         print("rewards at eps ", eps, ": ", rewards)
         rewards_at_episode[eps] = rewards
     print("All rewards: ", rewards_at_episode)
+    json_dict = json.dumps(rewards_at_episode)
+    json_dict_name = args.log_dir_student + "/reward_at_episode_" + \
+                     datetime.datetime.now().strftime("%y-%m-%d_%Hh%M_%S") + '.json'
+    f = open(json_dict_name, "w")
+    f.write(json_dict)
+    f.close()
+    printRed("\nSaving the evalation at path: " + json_dict_name)
 
 
 if __name__ == '__main__':

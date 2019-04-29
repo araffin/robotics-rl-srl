@@ -36,6 +36,7 @@ PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 EVAL_TASK=['cc','sc','sqc']
 CROSS_EVAL = False
+EPISODE_WINDOW_DISTILLATION_WIN = 100
 
 viz = None
 n_steps = 0
@@ -168,14 +169,14 @@ def callback(_locals, _globals):
             printGreen("Saving new best model")
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
 
-        if n_episodes > 0:
-            if n_episodes >= 70 and n_episodes % 40 == 0:
-                ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
-                printYellow(EVAL_TASK)
-                if CROSS_EVAL:
-                    episodeEval(LOG_DIR, EVAL_TASK)
+        if n_episodes >= 0:
+            # if n_episodes >= 70 and n_episodes % 40 == 0:
+            #     ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
+            #     printYellow(EVAL_TASK)
+            #     if CROSS_EVAL:
+            #         episodeEval(LOG_DIR, EVAL_TASK)
 
-            if n_episodes >= 800 and n_episodes % 200 == 0:
+            if n_episodes % EPISODE_WINDOW_DISTILLATION_WIN == 0:
                 ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
                 printYellow(EVAL_TASK)
                 if CROSS_EVAL:
@@ -253,6 +254,9 @@ def main():
                         help='Limit size (number of samples) of the training set (default: -1)')
     parser.add_argument('--perform-cross-evaluation-cc', action='store_true', default=False,
                         help='A cross evaluation from the latest stored model to all tasks')
+    parser.add_argument('--eval-episode-window', type=int, default=100, metavar='N',
+                        help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
+
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -295,6 +299,8 @@ def main():
     EPISODE_WINDOW = args.episode_window
     MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
     CROSS_EVAL = args.perform_cross_evaluation_cc
+    EPISODE_WINDOW_DISTILLATION_WIN = args.eval_episode_window
+    print("EPISODE_WINDOW_DISTILLATION_WIN: ", EPISODE_WINDOW_DISTILLATION_WIN)
 
     if args.no_vis:
         viz = False

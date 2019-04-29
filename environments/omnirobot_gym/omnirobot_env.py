@@ -308,7 +308,6 @@ class OmniRobotEnv(SRLGymEnv):
                  self.simple_continual_target) or \
                 (self._env_step_counter > MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES and self.short_episodes and
                  self.circular_continual_move):
-            print(self.simple_continual_target, self.circular_continual_move)
             return True
 
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001:  # reach the target
