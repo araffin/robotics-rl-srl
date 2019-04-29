@@ -35,6 +35,7 @@ ENV_NAME = ""
 PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 EVAL_TASK=['cc','sc','sqc']
+CROSS_EVAL = False
 
 viz = None
 n_steps = 0
@@ -170,13 +171,14 @@ def callback(_locals, _globals):
             if (n_episodes>=70 and n_episodes%40==0):
                 ALGO.save(LOG_DIR + ALGO_NAME +"_"+str(n_episodes)+ "_model.pkl", _locals)
                 printYellow(EVAL_TASK)
-                episodeEval(LOG_DIR, EVAL_TASK)
+                if CROSS_EVAL:
+                    episodeEval(LOG_DIR, EVAL_TASK)
 
             if(n_episodes>=800 and n_episodes%200==0):
                 ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
                 printYellow(EVAL_TASK)
-                episodeEval(LOG_DIR, EVAL_TASK)
-
+                if CROSS_EVAL:
+                    episodeEval(LOG_DIR, EVAL_TASK)
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
@@ -185,8 +187,9 @@ def callback(_locals, _globals):
                                    is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
-        win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
-                                         title=PLOT_TITLE +" [Cross Evaluation]")
+        if CROSS_EVAL:
+            win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
+                                            title=PLOT_TITLE + " [Cross Evaluation]")
     n_steps += 1
     return True
 
@@ -247,8 +250,9 @@ def main():
                         help='number of epochs to train for distillation(default: 30)')
     parser.add_argument('--distillation-training-set-size', type=int, default=-1,
                         help='Limit size (number of samples) of the training set (default: -1)')
-    parser.add_argument('--eval-tasks', type=str, nargs='+', default=['cc','sqc','sc'],
+    parser.add_argument('--perform-cross-evaluation-cc', action='store_true', default=False,
                         help='A cross evaluation from the latest stored model to all tasks')
+
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -290,6 +294,7 @@ def main():
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
     MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
+    CROSS_EVAL = args.perform_cross_evaluation_cc
 
 
     if args.no_vis:
