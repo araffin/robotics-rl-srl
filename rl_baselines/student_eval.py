@@ -46,6 +46,7 @@ def DatasetGenerator(teacher_path, output_name, task_id, episode=-1,
         command += ['--short-episodes']
 
     ok = subprocess.call(command)
+    assert ok == 0, "Teacher dataset for task " + task_id + " was not generated !"
 
 
 def allPolicy(log_dir):
@@ -61,7 +62,7 @@ def allPolicy(log_dir):
 
     files_list.sort(key=sortFirst)
     res = np.array(files_list)
-    print("res: ", res)
+    #print("res: ", res)
     return res[:,0], res[:,1]
 
 
@@ -117,7 +118,7 @@ def main():
     # Global variables for callback
     global ENV_NAME, ALGO, ALGO_NAME, LOG_INTERVAL, VISDOM_PORT, viz
     global SAVE_INTERVAL, EPISODE_WINDOW, MIN_EPISODES_BEFORE_SAVE
-    parser = argparse.ArgumentParser(description="Eval script for distillation from two teacher policies")
+    parser = argparse.ArgumentParser(description="Evaluation script for distillation from two teacher policies")
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--episode_window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
@@ -144,6 +145,8 @@ def main():
                         help='SRL model to use for the student RL policy')
     parser.add_argument('--epochs-teacher-datasets', type=int, default=30, metavar='N',
                         help='number of epochs for generating both RL teacher datasets (default: 30)')
+    parser.add_argument('--num-iteration', type=int, default=15,
+                        help='number of time each algorithm should be run the eval (N seeds).')
 
     args, unknown = parser.parse_known_args()
 
@@ -177,16 +180,19 @@ def main():
 
     print(teacher_pro_data, teacher_learn_data)
     episodes, policy_path = allPolicy(teacher_learn)
+    student_path = args.log_dir_student  #"+ '/' + args.student_srl_model + "/distillation/"
 
-    for eps in [120]:  #episodes:
+    rewards_at_episode = {}
+    for eps in episodes[:2]:
+        printRed("\n\nEvaluation at episode " + str(eps))
         # generate data from Professional teacher
-        printYellow("\nGenerating on policy for optimal teacher :" + args.continual_learning_labels[0])
+        printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
 
         DatasetGenerator(teacher_pro, teacher_pro_data, args.continual_learning_labels[0],
                          num_eps=args.epochs_teacher_datasets, episode=-1)
 
         # Generate data from learning teacher
-        printYellow("\nGenerating on policy for optimal teacher :" + args.continual_learning_labels[1])
+        printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[1])
         DatasetGenerator(teacher_learn, teacher_learn_data, args.continual_learning_labels[1], eps,
                          num_eps=args.epochs_teacher_datasets)
 
@@ -202,8 +208,27 @@ def main():
                      log_dir=args.log_dir_student,
                      srl_model=args.student_srl_model, env_name='OmnirobotEnv-v0',
                      training_size=args.distillation_training_set_size, epochs=args.epochs_distillation)
-
-        # evaluateStudent(log_dir)
+        latest_student_path = max([student_path + "/" + d for d in os.listdir(student_path) if os.path.isdir(student_path + "/" + d)],
+            key=os.path.getmtime)
+        rewards = {}
+        printRed(latest_student_path)
+        for task_label in ["-sc", "-cc"]:
+            rewards[task_label] = []
+            for seed_i in range(args.num_iteration):
+                printYellow("\nEvaluating student on task: " + task_label +" for seed: " + str(seed_i))
+                command_line_enjoy_student = ['python','-m', 'replay.enjoy_baselines','--num-timesteps', '251',
+                                              '--log-dir', latest_student_path, task_label, "--seed", str(seed_i)]
+                ok = subprocess.check_output(command_line_enjoy_student)
+                ok = ok.decode('utf-8')
+                str_before = "Mean reward: "
+                str_after = "\npybullet"
+                idx_before = ok.find(str_before) + len(str_before)
+                idx_after = ok.find(str_after)
+                seed_reward = float(ok[idx_before: idx_after])
+                rewards[task_label].append(seed_reward)
+        print("rewards at eps : ", rewards)
+        rewards_at_episode[eps] = rewards
+    print("All rewards: ", rewards_at_episode)
 
 
 if __name__ == '__main__':
