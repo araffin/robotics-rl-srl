@@ -254,7 +254,7 @@ def main():
                         help='Limit size (number of samples) of the training set (default: -1)')
     parser.add_argument('--perform-cross-evaluation-cc', action='store_true', default=False,
                         help='A cross evaluation from the latest stored model to all tasks')
-    parser.add_argument('--eval-episode-window', type=int, default=100, metavar='N',
+    parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
                         help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
 
 
