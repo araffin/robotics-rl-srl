@@ -5,6 +5,7 @@ import json
 import numpy as np
 import os
 import subprocess
+import time
 # import yaml
 
 from environments.registry import registered_env
@@ -35,7 +36,11 @@ def DatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='O
     save_path = ['--save-path', "data/"]
     env_command = ['--env', env_name]
     task_command = ["-sc" if task_id == "SC" else '-cc']
-    episode_command = ['--num-episode', str(num_eps)]
+    if task_id == 'SC':
+        episode_command = ['--num-episode', str(400)]
+    else:
+        episode_command = ['--num-episode', str(60)]
+
     policy_command = ['--log-custom-policy', teacher_path]
     if episode == -1:
         eps_policy = []
@@ -43,7 +48,7 @@ def DatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='O
         eps_policy = ['--episode', str(episode)]
 
     command = command_line + cpu_command + policy_command + name_command + env_command + task_command + \
-        episode_command + eps_policy + save_path + ['-f']
+        episode_command + eps_policy + save_path + ['-f'] + ['--seed', str(2)]
 
     if task_id == 'SC':
         command += ['--short-episodes']
@@ -75,6 +80,7 @@ def allPolicy(log_dir):
 
     files_list.sort(key=sortFirst)
     res = np.array(files_list)
+    print(res)
     return res[:, 0], res[:, 1]
 
 
@@ -155,6 +161,8 @@ def main():
                         help='number of epochs for generating both RL teacher datasets (default: 30)')
     parser.add_argument('--num-iteration', type=int, default=1,
                         help='number of time each algorithm should be run the eval (N seeds).')
+    parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
+                        help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
 
     args, unknown = parser.parse_known_args()
 
@@ -190,14 +198,25 @@ def main():
     episodes, policy_path = allPolicy(teacher_learn)
 
     rewards_at_episode = {}
-    for eps in episodes:
+    episodes_to_test = [e for e in episodes if (int(e) < 2000 and int(e) % 200 == 0) or
+                        (int(e) > 2000 and int(e) % 1000 == 0)]
+    #[e for e in episodes if int(e) % args.eval_episode_window == 0]
+
+    # generate data from Professional teacher
+    printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
+
+    DatasetGenerator(teacher_pro, args.continual_learning_labels[0] + '_copy/', task_id=args.continual_learning_labels[0],
+                     num_eps=args.epochs_teacher_datasets, episode=-1, env_name=args.env)
+    print("Eval on eps list: ", episodes_to_test)
+    for eps in episodes_to_test:
         student_path = args.log_dir_student
         printRed("\n\nEvaluation at episode " + str(eps))
-        # generate data from Professional teacher
-        printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
 
-        DatasetGenerator(teacher_pro, teacher_pro_data, task_id=args.continual_learning_labels[0],
-                         num_eps=args.epochs_teacher_datasets, episode=-1, env_name=args.env)
+        # Use a copy of the optimal teacher
+        ok = subprocess.call(
+            ['cp', '-r', 'data/' + args.continual_learning_labels[0] + '_copy/', 'data/' + teacher_pro_data])
+        assert ok == 0
+        time.sleep(10)
 
         # Generate data from learning teacher
         printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[1])
@@ -210,6 +229,7 @@ def main():
         ok = subprocess.call(
             ['cp', '-r', merge_path, 'srl_zoo/' + merge_path])
         assert ok == 0
+        time.sleep(10)
 
         # Train a policy with distillation on the merged teacher's datasets
         trainStudent(merge_path, args.continual_learning_labels[1], yaml_file=args.srl_config_file_one,
