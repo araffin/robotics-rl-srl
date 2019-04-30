@@ -422,6 +422,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         self._random_target = self.new_args["random_target"]
         if self.new_args["simple_continual_target"]:
             self._random_target = True
+        self.state_init_override = self.new_args['state_init_override']
         self.resetEpisode()  # for a random target initial position
 
     def resetEpisode(self):
@@ -433,7 +434,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         if self.second_cam_topic is not None:
             assert NotImplementedError
         # Env reset
-        random_init_position = self.sampleRobotInitalPosition()
+        random_init_position = self.sampleRobotInitalPosition() if self.state_init_override is None \
+            else self.state_init_override
         self.robot.setRobotCmd(
             random_init_position[0], random_init_position[1], 0)
 

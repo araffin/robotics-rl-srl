@@ -19,6 +19,7 @@ VALIDATION_SIZE = 0.2  # 20% of training data for validation
 MAX_BATCH_SIZE_GPU = 256  # For plotting, max batch_size before having memory issues
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
+FINE_TUNING = False
 
 CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
@@ -129,8 +130,7 @@ class PolicyDistillationModel(BaseRLObject):
             T = th.from_numpy(np.array([TEMPERATURES[labels[idx_elm]] for idx_elm in range(BATCH_SIZE)])).cuda().float()
 
             KD_loss = F.softmax(th.div(teacher_outputs.transpose(1, 0), T), dim=1) * \
-                      th.log((F.softmax(th.div(teacher_outputs.transpose(1, 0), T), dim=1) / F.softmax(
-                          th.div(outputs.transpose(1, 0), T), dim=1)))
+                      th.log((F.softmax(th.div(teacher_outputs.transpose(1, 0), T), dim=1) / F.softmax(outputs, dim=1)))
         else:
             T = TEMPERATURES["default"]
             KD_loss = F.softmax(teacher_outputs/T, dim=1) * \
@@ -226,10 +226,17 @@ class PolicyDistillationModel(BaseRLObject):
             self.srl_model = loadSRLModel(env_kwargs.get("srl_model_path", None),
                                           th.cuda.is_available(), self.state_dim, env_object=None)
 
+
             self.model = MLPPolicy(output_size=n_actions, input_size=self.state_dim)
             for param in self.model.parameters():
                 param.requires_grad = True
             learnable_params = [param for param in self.model.parameters()]
+
+            if FINE_TUNING and self.srl_model is not None:
+                for param in self.srl_model.model.parameters():
+                    param.requires_grad = True
+                learnable_params += [param for param in self.srl_model.model.parameters()]
+
             learning_rate = 1e-3
         self.device = th.device("cuda" if th.cuda.is_available() else "cpu")
 
@@ -253,8 +260,12 @@ class PolicyDistillationModel(BaseRLObject):
                 validation_mode = minibatch_idx in val_indices
                 if validation_mode:
                     self.model.eval()
+                    if FINE_TUNING and self.srl_model is not None:
+                        self.srl_model.model.eval()
                 else:
                     self.model.train()
+                    if FINE_TUNING and self.srl_model is not None:
+                        self.srl_model.model.train()
 
                 # Actions associated to the observations of the current minibatch
                 actions_st = actions[minibatchlist[minibatch_idx]]
@@ -273,13 +284,17 @@ class PolicyDistillationModel(BaseRLObject):
                     actions_st = th.from_numpy(actions_st).view(-1, self.dim_action).requires_grad_(False).to(
                         self.device)
 
-                state = obs.detach() if self.srl_model is None \
-                    else self.srl_model.model.getStates(obs).to(self.device).detach()
+                if self.srl_model is not None:
+                    state = self.srl_model.model.getStates(obs).to(self.device).detach()
+                    if "autoencoder" in self.srl_model.model.losses:
+                        use_ae = True
+                        decoded_obs = self.srl_model.model.model.decode(state).to(self.device).detach()
+                else:
+                    state = obs.detach()
                 pred_action = self.model.forward(state)
 
                 loss = self.loss_fn_kd(pred_action, actions_proba_st.float(),
                                         labels=cl_labels_st, adaptive_temperature=USE_ADAPTIVE_TEMPERATURE)
-
 
                 loss.backward()
                 if validation_mode:

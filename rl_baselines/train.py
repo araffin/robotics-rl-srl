@@ -286,8 +286,8 @@ def main():
                 break
         assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
 
-    assert sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual]) \
-           <= 1 and args.env == "OmnirobotEnv-v0", \
+    assert not(sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual]) \
+           > 1 and args.env == "OmnirobotEnv-v0"), \
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
 
     assert not(args.algo == "distillation" and (args.teacher_data_folder == '' or args.continuous_actions is True)), \
