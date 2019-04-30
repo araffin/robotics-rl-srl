@@ -214,7 +214,7 @@ def main():
 
         # Use a copy of the optimal teacher
         ok = subprocess.call(
-            ['cp', '-r', 'data/' + args.continual_learning_labels[0] + '_copy/', 'data/' + teacher_pro_data])
+            ['cp', '-r', 'data/' + args.continual_learning_labels[0] + '_copy/', 'data/' + teacher_pro_data, '-f'])
         assert ok == 0
         time.sleep(10)
 
@@ -227,12 +227,12 @@ def main():
         mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path)
 
         ok = subprocess.call(
-            ['cp', '-r', merge_path, 'srl_zoo/' + merge_path])
+            ['cp', '-r', 'data/on_policy_merged/', 'srl_zoo/data/', '-f'])
         assert ok == 0
         time.sleep(10)
 
         # Train a policy with distillation on the merged teacher's datasets
-        trainStudent(merge_path, args.continual_learning_labels[1], yaml_file=args.srl_config_file_one,
+        trainStudent('srl_zoo/' + merge_path, args.continual_learning_labels[1], yaml_file=args.srl_config_file_one,
                      log_dir=args.log_dir_student,
                      srl_model=args.student_srl_model, env_name=args.env,
                      training_size=args.distillation_training_set_size, epochs=args.epochs_distillation)
