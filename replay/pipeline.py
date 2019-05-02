@@ -43,13 +43,12 @@ def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,
     if truncate_x > 0:
         min_x = min(truncate_x, min_x)
     x = np.array(x_list[0][:min_x])
-
     #To reformulize the data by the min_x
     for i in range(len(y_list)):
         y_list[i]=y_list[i][:, :min_x]
     y_list=np.array(y_list)
 
-    print("Min, Max rewards:", np.min(y_list), np.max(y_list))
+    #print("Min, Max rewards:", np.min(y_list), np.max(y_list))
 
 
     #Normalize the data between 0 and 1.
@@ -110,6 +109,7 @@ def GatherExperiments(folders, algo,  window=40, title="", min_num_x=-1,
     x_list = []
     ok = False
     for folder in folders:
+        printRed("folder name:{}".format(folder))
         if timesteps:
             x, y = loadData(folder, smooth=1, bin_size=100)
             if x is not None:
@@ -128,7 +128,7 @@ def GatherExperiments(folders, algo,  window=40, title="", min_num_x=-1,
         ok = True
         y = movingAverage(y, window)
         y_list.append(y)
-
+        print(len(x))
         # Truncate x
         x = x[len(x) - len(y):]
         x_list.append(x)
@@ -190,10 +190,14 @@ def comparePlots(path,  algo,y_limits,title="Learning Curve",
 
     x_list,y_list=[],[]
     for folders_srl in folders:
+        printGreen("Folder name {}".format(folders_srl))
         x,y=GatherExperiments(folders_srl, algo,  window=40, title=title, min_num_x=-1,
                           timesteps=timesteps, output_file="")
+        print(len(x))
         x_list.append(x)
         y_list.append(y)
+    printGreen(np.array(x_list).shape)
+    # printGreen('y_list shape {}'.format(np.array(y_list[1]).shape))
 
     plotGatheredData(x_list,y_list,y_limits,timesteps,title,legends,no_display,truncate_x,normalization)
 
@@ -243,4 +247,4 @@ if __name__ == '__main__':
             timesteps=args.timesteps, truncate_x=args.truncate_x,normalization=args.norm)
 
 
-#python -m replay.pipeline -i logs_to_plot_with_200Combination/OmnirobotEnv-v0-cc --algo ppo2 --title cc --timesteps
+#python -m replay.pipeline -i logs/OmnirobotEnv-v0 --algo ppo2 --title cc --timesteps
