@@ -16,15 +16,15 @@ def rotateMatrix90(matrix):
     return new_matrix
 
 
-def hammingDistance(s1, s2):
+def hammingDistance(string_1, string_2):
     """
 
-    :param s1: (str)
-    :param s2: (str)
-    :return: (int) Hamming distance between s1 & s2
+    :param string_1: (str)
+    :param string_2: (str)
+    :return: (int) Hamming distance between string_1 & string_2
     """
-    assert len(s1) == len(s2)
-    return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
+    assert len(string_1) == len(string_2)
+    return sum(ch1 != ch2 for ch1, ch2 in zip(string_1, string_2))
 
 
 class MakerFinder():

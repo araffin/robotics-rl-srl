@@ -10,22 +10,23 @@ from tqdm import tqdm
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Dataset Manipulator: useful to fusion two datasets by concatenating '
-                                                 'episodes. PS: Deleting sources after fusion into destination folder.')
+    parser = argparse.ArgumentParser(description='Dataset Manipulator: useful to merge two datasets by concatenating '
+                                                 + 'episodes. PS: Deleting sources after merging into the destination '
+                                                 + 'folder.')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--merge', type=str, nargs=3, metavar=('source_1', 'source_2', 'destination'),
                        default=argparse.SUPPRESS,
-                       help='Fusion two datasets by appending the episodes, deleting sources right after.')
+                       help='Merge two datasets by appending the episodes, deleting sources right after.')
 
     args = parser.parse_args()
 
     if 'merge' in args:
         # let make sure everything is in order
         assert os.path.exists(args.merge[0]), "Error: dataset '{}' could not be found".format(args.merge[0])
-        assert (not os.path.exists(args.merge[2])), "Error: dataset '{}' already exists, cannot rename '{}' to '{}'"\
-                                                          .format(args.merge[2], args.merge[0], args.merge[2])
+        assert (not os.path.exists(args.merge[2])), \
+            "Error: dataset '{}' already exists, cannot rename '{}' to '{}'".format(args.merge[2], args.merge[0],
+                                                                                    args.merge[2])
         # create the output
-        print(args)
         os.mkdir(args.merge[2])
 
         # copy files from first source

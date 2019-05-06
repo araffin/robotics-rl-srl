@@ -4,7 +4,7 @@ from real_robots.constants import *
 
 
 class OmnirobotManagerBase(object):
-    def __init__(self, second_cam_topic=None):
+    def __init__(self):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,

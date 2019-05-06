@@ -137,9 +137,10 @@ class StableBaselinesRLObject(BaseRLObject):
         }
         with open(save_path, "wb") as f:
             pickle.dump(save_param, f)
+
     def setLoadPath(self, load_path):
         """
-        Load the only the parameters of the neuro-network model from a path
+        Set the path to later load the parameters of a trained rl model
         :param load_path: (str)
         :return: None
         """
@@ -237,12 +238,12 @@ class StableBaselinesRLObject(BaseRLObject):
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
 
-        policy_fn = {'cnn': CnnPolicy,
-                     'cnn-lstm': CnnLstmPolicy,
-                     'cnn-lnlstm': CnnLnLstmPolicy,
-                     'mlp': MlpPolicy,
-                     'lstm': MlpLstmPolicy,
-                     'lnlstm': MlpLnLstmPolicy}[args.policy]
+        policy_fn = {'cnn': "CnnPolicy",
+                     'cnn-lstm': "CnnLstmPolicy",
+                     'cnn-lnlstm': "CnnLnLstmPolicy",
+                     'mlp': "MlpPolicy",
+                     'lstm': "MlpLstmPolicy",
+                     'lnlstm': "MlpLnLstmPolicy"}[args.policy]
         if self.load_rl_model_path is not None:
             print("Load trained model from the path: ", self.load_rl_model_path)
             self.model = self.model_class.load(self.load_rl_model_path, envs, **train_kwargs)

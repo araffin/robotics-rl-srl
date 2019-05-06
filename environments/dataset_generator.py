@@ -14,6 +14,7 @@ from stable_baselines.common.policies import CnnPolicy
 
 from environments import ThreadingType
 from environments.registry import registered_env
+from real_robots.constants import USING_OMNIROBOT
 from srl_zoo.utils import printRed, printYellow
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -61,6 +62,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
+    using_real_omnibot = args.env == "OmnirobotEnv-v0" and USING_OMNIROBOT
 
     model = None
     if use_ppo2:
@@ -92,7 +94,9 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             if use_ppo2:
                 action, _ = model.predict([obs])
             else:
-                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
+                # Using a target reaching policy (untrained, from camera) when collecting data from real OmniRobot
+                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion and \
+                        using_real_omnibot:
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     action = [env.action_space.sample()]
@@ -103,7 +107,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
             frames += 1
             t += 1
             if done:
-                if np.random.rand() < args.toward_target_timesteps_proportion:
+                if np.random.rand() < args.toward_target_timesteps_proportion and using_real_omnibot:
                     episode_toward_target_on = True
                 else:
                     episode_toward_target_on = False
