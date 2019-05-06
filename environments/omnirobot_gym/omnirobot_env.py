@@ -106,9 +106,9 @@ class OmniRobotEnv(SRLGymEnv):
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
             action_dim = 2
-            self.action_space = RingBox(positive_low=ACTION_POSITIVE_LOW, positive_high=ACTION_POSITIVE_HIGH, \
-                                           negative_low=ACTION_NEGATIVE_LOW, negative_high=ACTION_NEGATIVE_HIGH, \
-                                           shape=np.array([action_dim]), dtype=np.float32)
+            self.action_space = RingBox(positive_low=ACTION_POSITIVE_LOW, positive_high=ACTION_POSITIVE_HIGH,
+                                        negative_low=ACTION_NEGATIVE_LOW, negative_high=ACTION_NEGATIVE_HIGH,
+                                        shape=np.array([action_dim]), dtype=np.float32)
         # SRL model
         if self.use_srl:
             if use_ground_truth:
@@ -338,9 +338,8 @@ class OmniRobotEnv(SRLGymEnv):
         with open(CAMERA_INFO_PATH, 'r') as stream:
             try:
                 contents = yaml.load(stream)
-                camera_matrix = np.array(contents['camera_matrix']['data']).reshape((3,3))
-                distortion_coefficients = np.array(
-                contents['distortion_coefficients']['data']).reshape((1, 5))
+                camera_matrix = np.array(contents['camera_matrix']['data']).reshape((3, 3))
+                distortion_coefficients = np.array(contents['distortion_coefficients']['data']).reshape((1, 5))
             except yaml.YAMLError as exc:
                 print(exc)
 
@@ -348,22 +347,22 @@ class OmniRobotEnv(SRLGymEnv):
         r = R.from_euler('xyz', CAMERA_ROT_EULER_COORD_GROUND, degrees=True)
         camera_rot_mat_coord_ground = r.as_dcm()
 
-        pos_transformer = PosTransformer(camera_matrix, distortion_coefficients,
-                                              CAMERA_POS_COORD_GROUND, camera_rot_mat_coord_ground)
+        pos_transformer = PosTransformer(camera_matrix, distortion_coefficients, CAMERA_POS_COORD_GROUND,
+                                         camera_rot_mat_coord_ground)
 
-        self.boundary_coner_pixel_pos = np.zeros((2,4))
+        self.boundary_coner_pixel_pos = np.zeros((2, 4))
         # assume that image is undistorted
-        self.boundary_coner_pixel_pos[:,0] = pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y], return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,1] = pos_transformer.phyPosGround2PixelPos([MAX_X, MIN_Y], return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,2] = pos_transformer.phyPosGround2PixelPos([MAX_X, MAX_Y], return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,3] = pos_transformer.phyPosGround2PixelPos([MIN_X, MAX_Y], return_distort_image_pos=False).squeeze()
+        for idx in range(4):
+            self.boundary_coner_pixel_pos[:, idx] = \
+                pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y], return_distort_image_pos=False).squeeze()
 
         # transform the corresponding points into cropped image
-        self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)).reshape(2,1) / 2.0
+        self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) -
+                                                                         np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
         
         # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
-        self.boundary_coner_pixel_pos[0,:] *=  RENDER_WIDTH/CROPPED_SIZE[0]
-        self.boundary_coner_pixel_pos[1,:] *=  RENDER_HEIGHT/CROPPED_SIZE[1]
+        self.boundary_coner_pixel_pos[0, :] *= RENDER_WIDTH/CROPPED_SIZE[0]
+        self.boundary_coner_pixel_pos[1, :] *= RENDER_HEIGHT/CROPPED_SIZE[1]
         
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
 
@@ -372,7 +371,8 @@ class OmniRobotEnv(SRLGymEnv):
         visualize the unvisible boundary, should call initVisualizeBoundary firstly
         """
         self.observation_with_boundary = self.observation.copy()
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,0]),tuple(self.boundary_coner_pixel_pos[:,1]),(200,0,0),3) 
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,1]),tuple(self.boundary_coner_pixel_pos[:,2]),(200,0,0),3) 
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,2]),tuple(self.boundary_coner_pixel_pos[:,3]),(200,0,0),3) 
-        cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos[:,3]),tuple(self.boundary_coner_pixel_pos[:,0]),(200,0,0),3) 
+
+        for idx in range(4):
+            idx_next = idx + 1
+            cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, idx]),
+                     tuple(self.boundary_coner_pixel_pos[:, idx_next % 4]), (200, 0, 0), 3)
