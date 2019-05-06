@@ -164,6 +164,7 @@ def main():
     parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
                         help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
 
+
     args, unknown = parser.parse_known_args()
 
     if 'continual_learning_labels' in args:
@@ -173,10 +174,12 @@ def main():
     print(args.continual_learning_labels)
     assert os.path.exists(args.srl_config_file_one), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file_one)
+
     assert os.path.exists(args.srl_config_file_two), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file_two)
-    assert os.path.exists(args.log_dir_teacher_one), \
-        "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.log_dir_teacher_one)
+    if not (args.log_dir_teacher_one == "None"):
+        assert os.path.exists(args.log_dir_teacher_one), \
+            "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.log_dir_teacher_one)
     assert os.path.exists(args.log_dir_teacher_two), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file_two)
 
@@ -205,29 +208,36 @@ def main():
     # generate data from Professional teacher
     printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
 
-    DatasetGenerator(teacher_pro, args.continual_learning_labels[0] + '_copy/', task_id=args.continual_learning_labels[0],
-                     num_eps=args.epochs_teacher_datasets, episode=-1, env_name=args.env)
+    if not (args.log_dir_teacher_one == "None"):
+        DatasetGenerator(teacher_pro, args.continual_learning_labels[0] + '_copy/', task_id=args.continual_learning_labels[0],
+                         num_eps=args.epochs_teacher_datasets, episode=-1, env_name=args.env)
     print("Eval on eps list: ", episodes_to_test)
     for eps in episodes_to_test:
         student_path = args.log_dir_student
         printRed("\n\nEvaluation at episode " + str(eps))
 
-        # Use a copy of the optimal teacher
-        ok = subprocess.call(
-            ['cp', '-r', 'data/' + args.continual_learning_labels[0] + '_copy/', 'data/' + teacher_pro_data, '-f'])
-        assert ok == 0
-        time.sleep(10)
+        if not (args.log_dir_teacher_one == "None"):
+            # Use a copy of the optimal teacher
+            ok = subprocess.call(
+                ['cp', '-r', 'data/' + args.continual_learning_labels[0] + '_copy/', 'data/' + teacher_pro_data, '-f'])
+            assert ok == 0
+            time.sleep(10)
 
         # Generate data from learning teacher
         printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[1])
         DatasetGenerator(teacher_learn, teacher_learn_data, task_id=args.continual_learning_labels[1], episode=eps,
                          num_eps=args.epochs_teacher_datasets, env_name=args.env)
 
-        # # merge the data
-        mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path)
+        if args.log_dir_teacher_one == "None":
+            merge_path = 'data/' + teacher_learn_data
+            ok = subprocess.call(
+                ['cp', '-r', merge_path, 'srl_zoo/data/', '-f'])
+        else:
+            # merge the data
+            mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path)
 
-        ok = subprocess.call(
-            ['cp', '-r', 'data/on_policy_merged/', 'srl_zoo/data/', '-f'])
+            ok = subprocess.call(
+                ['cp', '-r', 'data/on_policy_merged/', 'srl_zoo/data/', '-f'])
         assert ok == 0
         time.sleep(10)
 
