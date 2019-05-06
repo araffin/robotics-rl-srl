@@ -8,12 +8,17 @@ import json
 import numpy as np
 import tensorflow as tf
 import pickle
+from datetime import datetime
+
+
 from rl_baselines.utils import WrapFrameStack,computeMeanReward,printGreen
 from srl_zoo.utils import printRed
 from stable_baselines.common import set_global_seeds
 from rl_baselines import AlgoType
 from rl_baselines.registry import registered_rl
-from datetime import datetime
+
+
+
 
 def loadConfigAndSetup(log_dir):
     """
@@ -132,7 +137,7 @@ def createEnv( model_dir,train_args, algo_name, algo_class, env_kwargs, log_dir=
 
 
 
-def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=1000,num_cpu=1):
+def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=251,num_cpu=1):
     """
     evaluation for the policy in the given envs
     :param envs: the environment we want to evaluate
@@ -163,7 +168,6 @@ def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=1000,n
     dones = [False for _ in range(num_cpu)]
 
     for i in range(num_timesteps):
-        set_global_seeds(i)
         actions=method.getAction(obs,dones)
         obs, rewards, dones, _ = envs.step(actions)
         if using_custom_vec_env:
@@ -217,7 +221,7 @@ def latestPolicy(log_dir,algo_name):
         #No model saved yet
         return 0,'',False
 
-def policyCrossEval(log_dir,task,num_timesteps=2000,num_cpu=1):
+def policyCrossEval(log_dir,task,num_timesteps=2000,num_cpu=1,seed=0):
     train_args, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(log_dir)
     episode, model_path, OK = latestPolicy(log_dir, algo_name)
     env_kwargs = EnvsKwargs(task, env_kwargs)
@@ -231,7 +235,7 @@ def policyCrossEval(log_dir,task,num_timesteps=2000,num_cpu=1):
     printGreen(
         "Evaluation from the model saved at: {}, with evaluation time steps: {}".format(model_path, num_timesteps))
 
-    log_dir, environment, algo_args = createEnv(log_dir, train_args, algo_name, algo_class, env_kwargs, num_cpu=num_cpu)
+    log_dir, environment, algo_args = createEnv(log_dir, train_args, algo_name, algo_class, env_kwargs, num_cpu=num_cpu,seed=seed)
 
     reward = policyEval(environment, model_path, log_dir, algo_class, algo_args, num_timesteps, num_cpu)
 
@@ -256,8 +260,6 @@ def episodeEval(log_dir,task,save_name='episode_eval.pkl',num_timesteps=800,num_
     file_name=log_dir+save_name
 
     #can be changed accordingly
-
-
 
 
     if(os.path.isfile(file_name)):
