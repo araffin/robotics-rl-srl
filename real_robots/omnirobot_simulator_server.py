@@ -361,8 +361,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         :param **args  arguments 
 
         '''
-        super(OmniRobotSimulatorSocket, self).__init__(
-            second_cam_topic=SECOND_CAM_TOPIC)
+        super(OmniRobotSimulatorSocket, self).__init__()
         defalt_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
             "camera_info_path": CAMERA_INFO_PATH,

@@ -81,6 +81,10 @@ class OmnirobotManagerBase(object):
         return has_bumped
 
     def sampleRobotInitalPosition(self):
+        """
+
+        :return: Sample random initial position for the Robot within the grid.
+        """
         random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
         random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
         return [random_init_x, random_init_y]
