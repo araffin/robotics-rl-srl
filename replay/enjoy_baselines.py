@@ -296,8 +296,7 @@ def main():
             if i % 5 == 0:
                 fig.canvas.draw()
                 plt.pause(0.000001)
-        if load_args.render:
-            envs.render("rgb_array")
+
         if load_args.action_proba and hasattr(method, "getActionProba"):
             # When continuous actions are needed, we cannot plot the action probability of every action
             # in the action space, so we show the action directly instead

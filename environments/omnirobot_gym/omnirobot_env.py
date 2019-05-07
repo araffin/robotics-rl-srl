@@ -352,9 +352,14 @@ class OmniRobotEnv(SRLGymEnv):
 
         self.boundary_coner_pixel_pos = np.zeros((2, 4))
         # assume that image is undistorted
-        for idx in range(4):
-            self.boundary_coner_pixel_pos[:, idx] = \
-                pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 0] = \
+            pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 1] = \
+            pos_transformer.phyPosGround2PixelPos([MAX_X, MIN_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 2] = \
+            pos_transformer.phyPosGround2PixelPos([MAX_X, MAX_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 3] = \
+            pos_transformer.phyPosGround2PixelPos([MIN_X, MAX_Y], return_distort_image_pos=False).squeeze()
 
         # transform the corresponding points into cropped image
         self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) -
