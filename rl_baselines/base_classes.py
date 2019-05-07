@@ -124,23 +124,8 @@ class StableBaselinesRLObject(BaseRLObject):
         :param save_path: (str)
         :param _locals: (dict) local variable from callback, if present
         """
-        # assert self.model is not None, "Error: must train or load model before use"
-        # model_save_name = self.name + ".pkl"
-        # if os.path.basename(save_path) == model_save_name:
-        #     model_save_name = self.name + "_model.pkl"
-        #
-        # self.model.save(os.path.dirname(save_path) + "/" + model_save_name)
-        # save_param = {
-        #     "ob_space": self.ob_space,
-        #     "ac_space": self.ac_space,
-        #     "policy": self.policy
-        # }
-        # with open(save_path, "wb") as f:
-        #     pickle.dump(save_param, f)
+
         assert self.model is not None, "Error: must train or load model before use"
-        # model_save_name = self.name + ".pkl"
-        # if os.path.basename(save_path) == model_save_name:
-        #     model_save_name = self.name + "_model.pkl"
 
         episode = os.path.basename(save_path).split('_')[-2]
         if(bool(re.search('[a-z]', episode))):
@@ -244,7 +229,10 @@ class StableBaselinesRLObject(BaseRLObject):
         :param env_kwargs: (dict) The extra arguments for the environment
         :param train_kwargs: (dict) The list of all training agruments (used in hyperparameter search)
         """
-        envs = self.makeEnv(args, env_kwargs=env_kwargs)
+        if self.load_rl_model_path is not None:
+            load_path_normalise = os.path.dirname(self.load_rl_model_path)
+
+        envs = self.makeEnv(args, env_kwargs=env_kwargs,load_path_normalise=load_path_normalise)
 
         if train_kwargs is None:
             train_kwargs = {}

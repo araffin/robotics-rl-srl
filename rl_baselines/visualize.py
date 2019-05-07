@@ -9,14 +9,15 @@ import numpy as np
 from scipy.signal import medfilt
 
 
-def smoothRewardCurve(x, y):
+def smoothRewardCurve(x, y, conv_len=30):
     """
     :param x: (numpy array)
     :param y: (numpy array)
+    :param conv_len: an integer, kernel size of the convolution
     :return: (numpy array, numpy array)
     """
     # Halfwidth of our smoothing convolution
-    halfwidth = min(31, int(np.ceil(len(x) / 30)))
+    halfwidth = min(conv_len+1, int(np.ceil(len(x) / conv_len)))
     k = halfwidth
     xsmoo = x[k:-k]
     ysmoo = np.convolve(y, np.ones(2 * k + 1), mode='valid') / \

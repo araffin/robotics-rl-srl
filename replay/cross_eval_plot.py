@@ -7,12 +7,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from matplotlib.ticker import FuncFormatter
 from matplotlib import rc
 
 from replay.aggregate_plots import lightcolors, darkcolors, Y_LIM_SHAPED_REWARD, Y_LIM_SPARSE_REWARD, millions
 from srl_zoo.utils import printGreen, printRed
-
+from rl_baselines.visualize import smoothRewardCurve
 # Init seaborn
 sns.set()
 # Style for the title
@@ -20,7 +19,15 @@ fontstyle = {'fontname': 'DejaVu Sans', 'fontsize': 20, 'fontweight': 'bold'}
 rc('font', weight='bold')
 
 
-def crossEvalPlot(load_path, tasks,title,y_limits,timesteps=True):
+def crossEvalPlot(load_path, tasks,title,y_limits):
+    """
+    Plot with standard deviation, the reward curve
+    :param load_path:
+    :param tasks:
+    :param title:
+    :param y_limits:
+    :return:
+    """
     res=np.load(load_path)
 
     y_array=res[:,:,1:]
@@ -54,6 +61,38 @@ def crossEvalPlot(load_path, tasks,title,y_limits,timesteps=True):
 
 
 
+def smoothPlot(load_path, tasks,title,y_limits):
+    """
+    To plot a smoother curve with some tricks of conv1D
+    :param load_path: (str)
+    :param tasks:  (list) ['sc','cc']
+    :param title:  (str)
+    :param y_limits: (list) if not equal, use it as y_limits
+    :return:
+    """
+    res = np.load(load_path)
+    y = np.mean(res[:, :, 1:], axis=2)
+    x = res[:, :, 0][0]
+    print(y.shape, x.shape)
+    fig=plt.figure(title)
+    for i in range(len(y)):
+        label = tasks[i]
+        tmp_x,tmp_y=smoothRewardCurve(x,y[i],conv_len=4)
+        print(tmp_x.shape,tmp_y.shape)
+        plt.plot(tmp_x, tmp_y, color=darkcolors[i % len(darkcolors)], label=label, linewidth=2)
+    plt.xlabel('Number of Episodes')
+    plt.ylabel('Rewards', fontsize=20, fontweight='bold')
+
+    plt.title(title, **fontstyle)
+    if (y_limits[0] != y_limits[1]):
+        plt.ylim(y_limits)
+
+    plt.legend(framealpha=0.8, frameon=True, labelspacing=0.01, loc='lower right', fontsize=18)
+    plt.show()
+
+
+
+
 #Example command:
 # python -m replay.cross_eval_plot -i logs/sc2cc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-29_14h59_35/episode_eval.npy
 if __name__ == '__main__':
@@ -67,10 +106,12 @@ if __name__ == '__main__':
     parser.add_argument('--y-lim', nargs=2, type=float, default=[-1, -1], help="limits for the y axis")
     parser.add_argument('--truncate-x', type=int, default=-1,
                         help="Truncate the experiments after n ticks on the x-axis (default: -1, no truncation)")
-    # parser.add_argument('--timesteps', action='store_true', default=False,
+    # parser.add_argument('--timesteps',
     #                     help='Plot timesteps instead of episodes')
     parser.add_argument('--eval-tasks', type=str, nargs='+', default=['Circular', 'Target Reaching','Square'],
                         help='A cross evaluation from the latest stored model to all tasks')
+    parser.add_argument('-s','--smooth', action='store_true', default=False,
+                        help='Plot with a smooth mode')
     args = parser.parse_args()
 
 
@@ -81,8 +122,7 @@ if __name__ == '__main__':
 
     assert (os.path.isfile(load_path) and load_path.split('.')[-1]=='npy'), 'Please load a valid .npy file'
 
-
-
-
-
-    crossEvalPlot(load_path, tasks, title,y_limits,  timesteps=True)
+    if(args.smooth):
+        smoothPlot(load_path,tasks,title,y_limits)
+    else:
+        crossEvalPlot(load_path, tasks, title,y_limits)

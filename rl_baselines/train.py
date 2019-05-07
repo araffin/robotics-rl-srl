@@ -36,7 +36,9 @@ PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 EVAL_TASK=['cc','sc','sqc']
 CROSS_EVAL = False
-EPISODE_WINDOW_DISTILLATION_WIN = 100
+EPISODE_WINDOW_DISTILLATION_WIN = 20
+NEW_LR=0.01
+
 
 viz = None
 n_steps = 0
@@ -170,15 +172,23 @@ def callback(_locals, _globals):
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
 
         if n_episodes >= 0:
-            # if n_episodes >= 70 and n_episodes % 40 == 0:
-            #     ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
-            #     printYellow(EVAL_TASK)
-            #     if CROSS_EVAL:
-            #         episodeEval(LOG_DIR, EVAL_TASK)
 
+            #For every checkpoint, we create one directory for saving logs file (policy and run mean std)
             if n_episodes % EPISODE_WINDOW_DISTILLATION_WIN == 0:
-                ALGO.save(LOG_DIR + ALGO_NAME + "_" + str(n_episodes) + "_model.pkl", _locals)
-                printYellow(EVAL_TASK)
+                eps_path = LOG_DIR + "model_"+ str(n_episodes)
+                try:
+                    os.mkdir(LOG_DIR + "model_"+ str(n_episodes))
+                except OSError:
+                    print("Creation of the directory {} failed".format(eps_path))
+
+                ALGO.save("{}/{}".format( eps_path, ALGO_NAME + "_model.pkl"), _locals)
+                try:
+                    if 'env' in _locals:
+                        _locals['env'].save_running_average(eps_path)
+                    else:
+                        _locals['self'].env.save_running_average(eps_path)
+                except AttributeError:
+                    pass
                 if CROSS_EVAL:
                     episodeEval(LOG_DIR, EVAL_TASK)
 
@@ -256,7 +266,8 @@ def main():
                         help='A cross evaluation from the latest stored model to all tasks')
     parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
                         help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
-
+    parser.add_argument('--new-lr',type = float , default =1.e-4 ,
+                        help="New learning rate ratio to train a pretrained agent")
 
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
@@ -300,6 +311,7 @@ def main():
     MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
     CROSS_EVAL = args.perform_cross_evaluation_cc
     EPISODE_WINDOW_DISTILLATION_WIN = args.eval_episode_window
+    NEW_LR =args.new_lr
     print("EPISODE_WINDOW_DISTILLATION_WIN: ", EPISODE_WINDOW_DISTILLATION_WIN)
 
     if args.no_vis:
@@ -387,8 +399,8 @@ def main():
     
     if args.load_rl_model_path is not None:
         # use a small learning rate
-        print("use a small learning rate: {:f}".format(1.0e-8))
-        hyperparams["learning_rate"] = lambda f: f * 1.0e-8
+        print("use a small learning rate: {:f}".format(NEW_LR))
+        hyperparams["learning_rate"] = lambda f: f * NEW_LR
         
     # Train the agent
     # episodeEval(LOG_DIR,EVAL_TASK)

@@ -9,7 +9,7 @@ import time
 # import yaml
 
 from environments.registry import registered_env
-from rl_baselines.cross_eval_utils import loadConfigAndSetup, latestPolicy
+from rl_baselines.evaluation.cross_eval_utils import loadConfigAndSetup, latestPolicy
 from srl_zoo.utils import printRed, printYellow
 from state_representation.registry import registered_srl
 
@@ -83,6 +83,35 @@ def allPolicy(log_dir):
     print(res)
     return res[:, 0], res[:, 1]
 
+
+def allPolicyFiles(log_dir):
+    """
+
+    :param log_dir:
+    :return:
+    """
+    train_args, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(log_dir)
+    files = glob.glob(os.path.join(log_dir + algo_name + '_*_model.pkl'))
+    printYellow(log_dir)
+    files = glob.glob(log_dir + '/model_*')
+
+
+    files_list = []
+    for file in files:
+        eps = int((file.split('_')[-1]))
+        files_list.append((eps, file+'/'))
+
+    def sortFirst(val):
+        """
+
+        :param val:
+        :return:
+        """
+        return val[0]
+
+    files_list.sort(key=sortFirst)
+    res = np.array(files_list)
+    return res[:, 0], res[:, 1]
 
 def newPolicy(episodes, file_path):
     """

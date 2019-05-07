@@ -1,7 +1,4 @@
-"""
-Modified version of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/visualize.py
-Script used to send plot data to visdom
-"""
+
 import glob
 import os
 import json
@@ -23,8 +20,9 @@ from rl_baselines.registry import registered_rl
 def loadConfigAndSetup(log_dir):
     """
     load training variable from a pre-trained model
-    :param log_dir: the path where the model is located
-    :return:
+    :param log_dir: the path where the model is located,
+    example: logs/sc2cc/OmnirobotEnv-v0/srl_combination/ppo2/19-05-07_11h32_39
+    :return: train_args, algo_name, algo_class(stable_baselines.PPO2), srl_model_path, env_kwargs
     """
     algo_name = ""
     for algo in list(registered_rl.keys()):
@@ -84,7 +82,6 @@ def EnvsKwargs(task,env_kwargs):
     :return: a list of env_kwargs that has the same length as tasks
     """
     t=task
-
     tmp=env_kwargs.copy()
     tmp['simple_continual_target'] = False
     tmp['circular_continual_move'] = False
@@ -149,8 +146,6 @@ def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=251,nu
     :param num_cpu:
     :return:
     """
-
-
     tf.reset_default_graph()
 
     method = algo_class.load(model_path,  args=algo_args)
@@ -191,11 +186,6 @@ def policyEval(envs,model_path,log_dir,algo_class,algo_args,num_timesteps=251,nu
     episode_reward=np.array(episode_reward)
     envs.close()
     return episode_reward
-
-
-
-
-
 
 def latestPolicy(log_dir,algo_name):
     """
@@ -260,8 +250,6 @@ def episodeEval(log_dir,task,save_name='episode_eval.pkl',num_timesteps=800,num_
     file_name=log_dir+save_name
 
     #can be changed accordingly
-
-
     if(os.path.isfile(file_name)):
 
         #eval_reward=np.load(file_name)
@@ -300,12 +288,8 @@ def episodeEval(log_dir,task,save_name='episode_eval.pkl',num_timesteps=800,num_
 
 
 if __name__ == '__main__':
+
     import argparse
-    #
-    # log_dir ='logs/OmnirobotEnv-v0/ground_truth/ppo2/19-04-23_17h44_32/'  # sc
-    #
-    # log_dir = 'logs/OmnirobotEnv-v0/ground_truth/ppo2/19-04-23_17h35_17/' # cc
-   # cc
 
     parser = argparse.ArgumentParser(description="several runtime for cross evaluation",
                                      epilog='')
@@ -315,7 +299,6 @@ if __name__ == '__main__':
     parser.add_argument('--num-cpu', type=int, default=1, help='number of cpu to perform the evaluation')
 
     args,_= parser.parse_known_args()
-    #tasks=['cc']
     task=args.task
     log_dir=args.log_dir
     episodeEval(log_dir,task,save_name='episode_eval.pkl',num_timesteps=args.num_timesteps,num_cpu=args.num_cpu)
