@@ -33,7 +33,8 @@ class OmniRobotEnvRender():
         :param init_x: (float) initial x position of robot
         :param init_y: (float) initial y position of robot
         :param init_yaw: (float) initial yaw position of robot
-        :param origin_size: (list of int) original camera's size (eg. [640,480]), the camera matrix should be corresponding to this size
+        :param origin_size: (list of int) original camera's size (eg. [640,480]),
+        the camera matrix should be corresponding to this size
         :param cropped_size: (list of int) cropped image's size (eg. [480,480])
         :param back_ground_path: (str) back ground image's path, the image should be undistorted.
         :param camera_info_path: (str) camera info file's path (containing camera matrix)
@@ -41,8 +42,10 @@ class OmniRobotEnvRender():
         :param robot_marker_margin: (list of int) marker's margin (eg. [3,3,3,3])
         :param target_marker_path: (str) target maker's path, the marker should have a margin with several pixels 
         :param target_marker_margin: (list of int) marker's margin (eg. [3,3,3,3])
-        :param robot_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional, the code of robot marker, only used for detecting position directly from the image.
-        :param target_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional, the code of target marker, only used for detecting position directly from the image.
+        :param robot_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional,
+        the code of robot marker, only used for detecting position directly from the image.
+        :param target_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional,
+        the code of target marker, only used for detecting position directly from the image.
         :param robot_marker_length: (float) the physical length of the marker (in meter)
         :param target_marker_length: (float) the physical length of the marker (in meter)
         :param output_size: (list of int) the output image's size (eg. [224,224])
@@ -375,7 +378,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         :param **args  arguments 
 
         '''
-        default_args = {
+        super(OmniRobotSimulatorSocket, self).__init__()
+        defalt_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
             "camera_info_path": CAMERA_INFO_PATH,
             "robot_marker_path": "real_robots/omnirobot_utils/robot_margin3_pixel_only_tag.png",

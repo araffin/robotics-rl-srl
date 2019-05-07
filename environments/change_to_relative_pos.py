@@ -1,13 +1,15 @@
 import argparse
-import numpy as np
 from os.path import join
 import shutil
 
+import numpy as np
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Change existed dataset whose ground_truth is global position to relative position')
+    parser = argparse.ArgumentParser(
+        description='Change existed dataset whose ground_truth is global position to relative position')
     parser.add_argument('--data-src', type=str, default=None, help='source data folder (global position)')
     parser.add_argument('--data-dst', type=str, default=None, help='destination data folder, (relative position)')
-
 
     args = parser.parse_args()
     assert args.data_src is not None
@@ -25,15 +27,16 @@ def main():
     
     print(ground_truth_states.shape)
     for i in range(ground_truth_states.shape[0]):
-        if(episode_starts[i] == True):
+        if episode_starts[i] is True:
             episode_num += 1
-        ground_truth_states[i,:] = ground_truth_states[i,:] - target_position[episode_num]
+        ground_truth_states[i, :] = ground_truth_states[i, :] - target_position[episode_num]
     new_ground_truth = {}
     for key in ground_truth.keys():
         if key != 'ground_truth_states':
             new_ground_truth[key] = ground_truth[key]
     new_ground_truth['ground_truth_states'] = ground_truth_states
     np.savez(join(args.data_dst, 'ground_truth.npz'), **new_ground_truth)
+
 
 if __name__ == '__main__':
     main()

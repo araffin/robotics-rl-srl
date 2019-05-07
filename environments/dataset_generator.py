@@ -5,16 +5,16 @@ import glob
 import multiprocessing
 import os
 import shutil
-import tensorflow as tf
 import time
-import torch as th
-from torch.autograd import Variable
 
 import numpy as np
 from stable_baselines import PPO2
 from stable_baselines.common import set_global_seeds
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines.common.policies import CnnPolicy
+import tensorflow as tf
+import torch as th
+from torch.autograd import Variable
 
 from environments import ThreadingType
 from environments.registry import registered_env
@@ -146,6 +146,7 @@ def env_thread(args, thread_num, partition=True):
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
+    using_real_omnibot = args.env == "OmnirobotEnv-v0" and USING_OMNIROBOT
 
     walker_path = None
     action_walker = None
@@ -174,13 +175,15 @@ def env_thread(args, thread_num, partition=True):
 
     frames = 0
     start_time = time.time()
+
     # divide evenly, then do an extra one for only some of them in order to get the right count
     for i_episode in range(args.num_episode // args.num_cpu + 1 * (args.num_episode % args.num_cpu > thread_num)):
+
         # seed + position in this slice + size of slice (with reminder if uneven partitions)
         seed = args.seed + i_episode + args.num_episode // args.num_cpu * thread_num + \
                (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
 
-        if not args.run_policy in ['custom', 'walker']:
+        if not (args.run_policy in ['custom', 'walker']):
             env.seed(seed)
             env.action_space.seed(seed)  # this is for the sample() function from gym.space
 
@@ -217,7 +220,9 @@ def env_thread(args, thread_num, partition=True):
 
             # Random Policy
             else:
-                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
+                # Using a target reaching policy (untrained, from camera) when collecting data from real OmniRobot
+                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion and \
+                        using_real_omnibot:
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     action = [env.action_space.sample()]
@@ -241,8 +246,7 @@ def env_thread(args, thread_num, partition=True):
             frames += 1
             t += 1
             if done:
-
-                if np.random.rand() < args.toward_target_timesteps_proportion:
+                if np.random.rand() < args.toward_target_timesteps_proportion and using_real_omnibot:
                     episode_toward_target_on = True
                 else:
                     episode_toward_target_on = False
