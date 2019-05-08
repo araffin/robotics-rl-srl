@@ -1,12 +1,12 @@
 import argparse
 import datetime
 import glob
-import json
-import numpy as np
 import os
 import subprocess
 import time
-# import yaml
+
+import json
+import numpy as np
 
 from environments.registry import registered_env
 from rl_baselines.evaluation.cross_eval_utils import loadConfigAndSetup, latestPolicy
@@ -17,8 +17,8 @@ CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
 
 
-def DatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='OmnirobotEnv-v0',  num_cpu=1,
-                     num_eps=200):
+def OnPolicyDatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='OmnirobotEnv-v0', num_cpu=1,
+                             num_eps=200, test_mode=False):
     """
 
     :param teacher_path:
@@ -37,10 +37,10 @@ def DatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='O
     env_command = ['--env', env_name]
     task_command = ["-sc" if task_id == "SC" else '-cc']
     if task_id == 'SC':
-        episode_command = ['--num-episode', str(400)]
+        episode_command = ['--num-episode', str(10 if test_mode else 400)]
     else:
-        episode_command = ['--num-episode', str(60)]
-
+        episode_command = ['--num-episode', str(10 if test_mode else 60)]
+    print("teacher path: ", teacher_path)
     policy_command = ['--log-custom-policy', teacher_path]
     if episode == -1:
         eps_policy = []
@@ -95,7 +95,6 @@ def allPolicyFiles(log_dir):
     printYellow(log_dir)
     files = glob.glob(log_dir + '/model_*')
 
-
     files_list = []
     for file in files:
         eps = int((file.split('_')[-1]))
@@ -112,6 +111,7 @@ def allPolicyFiles(log_dir):
     files_list.sort(key=sortFirst)
     res = np.array(files_list)
     return res[:, 0], res[:, 1]
+
 
 def newPolicy(episodes, file_path):
     """
@@ -150,11 +150,22 @@ def trainStudent(teacher_data_path, task_id, yaml_file='config/srl_models.yaml',
     task_command = ["-sc" if task_id is "SC" else '-cc']
     ok = subprocess.call(command_line + srl_command
                          + env_command + policy_command + size_epochs + task_command + ['--srl-config-file', yaml_file])
+    assert ok == 0
 
 
-def mergeData(teacher_dataset_1, teacher_dataset_2, merge_dataset):
+def mergeData(teacher_dataset_1, teacher_dataset_2, merge_dataset, force=False):
+    """
+
+    :param teacher_dataset_1:
+    :param teacher_dataset_2:
+    :param merge_dataset:
+    :return:
+    """
     merge_command = ['--merge', teacher_dataset_1, teacher_dataset_2, merge_dataset]
-    subprocess.call(['python', '-m', 'environments.dataset_fusioner'] + merge_command)
+    if force:
+        merge_command.append('-f')
+    ok = subprocess.call(['python', '-m', 'environments.dataset_merger'] + merge_command)
+    assert ok == 0
 
 
 def main():
@@ -193,7 +204,6 @@ def main():
     parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
                         help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
 
-
     args, unknown = parser.parse_known_args()
 
     if 'continual_learning_labels' in args:
@@ -212,12 +222,6 @@ def main():
     assert os.path.exists(args.log_dir_teacher_two), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file_two)
 
-    # with open(args.srl_config_file_one, 'rb') as f:
-    #    model_one = yaml.load(f)
-
-    # with open(args.srl_config_file_two, 'rb') as f:
-    #    model_two = yaml.load(f)
-
     teacher_pro = args.log_dir_teacher_one
     teacher_learn = args.log_dir_teacher_two
 
@@ -232,14 +236,14 @@ def main():
     rewards_at_episode = {}
     episodes_to_test = [e for e in episodes if (int(e) < 2000 and int(e) % 200 == 0) or
                         (int(e) > 2000 and int(e) % 1000 == 0)]
-    #[e for e in episodes if int(e) % args.eval_episode_window == 0]
 
     # generate data from Professional teacher
     printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
 
     if not (args.log_dir_teacher_one == "None"):
-        DatasetGenerator(teacher_pro, args.continual_learning_labels[0] + '_copy/', task_id=args.continual_learning_labels[0],
-                         num_eps=args.epochs_teacher_datasets, episode=-1, env_name=args.env)
+        OnPolicyDatasetGenerator(teacher_pro, args.continual_learning_labels[0] + '_copy/',
+                                 task_id=args.continual_learning_labels[0], num_eps=args.epochs_teacher_datasets,
+                                 episode=-1, env_name=args.env)
     print("Eval on eps list: ", episodes_to_test)
     for eps in episodes_to_test:
         student_path = args.log_dir_student
@@ -253,9 +257,9 @@ def main():
             time.sleep(10)
 
         # Generate data from learning teacher
-        printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[1])
-        DatasetGenerator(teacher_learn, teacher_learn_data, task_id=args.continual_learning_labels[1], episode=eps,
-                         num_eps=args.epochs_teacher_datasets, env_name=args.env)
+        printYellow("\nGenerating on-policy data from the optimal teacher: " + args.continual_learning_labels[1])
+        OnPolicyDatasetGenerator(teacher_learn, teacher_learn_data, task_id=args.continual_learning_labels[1],
+                                 episode=eps, num_eps=args.epochs_teacher_datasets, env_name=args.env)
 
         if args.log_dir_teacher_one == "None":
             merge_path = 'data/' + teacher_learn_data
@@ -299,8 +303,8 @@ def main():
         rewards_at_episode[eps] = rewards
     print("All rewards: ", rewards_at_episode)
     json_dict = json.dumps(rewards_at_episode)
-    json_dict_name = args.log_dir_student + "/reward_at_episode_" + \
-                     datetime.datetime.now().strftime("%y-%m-%d_%Hh%M_%S") + '.json'
+    json_dict_name = \
+        args.log_dir_student + "/reward_at_episode_" + datetime.datetime.now().strftime("%y-%m-%d_%Hh%M_%S") + '.json'
     f = open(json_dict_name, "w")
     f.write(json_dict)
     f.close()

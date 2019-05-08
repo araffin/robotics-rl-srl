@@ -379,7 +379,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
 
         '''
         super(OmniRobotSimulatorSocket, self).__init__()
-        defalt_args = {
+        default_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
             "camera_info_path": CAMERA_INFO_PATH,
             "robot_marker_path": "real_robots/omnirobot_utils/robot_margin3_pixel_only_tag.png",

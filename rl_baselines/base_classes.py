@@ -231,7 +231,8 @@ class StableBaselinesRLObject(BaseRLObject):
         if self.load_rl_model_path is not None:
             load_path_normalise = os.path.dirname(self.load_rl_model_path)
 
-        envs = self.makeEnv(args, env_kwargs=env_kwargs, load_path_normalise=load_path_normalise)
+        envs = self.makeEnv(args, env_kwargs=env_kwargs,
+                            load_path_normalise=train_kwargs.get("load_path_normalise", None))
 
         if train_kwargs is None:
             train_kwargs = {}

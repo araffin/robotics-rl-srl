@@ -50,7 +50,7 @@ def loadConfigAndSetup(load_args):
     algo_class, algo_type, _ = registered_rl[algo_name]
     if algo_type == AlgoType.OTHER:
         raise ValueError(algo_name + " is not supported for replay")
-    if(not load_args.episode ==-1):
+    if not load_args.episode ==-1:
         load_path = "{}/{}_{}_model.pkl".format(load_args.log_dir, algo_name,load_args.episode,)
     else:
         load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)

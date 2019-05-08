@@ -226,7 +226,6 @@ class PolicyDistillationModel(BaseRLObject):
             self.srl_model = loadSRLModel(env_kwargs.get("srl_model_path", None),
                                           th.cuda.is_available(), self.state_dim, env_object=None)
 
-
             self.model = MLPPolicy(output_size=n_actions, input_size=self.state_dim)
             for param in self.model.parameters():
                 param.requires_grad = True
@@ -293,8 +292,9 @@ class PolicyDistillationModel(BaseRLObject):
                     state = obs.detach()
                 pred_action = self.model.forward(state)
 
-                loss = self.loss_fn_kd(pred_action, actions_proba_st.float(),
-                                        labels=cl_labels_st, adaptive_temperature=USE_ADAPTIVE_TEMPERATURE)
+                loss = self.loss_fn_kd(pred_action,
+                                       actions_proba_st.float(),
+                                       labels=cl_labels_st, adaptive_temperature=USE_ADAPTIVE_TEMPERATURE)
 
                 loss.backward()
                 if validation_mode:
