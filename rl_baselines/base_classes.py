@@ -128,9 +128,9 @@ class StableBaselinesRLObject(BaseRLObject):
         assert self.model is not None, "Error: must train or load model before use"
 
         episode = os.path.basename(save_path).split('_')[-2]
-        if(bool(re.search('[a-z]', episode))):
-            #That means this is not a episode, it is a algo name
-            model_save_name = self.name +".pkl"
+        if (bool(re.search('[a-z]', episode))):
+            # That means this is not a episode, it is a algo name
+            model_save_name = self.name + ".pkl"
         else:
             model_save_name = self.name + '_' + episode + ".pkl"
 
@@ -146,7 +146,7 @@ class StableBaselinesRLObject(BaseRLObject):
 
     def setLoadPath(self, load_path):
         """
-        Load the only the parameters of the neuro-network model from a path
+        Set the path to later load the parameters of a trained rl model
         :param load_path: (str)
         :return: None
         """
@@ -167,13 +167,12 @@ class StableBaselinesRLObject(BaseRLObject):
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
         episode = os.path.basename(load_path).split('_')[-2]
-        if(bool(re.search('[a-z]', episode))):
-            #That means this is not a episode, it is a algo name
-            model_save_name = loaded_model.name +".pkl"
+        if (bool(re.search('[a-z]', episode))):
+            # That means this is not a episode, it is a algo name
+            model_save_name = loaded_model.name + ".pkl"
         else:
-            model_save_name = loaded_model.name +'_' + episode + ".pkl"
+            model_save_name = loaded_model.name + '_' + episode + ".pkl"
 
-        print(model_save_name)
         loaded_model.model = loaded_model.model_class.load(os.path.dirname(load_path) + "/" + model_save_name)
         loaded_model.states = loaded_model.model.initial_state
 
@@ -231,8 +230,9 @@ class StableBaselinesRLObject(BaseRLObject):
         """
         if self.load_rl_model_path is not None:
             load_path_normalise = os.path.dirname(self.load_rl_model_path)
-
-        envs = self.makeEnv(args, env_kwargs=env_kwargs,load_path_normalise=load_path_normalise)
+            envs = self.makeEnv(args, env_kwargs=env_kwargs,load_path_normalise=load_path_normalise)
+        else:
+            envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if train_kwargs is None:
             train_kwargs = {}

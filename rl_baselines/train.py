@@ -35,16 +35,16 @@ ENV_NAME = ""
 PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 EVAL_TASK=['cc','sc','sqc']
-CROSS_EVAL = False
+CROSS_EVAL = True
 EPISODE_WINDOW_DISTILLATION_WIN = 20
-NEW_LR=0.01
+NEW_LR=0.001
 
 
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 0  # initialised during loading of the algorithm
 N_EPISODES_EVAL = 100  # Evaluate the performance on the last 100 episodes
-MIN_EPISODES_BEFORE_SAVE = 100  # Number of episodes to train on before saving best model
+MIN_EPISODES_BEFORE_SAVE = 1000  # Number of episodes to train on before saving best model
 params_saved = False
 best_mean_reward = -10000
 
@@ -175,22 +175,24 @@ def callback(_locals, _globals):
 
             #For every checkpoint, we create one directory for saving logs file (policy and run mean std)
             if n_episodes % EPISODE_WINDOW_DISTILLATION_WIN == 0:
-                eps_path = LOG_DIR + "model_"+ str(n_episodes)
-                try:
-                    os.mkdir(LOG_DIR + "model_"+ str(n_episodes))
-                except OSError:
-                    print("Creation of the directory {} failed".format(eps_path))
+                ALGO.save(LOG_DIR + ALGO_NAME +'_' + str(n_episodes)+ "_model.pkl", _locals)
+                if(CROSS_EVAL):#If we want to do the cross evaluation after the training
+                    eps_path = LOG_DIR + "model_"+ str(n_episodes)
+                    try:
+                        os.mkdir(LOG_DIR + "model_"+ str(n_episodes))
+                    except OSError:
+                        print("Creation of the directory {} failed".format(eps_path))
 
-                ALGO.save("{}/{}".format( eps_path, ALGO_NAME + "_model.pkl"), _locals)
-                try:
-                    if 'env' in _locals:
-                        _locals['env'].save_running_average(eps_path)
-                    else:
-                        _locals['self'].env.save_running_average(eps_path)
-                except AttributeError:
-                    pass
-                if CROSS_EVAL:
-                    episodeEval(LOG_DIR, EVAL_TASK)
+                    ALGO.save("{}/{}".format( eps_path, ALGO_NAME + "_model.pkl"), _locals)
+                    try:
+                        if 'env' in _locals:
+                            _locals['env'].save_running_average(eps_path)
+                        else:
+                            _locals['self'].env.save_running_average(eps_path)
+                    except AttributeError:
+                        pass
+                    # if CROSS_EVAL:
+                    #     episodeEval(LOG_DIR, EVAL_TASK)
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
@@ -199,9 +201,9 @@ def callback(_locals, _globals):
                                    is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
-        if CROSS_EVAL:
-            win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
-                                            title=PLOT_TITLE + " [Cross Evaluation]")
+        # if CROSS_EVAL:
+        #     win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
+        #                                     title=PLOT_TITLE + " [Cross Evaluation]")
     n_steps += 1
     return True
 
@@ -216,7 +218,7 @@ def main():
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0',
                         choices=list(registered_env.keys()))
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-    parser.add_argument('--episode_window', type=int, default=40,
+    parser.add_argument('--episode-window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')

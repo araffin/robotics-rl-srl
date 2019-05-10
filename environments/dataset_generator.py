@@ -306,6 +306,8 @@ def main():
 
     parser.add_argument('--short-episodes', action='store_true', default=False,
                         help='Generate short episodes (only 10 contacts with the target allowed).')
+    parser.add_argument('--episode', type=int, default=-1,
+                        help='Model saved at episode N that we want to load')
 
     args = parser.parse_args()
 

@@ -74,20 +74,15 @@ def smoothPlot(res, tasks, title, y_limits):
 
 
 #Example command:
-# python -m replay.cross_eval_plot -i logs/sc2cc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-29_14h59_35/episode_eval.npy
+# python -m replay.cross_eval_plot -i logs/sc2cc/OmnirobotEnv-v0/srl_combination/ppo2/19-04-29_14h59_35/eval.pkl
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plot the learning curve during a training for different tasks")
     parser.add_argument('-i', '--input-path', help='folder with the plots as pkl files', type=str, required=True)
     parser.add_argument('-t', '--title', help='Plot title', type=str, default='Learning Curve')
-    # parser.add_argument('--episode_window', type=int, default=40,
-    #                     help='Episode window for moving average plot (default: 40)')
-    # parser.add_argument('--shape-reward', action='store_true', default=False,
-    #                     help='Change the y_limit to correspond shaped reward bounds')
+
     parser.add_argument('--y-lim', nargs=2, type=float, default=[-1, -1], help="limits for the y axis")
     parser.add_argument('--truncate-x', type=int, default=-1,
                         help="Truncate the experiments after n ticks on the x-axis (default: -1, no truncation)")
-    # parser.add_argument('--timesteps',
-    #                     help='Plot timesteps instead of episodes')
     parser.add_argument('--eval-tasks', type=str, nargs='+', default=['Circular', 'Target Reaching','Square'],
                         help='A cross evaluation from the latest stored model to all tasks')
     parser.add_argument('-s','--smooth', action='store_true', default=False,
@@ -108,9 +103,10 @@ if __name__ == '__main__':
     with open(load_path, "rb") as file:
         data = pickle.load(file)
 
-    res = dict2array(['cc', 'sc'], data)
 
+    res = dict2array(['cc', 'sc'], data)
+    print("{} episodes evaluations to plot".format(res.shape[1]))
     if(args.smooth):
-        smoothPlot(res,tasks,title,y_limits)
+        smoothPlot(res[:,1:],tasks,title,y_limits)
     else:
-        crossEvalPlot(res, tasks, title,y_limits)
+        crossEvalPlot(res[:,1:], tasks, title,y_limits)
