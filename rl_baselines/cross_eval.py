@@ -19,14 +19,16 @@ def dict2array(tasks,data):
     :return:
     """
     res=[]
-    print(data)
     for t in tasks:
         if(t=='sc'):
             max_reward=250
+            min_reward = 0
         else:
-            max_reward=1850
-        data[t]=data[t].astype(float)
-        data[t][:,1:]=data[t][:,1:]/max_reward
+            max_reward = 1900
+            min_reward = 0
+
+        data[t]=np.array(data[t]).astype(float)
+        data[t][:,1:]=(data[t][:,1:]-min_reward)/max_reward
         res.append(data[t])
     res=np.array(res)
     return res
@@ -94,40 +96,43 @@ if __name__ == '__main__':
     log_dir =  args.log_dir
     #log_dir = 'logs/sc2cc/OmnirobotEnv-v0/srl_combination/ppo2/19-05-03_11h35_10/'
 
-    tasks=['sc']
     episodes, policy_paths = allPolicyFiles(log_dir)
     index_to_begin =0
+
+
 
     #To verify if the episodes have been evaluated before
     if(os.path.isfile(args.log_dir+'/eval.pkl')):
         with open(args.log_dir+'/eval.pkl', "rb") as file:
             rewards = pickle.load(file)
-        for e in range(len(episodes)):
-            if(episodes[e] not in rewards['episode']):
-                break;
-        index_to_begin = e
-        print(index_to_begin)
+        max_eps = max(np.array(rewards['episode']).astype(int))
+        index_to_begin = episodes.astype(int).tolist().index(max_eps)+1
+
     else:
         task_labels = ['cc', 'sc']
         rewards = {}
-        rewards['episode'] = episodes
-        rewards['policy'] = policy_paths
+        rewards['episode'] = []
+        rewards['policy'] = []
+        for t in ['cc', 'sc']:
+            rewards[t] = []
 
-    printRed(episodes[index_to_begin:])
+
     for policy_path in policy_paths[index_to_begin:]:
         copyfile(log_dir+'/args.json', policy_path+'/args.json')
         copyfile(log_dir + '/env_globals.json', policy_path + '/env_globals.json')
 
+    printGreen("The evaluation will begin from {}".format(episodes[index_to_begin]))
+
+    last_mean = [250.,1900.]
+    run_mean = [0,0]
 
 
+    for k in range(index_to_begin, len(episodes) ):
+        increase_interval = True
 
-    for t in ['cc','sc']:
-        rewards[t]=[]
-
-    for k in range(len(episodes)):
         model_path=policy_paths[k]
 
-        for task_label in ["-sc", "-cc"]:
+        for t , task_label in enumerate(["-sc", "-cc"]):
 
             local_reward = [int(episodes[k])]
 
@@ -149,7 +154,27 @@ if __name__ == '__main__':
                 np.mean(seed_reward), episodes[k], seed_i, task_label))
 
             rewards[task_label[1:]].append(local_reward)
+            run_mean[t] = np.mean(local_reward[1:])
 
+
+
+        # If one of the two mean rewards varies more thant 1%, then we do not increase the evaluation interval
+        for t in range(len(run_mean)):
+            if(run_mean[t] > 1.01 * last_mean[t] or run_mean[t] <0.99 *last_mean[t]):
+                increase_interval = False
+
+        printGreen("Reward now: {}, last Rewards: {} for sc and cc respectively".format(run_mean, last_mean))
+        # If the mean reward varies slowly, we increase the length of the evaluation interval
+        if (increase_interval):
+            current_eps = episodes[k]
+            k = k + 5
+            printGreen("Reward at current episode {} varies slow, change to episode {} for next evaluation"
+                       .format(current_eps, episodes[k]))
+
+        last_mean = run_mean.copy()
+
+        rewards['episode'].append(int(episodes[k]))
+        rewards['policy'].append(model_path)
         with open(args.log_dir+'/eval.pkl', 'wb') as f:
             pickle.dump(rewards, f, pickle.HIGHEST_PROTOCOL)
 

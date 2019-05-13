@@ -7,7 +7,7 @@ import os
 
 from rl_baselines.student_eval import  allPolicy
 from srl_zoo.utils import printRed, printGreen
-from rl_baselines.cross_eval_utils import EnvsKwargs, loadConfigAndSetup, policyEval,createEnv
+from rl_baselines.evaluation.cross_eval_utils import EnvsKwargs, loadConfigAndSetup, policyEval,createEnv
 
 def dict2array(tasks,data):
     res=[]

@@ -172,7 +172,6 @@ class StableBaselinesRLObject(BaseRLObject):
         else:
             model_save_name = loaded_model.name + '_' + episode + ".pkl"
 
-        print(model_save_name)
         loaded_model.model = loaded_model.model_class.load(os.path.dirname(load_path) + "/" + model_save_name)
         loaded_model.states = loaded_model.model.initial_state
 
@@ -230,9 +229,9 @@ class StableBaselinesRLObject(BaseRLObject):
         """
         if self.load_rl_model_path is not None:
             load_path_normalise = os.path.dirname(self.load_rl_model_path)
-
-        envs = self.makeEnv(args, env_kwargs=env_kwargs,
-                            load_path_normalise=train_kwargs.get("load_path_normalise", None))
+            envs = self.makeEnv(args, env_kwargs=env_kwargs,load_path_normalise=load_path_normalise)
+        else:
+            envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if train_kwargs is None:
             train_kwargs = {}

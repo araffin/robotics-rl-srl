@@ -91,12 +91,18 @@ def loadConfigAndSetup(load_args):
         raise ValueError(algo_name + " is not supported for replay")
     printGreen("\n" + algo_name + "\n")
 
-
-    if(load_args.log_dir[-3:]!='pkl'):
-        load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
-    else:
-        load_path = load_args.log_dir
-        load_args.log_dir = os.path.dirname(load_path)+'/'
+    try:  #If args contains episode information, this is for student_evaluation (disstilation)
+        if(not load_args.episode ==-1):
+            load_path = "{}/{}_{}_model.pkl".format(load_args.log_dir, algo_name,load_args.episode,)
+        else:
+            load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
+    except:
+        printYellow("No episode of checkpoint specified, go for the default policy model: {}_model.pkl".format(algo_name))
+        if(load_args.log_dir[-3:]!='pkl'):
+            load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
+        else:
+            load_path = load_args.log_dir
+            load_args.log_dir = os.path.dirname(load_path)+'/'
 
 
     env_globals = json.load(open(load_args.log_dir + "env_globals.json", 'r'))

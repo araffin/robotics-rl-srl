@@ -33,7 +33,7 @@ def main():
         assert os.path.exists(args.merge[0]), "Error: dataset '{}' could not be found".format(args.merge[0])
 
         # If the merge file exists already, delete it for the convenince of updating student's policy
-        if os.path.exists(args.merge[2]):
+        if os.path.exists(args.merge[2]) or os.path.exists(args.merge[2] + '/'):
             assert args.force, "Error: destination directory '{}' already exists".format(args.merge[2])
             shutil.rmtree(args.merge[2])
 

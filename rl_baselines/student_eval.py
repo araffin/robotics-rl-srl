@@ -30,7 +30,7 @@ def OnPolicyDatasetGenerator(teacher_path, output_name, task_id, episode=-1, env
     :param num_eps:
     :return:
     """
-    command_line = ['python', '-m', 'environments.dataset_generator_student', '--run-policy', 'custom']
+    command_line = ['python', '-m', 'environments.dataset_generator', '--run-policy', 'custom']
     cpu_command = ['--num-cpu', str(num_cpu)]
     name_command = ['--name', output_name]
     save_path = ['--save-path', "data/"]
@@ -254,7 +254,7 @@ def main():
             ok = subprocess.call(
                 ['cp', '-r', 'data/' + args.continual_learning_labels[0] + '_copy/', 'data/' + teacher_pro_data, '-f'])
             assert ok == 0
-            time.sleep(10)
+            time.sleep(2)
 
         # Generate data from learning teacher
         printYellow("\nGenerating on-policy data from the optimal teacher: " + args.continual_learning_labels[1])
@@ -267,12 +267,12 @@ def main():
                 ['cp', '-r', merge_path, 'srl_zoo/data/', '-f'])
         else:
             # merge the data
-            mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path)
+            mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path,force=True)
 
             ok = subprocess.call(
                 ['cp', '-r', 'data/on_policy_merged/', 'srl_zoo/data/', '-f'])
         assert ok == 0
-        time.sleep(10)
+        time.sleep(2)
 
         # Train a policy with distillation on the merged teacher's datasets
         trainStudent('srl_zoo/' + merge_path, args.continual_learning_labels[1], yaml_file=args.srl_config_file_one,
