@@ -185,7 +185,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         # Create 4D Tensor
         observation = observation.reshape(1, *observation.shape)
         # Channel first
-        observation = np.transpose(observation, (0, 3, 2, 1))
+        observation = np.transpose(observation, (0, 3, 1, 2))
         observation = th.from_numpy(observation).float().to(self.device)
 
         with th.no_grad():
