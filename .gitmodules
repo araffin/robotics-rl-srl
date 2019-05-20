@@ -1,4 +1,4 @@
 [submodule "srl_zoo"]
 	path = srl_zoo
 	branch = master
-	url = https://github.com/araffin/srl-zoo.git
+	url = https://github.com/ncble/srl-zoo.git
