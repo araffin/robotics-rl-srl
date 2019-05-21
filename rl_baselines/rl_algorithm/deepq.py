@@ -18,6 +18,7 @@ class DQNModel(StableBaselinesRLObject):
         super(DQNModel, self).__init__(name="deepq", model_class=DQN)
 
     def customArguments(self, parser):
+        super().customArguments(parser)
         parser.add_argument('--prioritized', type=int, default=1)
         parser.add_argument('--dueling', type=int, default=1)
         parser.add_argument('--buffer-size', type=int, default=int(1e3), help="Replay buffer size")

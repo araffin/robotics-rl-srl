@@ -21,6 +21,7 @@ class DDPGModel(StableBaselinesRLObject):
         super(DDPGModel, self).__init__(name="ddpg", model_class=DDPG)
 
     def customArguments(self, parser):
+        super().customArguments(parser)
         parser.add_argument('--memory-limit',
                             help='Used to define the size of the replay buffer (in number of observations)', type=int,
                             default=100000)

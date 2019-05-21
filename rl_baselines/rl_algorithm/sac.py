@@ -19,6 +19,7 @@ class SACModel(StableBaselinesRLObject):
         super(SACModel, self).__init__(name="sac", model_class=SAC)
 
     def customArguments(self, parser):
+        super().customArguments(parser)
         parser.add_argument('--ent-coef', help='The entropy coefficient', type=float, default=0.01)
         parser.add_argument('--batch-size', help='The batch size used for training', type=int, default=64)
         return parser
