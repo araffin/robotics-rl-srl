@@ -23,7 +23,9 @@ def assertEq(left, right):
 def testOnPolicyDatasetGeneration():
 
     # # Train Ground_truth teacher policies for each env
-    test_log_dir = "logs/test_distillation/"
+
+    # do not write distillation in path to prevent loading irrelevant algo based on folder name
+    test_log_dir = "logs/test_dist/"
     test_log_dir_teacher_one = test_log_dir + 'teacher_one/'
     test_log_dir_teacher_two = test_log_dir + 'teacher_two/'
 
@@ -65,7 +67,6 @@ def testOnPolicyDatasetGeneration():
         max([test_log_dir_teacher_two + "/" + d for d in os.listdir(test_log_dir_teacher_two)
              if os.path.isdir(test_log_dir_teacher_two + "/" + d)], key=os.path.getmtime) + '/'
 
-    # TODO: fix when fails here!
     OnPolicyDatasetGenerator(teacher_path=teacher_two_path, output_name='test_CC_copy/',
                              task_id='CC', episode=-1, env_name=ENV_NAME, test_mode=True)
 
@@ -75,9 +76,9 @@ def testOnPolicyDatasetGeneration():
 
     ok = subprocess.call(['cp', '-r', merge_path, 'srl_zoo/data/', '-f'])
     assert ok == 0
-    time.sleep(180)
+    time.sleep(10)
 
-    # # Train a raw_pixels student policy via distillation
-    # trainStudent(merge_path, "CC", log_dir=test_log_dir, srl_model=DEFAULT_SRL_STUDENT,
-    #              env_name=ENV_NAME, training_size=500, epochs=3)
+    # Train a raw_pixels student policy via distillation
+    trainStudent(merge_path, "CC", log_dir=test_log_dir, srl_model=DEFAULT_SRL_STUDENT,
+                 env_name=ENV_NAME, training_size=500, epochs=3)
     print("Distillation test performed!")
