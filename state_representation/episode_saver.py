@@ -25,7 +25,7 @@ class EpisodeSaver(object):
     """
 
     def __init__(self, name, max_dist, state_dim=-1, globals_=None, learn_every=3, learn_states=False,
-                 path='srl_zoo/data/', relative_pos=False):
+                 path='data/', relative_pos=False):
         super(EpisodeSaver, self).__init__()
         self.name = name
         self.data_folder = path + name
@@ -72,8 +72,8 @@ class EpisodeSaver(object):
         :param observation: (numpy matrix) BGR image
         """
         image_path = "{}/{}/frame{:06d}".format(self.data_folder, self.episode_folder, self.episode_step)
-        self.images_path.append(image_path)
-
+        relative_path = "{}/{}/frame{:06d}".format(self.name, self.episode_folder, self.episode_step)
+        self.images_path.append(relative_path)
         # in the case of dual/multi-camera
         if observation.shape[2] > 3:
             observation1 = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_BGR2RGB)
@@ -92,7 +92,6 @@ class EpisodeSaver(object):
         :param target_pos: (numpy array)
         :param ground_truth: (numpy array)
         """
-        # only reset if the array is empty, or the a reset has not already occured
         if len(self.episode_starts) == 0 or self.episode_starts[-1] is False:
             self.episode_idx += 1
 
@@ -120,6 +119,7 @@ class EpisodeSaver(object):
         :param done: (bool) whether the episode is done or not
         :param ground_truth_state: (numpy array)
         """
+        
         self.episode_step += 1
         self.n_steps += 1
         self.rewards.append(reward)
@@ -131,10 +131,10 @@ class EpisodeSaver(object):
             self.episode_starts.append(False)
             self.ground_truth_states.append(ground_truth_state)
             self.saveImage(observation)
-        else:
+        else:   
             # Save the gathered data at the end of each episode
             self.save()
-
+    
     def save(self):
         """
         Write data and ground truth to disk

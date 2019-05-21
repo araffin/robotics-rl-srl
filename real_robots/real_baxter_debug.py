@@ -63,8 +63,6 @@ try:
             arm_pos = baxter_utils.get_ee_position(arm)
             if name == "left_arm":
                 ee_orientation = baxter_utils.get_ee_orientation(left_arm)
-                # print(ee_orientation)
-                # print(name, arm_pos)
                 print(np.linalg.norm(BUTTON_POS - arm_pos, 2))
         rospy.sleep(0.5)
 except KeyboardInterrupt:
