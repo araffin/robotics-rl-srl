@@ -141,7 +141,7 @@ class SRLBaseClass(object):
 class SRLNeuralNetwork(SRLBaseClass):
     """SRL using a neural network as a state representation model"""
 
-    def __init__(self, state_dim, cuda, model_type="custom_cnn", n_actions=None, losses=None, split_dimensions=None,
+    def __init__(self, state_dim, cuda, img_shape=None, model_type="custom_cnn", n_actions=None, losses=None, split_dimensions=None,
                  inverse_model_type="linear"):
         """
         :param state_dim: (int)
@@ -153,7 +153,7 @@ class SRLNeuralNetwork(SRLBaseClass):
         :param inverse_model_type: (string)
         """
         super(SRLNeuralNetwork, self).__init__(state_dim, cuda)
-
+        self.img_shape = img_shape
         self.model_type = model_type
         if "supervised" in losses:
             if "cnn" in model_type:
@@ -165,7 +165,7 @@ class SRLNeuralNetwork(SRLBaseClass):
                                          cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
                                          inverse_model_type=inverse_model_type)
         else:
-            self.model = SRLModules(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
+            self.model = SRLModules(state_dim=state_dim, img_shape=self.img_shape, action_dim=n_actions, model_type=model_type,
                                     cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
         self.model.eval()
 
