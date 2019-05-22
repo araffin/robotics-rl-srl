@@ -135,6 +135,7 @@ def env_thread(args, thread_num, partition=True):
         env_kwargs["srl_model"] = env_kwargs_extra["srl_model"]
         env_kwargs["random_target"] = env_kwargs_extra.get("random_target", False)
         env_kwargs["use_srl"] = env_kwargs_extra.get("use_srl", False)
+
         eps = 0.2
         env_kwargs["state_init_override"] = np.array([MIN_X + eps, MAX_X - eps]) \
             if args.run_policy == 'walker' else None
@@ -151,6 +152,7 @@ def env_thread(args, thread_num, partition=True):
     walker_path = None
     action_walker = None
     state_init_for_walker = None
+    kwargs_reset, kwargs_step = {}, {}
 
     if args.run_policy in ['custom', 'ppo2', 'walker']:
 
@@ -184,6 +186,7 @@ def env_thread(args, thread_num, partition=True):
                (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
 
         if not (args.run_policy in ['custom', 'walker']):
+            seed = seed % 2^32
             env.seed(seed)
             env.action_space.seed(seed)  # this is for the sample() function from gym.space
 
@@ -197,7 +200,8 @@ def env_thread(args, thread_num, partition=True):
             generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
             generated_obs = deNormalize(generated_obs)
 
-        obs = env.reset(generated_observation=generated_obs)
+            kwargs_reset['generated_observation'] = generated_obs
+        obs = env.reset(**kwargs_reset)
         done = False
         action_proba = None
         t = 0
@@ -240,8 +244,11 @@ def env_thread(args, thread_num, partition=True):
 
             action_to_step = action[0]
 
-            obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs, action_proba=action_proba,
-                                       action_grid_walker=action_walker)
+            kwargs_step = {k: v for (k, v) in [("generated_observation", generated_obs),
+                                          ("action_proba", action_proba),
+                                          ("action_grid_walker", action_walker)] if v is not None}
+
+            obs, _, done, _ = env.step(action_to_step, **kwargs_step)
 
             frames += 1
             t += 1
@@ -307,7 +314,6 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
-
     parser.add_argument('--short-episodes', action='store_true', default=False,
                         help='Generate short episodes (only 10 contacts with the target allowed).')
     parser.add_argument('--episode', type=int, default=-1,

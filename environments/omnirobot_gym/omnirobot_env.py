@@ -319,6 +319,7 @@ class OmniRobotEnv(SRLGymEnv):
         """
         Returns True if the episode is over and False otherwise
         """
+        #print("is SC at end: ", self.simple_continual_target, self.short_episodes, self.n_contacts)
         if (self.episode_terminated or self._env_step_counter > MAX_STEPS) or \
                 (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes and
                  self.simple_continual_target) or \
@@ -357,7 +358,7 @@ class OmniRobotEnv(SRLGymEnv):
                 self.visualizeBoundary()
                 self.image_plot = plt.imshow(self.observation_with_boundary, cmap='gray')
                 self.image_plot.axes.grid(False)
-                
+
             else:
                 self.visualizeBoundary()
                 self.image_plot.set_data(self.observation_with_boundary)
@@ -365,7 +366,7 @@ class OmniRobotEnv(SRLGymEnv):
             # Wait a bit, so that plot is visible
             plt.pause(0.0001)
         return self.observation
-    
+
     def initVisualizeBoundary(self):
         with open(CAMERA_INFO_PATH, 'r') as stream:
             try:
@@ -396,11 +397,11 @@ class OmniRobotEnv(SRLGymEnv):
         # transform the corresponding points into cropped image
         self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) -
                                                                          np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
-        
+
         # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
         self.boundary_coner_pixel_pos[0, :] *= RENDER_WIDTH/CROPPED_SIZE[0]
         self.boundary_coner_pixel_pos[1, :] *= RENDER_HEIGHT/CROPPED_SIZE[1]
-        
+
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
 
         # Create square for vizu of objective in continual square task
