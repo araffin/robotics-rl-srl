@@ -319,7 +319,6 @@ class OmniRobotEnv(SRLGymEnv):
         """
         Returns True if the episode is over and False otherwise
         """
-        #print("is SC at end: ", self.simple_continual_target, self.short_episodes, self.n_contacts)
         if (self.episode_terminated or self._env_step_counter > MAX_STEPS) or \
                 (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes and
                  self.simple_continual_target) or \
