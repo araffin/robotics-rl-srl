@@ -127,7 +127,7 @@ def callback(_locals, _globals):
     :param _locals: (dict)
     :param _globals: (dict)
     """
-    global win, win_smooth, win_episodes, win_crossEval,n_steps, viz, params_saved, best_mean_reward
+    global win, win_smooth, win_episodes, win_crossEval, n_steps, viz, params_saved, best_mean_reward
     # Create vizdom object only if needed
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
@@ -173,26 +173,26 @@ def callback(_locals, _globals):
 
         if n_episodes >= 0:
 
-            #For every checkpoint, we create one directory for saving logs file (policy and run mean std)
-            if n_episodes % EPISODE_WINDOW_DISTILLATION_WIN == 0:
-                ALGO.save(LOG_DIR + ALGO_NAME +'_' + str(n_episodes)+ "_model.pkl", _locals)
-                if(CROSS_EVAL):#If we want to do the cross evaluation after the training
-                    eps_path = LOG_DIR + "model_"+ str(n_episodes)
-                    try:
-                        os.mkdir(LOG_DIR + "model_"+ str(n_episodes))
-                    except OSError:
-                        print("Creation of the directory {} failed".format(eps_path))
+            # For every checkpoint, we create one directory for saving logs file (policy and run mean std)
+            if EPISODE_WINDOW_DISTILLATION_WIN > 0:
+                if n_episodes % EPISODE_WINDOW_DISTILLATION_WIN == 0:
+                    ALGO.save(LOG_DIR + ALGO_NAME + '_' + str(n_episodes) + "_model.pkl", _locals)
+                    if CROSS_EVAL:  # If we want to do the cross evaluation after the training
+                        eps_path = LOG_DIR + "model_" + str(n_episodes)
+                        try:
+                            os.mkdir(LOG_DIR + "model_" + str(n_episodes))
+                        except OSError:
+                            pass
+                            #print("Creation of the directory {} failed".format(eps_path))
 
-                    ALGO.save("{}/{}".format( eps_path, ALGO_NAME + "_model.pkl"), _locals)
-                    try:
-                        if 'env' in _locals:
-                            _locals['env'].save_running_average(eps_path)
-                        else:
-                            _locals['self'].env.save_running_average(eps_path)
-                    except AttributeError:
-                        pass
-                    # if CROSS_EVAL:
-                    #     episodeEval(LOG_DIR, EVAL_TASK)
+                        ALGO.save("{}/{}".format(eps_path, ALGO_NAME + "_model.pkl"), _locals)
+                        try:
+                            if 'env' in _locals:
+                                _locals['env'].save_running_average(eps_path)
+                            else:
+                                _locals['self'].env.save_running_average(eps_path)
+                        except AttributeError:
+                            pass
 
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
@@ -201,9 +201,6 @@ def callback(_locals, _globals):
                                    is_es=is_es)
         win_episodes = episodePlot(viz, win_episodes, LOG_DIR, ENV_NAME, ALGO_NAME, window=EPISODE_WINDOW,
                                    title=PLOT_TITLE + " [Episodes]", is_es=is_es)
-        # if CROSS_EVAL:
-        #     win_crossEval= episodesEvalPlot(viz,win_crossEval,LOG_DIR,ENV_NAME,EVAL_TASK,
-        #                                     title=PLOT_TITLE + " [Cross Evaluation]")
     n_steps += 1
     return True
 
@@ -268,7 +265,7 @@ def main():
                         help='A cross evaluation from the latest stored model to all tasks')
     parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
                         help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
-    parser.add_argument('--new-lr',type = float , default =1.e-4 ,
+    parser.add_argument('--new-lr', type=float, default=1.e-4,
                         help="New learning rate ratio to train a pretrained agent")
 
     # Ignore unknown args for now
@@ -369,6 +366,7 @@ def main():
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
     super_class = registered_env[args.env][1]
+
     # recursive search through all the super classes of the asked environment, in order to get all the arguments.
     rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _, _) in
                               registered_env.items()}
@@ -405,8 +403,6 @@ def main():
         hyperparams["learning_rate"] = lambda f: f * NEW_LR
         
     # Train the agent
-    # episodeEval(LOG_DIR,EVAL_TASK)
-    # return
     if args.load_rl_model_path is not None:
         algo.setLoadPath(args.load_rl_model_path)
     algo.train(args, callback, env_kwargs=env_kwargs, train_kwargs=hyperparams)

@@ -10,7 +10,7 @@ import numpy as np
 
 from environments.registry import registered_env
 from rl_baselines.evaluation.cross_eval_utils import loadConfigAndSetup, latestPolicy
-from srl_zoo.utils import printRed, printYellow
+from srl_zoo.utils import printRed, printYellow, printBlue
 from state_representation.registry import registered_srl
 
 CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
@@ -247,7 +247,7 @@ def main():
     print("Eval on eps list: ", episodes_to_test)
     for eps in episodes_to_test:
         student_path = args.log_dir_student
-        printRed("\n\nEvaluation at episode " + str(eps))
+        printBlue("\n\nEvaluation at episode " + str(eps))
 
         if not (args.log_dir_teacher_one == "None"):
             # Use a copy of the optimal teacher

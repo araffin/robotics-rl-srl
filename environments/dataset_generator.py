@@ -155,11 +155,11 @@ def env_thread(args, thread_num, partition=True):
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
 
-    if env_kwargs['srl_model'] != "raw_pixels":
+    if env_kwargs.get('srl_model', None) not in ["raw_pixels", None]:
         # TODO: Remove env duplication
-        #  This is a dirty trick to normalize the obs.
-        #  So for as we override SRL environment functions (step, reset) for on-policy generation & generative replay
-        #  using stable-baselines' normalisation wrappers (step & reset) breaks...
+        # This is a dirty trick to normalize the obs.
+        # So for as we override SRL environment functions (step, reset) for on-policy generation & generative replay
+        # using stable-baselines' normalisation wrappers (step & reset) breaks...
         env_norm = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=False, env_kwargs=env_kwargs)
                     for i in range(args.num_cpu)]
         env_norm = DummyVecEnv(env_norm)

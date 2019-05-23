@@ -24,7 +24,7 @@ FINE_TUNING = False
 CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
 USE_ADAPTIVE_TEMPERATURE = False
-TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.01}
+TEMPERATURES = {'CC': 0.1, 'SC': 0.1, 'EC': 0.1, 'SQC': 0.1, "default": 0.1}
 # run with 0.1 to have good results!
 # 0.01 worse reward for CC, better SC
 
@@ -244,7 +244,7 @@ class PolicyDistillationModel(BaseRLObject):
 
         self.optimizer = th.optim.Adam(learnable_params, lr=learning_rate)
         best_error = np.inf
-        best_model_path = "{}/distillation_model.pkl".format(args.log_dir)
+        best_model_path = "{}/{}_model.pkl".format(args.log_dir, args.algo)
 
         for epoch in range(N_EPOCHS):
             # In each epoch, we do a full pass over the training data:
