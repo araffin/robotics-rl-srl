@@ -29,7 +29,7 @@ else:
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 RELATIVE_POS = True
-N_CONTACTS_BEFORE_TERMINATION = 10
+N_CONTACTS_BEFORE_TERMINATION = 15 #10
 
 DELTA_POS = 0.1  # DELTA_POS for continuous actions
 N_DISCRETE_ACTIONS = 4
@@ -233,8 +233,10 @@ class OmniRobotEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else action_to_step,
                             self.reward, done, self.getGroundTruth(), action_proba=action_proba)
+        old_observation = self.getObservation()
+
         if self.use_srl:
-            return self.getSRLState(self.observation), self.reward, done, {}
+            return self.getSRLState(self.observation if generated_observation is None else old_observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -310,8 +312,10 @@ class OmniRobotEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.reset(self.observation,
                              self.getTargetPos(), self.getGroundTruth())
+        old_observation = self.getObservation()
+
         if self.use_srl:
-            return self.getSRLState(self.observation)
+            return self.getSRLState(self.observation if generated_observation is None else old_observation)
         else:
             return self.observation
 

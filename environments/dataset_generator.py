@@ -213,7 +213,7 @@ def env_thread(args, thread_num, partition=True):
                 sample = sample.cuda()
 
             generated_obs = srl_model.decode(sample)
-            generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
+            generated_obs = generated_obs[0].detach().cpu().numpy()
             generated_obs = deNormalize(generated_obs)
 
             kwargs_reset['generated_observation'] = generated_obs
@@ -233,12 +233,11 @@ def env_thread(args, thread_num, partition=True):
 
             # Custom pre-trained Policy (SRL or End-to-End)
             elif args.run_policy in['custom', 'walker']:
-                obs =  env_norm._normalize_observation(obs)
+                obs = env_norm._normalize_observation(obs)
                 action = [model.getAction(obs, done)]
                 action_proba = model.getActionProba(obs, done)
                 if args.run_policy == 'walker':
                     action_walker = np.array(walker_path[t])
-
             # Random Policy
             else:
                 # Using a target reaching policy (untrained, from camera) when collecting data from real OmniRobot
@@ -248,19 +247,25 @@ def env_thread(args, thread_num, partition=True):
                 else:
                     action = [env.action_space.sample()]
 
+            # Generative replay +/- for on-policy action
             if len(args.replay_generative_model) > 0:
 
-                sample = Variable(th.randn(1, srl_state_dim))
+                if args.run_policy == 'custom':
+                    obs = obs.reshape(1, srl_state_dim)
+                    obs = th.from_numpy(obs.astype(np.float32)).cuda()
+                    z = obs
+                    generated_obs = srl_model.decode(z)
+                else:
+                    sample = Variable(th.randn(1, srl_state_dim))
 
-                if th.cuda.is_available():
-                    sample = sample.cuda()
+                    if th.cuda.is_available():
+                        sample = sample.cuda()
 
-                generated_obs = srl_model.decode(sample)
-                generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
+                    generated_obs = srl_model.decode(sample)
+                generated_obs = generated_obs[0].detach().cpu().numpy()
                 generated_obs = deNormalize(generated_obs)
 
             action_to_step = action[0]
-
             kwargs_step = {k: v for (k, v) in [("generated_observation", generated_obs),
                                                ("action_proba", action_proba),
                                                ("action_grid_walker", action_walker)] if v is not None}
