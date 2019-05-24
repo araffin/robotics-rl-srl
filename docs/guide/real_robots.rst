@@ -2,8 +2,8 @@
 
 .. _working-with-real-robots:-baxter-and-robobo:
 
-Working With Real Robots: Baxter and Robobo
-===========================================
+Working With Real Robots: Baxter, Robobo and Omnirobot
+======================================================
 
 Baxter Robot with Gazebo and ROS
 --------------------------------
@@ -257,10 +257,158 @@ RL on a Real Robobo
 
 ::
 
-   python -m visdom.server
+    python -m visdom.server
 
 4. Train the agent (python 3)
 
 ::
 
-   python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --algo ppo2 --env RoboboGymEnv-v0
+    python -m rl_baselines.train --srl-model ground_truth --log-dir logs_real/ --num-stack 1 --algo ppo2 --env RoboboGymEnv-v0
+
+
+Working With a Real Omnirobot
+-----------------------------
+
+By default, Omnirobot uses the same reward and terminal policy with the MobileRobot environment.
+Thus each episodes will have exactly 251 steps, and when the robot touches the target,
+it will get ``reward=1``, when it touches the border, it will get ``reward=-1``, otherwise, ``reward=0``.
+
+All the important parameters are writed in constants.py,
+thus you can simply modified the reward or terminal policy of this environment.
+
+Architecture of Omnirobot
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+Architecture of Real Omnirobot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The omnirobot's environment contains two principle components (two threads).
+
+- ``real_robots/omnirobot_server.py`` (python2, using ROS to communicate with robot)
+- ``environments/omnirobot_gym/omnirobot_env.py`` (python3, wrapped baseline environment)
+
+These two components uses zmq socket to communicate. The socket port can be changed, and by defualt it's 7777.
+These two components should be launched manually, because they use different environment (ROS and anaconda).
+
+Architecture of Omnirobot Simulator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The simulator has only one thread, omnirobot_env. The simulator is a object of this running thread,
+it uses exactly the same api as ``zmq``,
+thus ``omnirobot_server`` can be easily switched to ``omnirobot_simulator_server`` without
+changing code of ``omnirobot_env``.
+
+Switch between real robot and simulator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Switch from real robot to simulator
+  modify ``real_robots/constants.py``, set ``USING_OMNIROBOT = False`` and ``USING_OMNIROBOT_SIMULATOR = True``
+- Switch from simulator to real robot:
+  modify ``real_robots/constants.py``, set ``USING_OMNIROBOT = True`` and ``USING_OMNIROBOT_SIMULATOR = False``
+
+Real Omnirobot
+~~~~~~~~~~~~~~
+Omnirobot offers the clean environment for RL, for each step of RL,
+the real robot does a close-loop positional control to reach the supposed position.
+
+When the robot is moving, ``omnirobot_server`` will be blocked until it receives a msg from the topic ``finished``,
+which is sent by the robot.
+This blocking has a time out (by default 30s), thus if anything unexpected happens,
+the ``omnirobot_server`` will fail and close.
+
+Launch RL on real omnirobot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To launch the rl  experience of omnirobot, do these step-by-step:
+
+- switch to real robot (modify constans.py, ensure  ``USING_OMNIROBOT = True``)
+- setup ROS environment and comment ``anaconda`` in ``~/.bashrc``, launch a new terminal, run
+
+::
+
+    python -m real_robots.omnirobot_server
+
+- comment ROS environment and uncomment ``anaconda`` in ``~/.bashrc``, launch a new terminal.
+
+- If you want to train RL on real robot, run (with other options customizable):
+
+::
+
+    python -m rl_baselines.train --env OmnirobotEnv-v0
+
+- If you want to replay the RL policy on real robot, which can be trained on the simulator, run:
+
+::
+
+    python -m replay.enjoy_baselines --log-dir path/to/RL/logs -render
+
+Recording Data of real omnirobot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To launch a acquisition of real robot's dataset, do these step-by-step:
+
+- switch to real robot (modify constans.py, ensure  ``USING_OMNIROBOT = True``)
+- setup ROS environment and comment `anaconda` in `~/.bashrc`, launch a new terminal, run:
+
+::
+
+    python -m real_robots.omnirobot_server
+
+- Change ``episodes`` to the number of you want in ``environments/omnirobot_gym/test_env.py``
+- comment ROS environment and uncomment ``anaconda`` in ``~/.bashrc``, launch a new terminal, run:
+
+::
+
+    python -m environments.omnirobot_gym.test_env
+
+Note that you should move the target manually between the different episodes.
+Attention, you can try to use Random Agent or a agent always do the toward target policy
+(this can increase the positive reward proportion in the dataset),
+or combine them by setting a proportion (``TORWARD_TARGET_PROPORTION``).
+
+
+Omnirobot Simulator
+~~~~~~~~~~~~~~~~~~~
+This simulator uses photoshop tricks to make realistic image of environment. It need several image as input:
+
+- back ground image (480x480, undistorted)
+- robot's tag/code, cropped from a real environment image(480x480, undistorted), with a margin 3 or 4 pixels.
+- target's tag/code, cropped from a real environment image (480x480, undistorted), with a margin 3 or 4 pixels.
+
+It also needs some important information:
+
+- margin of markerts
+- camera info file's path, which generated by ROS' camera_calibration package.
+
+The camera matrix should be corresponding with original image size (eg. 640x480 for our case)
+
+The detail of the inputs above can be find from OmniRobotEnvRender's comments.
+
+Noise of Omnirobot Simulator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To make the simulator more general, and make RL/SRL more stable, several types of noise are added to it.
+The parameters of these noises can be modified from the top of ``omnirobot_simulator_server.py``
+
+- noise of robot position, yaw.
+  Gaussian noise, controlled by ``NOISE_VAR_ROBOT_POS`` and ``NOISE_VAR_ROBOT_YAW``.
+- noise of markers in pixel-wise.
+  Gaussian noise to simulate camera's noise, apply pixel-wise noise on the markers' images,
+  controlled by ``NOISE_VAR_TARGET_PIXEL`` and ``NOISE_VAR_ROBOT_PIXEL``.
+- noise of environment's luminosity.
+  Apply Gaussian noise on LAB space of output image, to simulate the environment's luminosity change,
+  controlled by ``NOISE_VAR_ENVIRONMENT``.
+- noise of marker's size.
+  Change size of robot's and target's marker proportionally, to simulate the position variance on the vertical axis.
+  This kind of  noise is controlled by ``NOISE_VAR_ROBOT_SIZE_PROPOTION`` and ``NOISE_VAR_TARGET_SIZE_PROPOTION``.
+
+Known issues of Omnirobot
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- The script ``omnirobot_server.py`` in robotics-rl-srl cannot be simply quitted by ctrl-c.
+    - This is because the zmq in python2 uses blocking behavior, even SIGINT cannot be detected when it is blocking.
+    - To quit the program, you should send ``SIGKILL`` to it. This can be done by ``kill -9`` or ``htop``.
+- Error: ``ImportError: /opt/ros/kinetic/lib/python2.7/dist-packages/cv2.so: undefined symbol: PyCObject_Type``
+    - You probably run a program expected to run in ``conda`` environment, sometimes even ``~/.bashrc`` is changed, and correctly applies ``source ~/.bashrc``, the environment still stays with ``ros``.
+    - In this situation, simply re-check the contents in ``~/.bashrc``, and open another new terminal to launch the programme.
+- Stuck at ``wait for client to connect`` or ``waiting to connect server``, there are several possible reasons.
+    - Port for client and server are not same. Try to use the same one
+    - Port is occupied by another client/server, you should kill it. If you cannot find the process which occupies this port, use ``fuser 7777\tcp -k`` to kill it directly. (7777 can be changed to any number of port).
+
+

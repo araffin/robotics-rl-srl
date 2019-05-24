@@ -5,6 +5,14 @@ Changelog
 
 For download links, please look at `Github release page <https://github.com/araffin/robotics-rl-srl/releases>`_.
 
+Release 1.3.0 (2019-??-??)
+--------------------------
+
+- added OmniRobot environment for simulation and real life setting
+- updated package version (gym, stable-baselines)
+- updated doc and tests
+- added script for merging datasets
+
 Release 1.2.0 (2019-01-17)
 --------------------------
 

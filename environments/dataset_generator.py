@@ -135,6 +135,8 @@ def main():
                         help='runs a ppo2 agent instead of a random agent')
     parser.add_argument('--ppo2-timesteps', type=int, default=1000,
                         help='number of timesteps to run PPO2 on before generating the dataset')
+    parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
+                        help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"

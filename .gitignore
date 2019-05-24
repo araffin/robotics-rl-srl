@@ -11,7 +11,7 @@ logs_real/
 .pytest_cache/
 docker/environment.yml
 _build/
-
+.vscode/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

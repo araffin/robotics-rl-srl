@@ -205,7 +205,9 @@ def main():
                         help="Min number of episodes before saving best model")
     parser.add_argument('--latest', action='store_true', default=False,
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
-
+    parser.add_argument('--load-rl-model-path', type=str, default=None,
+                        help="load the trained RL model, should be with the same algorithm type")
+    
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
@@ -246,6 +248,7 @@ def main():
     algo_class, algo_type, action_type = registered_rl[args.algo]
     algo = algo_class()
     ALGO = algo
+    
 
     # if callback frequency needs to be changed
     LOG_INTERVAL = algo.LOG_INTERVAL
@@ -317,7 +320,16 @@ def main():
     # Get the hyperparameter, if given (Hyperband)
     hyperparams = {param.split(":")[0]: param.split(":")[1] for param in args.hyperparam}
     hyperparams = algo.parserHyperParam(hyperparams)
+    
+    if args.load_rl_model_path is not None:
+        #use a small learning rate
+        print("use a small learning rate: {:f}".format(1.0e-4))
+        hyperparams["learning_rate"] = lambda f: f * 1.0e-4
+        
     # Train the agent
+
+    if args.load_rl_model_path is not None:
+        algo.setLoadPath(args.load_rl_model_path)
     algo.train(args, callback, env_kwargs=env_kwargs, train_kwargs=hyperparams)
 
 

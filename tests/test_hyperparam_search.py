@@ -47,8 +47,10 @@ def testRLHyperparamSearch(algo):
     """
     args = ['--optimizer', DEFAULT_OPTIMIZER, '--algo', algo, '--srl-model', DEFAULT_SRL, '--max-eval', MAX_EVAL,
             '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--env', DEFAULT_ENV]
-    if algo == "ddpg":
-        args.extend(['-c', '--memory-limit', 100000])
+    if algo == "ddpg" or algo == "sac":
+        args.extend(['-c'])
+        if algo == "ddpg":
+            args.extend(['--memory-limit', 100000])
     elif algo == "acer":
         args.extend(['--num-stack', 4])
 

@@ -44,7 +44,8 @@ def assertNeq(left, right):
 
 
 @pytest.mark.fast
-@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'sac', 'trpo'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'sac',
+                                  'trpo'])
 def testBaselineTrain(algo):
     """
     test for the given RL algorithm
@@ -53,8 +54,10 @@ def testBaselineTrain(algo):
     args = ['--algo', algo, '--srl-model', DEFAULT_SRL, '--num-timesteps', NUM_TRAIN_TIMESTEP, '--seed', SEED,
             '--num-iteration', NUM_ITERATION, '--no-vis', '--log-dir', DEFAULT_LOG_DIR, '--env', DEFAULT_ENV,
             '--min-episodes-save', 1]
-    if algo == "ddpg":
-        args.extend(['-c', '--memory-limit', 100])
+    if algo == "ddpg" or algo == "sac":
+        args.extend(['-c'])
+        if algo == "ddpg":
+            args.extend(['--memory-limit', 100])
     elif algo == "acer":
         args.extend(['--num-stack', 4])
 
@@ -68,7 +71,8 @@ def testBaselineTrain(algo):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'sac', 'trpo'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'sac',
+                                  'trpo'])
 def testEnjoyBaselines(algo):
     """
     test the enjoy script for the given RL algorithm
