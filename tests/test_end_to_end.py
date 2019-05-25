@@ -191,9 +191,11 @@ def testAllSrlonRLTrain(algo):
     args = ['--algo', algo, '--env', DEFAULT_ENV, '--srl-model', DEFAULT_SRL,
             '--num-timesteps', NUM_TIMESTEP, '--seed', SEED, '--num-iteration', NUM_ITERATION,
             '--no-vis', '--srl-config-file', DEFAULT_SRL_CONFIG_YAML]
-    if algo == "ddpg":
+    if algo == "ddpg" or algo == "sac":
         mem_limit = 100 if DEFAULT_SRL == 'raw_pixels' else 100000
-        args.extend(['-c', '--memory-limit', mem_limit])
+        args.extend(['-c'])
+        if algo == "ddpg":
+            args.extend(['--memory-limit', mem_limit])
     elif algo == "acer":
         args.extend(['--num-stack', 4])
 

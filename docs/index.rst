@@ -40,10 +40,8 @@ Main Features
 
 Related papers:
 
-- "Decoupling feature extraction from policy learning: assessing benefits of state representation learning in goal based robotics" (Raffin et al. 2018) https://openreview.net/forum?id=Hkl-di09FQ
--  "S-RL Toolbox: Environments, Datasets and Evaluation Metrics for
-   State Representation Learning" (Raffin et al., 2018)
-   `https://arxiv.org/abs/1809.09369 <https://arxiv.org/abs/1809.09369>`__
+- "Decoupling feature extraction from policy learning: assessing benefits of state representation learning in goal based robotics" (Raffin et al. 2018) `https://arxiv.org/abs/1901.08651 <https://arxiv.org/abs/1901.08651>`__
+-  "S-RL Toolbox: Environments, Datasets and Evaluation Metrics for State Representation Learning" (Raffin et al., 2018) `https://arxiv.org/abs/1809.09369 <https://arxiv.org/abs/1809.09369>`__
 
 .. note::
   This documentation only gives an overview of the RL Toolbox,

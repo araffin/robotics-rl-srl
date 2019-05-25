@@ -116,6 +116,7 @@ class StableBaselinesRLObject(BaseRLObject):
         self.ob_space = None
         self.ac_space = None
         self.policy = None
+        self.load_rl_model_path = None
 
     def save(self, save_path, _locals=None):
         """
@@ -137,6 +138,14 @@ class StableBaselinesRLObject(BaseRLObject):
         with open(save_path, "wb") as f:
             pickle.dump(save_param, f)
 
+    def setLoadPath(self, load_path):
+        """
+        Set the path to later load the parameters of a trained rl model
+        :param load_path: (str)
+        :return: None
+        """
+        self.load_rl_model_path = load_path
+       
     @classmethod
     def load(cls, load_path, args=None):
         """
@@ -229,13 +238,16 @@ class StableBaselinesRLObject(BaseRLObject):
         self.ob_space = envs.observation_space
         self.ac_space = envs.action_space
 
-        policy_fn = {'cnn': CnnPolicy,
-                     'cnn-lstm': CnnLstmPolicy,
-                     'cnn-lnlstm': CnnLnLstmPolicy,
-                     'mlp': MlpPolicy,
-                     'lstm': MlpLstmPolicy,
-                     'lnlstm': MlpLnLstmPolicy}[args.policy]
-
-        self.model = self.model_class(policy_fn, envs, **train_kwargs)
+        policy_fn = {'cnn': "CnnPolicy",
+                     'cnn-lstm': "CnnLstmPolicy",
+                     'cnn-lnlstm': "CnnLnLstmPolicy",
+                     'mlp': "MlpPolicy",
+                     'lstm': "MlpLstmPolicy",
+                     'lnlstm': "MlpLnLstmPolicy"}[args.policy]
+        if self.load_rl_model_path is not None:
+            print("Load trained model from the path: ", self.load_rl_model_path)
+            self.model = self.model_class.load(self.load_rl_model_path, envs, **train_kwargs)
+        else:
+            self.model = self.model_class(policy_fn, envs, **train_kwargs)
         self.model.learn(total_timesteps=args.num_timesteps, seed=args.seed, callback=callback)
         envs.close()
