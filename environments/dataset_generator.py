@@ -16,6 +16,7 @@ from stable_baselines.common.policies import CnnPolicy
 
 from environments import ThreadingType
 from environments.registry import registered_env
+from real_robots.constants import USING_OMNIROBOT
 from srl_zoo.utils import printRed, printYellow
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
@@ -63,15 +64,16 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
-
-    # Additional env when using a trained ppo agent to generate data
-    # instead of a random agent
-    train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False})
-    train_env = DummyVecEnv([lambda: train_env])
-    train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
+    using_real_omnibot = args.env == "OmnirobotEnv-v0" and USING_OMNIROBOT
 
     model = None
     if use_ppo2:
+        # Additional env when using a trained ppo agent to generate data
+        # instead of a random agent
+        train_env = env_class(**{**env_kwargs, "record_data": False, "renders": False})
+        train_env = DummyVecEnv([lambda: train_env])
+        train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False)
+
         model = PPO2(CnnPolicy, train_env).learn(args.ppo2_timesteps)
 
     frames = 0
@@ -83,22 +85,34 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
                (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
 
         env.seed(seed)
-        # prng.seed(seed)  # this is for the sample() function from gym.space
+        env.action_space.seed(seed)  # this is for the sample() function from gym.space
         obs = env.reset()
         done = False
         t = 0
+        episode_toward_target_on = False
         while not done:
             env.render()
 
             if use_ppo2:
                 action, _ = model.predict([obs])
             else:
-                action = [env.action_space.sample()]
+                # Using a target reaching policy (untrained, from camera) when collecting data from real OmniRobot
+                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion and \
+                        using_real_omnibot:
+                    action = [env.actionPolicyTowardTarget()]
+                else:
+                    action = [env.action_space.sample()]
 
-            _, _, done, _ = env.step(action[0])
+            action_to_step = action[0]
+            _, _, done, _ = env.step(action_to_step)
+
             frames += 1
             t += 1
             if done:
+                if np.random.rand() < args.toward_target_timesteps_proportion and using_real_omnibot:
+                    episode_toward_target_on = True
+                else:
+                    episode_toward_target_on = False
                 print("Episode finished after {} timesteps".format(t + 1))
 
         if thread_num == 0:
