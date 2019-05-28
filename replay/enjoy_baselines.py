@@ -60,6 +60,8 @@ def parseArguments():
                         help='display in the latent space the current observation.')
     parser.add_argument('--action-proba', action='store_true', default=False,
                         help='display the probability of actions')
+    parser.add_argument('--img-shape', type=str, default="(3,128,128)",
+                        help="Image shape of environment.")
     return parser.parse_args()
 
 
@@ -151,9 +153,14 @@ def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir=
 def main():
     load_args = parseArguments()
     train_args, load_path, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(load_args)
-    import ipdb;ipdb.set_trace()
+    ## Hacky way to pass image shape to the argument. [TODO: improve it in the future]
+    if load_args.img_shape is None:
+        img_shape = None #(3,224,224)
+    else:
+        img_shape = tuple(map(int, load_args.img_shape[1:-1].split(",")))
+    env_kwargs['img_shape'] = img_shape
     log_dir, envs, algo_args = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
-
+    
     assert (not load_args.plotting and not load_args.action_proba)\
         or load_args.num_cpu == 1, "Error: cannot run plotting with more than 1 CPU"
 

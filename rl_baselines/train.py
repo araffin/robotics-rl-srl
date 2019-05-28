@@ -295,7 +295,7 @@ def main():
                           if v is not None}
 
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
-    ### Hacky way to reset image shape !! [TODO: improve it in the future]
+    ### HACK way to reset image shape !! 
     globals_env_param['RENDER_HEIGHT'] = img_shape[1]
     globals_env_param['RENDER_WIDTH']  = img_shape[2]
     super_class = registered_env[args.env][1]
