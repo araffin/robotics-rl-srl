@@ -35,7 +35,7 @@ def getSRLDim(path=None, env_object=None):
         return env_object.getGroundTruthDim()
 
 
-def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
+def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None, img_shape=None):
     """
     Load a trained SRL model, it will try to guess the model type from the path
     :param path: (str) Path to a srl model
@@ -93,7 +93,7 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None):
         if use_multi_view:
             preprocessing.preprocess.N_CHANNELS = 6
 
-        model = SRLNeuralNetwork(state_dim, cuda, model_type, n_actions=n_actions, losses=losses,
+        model = SRLNeuralNetwork(state_dim, cuda, img_shape=img_shape, model_type=model_type, n_actions=n_actions, losses=losses,
                                  split_dimensions=split_dimensions, inverse_model_type=inverse_model_type)
 
     model_name = model_type

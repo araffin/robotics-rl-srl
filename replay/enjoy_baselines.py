@@ -151,6 +151,7 @@ def createEnv(load_args, train_args, algo_name, algo_class, env_kwargs, log_dir=
 def main():
     load_args = parseArguments()
     train_args, load_path, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(load_args)
+    import ipdb;ipdb.set_trace()
     log_dir, envs, algo_args = createEnv(load_args, train_args, algo_name, algo_class, env_kwargs)
 
     assert (not load_args.plotting and not load_args.action_proba)\

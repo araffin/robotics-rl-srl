@@ -207,11 +207,17 @@ def main():
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
     parser.add_argument('--load-rl-model-path', type=str, default=None,
                         help="load the trained RL model, should be with the same algorithm type")
+    parser.add_argument('--img-shape', type=str, default="(3,128,128)",
+                        help="Image shape of environment.")
     
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
-
+    if args.img_shape is None:
+        img_shape = None #(3,224,224)
+    else:
+        img_shape = tuple(map(int, args.img_shape[1:-1].split(",")))
+    env_kwargs['img_shape'] = img_shape
     # LOAD SRL models list
     assert os.path.exists(args.srl_config_file), \
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
@@ -289,7 +295,9 @@ def main():
                           if v is not None}
 
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
-
+    ### Hacky way to reset image shape !! [TODO: improve it in the future]
+    globals_env_param['RENDER_HEIGHT'] = img_shape[1]
+    globals_env_param['RENDER_WIDTH']  = img_shape[2]
     super_class = registered_env[args.env][1]
     # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
     rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _, _) in

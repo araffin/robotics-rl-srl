@@ -183,7 +183,7 @@ class MultiprocessSRLModel:
         # By default it will use all CPUs, even with GPU acceleration
         th.set_num_threads(1)
         self.model = loadSRLModel(env_kwargs.get("srl_model_path", None), th.cuda.is_available(), self.state_dim,
-                                  env_object=None)
+                                  env_object=None, img_shape=env_kwargs.get("img_shape", None))
         # run until the end of the caller thread
         while True:
             # pop an item, get state, and return to sender.
