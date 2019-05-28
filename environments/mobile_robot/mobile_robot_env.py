@@ -66,12 +66,12 @@ class MobileRobotGymEnv(SRLGymEnv):
                                                 relative_pos=RELATIVE_POS,
                                                 env_rank=env_rank,
                                                 srl_pipe=srl_pipe)
-        self.img_shape = img_shape ## channel first !!
         self._timestep = 1. / 240.
         self._urdf_root = urdf_root
         self._observation = []
         self._env_step_counter = 0
         self._renders = renders
+        self.img_shape = img_shape  # channel first !!
         if self.img_shape is None:
             self._width = RENDER_WIDTH
             self._height = RENDER_HEIGHT

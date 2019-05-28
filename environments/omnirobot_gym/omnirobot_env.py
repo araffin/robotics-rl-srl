@@ -72,7 +72,7 @@ class OmniRobotEnv(SRLGymEnv):
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
-                 shape_reward=False, env_rank=0, srl_pipe=None, **_):
+                 shape_reward=False, env_rank=0, srl_pipe=None, img_shape=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=RELATIVE_POS,
@@ -94,7 +94,10 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         self.episode_terminated = False
         self.state_dim = state_dim
-
+        if img_shape is None:
+            self.img_shape = (3, RENDER_HEIGHT, RENDER_WIDTH)
+        else:
+            self.img_shape = img_shape
         self._renders = renders
         self._shape_reward = shape_reward
         self.cuda = th.cuda.is_available()
@@ -118,7 +121,7 @@ class OmniRobotEnv(SRLGymEnv):
                 low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
             self.dtype = np.uint8
-            self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self.img_shape[2], self.img_shape[1], 3),
                                                 dtype=self.dtype)
 
         if record_data:
@@ -129,7 +132,7 @@ class OmniRobotEnv(SRLGymEnv):
 
         if USING_OMNIROBOT_SIMULATOR:
             self.socket = OmniRobotSimulatorSocket(
-                output_size=[RENDER_WIDTH, RENDER_HEIGHT], random_target=self._random_target)
+                output_size=[self.img_shape[2], self.img_shape[1]], random_target=self._random_target)
         else:
             # Initialize Baxter effector by connecting to the Gym bridge ROS node:
             self.context = zmq.Context()
@@ -235,7 +238,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.observation = recvMatrix(self.socket)
         # Resize it:
         self.observation = cv2.resize(
-            self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+            self.observation, (self.img_shape[2], self.img_shape[1]), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getTargetPos(self):
@@ -365,9 +368,9 @@ class OmniRobotEnv(SRLGymEnv):
         self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) -
                                                                          np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
         
-        # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
-        self.boundary_coner_pixel_pos[0, :] *= RENDER_WIDTH/CROPPED_SIZE[0]
-        self.boundary_coner_pixel_pos[1, :] *= RENDER_HEIGHT/CROPPED_SIZE[1]
+        # transform the corresponding points into resized image (RENDER_WIDHT, self.img_shape[1])
+        self.boundary_coner_pixel_pos[0, :] *= self.img_shape[2]/CROPPED_SIZE[0]
+        self.boundary_coner_pixel_pos[1, :] *= self.img_shape[1]/CROPPED_SIZE[1]
         
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
 

@@ -59,7 +59,7 @@ class RoboboEnv(SRLGymEnv):
 
     def __init__(self, renders=False, is_discrete=True, log_folder="robobo_log_folder", state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False,
-                 shape_reward=False, env_rank=0, srl_pipe=None):
+                 shape_reward=False, env_rank=0, srl_pipe=None, img_shape=None):
 
         super(RoboboEnv, self).__init__(srl_model=srl_model,
                                         relative_pos=RELATIVE_POS,
@@ -83,7 +83,11 @@ class RoboboEnv(SRLGymEnv):
         self.cuda = th.cuda.is_available()
         self.target_pos = None
         self.saver = None
-
+        if img_shape is None:
+            self.img_shape = (3, RENDER_HEIGHT, RENDER_WIDTH)
+        else:
+            self.img_shape = img_shape
+        
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
@@ -99,7 +103,7 @@ class RoboboEnv(SRLGymEnv):
             self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=self.dtype)
         else:
             self.dtype = np.uint8
-            self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_WIDTH, RENDER_HEIGHT, 3),
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self.img_shape[2], self.img_shape[1], 3),
                                                 dtype=self.dtype)
 
         if record_data:
@@ -173,7 +177,7 @@ class RoboboEnv(SRLGymEnv):
         # Receive a camera image from the server
         self.observation = recvMatrix(self.socket)
         # Resize it:
-        self.observation = cv2.resize(self.observation, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        self.observation = cv2.resize(self.observation, (self.img_shape[2], self.img_shape[1]), interpolation=cv2.INTER_AREA)
         return self.observation
 
     def getTargetPos(self):

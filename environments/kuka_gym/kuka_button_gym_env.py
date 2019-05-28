@@ -78,7 +78,7 @@ class KukaButtonGymEnv(SRLGymEnv):
     def __init__(self, urdf_root=pybullet_data.getDataPath(), renders=False, is_discrete=True, multi_view=False,
                  name="kuka_button_gym", max_distance=0.8, action_repeat=1, shape_reward=False, action_joints=False,
                  record_data=False, random_target=False, force_down=True, state_dim=-1, learn_states=False,
-                 verbose=False, save_path='srl_zoo/data/', env_rank=0, srl_pipe=None, srl_model="raw_pixels", **_):
+                 verbose=False, save_path='srl_zoo/data/', env_rank=0, srl_pipe=None, srl_model="raw_pixels", img_shape=None, **_):
         super(KukaButtonGymEnv, self).__init__(srl_model=srl_model,
                                                relative_pos=RELATIVE_POS,
                                                env_rank=env_rank,
@@ -89,8 +89,12 @@ class KukaButtonGymEnv(SRLGymEnv):
         self._observation = []
         self._env_step_counter = 0
         self._renders = renders
-        self._width = RENDER_WIDTH
-        self._height = RENDER_HEIGHT
+        self.img_shape = img_shape  # channel first !!
+        if self.img_shape is None:
+            self._width = RENDER_WIDTH
+            self._height = RENDER_HEIGHT
+        else:
+            self._height, self._width = self.img_shape[1:]
         self._cam_dist = 1.1
         self._cam_yaw = 145
         self._cam_pitch = -36
@@ -391,10 +395,10 @@ class KukaButtonGymEnv(SRLGymEnv):
             roll=self._cam_roll,
             upAxisIndex=2)
         proj_matrix1 = p.computeProjectionMatrixFOV(
-            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+            fov=60, aspect=float(self._width) / self._height,
             nearVal=0.1, farVal=100.0)
         (_, _, px1, _, _) = p.getCameraImage(
-            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
+            width=self._width, height=self._height, viewMatrix=view_matrix1,
             projectionMatrix=proj_matrix1, renderer=self.renderer)
         rgb_array1 = np.array(px1)
 
@@ -408,10 +412,10 @@ class KukaButtonGymEnv(SRLGymEnv):
                 roll=0,
                 upAxisIndex=2)
             proj_matrix2 = p.computeProjectionMatrixFOV(
-                fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                fov=60, aspect=float(self._width) / self._height,
                 nearVal=0.1, farVal=100.0)
             (_, _, px2, _, _) = p.getCameraImage(
-                width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
+                width=self._width, height=self._height, viewMatrix=view_matrix2,
                 projectionMatrix=proj_matrix2, renderer=self.renderer)
             rgb_array2 = np.array(px2)
             rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
