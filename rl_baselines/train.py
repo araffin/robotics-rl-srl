@@ -209,9 +209,11 @@ def main():
                         help="load the trained RL model, should be with the same algorithm type")
     parser.add_argument('--img-shape', type=str, default="(3,128,128)",
                         help="Image shape of environment.")
-    
+    parser.add_argument("--gpu_num", help="Choose the number of GPU (CUDA_VISIBLE_DEVICES).",
+                        type=str, default="0", choices=["0", "1", "2", "3", "5", "6", "7", "8"])
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num
     env_kwargs = {}
     if args.img_shape is None:
         img_shape = None #(3,224,224)
@@ -223,7 +225,7 @@ def main():
         "Error: cannot load \"--srl-config-file {}\", file not found!".format(args.srl_config_file)
     with open(args.srl_config_file, 'rb') as f:
         all_models = yaml.load(f)
-
+    
     # Sanity check
     assert args.episode_window >= 1, "Error: --episode_window cannot be less than 1"
     assert args.num_timesteps >= 1, "Error: --num-timesteps cannot be less than 1"
@@ -234,6 +236,7 @@ def main():
     assert registered_srl[args.srl_model][0] == SRLType.ENVIRONMENT or args.env in all_models, \
         "Error: the environment {} has no srl_model defined in 'srl_models.yaml'. Cannot continue.".format(args.env)
     # check that all the SRL_model can be run on the environment
+    
     if registered_srl[args.srl_model][1] is not None:
         found = False
         for compatible_class in registered_srl[args.srl_model][1]:
@@ -241,7 +244,7 @@ def main():
                 found = True
                 break
         assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
-
+    
     ENV_NAME = args.env
     ALGO_NAME = args.algo
     VISDOM_PORT = args.port

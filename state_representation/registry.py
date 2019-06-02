@@ -26,5 +26,7 @@ registered_srl = {
     "reward": (SRLType.SRL, None),
     "vae": (SRLType.SRL, None),
     "dae": (SRLType.SRL, None),
-    "pca": (SRLType.SRL, None)
+    "pca": (SRLType.SRL, None),
+    "gan": (SRLType.SRL, None),
+    "unet": (SRLType.SRL, None)
 }

@@ -77,6 +77,8 @@ MobileRobotGymEnv-v0:
   random: 18-08-10_11h50_25_custom_cnn_ST_DIM200_random/srl_model.pth
   random_inverse: 18-08-10_11h38_05_custom_cnn_ST_DIM200_inverse_random/srl_model.pth
   autoencoder_forward: 18-08-14_10h35_47_custom_cnn_ST_DIM200_autoencoder_forward/srl_model.pth
+  gan: 19-06-02_15h59_32_gan_ST_DIM200_/srl_model.pth
+  unet: 19-06-02_19h20_18_unet_ST_DIM200_/srl_model.pth
 
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
