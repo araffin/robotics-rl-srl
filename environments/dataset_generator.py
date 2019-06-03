@@ -127,7 +127,6 @@ def env_thread(args, thread_num, partition=True):
             args.log_dir = latestPath(args.log_custom_policy)
         else:
             args.log_dir = args.log_custom_policy
-        args.log_dir = args.log_custom_policy
         args.render = args.display
         args.plotting, args.action_proba = False, False
 
