@@ -88,6 +88,10 @@ class OmnirobotManagerBase(object):
         return has_bumped
 
     def sampleRobotInitalPosition(self):
+        """
+
+        :return: Sample random initial position for the Robot within the grid.
+        """
         random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
         random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
         return [random_init_x, random_init_y]
@@ -165,11 +169,12 @@ class OmnirobotManagerBase(object):
 
             if self.circular_continual_move or self.square_continual_move:
                 self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+
             elif self.eight_continual_move:
                 plus = self.robot.robot_pos[0]**2 + self.robot.robot_pos[1]**2
-                #np.linalg.norm(self.robot.robot_pos, ord=ord) ** 2  # self.robot.robot_pos[0] ** 4
                 minus = 2 * (RADIUS ** 2) * (self.robot.robot_pos[0] ** 2 - self.robot.robot_pos[1] ** 2)
                 self.reward = self.lambda_c * (1 - (plus - minus) ** 2)
+
             else:
                 pass
 

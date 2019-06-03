@@ -167,7 +167,8 @@ def testSrlCombiningTrain():
     assertEq(ok, 0)
 
 
-@pytest.mark.parametrize("model_type", ['vae', 'autoencoder', "robotic_priors", "inverse", "forward", "srl_combination", "multi_view_srl"])
+@pytest.mark.parametrize("model_type", ['vae', 'autoencoder', "robotic_priors", "inverse", "forward",
+                                        "srl_combination", "multi_view_srl"])
 def testAllRLOnSrlTrain(model_type):
     """
     Testing all the previously learned srl models on the RL pipeline
@@ -182,7 +183,8 @@ def testAllRLOnSrlTrain(model_type):
     assertEq(ok, 0)
 
 
-@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2', 'random_agent', 'sac', 'trpo'])
+@pytest.mark.parametrize("algo", ['a2c', 'acer', 'acktr', 'ars', 'cma-es', 'ddpg', 'deepq', 'ppo1', 'ppo2',
+                                  'random_agent', 'sac', 'trpo'])
 def testAllSrlonRLTrain(algo):
     """
     Testing RL pipeline on previously learned models

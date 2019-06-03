@@ -29,7 +29,7 @@ else:
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 RELATIVE_POS = True
-N_CONTACTS_BEFORE_TERMINATION = 10
+N_CONTACTS_BEFORE_TERMINATION = 15 #10
 
 DELTA_POS = 0.1  # DELTA_POS for continuous actions
 N_DISCRETE_ACTIONS = 4
@@ -113,9 +113,9 @@ class OmniRobotEnv(SRLGymEnv):
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         else:
             action_dim = 2
-            self.action_space = RingBox(positive_low=ACTION_POSITIVE_LOW, positive_high=ACTION_POSITIVE_HIGH, \
-                                           negative_low=ACTION_NEGATIVE_LOW, negative_high=ACTION_NEGATIVE_HIGH, \
-                                           shape=np.array([action_dim]), dtype=np.float32)
+            self.action_space = RingBox(positive_low=ACTION_POSITIVE_LOW, positive_high=ACTION_POSITIVE_HIGH,
+                                        negative_low=ACTION_NEGATIVE_LOW, negative_high=ACTION_NEGATIVE_HIGH,
+                                        shape=np.array([action_dim]), dtype=np.float32)
         # SRL model
         if self.use_srl:
             if use_ground_truth:
@@ -233,8 +233,10 @@ class OmniRobotEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else action_to_step,
                             self.reward, done, self.getGroundTruth(), action_proba=action_proba)
+        old_observation = self.getObservation()
+
         if self.use_srl:
-            return self.getSRLState(self.observation), self.reward, done, {}
+            return self.getSRLState(self.observation if generated_observation is None else old_observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -310,8 +312,10 @@ class OmniRobotEnv(SRLGymEnv):
         if self.saver is not None:
             self.saver.reset(self.observation,
                              self.getTargetPos(), self.getGroundTruth())
+        old_observation = self.getObservation()
+
         if self.use_srl:
-            return self.getSRLState(self.observation)
+            return self.getSRLState(self.observation if generated_observation is None else old_observation)
         else:
             return self.observation
 
@@ -319,9 +323,11 @@ class OmniRobotEnv(SRLGymEnv):
         """
         Returns True if the episode is over and False otherwise
         """
-        if self.episode_terminated or self._env_step_counter > MAX_STEPS or \
-                (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes) or \
-                (self._env_step_counter > MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES and self.short_episodes):
+        if (self.episode_terminated or self._env_step_counter > MAX_STEPS) or \
+                (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes and
+                 self.simple_continual_target) or \
+                (self._env_step_counter > MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES and self.short_episodes and
+                 self.circular_continual_move):
             return True
 
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001:  # reach the target
@@ -355,7 +361,7 @@ class OmniRobotEnv(SRLGymEnv):
                 self.visualizeBoundary()
                 self.image_plot = plt.imshow(self.observation_with_boundary, cmap='gray')
                 self.image_plot.axes.grid(False)
-                
+
             else:
                 self.visualizeBoundary()
                 self.image_plot.set_data(self.observation_with_boundary)
@@ -363,14 +369,13 @@ class OmniRobotEnv(SRLGymEnv):
             # Wait a bit, so that plot is visible
             plt.pause(0.0001)
         return self.observation
-    
+
     def initVisualizeBoundary(self):
         with open(CAMERA_INFO_PATH, 'r') as stream:
             try:
                 contents = yaml.load(stream)
-                camera_matrix = np.array(contents['camera_matrix']['data']).reshape((3,3))
-                distortion_coefficients = np.array(
-                contents['distortion_coefficients']['data']).reshape((1, 5))
+                camera_matrix = np.array(contents['camera_matrix']['data']).reshape((3, 3))
+                distortion_coefficients = np.array(contents['distortion_coefficients']['data']).reshape((1, 5))
             except yaml.YAMLError as exc:
                 print(exc)
 
@@ -378,43 +383,43 @@ class OmniRobotEnv(SRLGymEnv):
         r = R.from_euler('xyz', CAMERA_ROT_EULER_COORD_GROUND, degrees=True)
         camera_rot_mat_coord_ground = r.as_dcm()
 
-        pos_transformer = PosTransformer(camera_matrix, distortion_coefficients,
-                                              CAMERA_POS_COORD_GROUND, camera_rot_mat_coord_ground)
+        pos_transformer = PosTransformer(camera_matrix, distortion_coefficients, CAMERA_POS_COORD_GROUND,
+                                         camera_rot_mat_coord_ground)
 
-        self.boundary_coner_pixel_pos = np.zeros((2,4))
+        self.boundary_coner_pixel_pos = np.zeros((2, 4))
         # assume that image is undistorted
-        self.boundary_coner_pixel_pos[:,0] = pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y],
-                                                return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,1] = pos_transformer.phyPosGround2PixelPos([MAX_X, MIN_Y],
-                                                return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,2] = pos_transformer.phyPosGround2PixelPos([MAX_X, MAX_Y],
-                                                return_distort_image_pos=False).squeeze()
-        self.boundary_coner_pixel_pos[:,3] = pos_transformer.phyPosGround2PixelPos([MIN_X, MAX_Y],
-                                                return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 0] = \
+            pos_transformer.phyPosGround2PixelPos([MIN_X, MIN_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 1] = \
+            pos_transformer.phyPosGround2PixelPos([MAX_X, MIN_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 2] = \
+            pos_transformer.phyPosGround2PixelPos([MAX_X, MAX_Y], return_distort_image_pos=False).squeeze()
+        self.boundary_coner_pixel_pos[:, 3] = \
+            pos_transformer.phyPosGround2PixelPos([MIN_X, MAX_Y], return_distort_image_pos=False).squeeze()
 
         # transform the corresponding points into cropped image
-        self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)).reshape(2,1) / 2.0
-        
+        self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) -
+                                                                         np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
+
         # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
-        self.boundary_coner_pixel_pos[0,:] *=  RENDER_WIDTH/CROPPED_SIZE[0]
-        self.boundary_coner_pixel_pos[1,:] *=  RENDER_HEIGHT/CROPPED_SIZE[1]
-        
+        self.boundary_coner_pixel_pos[0, :] *= RENDER_WIDTH/CROPPED_SIZE[0]
+        self.boundary_coner_pixel_pos[1, :] *= RENDER_HEIGHT/CROPPED_SIZE[1]
+
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
 
         # Create square for vizu of objective in continual square task
         if self.square_continual_move:
 
-
             self.boundary_coner_pixel_pos_continual = np.zeros((2, 4))
             # assume that image is undistorted
-            self.boundary_coner_pixel_pos_continual[:, 0] = pos_transformer.phyPosGround2PixelPos([-RADIUS, -RADIUS],
-                                                                                        return_distort_image_pos=False).squeeze()
-            self.boundary_coner_pixel_pos_continual[:, 1] = pos_transformer.phyPosGround2PixelPos([RADIUS, -RADIUS],
-                                                                                        return_distort_image_pos=False).squeeze()
-            self.boundary_coner_pixel_pos_continual[:, 2] = pos_transformer.phyPosGround2PixelPos([RADIUS, RADIUS],
-                                                                                        return_distort_image_pos=False).squeeze()
-            self.boundary_coner_pixel_pos_continual[:, 3] = pos_transformer.phyPosGround2PixelPos([-RADIUS, RADIUS],
-                                                                                        return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 0] = \
+                pos_transformer.phyPosGround2PixelPos([-RADIUS, -RADIUS], return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 1] = \
+                pos_transformer.phyPosGround2PixelPos([RADIUS, -RADIUS],  return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 2] = \
+                pos_transformer.phyPosGround2PixelPos([RADIUS, RADIUS], return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 3] = \
+                pos_transformer.phyPosGround2PixelPos([-RADIUS, RADIUS], return_distort_image_pos=False).squeeze()
 
             # transform the corresponding points into cropped image
             self.boundary_coner_pixel_pos_continual = self.boundary_coner_pixel_pos_continual - (
@@ -427,8 +432,8 @@ class OmniRobotEnv(SRLGymEnv):
             self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
 
         elif self.circular_continual_move:
-            self.center_coordinates = pos_transformer.phyPosGround2PixelPos([0, 0],
-                return_distort_image_pos=False).squeeze()
+            self.center_coordinates = \
+                pos_transformer.phyPosGround2PixelPos([0, 0], return_distort_image_pos=False).squeeze()
             self.center_coordinates = self.center_coordinates - (
                 np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)) / 2.0
             # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
@@ -437,10 +442,9 @@ class OmniRobotEnv(SRLGymEnv):
 
             self.center_coordinates = np.around(self.center_coordinates).astype(np.int)
 
-
             # Points to convert radisu in env space
-            self.boundary_coner_pixel_pos_continual = pos_transformer.phyPosGround2PixelPos([0, RADIUS],
-                return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual = \
+                pos_transformer.phyPosGround2PixelPos([0, RADIUS], return_distort_image_pos=False).squeeze()
 
             # transform the corresponding points into cropped image
             self.boundary_coner_pixel_pos_continual = self.boundary_coner_pixel_pos_continual - (
@@ -452,33 +456,26 @@ class OmniRobotEnv(SRLGymEnv):
 
             self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
 
-
     def visualizeBoundary(self):
         """
         visualize the unvisible boundary, should call initVisualizeBoundary first
         """
         self.observation_with_boundary = self.observation.copy()
-        #Add boundary continual
+
+        # Add boundary continual
         if self.square_continual_move:
-            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,0]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,1]),(0,0,200),2)
-            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,1]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,2]),(0,0,200),2)
-            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,2]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,3]),(0,0,200),2)
-            cv2.line(self.observation_with_boundary,tuple(self.boundary_coner_pixel_pos_continual[:,3]),
-                     tuple(self.boundary_coner_pixel_pos_continual[:,0]),(0,0,200),2)
+            for idx in range(4):
+                idx_next = idx + 1
+                cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos_continual[:, idx]),
+                         tuple(self.boundary_coner_pixel_pos_continual[:, idx_next % 4]), (0, 0, 200), 2)
+
         elif self.circular_continual_move:
             radius_converted = np.linalg.norm(self.center_coordinates - self.boundary_coner_pixel_pos_continual)
             cv2.circle(self.observation_with_boundary, tuple(self.center_coordinates), np.float32(radius_converted),
                        (0, 0, 200), 2)
 
-        #Add boundary of env
-        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 0]),
-                 tuple(self.boundary_coner_pixel_pos[:, 1]), (200, 0, 0), 3)
-        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 1]),
-                 tuple(self.boundary_coner_pixel_pos[:, 2]), (200, 0, 0), 3)
-        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 2]),
-                 tuple(self.boundary_coner_pixel_pos[:, 3]), (200, 0, 0), 3)
-        cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, 3]),
-                 tuple(self.boundary_coner_pixel_pos[:, 0]), (200, 0, 0), 3)
+        # Add boundary of env
+        for idx in range(4):
+            idx_next = idx + 1
+            cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, idx]),
+                     tuple(self.boundary_coner_pixel_pos[:, idx_next % 4]), (200, 0, 0), 3)

@@ -87,7 +87,7 @@ class SRLGymEnv(gym.Env):
         """
         raise NotImplementedError()
 
-    def reset(self, state_override=None):
+    def reset(self, generated_observation=None, state_override=None):
         """
         Reset the environment
         :return: (numpy tensor) first observation of the env

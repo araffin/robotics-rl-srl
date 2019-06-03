@@ -5,22 +5,23 @@ import glob
 import multiprocessing
 import os
 import shutil
-import tensorflow as tf
 import time
-import torch as th
-from torch.autograd import Variable
 
 import numpy as np
 from stable_baselines import PPO2
 from stable_baselines.common import set_global_seeds
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines.common.policies import CnnPolicy
+import tensorflow as tf
+import torch as th
+from torch.autograd import Variable
 
 from environments import ThreadingType
 from environments.registry import registered_env
+from environments.utils import makeEnv
 from real_robots.constants import *
 from replay.enjoy_baselines import createEnv, loadConfigAndSetup
-from rl_baselines.utils import MultiprocessSRLModel
+from rl_baselines.utils import MultiprocessSRLModel, loadRunningAverage
 from srl_zoo.utils import printRed, printYellow
 from srl_zoo.preprocessing.utils import deNormalize
 from state_representation.models import loadSRLModel, getSRLDim
@@ -39,7 +40,7 @@ def latestPath(path):
     :param path: path to the log folder (defined in srl_model.yaml) (str)
     :return: path to latest learned model in the same dataset folder (str)
     """
-    return max([path + d for d in os.listdir(path) if os.path.isdir(path + "/" + d)],key=os.path.getmtime) + '/'
+    return max([path + d for d in os.listdir(path) if os.path.isdir(path + "/" + d)], key=os.path.getmtime) + '/'
 
 
 def walkerPath():
@@ -134,24 +135,43 @@ def env_thread(args, thread_num, partition=True):
         env_kwargs["srl_model"] = env_kwargs_extra["srl_model"]
         env_kwargs["random_target"] = env_kwargs_extra.get("random_target", False)
         env_kwargs["use_srl"] = env_kwargs_extra.get("use_srl", False)
+
+        # TODO REFACTOR
+        env_kwargs["simple_continual_target"] = env_kwargs_extra.get("simple_continual_target", False)
+        env_kwargs["circular_continual_move"] = env_kwargs_extra.get("circular_continual_move", False)
+        env_kwargs["square_continual_move"] = env_kwargs_extra.get("square_continual_move", False)
+        env_kwargs["eight_continual_move"] = env_kwargs_extra.get("eight_continual_move", False)
+
         eps = 0.2
         env_kwargs["state_init_override"] = np.array([MIN_X + eps, MAX_X - eps]) \
             if args.run_policy == 'walker' else None
         if env_kwargs["use_srl"]:
             env_kwargs["srl_model_path"] = env_kwargs_extra.get("srl_model_path", None)
             env_kwargs["state_dim"] = getSRLDim(env_kwargs_extra.get("srl_model_path", None))
-            srl_model = MultiprocessSRLModel(args.num_cpu, args.env, env_kwargs)
+            srl_model = MultiprocessSRLModel(num_cpu=args.num_cpu, env_id=args.env, env_kwargs=env_kwargs)
             env_kwargs["srl_pipe"] = srl_model.pipe
 
     env_class = registered_env[args.env][0]
     env = env_class(**env_kwargs)
 
+    if env_kwargs.get('srl_model', None) not in ["raw_pixels", None]:
+        # TODO: Remove env duplication
+        # This is a dirty trick to normalize the obs.
+        # So for as we override SRL environment functions (step, reset) for on-policy generation & generative replay
+        # using stable-baselines' normalisation wrappers (step & reset) breaks...
+        env_norm = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=False, env_kwargs=env_kwargs)
+                    for i in range(args.num_cpu)]
+        env_norm = DummyVecEnv(env_norm)
+        env_norm = VecNormalize(env_norm, norm_obs=True, norm_reward=False)
+        env_norm = loadRunningAverage(env_norm, load_path_normalise=args.log_custom_policy)
+    using_real_omnibot = args.env == "OmnirobotEnv-v0" and USING_OMNIROBOT
+
     walker_path = None
     action_walker = None
     state_init_for_walker = None
+    kwargs_reset, kwargs_step = {}, {}
 
     if args.run_policy in ['custom', 'ppo2', 'walker']:
-
         # Additional env when using a trained agent to generate data
         train_env = vecEnv(env_kwargs, env_class)
 
@@ -160,7 +180,7 @@ def env_thread(args, thread_num, partition=True):
         else:
             _, _, algo_args = createEnv(args, train_args, algo_name, algo_class, env_kwargs)
             tf.reset_default_graph()
-            set_global_seeds(args.seed)
+            set_global_seeds(args.seed % 2 ^ 32)
             printYellow("Compiling Policy function....")
             model = algo_class.load(load_path, args=algo_args)
             if args.run_policy == 'walker':
@@ -173,13 +193,15 @@ def env_thread(args, thread_num, partition=True):
 
     frames = 0
     start_time = time.time()
+
     # divide evenly, then do an extra one for only some of them in order to get the right count
     for i_episode in range(args.num_episode // args.num_cpu + 1 * (args.num_episode % args.num_cpu > thread_num)):
+
         # seed + position in this slice + size of slice (with reminder if uneven partitions)
         seed = args.seed + i_episode + args.num_episode // args.num_cpu * thread_num + \
                (thread_num if thread_num <= args.num_episode % args.num_cpu else args.num_episode % args.num_cpu)
-
-        if not args.run_policy in ['custom', 'walker']:
+        seed = seed % 2 ^ 32
+        if not (args.run_policy in ['custom', 'walker']):
             env.seed(seed)
             env.action_space.seed(seed)  # this is for the sample() function from gym.space
 
@@ -190,10 +212,11 @@ def env_thread(args, thread_num, partition=True):
                 sample = sample.cuda()
 
             generated_obs = srl_model.decode(sample)
-            generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
+            generated_obs = generated_obs[0].detach().cpu().numpy()
             generated_obs = deNormalize(generated_obs)
 
-        obs = env.reset(generated_observation=generated_obs)
+            kwargs_reset['generated_observation'] = generated_obs
+        obs = env.reset(**kwargs_reset)
         done = False
         action_proba = None
         t = 0
@@ -209,39 +232,49 @@ def env_thread(args, thread_num, partition=True):
 
             # Custom pre-trained Policy (SRL or End-to-End)
             elif args.run_policy in['custom', 'walker']:
+                obs = env_norm._normalize_observation(obs)
                 action = [model.getAction(obs, done)]
                 action_proba = model.getActionProba(obs, done)
                 if args.run_policy == 'walker':
                     action_walker = np.array(walker_path[t])
-
             # Random Policy
             else:
-                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion:
+                # Using a target reaching policy (untrained, from camera) when collecting data from real OmniRobot
+                if episode_toward_target_on and np.random.rand() < args.toward_target_timesteps_proportion and \
+                        using_real_omnibot:
                     action = [env.actionPolicyTowardTarget()]
                 else:
                     action = [env.action_space.sample()]
 
+            # Generative replay +/- for on-policy action
             if len(args.replay_generative_model) > 0:
 
-                sample = Variable(th.randn(1, srl_state_dim))
+                if args.run_policy == 'custom':
+                    obs = obs.reshape(1, srl_state_dim)
+                    obs = th.from_numpy(obs.astype(np.float32)).cuda()
+                    z = obs
+                    generated_obs = srl_model.decode(z)
+                else:
+                    sample = Variable(th.randn(1, srl_state_dim))
 
-                if th.cuda.is_available():
-                    sample = sample.cuda()
+                    if th.cuda.is_available():
+                        sample = sample.cuda()
 
-                generated_obs = srl_model.decode(sample)
-                generated_obs = generated_obs[0].detach().cpu().numpy().transpose(1, 2, 0)
+                    generated_obs = srl_model.decode(sample)
+                generated_obs = generated_obs[0].detach().cpu().numpy()
                 generated_obs = deNormalize(generated_obs)
 
             action_to_step = action[0]
+            kwargs_step = {k: v for (k, v) in [("generated_observation", generated_obs),
+                                               ("action_proba", action_proba),
+                                               ("action_grid_walker", action_walker)] if v is not None}
 
-            obs, _, done, _ = env.step(action_to_step, generated_observation=generated_obs, action_proba=action_proba,
-                                       action_grid_walker=action_walker)
+            obs, _, done, _ = env.step(action_to_step, **kwargs_step)
 
             frames += 1
             t += 1
             if done:
-
-                if np.random.rand() < args.toward_target_timesteps_proportion:
+                if np.random.rand() < args.toward_target_timesteps_proportion and using_real_omnibot:
                     episode_toward_target_on = True
                 else:
                     episode_toward_target_on = False
@@ -302,9 +335,10 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
-
     parser.add_argument('--short-episodes', action='store_true', default=False,
                         help='Generate short episodes (only 10 contacts with the target allowed).')
+    parser.add_argument('--episode', type=int, default=-1,
+                        help='Model saved at episode N that we want to load')
 
     args = parser.parse_args()
 

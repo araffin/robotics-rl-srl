@@ -43,6 +43,13 @@ python -m rl_baselines.train --algo rl_algo --env env1 --log-dir logs/ --srl-mod
 
 To use the robot's position as input instead of pixels, just pass `--srl-model ground_truth` instead of `--srl-model raw_pixels`
 
+To perform a cross evaluation for the different srl model, one could run in the terminal:
+
+```
+python -m rl_baselines.pipeline_cross --algo ppo2 --log-dir logs/ --srl-model srl_comnbination ground_truth --num-iteration 5 --num-timesteps 1000000 --task cc sqc sc --srl-config-file config/srl_models1.yaml config/srl_models2.yaml config/srl_models3.yaml
+```
+This will output the learning result into the repository logs.
+
 
 ## Installation
 
@@ -189,6 +196,11 @@ git submodule update --init
 If you have troubles installing mpi4py, make sure you the following installed:
 ```
 sudo apt-get install libopenmpi-dev openmpi-bin openmpi-doc
+```
+
+If you have troubles building wheel for ```atari```, you could fix that by running:
+```
+sudo apt-get install cmake libz-dev
 ```
 
 ## Known issues

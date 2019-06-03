@@ -6,12 +6,10 @@ import json
 import os
 from datetime import datetime
 
-import yaml
 import numpy as np
 import tensorflow as tf
 from stable_baselines.common import set_global_seeds
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 import seaborn as sns
 
@@ -91,7 +89,19 @@ def loadConfigAndSetup(load_args):
         raise ValueError(algo_name + " is not supported for replay")
     printGreen("\n" + algo_name + "\n")
 
-    load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
+    try:  # If args contains episode information, this is for student_evaluation (distillation)
+        if not load_args.episode == -1:
+            load_path = "{}/{}_{}_model.pkl".format(load_args.log_dir, algo_name, load_args.episode,)
+        else:
+            load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
+    except:
+        printYellow(
+            "No episode of checkpoint specified, go for the default policy model: {}_model.pkl".format(algo_name))
+        if load_args.log_dir[-3:] != 'pkl':
+            load_path = "{}/{}_model.pkl".format(load_args.log_dir, algo_name)
+        else:
+            load_path = load_args.log_dir
+            load_args.log_dir = os.path.dirname(load_path)+'/'
 
     env_globals = json.load(open(load_args.log_dir + "env_globals.json", 'r'))
     train_args = json.load(open(load_args.log_dir + "args.json", 'r'))
@@ -121,11 +131,12 @@ def loadConfigAndSetup(load_args):
         env_kwargs["square_continual_move"] = env_globals.get("square_continual_move", False)
         env_kwargs["eight_continual_move"] = env_globals.get("eight_continual_move", False)
 
-    if sum([load_args.simple_continual, load_args.circular_continual, load_args.square_continual]) >= 1:
-        env_kwargs["simple_continual_target"] = load_args.simple_continual
-        env_kwargs["circular_continual_move"] = load_args.circular_continual
-        env_kwargs["square_continual_move"] = load_args.square_continual
-        env_kwargs["random_target"] = not (load_args.circular_continual or load_args.square_continual)
+        # If overriding the environment for specific Continual Learning tasks
+        if sum([load_args.simple_continual, load_args.circular_continual, load_args.square_continual]) >= 1:
+            env_kwargs["simple_continual_target"] = load_args.simple_continual
+            env_kwargs["circular_continual_move"] = load_args.circular_continual
+            env_kwargs["square_continual_move"] = load_args.square_continual
+            env_kwargs["random_target"] = not (load_args.circular_continual or load_args.square_continual)
 
     srl_model_path = None
     if train_args["srl_model"] != "raw_pixels":
@@ -135,7 +146,8 @@ def loadConfigAndSetup(load_args):
         if path is not None:
             env_kwargs["use_srl"] = True
             # Check that the srl saved model exists on the disk
-            assert os.path.isfile(env_globals['srl_model_path']), "{} does not exist".format(env_globals['srl_model_path'])
+            assert os.path.isfile(env_globals['srl_model_path']), \
+                "{} does not exist".format(env_globals['srl_model_path'])
             srl_model_path = env_globals['srl_model_path']
             env_kwargs["srl_model_path"] = srl_model_path
 
@@ -185,6 +197,7 @@ def main():
     # createTensorflowSession()
 
     printYellow("Compiling Policy function....")
+    printYellow(load_path)
     method = algo_class.load(load_path, args=algo_args)
 
     dones = [False for _ in range(load_args.num_cpu)]
@@ -320,8 +333,7 @@ def main():
             if i % 5 == 0:
                 fig.canvas.draw()
                 plt.pause(0.000001)
-        if load_args.render:
-            envs.render("rgb_array")
+
         if load_args.action_proba and hasattr(method, "getActionProba"):
             # When continuous actions are needed, we cannot plot the action probability of every action
             # in the action space, so we show the action directly instead
