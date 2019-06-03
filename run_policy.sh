@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 
 
@@ -38,20 +39,20 @@ python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-times
 
 # Dataset 2 (Circular task)
 cp config/srl_models_circular.yaml config/srl_models.yaml
-python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 100000 --env OmnirobotEnv-v0 --log-dir logs/circular/  --num-cpu 8 --circular-continual  --latest
+python -m rl_baselines.train --algo ppo2 --srl-model srl_combination --num-timesteps 1000000 --env OmnirobotEnv-v0 --log-dir logs/circular/  --num-cpu 8 --circular-continual  --latest
 
 
 
-# Dataset 1 (random reaching target)
 
 # Dataset 1 (random reaching target)
 path2policy="logs/simple/OmnirobotEnv-v0/srl_combination/ppo2/"
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy $path2policy --short-episodes --save-path data/ --name $name_reaching_policy_folder -sc --latest
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy $path2policy --short-episodes --save-path data/ --name reaching_on_policy -sc --latest
 
 
 # Dataset 2 (Circular task)
 path2policy="logs/circular/OmnirobotEnv-v0/srl_combination/ppo2/"
-python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy $path2policy --short-episodes --save-path data/ --name $name_circular_policy_folder -cc --latest
+python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100 --run-policy custom --log-custom-policy $path2policy --short-episodes --save-path data/ --name circular_on_policy -cc --latest
+
 
 # Merge Datasets
 
