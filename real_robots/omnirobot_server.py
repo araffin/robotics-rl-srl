@@ -368,6 +368,7 @@ class ImageCallback(object):
         except CvBridgeError as e:
             print("CvBridgeError:", e)
 
+
 def saveSecondCamImage(im, episode_folder, episode_step, path="omnirobot_2nd_cam"):
     """
     Write an image to disk

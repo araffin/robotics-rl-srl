@@ -5,7 +5,7 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 eight_continual_move=False, lambda_c=10.0, second_cam_topic=None):
+                 eight_continual_move=False, lambda_c=10.0, second_cam_topic=None, state_init_override=None):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
         This class takes omnirobot position at instant t, and takes the action at instant t,
@@ -19,6 +19,7 @@ class OmnirobotManagerBase(object):
         self.square_continual_move = square_continual_move
         self.eight_continual_move = eight_continual_move
         self.lambda_c = lambda_c
+        self.state_init_override = state_init_override
 
         # the abstract object for robot,
         # can be the real robot (Omnirobot class)
@@ -87,6 +88,10 @@ class OmnirobotManagerBase(object):
         return has_bumped
 
     def sampleRobotInitalPosition(self):
+        """
+
+        :return: Sample random initial position for the Robot within the grid.
+        """
         random_init_x = np.random.random_sample() * (INIT_MAX_X - INIT_MIN_X) + INIT_MIN_X
         random_init_y = np.random.random_sample() * (INIT_MAX_Y - INIT_MIN_Y) + INIT_MIN_Y
         return [random_init_x, random_init_y]
@@ -164,11 +169,12 @@ class OmnirobotManagerBase(object):
 
             if self.circular_continual_move or self.square_continual_move:
                 self.reward = self.lambda_c * (1 - (np.linalg.norm(self.robot.robot_pos, ord=ord) - RADIUS) ** 2)
+
             elif self.eight_continual_move:
                 plus = self.robot.robot_pos[0]**2 + self.robot.robot_pos[1]**2
-                #np.linalg.norm(self.robot.robot_pos, ord=ord) ** 2  # self.robot.robot_pos[0] ** 4
                 minus = 2 * (RADIUS ** 2) * (self.robot.robot_pos[0] ** 2 - self.robot.robot_pos[1] ** 2)
                 self.reward = self.lambda_c * (1 - (plus - minus) ** 2)
+
             else:
                 pass
 

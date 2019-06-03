@@ -81,13 +81,13 @@ class SRLGymEnv(gym.Env):
         # TODO: implement close function to close GUI
         pass
 
-    def step(self, action, generated_observation=None, action_proba=None):
+    def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
         """
         :param action: (int or [float])
         """
         raise NotImplementedError()
 
-    def reset(self):
+    def reset(self, generated_observation=None, state_override=None):
         """
         Reset the environment
         :return: (numpy tensor) first observation of the env
