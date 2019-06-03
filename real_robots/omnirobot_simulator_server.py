@@ -97,6 +97,8 @@ class OmniRobotEnvRender():
         # Distance for each step
         self.step_distance = STEP_DISTANCE
 
+        self.step_distance_target =STEP_DISTANCE_TARGET
+
         with open(camera_info_path, 'r') as stream:
             try:
                 contents = yaml.load(stream)
@@ -182,7 +184,6 @@ class OmniRobotEnvRender():
                                                           self.pos_transformer.phyPosGround2PixelPos(
                                                               self.target_pos.reshape(2, 1)),
                                                           self.target_yaw, np.random.randn() * NOISE_VAR_TARGET_SIZE_PROPOTION + 1.0)
-
     def renderRobot(self):
         """
         render the image.
@@ -191,6 +192,7 @@ class OmniRobotEnvRender():
                                                  self.pos_transformer.phyPosGround2PixelPos(
                                                      self.robot_pos.reshape(2, 1)),
                                                  self.robot_yaw, self.robot_marker_size_proprotion)
+
     def getHistorySize(self):
         return self.history_size
 
@@ -292,6 +294,39 @@ class OmniRobotEnvRender():
         self.setRobotCmd(
             self.robot_pos_cmd[0] + action[0], self.robot_pos_cmd[1] + action[1], self.robot_yaw_cmd)
 
+
+
+    def targetMoveDiscrete(self, target_yaw):
+        pi = np.pi
+        assert target_yaw>-pi and target_yaw<pi
+        target_yaw +=pi
+        if(target_yaw>=pi/4 and target_yaw < pi*3/4):#Up
+            self.setTargetCmd(
+                self.target_pos_cmd[0] , self.target_pos_cmd[1]- self.step_distance_target, target_yaw)
+        elif(target_yaw>= 3/4*pi and  target_yaw < 5/4 *pi):
+            self.setTargetCmd(
+                self.target_pos_cmd[0]+ self.step_distance_target, self.target_pos_cmd[1] , target_yaw)
+        elif (target_yaw >= 5 / 4 * pi and target_yaw < 7 / 4 * pi):
+            self.setTargetCmd(
+                self.target_pos_cmd[0] , self.target_pos_cmd[1]+self.step_distance_target , target_yaw)
+        else:
+            self.setTargetCmd(
+                self.target_pos_cmd[0] -self.step_distance_target, self.target_pos_cmd[1] , target_yaw)
+
+
+
+
+    def targetMoveContinous(self,  target_yaw):
+        """
+        Perform a continuous displacement of dx, dy
+        """
+        self.target_yaw = target_yaw
+        action = (
+        self.step_distance_target * np.cos(target_yaw), self.step_distance_target * np.sin(target_yaw))
+        self.setTargetCmd(
+            self.target_pos_cmd[0] +action[0] , self.target_pos_cmd[1] + action[1], target_yaw)
+
+
     def moveByVelocityCmd(self, speed_x, speed_y, speed_yaw):
         """
         simuate the robot moved by velocity command
@@ -343,7 +378,7 @@ class OmniRobotEnvRender():
         local_rot_speed = - self.last_wheel_speeds_cmd[1] / (3.0 * OMNIROBOT_L) \
             - self.last_wheel_speeds_cmd[0] / (3.0 * OMNIROBOT_L) \
             - self.last_wheel_speeds_cmd[2] / (3.0 * OMNIROBOT_L)
-            
+
         # translate the last velocity cmd in robot local coordiante to position cmd in gound coordiante
         cos_direction = np.cos(self.robot_yaw)
         sin_direction = np.sin(self.robot_yaw)
@@ -374,8 +409,8 @@ class OmniRobotEnvRender():
 class OmniRobotSimulatorSocket(OmnirobotManagerBase):
     def __init__(self, **args):
         '''
-        Simulate the zmq socket like real omnirobot server 
-        :param **args  arguments 
+        Simulate the zmq socket like real omnirobot server
+        :param **args  arguments
 
         '''
         super(OmniRobotSimulatorSocket, self).__init__()
@@ -408,6 +443,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
 
         elif self.new_args["square_continual_move"] or self.new_args["eight_continual_move"]:
             self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/green_square.png"
+        elif self.new_args["chasing_continual_move"] or self.new_args["escape_continual_move"]:
+            self.new_args["target_marker_path"]  = "real_robots/omnirobot_utils/yellow_T.jpg"
         else:
             # for black target, use target_margin4_pixel.png",
             self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png"
@@ -415,16 +452,18 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         super(OmniRobotSimulatorSocket, self).__init__(simple_continual_target=self.new_args["simple_continual_target"],
                                                    circular_continual_move=self.new_args["circular_continual_move"],
                                                    square_continual_move=self.new_args["square_continual_move"],
-                                                   eight_continual_move=self.new_args["eight_continual_move"])
+                                                   eight_continual_move=self.new_args["eight_continual_move"],
+                                                   chasing_continual_move=self.new_args["chasing_continual_move"],
+                                                   escape_continual_move=self.new_args["escape_continual_move"] )
 
         assert len(self.new_args['robot_marker_margin']) == 4
         assert len(self.new_args['target_marker_margin']) == 4
         assert len(self.new_args['output_size']) == 2
-
         self.robot = OmniRobotEnvRender(**self.new_args)
         self.episode_idx = 0
         self._random_target = self.new_args["random_target"]
-        if self.new_args["simple_continual_target"]:
+        if sum((self.new_args["simple_continual_target"]
+                , self.new_args["chasing_continual_move"] , self.new_args["escape_continual_move"]))>0:
             self._random_target = True
         self.state_init_override = self.new_args['state_init_override']
         self.resetEpisode()  # for a random target initial position
@@ -432,7 +471,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
     def resetEpisode(self):
         """
         override the original method
-        Give the correct sequance of commands to the robot 
+        Give the correct sequance of commands to the robot
         to rest environment between the different episodes
         """
         if self.second_cam_topic is not None:
@@ -462,8 +501,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
     def send_json(self, msg):
         # env send msg to render
         self.processMsg(msg)
-
         self.robot.renderRobot()
+        self.robot.renderTarget()
 
         self.img = self.robot.getCroppedImage()
         self.img = self.robot.renderEnvLuminosityNoise(self.img, noise_var=NOISE_VAR_ENVIRONMENT, in_RGB=False,

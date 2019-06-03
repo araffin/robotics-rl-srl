@@ -35,7 +35,7 @@ ENV_NAME = ""
 PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
 EVAL_TASK=['cc','sc','sqc']
-CROSS_EVAL = True
+CROSS_EVAL = False
 EPISODE_WINDOW_DISTILLATION_WIN = 20
 NEW_LR=0.001
 
@@ -110,6 +110,8 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["circular_continual_move"] = args.circular_continual
     env_kwargs["square_continual_move"] = args.square_continual
     env_kwargs["eight_continual_move"] = args.eight_continual
+    env_kwargs["chasing_continual_move"] = args.chasing_continual
+    env_kwargs["escape_continual_move"] = args.escape_continual
 
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
@@ -255,6 +257,12 @@ def main():
     parser.add_argument('-ec', '--eight-continual', action='store_true', default=False,
                         help='Green square target for task 4 of continual learning scenario. ' +
                              'The task is: robot should do the eigth with the target as center of the shape.')
+    parser.add_argument('-chc', '--chasing-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: one robot should keep a certain distance towars the other.')
+    parser.add_argument('-esc', '--escape-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: the trainable agent tries to escape from the "zombie" robot.')
     parser.add_argument('--teacher-data-folder', type=str, default="",
                         help='Dataset folder of the teacher(s) policy(ies)', required=False)
     parser.add_argument('--epochs-distillation', type=int, default=30, metavar='N',
@@ -296,8 +304,8 @@ def main():
                 break
         assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
 
-    assert not(sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual]) \
-           > 1 and args.env == "OmnirobotEnv-v0"), \
+    assert not(sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual,
+                    args.chasing_continual, args.escape_continual]) > 1 and args.env == "OmnirobotEnv-v0"), \
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
 
     assert not(args.algo == "distillation" and (args.teacher_data_folder == '' or args.continuous_actions is True)), \
