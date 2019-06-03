@@ -184,7 +184,7 @@ def main():
     set_global_seeds(load_args.seed)
     # createTensorflowSession()
 
-    printYellow("Compiling Policy function....")
+    printYellow("Compiling Policy function : " + load_path)
     method = algo_class.load(load_path, args=algo_args)
 
     dones = [False for _ in range(load_args.num_cpu)]
