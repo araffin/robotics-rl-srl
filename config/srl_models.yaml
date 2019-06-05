@@ -57,7 +57,7 @@ KukaMovingButtonGymEnv-v0:
 
 MobileRobotGymEnv-v0:
   # Base path to SRL log folder
-  log_folder: srl_zoo/logs/mobile2D_fixed_tar_seed_0/
+  log_folder: srl_zoo/logs/mobile2D_random_tar_seed_0/
   # Path to the different trained SRL models
   autoencoder: 18-07-22_13h36_14_custom_cnn_ST_DIM200_autoencoder/srl_model.pth
   vae: 18-07-04_11h08_56_mlp_ST_DIM2_vae/srl_model.pth
@@ -77,9 +77,9 @@ MobileRobotGymEnv-v0:
   random: 18-08-10_11h50_25_custom_cnn_ST_DIM200_random/srl_model.pth
   random_inverse: 18-08-10_11h38_05_custom_cnn_ST_DIM200_inverse_random/srl_model.pth
   autoencoder_forward: 18-08-14_10h35_47_custom_cnn_ST_DIM200_autoencoder_forward/srl_model.pth
-  gan: 19-06-02_15h59_32_gan_ST_DIM200_/srl_model.pth
+  gan: 19-06-05_11h04_35_gan_ST_DIM200_gan/srl_model.pth
   unet: 19-06-02_19h20_18_unet_ST_DIM200_/srl_model.pth
-
+  AE_inverse_reward: "srl_model.pth"
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/mobile_robot_2target/

@@ -28,5 +28,6 @@ registered_srl = {
     "dae": (SRLType.SRL, None),
     "pca": (SRLType.SRL, None),
     "gan": (SRLType.SRL, None),
-    "unet": (SRLType.SRL, None)
+    "unet": (SRLType.SRL, None),
+    "AE_inverse_reward":  (SRLType.SRL, None)
 }

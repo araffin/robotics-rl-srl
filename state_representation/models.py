@@ -7,7 +7,7 @@ import torch as th
 
 import srl_zoo.preprocessing as preprocessing
 from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
-from srl_zoo.preprocessing import preprocessImage, getNChannels
+from srl_zoo.preprocessing import preprocessImage
 from srl_zoo.utils import printGreen, printYellow
 
 NOISE_STD = 1e-6  # To avoid NaN for SRL
@@ -91,9 +91,10 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None, img_sha
 
     if model is None:
         if use_multi_view:
-            preprocessing.preprocess.N_CHANNELS = 6
-
-        model = SRLNeuralNetwork(state_dim, cuda, img_shape=img_shape, model_type=model_type, n_actions=n_actions, losses=losses,
+            new_img_shape = (6,)+img_shape[1:]
+        else:
+            new_img_shape = img_shape
+        model = SRLNeuralNetwork(state_dim, cuda, img_shape=new_img_shape, model_type=model_type, n_actions=n_actions, losses=losses,
                                  split_dimensions=split_dimensions, inverse_model_type=inverse_model_type)
 
     model_name = model_type
@@ -176,7 +177,8 @@ class SRLNeuralNetwork(SRLBaseClass):
         self.model.load_state_dict(th.load(path))
 
     def getState(self, observation, env_id=0):
-        if getNChannels() > 3:
+
+        if self.img_shape[0] > 3:
             observation = np.dstack((preprocessImage(observation[:, :, :3], convert_to_rgb=False),
                                      preprocessImage(observation[:, :, 3:], convert_to_rgb=False)))
         else:

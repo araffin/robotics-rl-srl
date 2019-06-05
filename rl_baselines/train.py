@@ -80,7 +80,7 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
     env_kwargs["action_joints"] = args.action_joints
     args.log_dir += args.env + "/"
 
-    models = all_models[args.env]
+    models = all_models[args.env] ## models: config file dict of srl_model path
     PLOT_TITLE = args.srl_model
     path = models.get(args.srl_model)
     args.log_dir += args.srl_model + "/"
@@ -95,8 +95,13 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
             assert path is not None, "Error: SRL path not defined for {} in {}".format(args.srl_model,
                                                                                        args.srl_config_file)
             # Path depending on whether to load the latest model or not
-            srl_model_path = models['log_folder'] + path
-            env_kwargs["srl_model_path"] = srl_model_path
+            if args.srl_model_path is not None: ## [HACK way to pass srl model weights path to terminal]
+                assert os.path.exists(args.srl_model_path), "SRL model weights: {} doesn't exist.".format(args.srl_model_path)
+                env_kwargs["srl_model_path"] = args.srl_model_path
+            else:
+                srl_model_path = models['log_folder'] + path
+                env_kwargs["srl_model_path"] = srl_model_path
+            
 
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
@@ -211,6 +216,8 @@ def main():
                         help="Image shape of environment.")
     parser.add_argument("--gpu_num", help="Choose the number of GPU (CUDA_VISIBLE_DEVICES).",
                         type=str, default="0", choices=["0", "1", "2", "3", "5", "6", "7", "8"])
+    parser.add_argument("--srl_model_path", help="SRL model weights path",
+                        type=str, default=None)
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num
