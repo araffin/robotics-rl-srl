@@ -28,7 +28,8 @@ else:
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-RELATIVE_POS = True
+#RELATIVE_POS = True
+RELATIVE_POS = False
 N_CONTACTS_BEFORE_TERMINATION = 15 #10
 
 DELTA_POS = 0.1  # DELTA_POS for continuous actions
@@ -260,7 +261,6 @@ class OmniRobotEnv(SRLGymEnv):
                             self.reward, done, self.getGroundTruth(), action_proba=action_proba,
                             target_pos=self.getTargetPos())
         old_observation = self.getObservation()
-
         if self.use_srl:
             return self.getSRLState(self.observation if generated_observation is None else old_observation), self.reward, done, {}
         else:
@@ -302,14 +302,15 @@ class OmniRobotEnv(SRLGymEnv):
         """
         :return: (int)
         """
-        return 2
+        return 4
 
     def getGroundTruth(self):
         """
         Alias for getRobotPos for compatibility between envs
         :return: (numpy array)
         """
-        return np.array(self.getRobotPos())
+        #return np.array(self.getRobotPos())
+        return np.append(self.getRobotPos(),self.getTargetPos())
 
     def getRobotPos(self):
         """

@@ -248,6 +248,7 @@ class OmnirobotManagerBase(object):
             else:
                 self.reward = REWARD_NOTHING
 
+
         elif self.escape_continual_move:
 
             dis = np.linalg.norm(np.array(self.robot.robot_pos) - np.array(self.robot.target_pos))
@@ -264,7 +265,6 @@ class OmnirobotManagerBase(object):
             target_yaw = self.targetPolicy(directed=True)
             #self.targetMoveContinousAction(target_yaw)
             self.targetMoveDiscreteAction(target_yaw)
-
 
 
         else:
