@@ -28,8 +28,7 @@ else:
 
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
-#RELATIVE_POS = True
-RELATIVE_POS = False
+RELATIVE_POS = True
 N_CONTACTS_BEFORE_TERMINATION = 15 #10
 
 DELTA_POS = 0.1  # DELTA_POS for continuous actions
@@ -90,7 +89,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
         self.use_joints = False
-        self.relative_pos = RELATIVE_POS
+        self.relative_pos = RELATIVE_POS and (not escape_continual_move)
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
@@ -262,7 +261,8 @@ class OmniRobotEnv(SRLGymEnv):
                             target_pos=self.getTargetPos())
         old_observation = self.getObservation()
         if self.use_srl:
-            return self.getSRLState(self.observation if generated_observation is None else old_observation), self.reward, done, {}
+            return self.getSRLState(self.observation
+                                    if generated_observation is None else old_observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -276,7 +276,6 @@ class OmniRobotEnv(SRLGymEnv):
         self.reward = state_data["reward"]
         self.target_pos = np.array(state_data["target_pos"])
         self.robot_pos = np.array(state_data["position"])
-
         return state_data
 
     def getObservation(self):
@@ -297,20 +296,28 @@ class OmniRobotEnv(SRLGymEnv):
         """
         return self.target_pos
 
-    @staticmethod
-    def getGroundTruthDim():
+
+    def getGroundTruthDim(self):
         """
         :return: (int)
         """
-        return 4
+        if(not self.escape_continual_move):
+            return 2
+        else:
+            #The position of the robot, target
+            return 4
+
 
     def getGroundTruth(self):
         """
         Alias for getRobotPos for compatibility between envs
         :return: (numpy array)
         """
-        #return np.array(self.getRobotPos())
-        return np.append(self.getRobotPos(),self.getTargetPos())
+        #
+        if(not self.escape_continual_move):
+            return np.array(self.getRobotPos())
+        else:
+            return np.append(self.getRobotPos(),self.getTargetPos())
 
     def getRobotPos(self):
         """
