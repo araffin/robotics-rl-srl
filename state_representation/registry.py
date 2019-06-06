@@ -29,5 +29,13 @@ registered_srl = {
     "pca": (SRLType.SRL, None),
     "gan": (SRLType.SRL, None),
     "unet": (SRLType.SRL, None),
+    "gan_inverse": (SRLType.SRL, None),
+    "gan_forward": (SRLType.SRL, None),
+    "gan_reward": (SRLType.SRL, None),
+    "gan_inverse_reward": (SRLType.SRL, None),
+    "gan_inverse_forward": (SRLType.SRL, None),
+    "gan_forward_reward": (SRLType.SRL, None),
+    "AE_forward_reward": (SRLType.SRL, None),
+    "AE_inverse_forward": (SRLType.SRL, None),
     "AE_inverse_reward":  (SRLType.SRL, None)
 }

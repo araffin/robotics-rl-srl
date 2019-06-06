@@ -79,7 +79,16 @@ MobileRobotGymEnv-v0:
   autoencoder_forward: 18-08-14_10h35_47_custom_cnn_ST_DIM200_autoencoder_forward/srl_model.pth
   gan: 19-06-05_11h04_35_gan_ST_DIM200_gan/srl_model.pth
   unet: 19-06-02_19h20_18_unet_ST_DIM200_/srl_model.pth
+  gan_inverse: "srl_model.pth"
+  gan_forward: "srl_model.pth"
+  gan_reward: "srl_model.pth"
+  gan_inverse_reward: "srl_model.pth"
+  gan_inverse_forward: "srl_model.pth"
+  gan_forward_reward: "srl_model.pth"
+  AE_forward_reward: "srl_model.pth"
+  AE_inverse_forward: "srl_model.pth"
   AE_inverse_reward: "srl_model.pth"
+  
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/mobile_robot_2target/
