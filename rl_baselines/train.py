@@ -214,9 +214,9 @@ def main():
                         help="load the trained RL model, should be with the same algorithm type")
     parser.add_argument('--img-shape', type=str, default="(3,128,128)",
                         help="Image shape of environment.")
-    parser.add_argument("--gpu_num", help="Choose the number of GPU (CUDA_VISIBLE_DEVICES).",
+    parser.add_argument("--gpu-num", help="Choose the number of GPU (CUDA_VISIBLE_DEVICES).",
                         type=str, default="0", choices=["0", "1", "2", "3", "5", "6", "7", "8"])
-    parser.add_argument("--srl_model_path", help="SRL model weights path",
+    parser.add_argument("--srl-model-path", help="SRL model weights path",
                         type=str, default=None)
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()

@@ -99,6 +99,7 @@ dependencies:
     - futures==3.1.1
     - gym==0.12.1
     - git+https://github.com/hyperopt/hyperopt.git
+    - git+https://github.com/ncble/pytorch-summary.git
     - idna==2.8
     - joblib==0.13.2
     - matplotlib==3.1.0

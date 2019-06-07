@@ -90,6 +90,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         self._renders = renders
         self.img_shape = img_shape  # channel first !!
         if self.img_shape is None:
+            self.img_shape = (3, RENDER_HEIGHT, RENDER_WIDTH)
             self._width = RENDER_WIDTH
             self._height = RENDER_HEIGHT
         else:
