@@ -34,7 +34,7 @@ def loadEpisodesData(folder):
     return x, y
 
 
-def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,truncate_x=-1,normalization=False):
+def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,truncate_x=-1,normalization=False,figpath=None):
     assert len(legends)==len(y_list)
     printGreen("{} Experiments".format(len(y_list)))
 
@@ -56,7 +56,7 @@ def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,
         y_limits = [-0.05, 1.05]
         y_list   =(y_list-np.min(y_list))/(np.max(y_list)-np.min(y_list))
 
-    fig = plt.figure(title)
+    fig = plt.figure(title, figsize=(20,10))
     for i in range(len(y_list)):
         label = legends[i]
         y = y_list[i][:, :min_x]
@@ -67,8 +67,12 @@ def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,
         # Compute standard error
         s = np.squeeze(np.asarray(np.std(y, axis=0)))
         n = y.shape[0]
-        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=lightcolors[i % len(lightcolors)], alpha=0.5)
-        plt.plot(x, m, color=darkcolors[i % len(darkcolors)], label=label, linewidth=2)
+        # plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=darkcolors[i % len(lightcolors)], alpha=0.3)
+        # plt.plot(x, m, color=darkcolors[i % len(darkcolors)], label=label, linewidth=2)
+        # plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color='jet', alpha=0.3)
+        # import ipdb; ipdb.set_trace()
+        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=plt.cm.tab10.colors[i], alpha=0.3)
+        plt.plot(x, m, color=plt.cm.tab10.colors[i], label=label, linewidth=2)
 
     if timesteps:
         formatter = FuncFormatter(millions)
@@ -84,7 +88,8 @@ def plotGatheredData(x_list,y_list,y_limits, timesteps,title,legends,no_display,
     plt.ylim(y_limits)
 
     plt.legend(framealpha=0.8, frameon=True, labelspacing=0.01, loc='lower right', fontsize=16)
-
+    if figpath is not None:
+        plt.savefig(figpath)
     if not no_display:
         plt.show()
 
@@ -157,7 +162,7 @@ def GatherExperiments(folders, algo,  window=40, title="", min_num_x=-1,
 
 
 def comparePlots(path,  algo,y_limits,title="Learning Curve",
-                 timesteps=False, truncate_x=-1, no_display=False,normalization=False):
+                 timesteps=False, truncate_x=-1, no_display=False,normalization=False, figpath=None):
     """
     :param path: (str) path to the folder where the plots are stored
     :param plots: ([str]) List of saved plots as npz file
@@ -199,8 +204,8 @@ def comparePlots(path,  algo,y_limits,title="Learning Curve",
     printGreen(np.array(x_list).shape)
     # printGreen('y_list shape {}'.format(np.array(y_list[1]).shape))
 
-    plotGatheredData(x_list,y_list,y_limits,timesteps,title,legends,no_display,truncate_x,normalization)
-
+    plotGatheredData(x_list,y_list,y_limits,timesteps,title,legends,no_display,truncate_x,normalization, figpath=figpath)
+    
 
 
 if __name__ == '__main__':
@@ -219,6 +224,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-display', action='store_true', default=False, help='Do not display plot')
     parser.add_argument('--algo',type=str,default='ppo2',help='The RL algorithms result to show')
     parser.add_argument('--norm', action='store_true', default=False, help='To normalize the output by the maximum reward')
+    parser.add_argument('--figpath', type=str, default=None, help='Save figure to path.')
     #
     # parser.add_argument('--tasks', type=str, nargs='+', default=["cc"],
     #                     help='The tasks for the robot',
@@ -244,7 +250,7 @@ if __name__ == '__main__':
     y_list=[]
 
     comparePlots(args.input_dir, args.algo, title=args.title, y_limits=y_limits, no_display=args.no_display,
-            timesteps=args.timesteps, truncate_x=args.truncate_x,normalization=args.norm)
+            timesteps=args.timesteps, truncate_x=args.truncate_x,normalization=args.norm, figpath=args.figpath)
 
 
 #python -m replay.plot_pipeline -i logs/OmnirobotEnv-v0 --algo ppo2 --title cc --timesteps

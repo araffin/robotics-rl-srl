@@ -209,7 +209,7 @@ def main():
         else:
             # we need to rebuild the PCA representation, in order to visualize correctly in 3D
             # load the saved representations
-            path = srl_model_path.split("/")[:-1] + "/image_to_state.json"
+            path = "/".join(srl_model_path.split("/")[:-1]) + "/image_to_state.json"
             X = np.array(list(json.load(open(path, 'r')).values()))
 
             X = fixStateDim(X, min_state_dim=min_state_dim)
