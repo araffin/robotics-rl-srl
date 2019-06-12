@@ -40,7 +40,7 @@ def OnPolicyDatasetGenerator(teacher_path, output_name, task_id, episode=-1, env
         episode_command = ['--num-episode', str(10 if test_mode else 400)]
     else:
         episode_command = ['--num-episode', str(10 if test_mode else 60)]
-    print("teacher path: ", teacher_path)
+
     policy_command = ['--log-custom-policy', teacher_path]
     if episode == -1:
         eps_policy = []
@@ -234,13 +234,18 @@ def main():
     episodes, policy_path = allPolicy(teacher_learn)
 
     rewards_at_episode = {}
-    episodes_to_test = [e for e in episodes if (int(e) < 2000 and int(e) % 200 == 0) or
-                        (int(e) > 2000 and int(e) % 1000 == 0)]
 
-    # generate data from Professional teacher
-    printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
+    if args.continual_learning_labels[1] == "CC":
+        episodes_to_test = [e for e in episodes if (int(e) < 2000 and int(e) % 200 == 0) or
+                            (int(e) > 2000 and int(e) % 1000 == 0)]
+    else:
+        episodes_to_test = [e for e in episodes if (int(e) <= 5000 and int(e) % 1000 == 0) or
+                            (int(e) > 5000 and int(e) % 10000 == 0)]
 
     if not (args.log_dir_teacher_one == "None"):
+        # generate data from Professional teacher
+        printYellow("\nGenerating on policy for optimal teacher: " + args.continual_learning_labels[0])
+
         OnPolicyDatasetGenerator(teacher_pro, args.continual_learning_labels[0] + '_copy/',
                                  task_id=args.continual_learning_labels[0], num_eps=args.epochs_teacher_datasets,
                                  episode=-1, env_name=args.env)
@@ -259,8 +264,9 @@ def main():
         # Generate data from learning teacher
         printYellow("\nGenerating on-policy data from the optimal teacher: " + args.continual_learning_labels[1])
         OnPolicyDatasetGenerator(teacher_learn, teacher_learn_data, task_id=args.continual_learning_labels[1],
-                                 episode=eps, num_eps=args.epochs_teacher_datasets, env_name=args.env)
+                                 num_eps=args.epochs_teacher_datasets, episode=eps, env_name=args.env)
 
+        # If Performing policy distillation from a single (learning) teacher at multiple checkpoints
         if args.log_dir_teacher_one == "None":
             merge_path = 'data/' + teacher_learn_data
             ok = subprocess.call(
