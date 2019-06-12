@@ -341,7 +341,7 @@ def main():
                         help='Model saved at episode N that we want to load')
 
     args = parser.parse_args()
-
+    ######################## NOT QUITE IMORTANT#########################################################################
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
     assert (args.max_distance > 0), "Error: max distance must be positive and non zero"
     assert (args.num_episode > 0), "Error: number of episodes must be positive and non zero"
@@ -378,7 +378,7 @@ def main():
     if not args.no_record_data:
         # create the output
         os.mkdir(args.save_path + args.name)
-
+    ####################################################################################################################
     if args.num_cpu == 1:
         env_thread(args, 0, partition=False)
     else:
