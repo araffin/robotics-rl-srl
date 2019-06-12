@@ -104,10 +104,6 @@ python train.py --data-folder data/merge_CC_SC  -bs 32 --epochs 20 --state-dim 2
 
 # Update your RL logs to load the proper SRL model for future distillation, i.e distillation: new-log/srl_model.pth
 ```
-```
-BUNTHET: WE DONT DO THE 2.2 STEP
-
-```
 
 ### 2.3) Run Distillation
 

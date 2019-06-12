@@ -8,6 +8,8 @@ import shutil
 import numpy as np
 from tqdm import tqdm
 
+# List of all possible labels identifying a task,
+#   for experiments in Continual Learning scenari.
 CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
 CL_LABEL_KEY = "continual_learning_label"
 
@@ -120,6 +122,7 @@ def main():
         dataset_1_size = preprocessed_load["actions"].shape[0]
         dataset_2_size = preprocessed_load_2["actions"].shape[0]
 
+        # Concatenating additional information: indices of episode start, action probabilities, CL labels...
         for idx, prepro_load in enumerate([preprocessed_load, preprocessed_load_2]):
             for arr in prepro_load.files:
                 pr_arr = prepro_load[arr]
