@@ -90,6 +90,9 @@ class OmnirobotManagerBase(object):
         else:
             has_bumped = True
         return has_bumped
+
+
+
     def targetMoveContinousAction(self, target_yaw):
         """
         Let robot execute continous action, and checking the boundary
@@ -105,9 +108,11 @@ class OmnirobotManagerBase(object):
             has_bumped = True
         return has_bumped
 
+
     def targetMoveDiscreteAction(self,target_yaw):
 
         self.robot.targetMoveDiscrete(target_yaw)
+
 
     def targetPolicy(self, directed = False):
         """
@@ -122,7 +127,19 @@ class OmnirobotManagerBase(object):
             dy /= r
             dx /= r
             yaw = math.atan2(dy, dx )
-            return yaw
+            #return yaw
+            if(abs(dy)>abs(dx)):
+                if(dy>0):
+                    self.robot.targetMove("left")
+                else:
+                    self.robot.targetMove("right")
+            else:
+                if(dx>0):
+                    self.robot.targetMove("forward")
+                else:
+                    self.robot.targetMove("backward")
+
+
 
         period = 70
         yaw = (2*(self.step_counter % period )/period-1)*np.pi
@@ -253,18 +270,18 @@ class OmnirobotManagerBase(object):
 
             dis = np.linalg.norm(np.array(self.robot.robot_pos) - np.array(self.robot.target_pos))
 
-            if has_bumped or dis<0.3:
+            if has_bumped or dis<0.4:
                 self.reward = REWARD_BUMP_WALL
             # elif(dis<0.2):
             #     self.reward = REWARD_BUMP_WALL
-            elif(dis>=0.3 and dis<0.6):
-                self.reward = REWARD_TARGET_REACH
+            elif(dis>=0.4):
+                self.reward =REWARD_TARGET_REACH
             else:
                 self.reward = REWARD_NOTHING
 
-            target_yaw = self.targetPolicy(directed=True)
+            self.targetPolicy(directed=True)
             #self.targetMoveContinousAction(target_yaw)
-            self.targetMoveDiscreteAction(target_yaw)
+            #self.targetMoveDiscreteAction(target_yaw)
 
 
         else:

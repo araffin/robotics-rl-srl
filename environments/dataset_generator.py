@@ -45,8 +45,8 @@ def latestPath(path):
 
 def walkerPath():
     """
-    Naive Grid Walking Policy: Walking across the grid from the top to the bottom, going left and right.
-    :return: [int] List of actions taken by a grid walker
+
+    :return:
     """
     eps = 0.01
     N_times = 14
@@ -124,7 +124,6 @@ def env_thread(args, thread_num, partition=True):
     srl_model = None
     srl_state_dim = 0
     generated_obs = None
-    env_norm = None
 
     if args.run_policy in ["walker", "custom"]:
         if args.latest:

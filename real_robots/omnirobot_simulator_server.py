@@ -314,6 +314,21 @@ class OmniRobotEnvRender():
                 self.target_pos_cmd[0] -self.step_distance_target, self.target_pos_cmd[1] , target_yaw)
 
 
+    def targetMove(self, action=None):
+        assert action !=None
+        if action =="forward":
+            self.setTargetCmd(
+                self.target_pos_cmd[0] + self.step_distance_target, self.target_pos_cmd[1], self.target_yaw)
+        elif action =="backward":
+            self.setTargetCmd(
+                self.target_pos_cmd[0] - self.step_distance_target, self.target_pos_cmd[1], self.target_yaw)
+        elif action =="left":
+            self.setTargetCmd(
+                self.target_pos_cmd[0] , self.target_pos_cmd[1]+ self.step_distance_target, self.target_yaw)
+        else :
+            self.setTargetCmd(
+                self.target_pos_cmd[0] , self.target_pos_cmd[1]- self.step_distance_target, self.target_yaw)
+
 
 
     def targetMoveContinous(self,  target_yaw):
@@ -444,7 +459,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         elif self.new_args["square_continual_move"] or self.new_args["eight_continual_move"]:
             self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/green_square.png"
         elif self.new_args["chasing_continual_move"] or self.new_args["escape_continual_move"]:
-            self.new_args["target_marker_path"]  = "real_robots/omnirobot_utils/yellow_T.jpg"
+            self.new_args["target_marker_path"]  = "real_robots/omnirobot_utils/yellow_T.png"
         else:
             # for black target, use target_margin4_pixel.png",
             self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png"
@@ -492,7 +507,8 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
             random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + \
                 TARGET_MIN_Y
             self.robot.setTargetCmd(
-                random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
+                # random_init_x, random_init_y, 2 * np.pi * np.random.rand() - np.pi)
+                random_init_x, random_init_y, 0)
 
         # render the target and robot
         self.robot.renderTarget()
