@@ -31,7 +31,7 @@ def testDataGenForFusion():
     args_3 = ['--merge', PATH_SRL + DATA_FOLDER_NAME_1, PATH_SRL + DATA_FOLDER_NAME_2, PATH_SRL + DATA_FOLDER_NAME_3]
     args_3 = list(map(str, args_3))
 
-    ok = subprocess.call(['python', '-m', 'environments.dataset_fusioner'] + args_3)
+    ok = subprocess.call(['python', '-m', 'environments.dataset_merger'] + args_3)
     assertEq(ok, 0)
 
     # Checking inexistance of original datasets to be merged

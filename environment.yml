@@ -1,4 +1,4 @@
-name: robot
+name: py35
 channels:
   - menpo
   - pytorch

@@ -58,7 +58,7 @@ python -m environments.dataset_generator --env OmnirobotEnv-v0 --num-episode 100
 
 #(/ ! \ it removes the generated dataset for dataset 1 and 2)
 
-python -m environments.dataset_fusioner --merge data/$name_circular_policy_folder\/ data/$name_reaching_policy_folder\/ data/$merging_file
+python -m environments.dataset_merger --merge data/$name_circular_policy_folder\/ data/$name_reaching_policy_folder\/ data/$merging_file
 
 # Copy the merged Dataset to srl_zoo repository
 cp -r data/$merging_file srl_zoo/data/$merging_file
