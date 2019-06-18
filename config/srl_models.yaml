@@ -200,3 +200,16 @@ OmnirobotEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/omnirobot_simulator/
   autoencoder: 19-02-04_23h27_22_custom_cnn_ST_DIM200_autoencoder_reward_inverse_forward/srl_model.pth
+  autoencoder_inverse: "srl_model.pth"
+  autoencoder_forward: "srl_model.pth"
+  autoencoder_reward: "srl_model.pth"
+  gan: "srl_model.pth"
+  gan_inverse: "srl_model.pth"
+  gan_forward: "srl_model.pth"
+  gan_reward: "srl_model.pth"
+  gan_inverse_reward: "srl_model.pth"
+  gan_inverse_forward: "srl_model.pth"
+  gan_forward_reward: "srl_model.pth"
+  AE_forward_reward: "srl_model.pth"
+  AE_inverse_forward: "srl_model.pth"
+  AE_inverse_reward: "srl_model.pth"
