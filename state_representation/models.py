@@ -6,7 +6,7 @@ import numpy as np
 import torch as th
 
 import srl_zoo.preprocessing as preprocessing
-from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules, SRLModulesSplit
+from srl_zoo.models import CustomCNN, ConvolutionalNetwork, SRLModules
 from srl_zoo.preprocessing import preprocessImage
 from srl_zoo.utils import printGreen, printYellow
 
@@ -161,13 +161,9 @@ class SRLNeuralNetwork(SRLBaseClass):
                 self.model = CustomCNN(state_dim)
             elif model_type == "resnet":
                 self.model = ConvolutionalNetwork(state_dim)
-        elif isinstance(split_dimensions, OrderedDict):
-            self.model = SRLModulesSplit(state_dim=state_dim, action_dim=n_actions, model_type=model_type,
-                                         cuda=self.cuda, losses=losses, split_dimensions=split_dimensions,
-                                         inverse_model_type=inverse_model_type)
         else:
             self.model = SRLModules(state_dim=state_dim, img_shape=self.img_shape, action_dim=n_actions, model_type=model_type,
-                                    cuda=self.cuda, losses=losses, inverse_model_type=inverse_model_type)
+                                    losses=losses, split_dimensions=split_dimensions, inverse_model_type=inverse_model_type)
         self.model.eval()
 
         self.device = th.device("cuda" if th.cuda.is_available() and cuda else "cpu")
