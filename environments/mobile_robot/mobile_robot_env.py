@@ -45,7 +45,6 @@ class MobileRobotGymEnv(SRLGymEnv):
     :param name: (str) name of the folder where recorded data will be stored
     :param max_distance: (float) Max distance between end effector and the button (for negative reward)
     :param shape_reward: (bool) Set to true, reward = -distance_to_goal
-    :param srl_model: (str) SRL model
     :param record_data: (bool) Set to true, record frames with the rewards.
     :param random_target: (bool) Set the target to a random position
     :param state_dim: (int) When learning states

@@ -64,12 +64,8 @@ def plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends, no_dis
         # Compute standard error
         s = np.squeeze(np.asarray(np.std(y, axis=0)))
         n = y.shape[0]
-        # plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=darkcolors[i % len(lightcolors)], alpha=0.3)
-        # plt.plot(x, m, color=darkcolors[i % len(darkcolors)], label=label, linewidth=2)
-        # plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color='jet', alpha=0.3)
-
-        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=plt.cm.tab10.colors[i], alpha=0.3)
-        plt.plot(x, m, color=plt.cm.tab10.colors[i], label=label, linewidth=2)
+        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=plt.cm.tab20.colors[i], alpha=0.3)
+        plt.plot(x, m, color=plt.cm.tab20.colors[i], label=label, linewidth=2)
 
     if timesteps:
         formatter = FuncFormatter(millions)
@@ -174,17 +170,21 @@ def comparePlots(path,  algo, y_limits, title="Learning Curve",
         folders_srl = []
         other_srl = []
         tmp_path = "{}/{}/{}/".format(path, folder, algo)
-        legends.append(folder)
-        for f in os.listdir(tmp_path):
-            paths = "{}/{}/{}/{}/".format(path, folder, algo, f)
-            env_globals = json.load(open(paths + "env_globals.json", 'r'))
-            train_args = json.load(open(paths + "args.json", 'r'))
-            if train_args["shape_reward"] == args.shape_reward:
-                folders_srl.append(paths)
-            else:
-                other_srl.append(paths)
-        folders.append(folders_srl)
-        other.append(other_srl)
+        # import ipdb; ipdb.set_trace()
+        if os.path.exists(tmp_path):
+            legends.append(folder)
+            for f in os.listdir(tmp_path):
+                paths = "{}/{}/{}/{}/".format(path, folder, algo, f)
+                env_globals = json.load(open(paths + "env_globals.json", 'r'))
+                train_args = json.load(open(paths + "args.json", 'r'))
+                if train_args["shape_reward"] == args.shape_reward:
+                    folders_srl.append(paths)
+                else:
+                    other_srl.append(paths)
+            folders.append(folders_srl)
+            other.append(other_srl)
+        else:
+            continue
 
 
     x_list, y_list = [], []
