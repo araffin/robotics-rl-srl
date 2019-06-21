@@ -8,8 +8,6 @@ import shutil
 import time
 
 import numpy as np
-# from gym.spaces import prng #(old) gym==0.10.3
-# from gym.spaces.space import Space # (new) gym>=0.11.0 
 from stable_baselines import PPO2
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines.common.policies import CnnPolicy
