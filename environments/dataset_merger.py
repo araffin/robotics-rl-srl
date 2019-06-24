@@ -107,7 +107,9 @@ def main():
                         gt_arr = np.repeat(gt_load[arr], num_episode_dataset, axis=0)
 
                     if idx_ > 1:
-                        ground_truth[arr] = np.concatenate((ground_truth[arr], gt_arr), axis=0)
+                        if gt_arr.shape == ground_truth[arr].shape:
+                            ground_truth[arr] = np.concatenate((ground_truth[arr], gt_arr), axis=0)
+
                     else:
                         ground_truth[arr] = gt_arr
 
