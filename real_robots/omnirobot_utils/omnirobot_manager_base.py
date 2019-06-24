@@ -121,8 +121,10 @@ class OmnirobotManagerBase(object):
         :return: the angle to go for the target
         """
         if(directed):
-            dy = self.robot.robot_pos[1] - self.robot.target_pos[1]
-            dx = self.robot.robot_pos[0] - self.robot.target_pos[0]
+            dy = self.robot.robot_pos[1] - self.robot.target_pos[1] + np.random.rand() * abs(
+                self.robot.robot_pos[1] - self.robot.target_pos[1])
+            dx = self.robot.robot_pos[0] - self.robot.target_pos[0] + np.random.rand() * abs(
+                self.robot.robot_pos[0] - self.robot.target_pos[0])
             r  = math.sqrt(dy**2+dx**2)
             dy /= r
             dx /= r

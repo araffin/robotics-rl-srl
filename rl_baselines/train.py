@@ -34,7 +34,7 @@ ALGO_NAME = ""
 ENV_NAME = ""
 PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
-CROSS_EVAL = True
+CROSS_EVAL = False
 EPISODE_WINDOW_DISTILLATION_WIN = 20
 NEW_LR=0.001
 
@@ -171,6 +171,7 @@ def callback(_locals, _globals):
             best_mean_reward = mean_reward
             printGreen("Saving new best model")
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
+
         if CROSS_EVAL:  # If we want to do the cross evaluation after the training
             if n_episodes >= 0:
                 # For every checkpoint, we create one directory for saving logs file (policy and run mean std)
