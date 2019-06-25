@@ -38,5 +38,9 @@ registered_srl = {
     "AE_forward_reward": (SRLType.SRL, None),
     "AE_inverse_forward": (SRLType.SRL, None),
     "AE_inverse_reward":  (SRLType.SRL, None),
-    "AE_inv_rwd_split": (SRLType.SRL, None)
+    "AE_inv_rwd_split": (SRLType.SRL, None),
+    "srl_split_all": (SRLType.SRL, None),
+    "srl_split_ir": (SRLType.SRL, None),
+    "srl_split_ir2": (SRLType.SRL, None),
+    "srl_split_ir3": (SRLType.SRL, None),
 }
