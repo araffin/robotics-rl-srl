@@ -126,7 +126,7 @@ def main():
             for arr in gt_load.files:
 
                 if arr == "images_path":
-                    # here, we want to rename just the folder containing the records, hence the black magic
+                    #here, we want to rename just the folder containing the records, hence the black magic
 
                     for i in tqdm(range(ts_counter[idx_-1]),#range(len(gt_load["images_path"])),
                                   desc="Update of paths (Folder " + str(1+idx_) + ")"):
@@ -149,28 +149,25 @@ def main():
 
                     if idx_ > 1:
                         num_episode_dataset = num_episode_dataset_2
-                    # HERE check before overwritting that the target is random !+
-                    if gt_load[arr].shape[0] < num_episode_dataset:
-                        gt_arr = np.repeat(gt_load[arr], num_episode_dataset, axis=0)
+
 
                     if idx_ > 1:
                         # This is the first dataset
-                        if (len(gt_arr) == num_eps_total_2):
+                        if (len(gt_arr) <= num_eps_total_2):
                             # This is a episode non-change variable
+                            ground_truth[arr] = np.concatenate((ground_truth[arr],gt_arr[:num_episode_dataset_2,:2]), axis=0)
+                        elif (len(gt_arr) <= num_ts_total_2):  # a timesteps changing variable
                             ground_truth[arr] = np.concatenate((ground_truth[arr],
-                                                                gt_arr[:num_episode_dataset_2]), axis=0)
-                        elif (len(gt_arr) == num_ts_total_2):  # a timesteps changing variable
-                            ground_truth[arr] = np.concatenate((ground_truth[arr],
-                                                                gt_arr[:ts_counter_2]), axis=0)
+                                                                gt_arr[:ts_counter_2, :2]), axis=0)
                         else:
                             assert 0 == 1, "No compatible variable in the stored ground truth for the second dataset {}" \
                                 .format(args.merge[1])
                     else:
                         # This is the first dataset
-                        if(len(gt_arr) == num_eps_total_1):
+                        if(len(gt_arr) <= num_eps_total_1):
                             #This is a episode non-change variable
                             ground_truth[arr] = gt_arr[:num_episode_dataset_1]
-                        elif(len(gt_arr) == num_ts_total_1): # a timesteps changing variable
+                        elif(len(gt_arr) <= num_ts_total_1): # a timesteps changing variable
                             ground_truth[arr] = gt_arr[:ts_counter_1]
                         else:
                             assert 0 ==1 , "No compatible variable in the stored ground truth for the first dataset {}"\
@@ -214,13 +211,13 @@ def main():
 
         print("The total timesteps: ", ts_counter_1+ts_counter_2)
         print("The total episodes: ", num_episode_dataset_1+num_episode_dataset_2)
-        for k in preprocessed:
-            print(k)
-            print(preprocessed[k].shape)
-
-        for k in ground_truth:
-            print(k)
-            print(ground_truth[k].shape)
+        # for k in preprocessed:
+        #     print(k)
+        #     print(preprocessed[k].shape)
+        #
+        # for k in ground_truth:
+        #     print(k)
+        #     print(ground_truth[k].shape)
 
 
 

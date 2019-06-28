@@ -187,11 +187,12 @@ def dataSelection(data_folder, srl_model_path=None, threshold=0.003):
 
     np.savez(data_folder+ "/preprocessed_data.npz", **preprocessed_data)
     np.savez(data_folder+ "/ground_truth.npz", **ground_truth_data)
-    tt()
     for idx, image in enumerate(images_path):
         if(not idx in left_index):
-            os.remove(image+'.ipg')
-
+            try:
+                os.remove(image+'.jpg')
+            except:
+                print("No file named: {}", image+'.jpg')
 def loadKwargs(log_dir):
     with open(os.path.join(log_dir, 'args.json')) as data:
         rl_kwargs = json.load(data)

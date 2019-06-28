@@ -148,6 +148,7 @@ class PolicyDistillationModel(BaseRLObject):
         print("We assumed SRL training already done")
 
         print('Loading data for distillation ')
+
         training_data, ground_truth, true_states, _ = loadData(args.teacher_data_folder, absolute_path=True)
         rewards, episode_starts = training_data['rewards'], training_data['episode_starts']
 
@@ -309,6 +310,7 @@ class PolicyDistillationModel(BaseRLObject):
 
             train_loss = epoch_loss / float(epoch_batches)
             val_loss /= float(n_val_batches)
+
             pbar.close()
             print("Epoch {:3}/{}, train_loss:{:.6f} val_loss:{:.6f}".format(epoch + 1, N_EPOCHS, train_loss, val_loss))
 
