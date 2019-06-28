@@ -130,7 +130,7 @@ def main():
                 to_class = None
                 if arr == "episode_starts":
                     to_class = bool
-                elif arr == "actions_proba":
+                elif arr == "actions_proba" or arr == "rewards":
                     to_class = float
                 else:
                     to_class = int
