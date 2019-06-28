@@ -10,10 +10,9 @@ import seaborn as sns
 import numpy as np
 import torch as th
 from tqdm import tqdm
-from multiprocessing import Pool
 from functools import partial
+from multiprocessing import Pool
 from ipdb import set_trace as tt
-
 
 
 from state_representation.models import loadSRLModel, getSRLDim
@@ -24,10 +23,11 @@ sns.set()
 
 #os.chdir('/home/tete/Robotics-branches/robotics-rl-srl-two/logs/teacher_policies_for_evaluation/sc/OmnirobotEnv-v0/srl_combination/ppo2/19-06-19_01h10_00')
 
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 N_WORKERS = 8
 DEVICE = th.device("cuda" if th.cuda.is_available() else "cpu")
 VALIDATION_SIZE = 0.2  # 20% of training data for validation
+
 
 def PCA(data, dim=2):
     # preprocess the data
@@ -40,7 +40,7 @@ def PCA(data, dim=2):
     C = th.mm(X,U[:,:dim]).to('cpu').numpy()
     return C
 
-def dataSrlLoad(data_folder, srl_model_path=None, pca_mode=True, normalized=True, threshold=0.01):
+def dataSrlLoad(data, srl_model=None, state_dim=2, pca_mode=True, normalized=True):
     """
 
     :param data_folder: (str) the path to the dataset we want to sample
@@ -49,28 +49,20 @@ def dataSrlLoad(data_folder, srl_model_path=None, pca_mode=True, normalized=True
              it self, a random sampled training set, validation set
     """
 
-    state_dim = getSRLDim(srl_model_path)
-    srl_model = loadSRLModel(srl_model_path, th.cuda.is_available(), state_dim, env_object=None)
-
-    #load images and other data
-    print('Loading data for separation ')
-    training_data, ground_truth, true_states, _ = loadData(data_folder, absolute_path=True)
-    rewards, episode_starts = training_data['rewards'], training_data['episode_starts']
+    # load images and other data
+    training_data, ground_truth, true_states = data
     images_path = ground_truth['images_path']
-    actions = training_data['actions']
-    actions_proba = training_data['actions_proba']
-    ground_turht_states_dim = true_states.shape[1]
-
-
+    ground_truth_states_dim = true_states.shape[1]
 
     # we change the path to the local path at the toolbox level
     images_path_copy = ["srl_zoo/data/" + images_path[k] for k in range(images_path.shape[0])]
     images_path = np.array(images_path_copy)
 
-    num_samples = images_path.shape[0]  # number of samples
+    num_samples = images_path.shape[0]-1  # number of samples
 
     # indices for all time steps where the episode continues
-    indices = np.array([i for i in range(num_samples-1) if not episode_starts[i + 1]], dtype='int64')
+    #indices = np.array([i for i in range(num_samples-1) if not episode_starts[i + 1]], dtype='int64')
+    indices = np.arange(num_samples)
 
     minibatchlist = [np.array(sorted(indices[start_idx:start_idx + BATCH_SIZE]))
                      for start_idx in range(0, len(indices) - BATCH_SIZE + 1, BATCH_SIZE)]
@@ -92,7 +84,7 @@ def dataSrlLoad(data_folder, srl_model_path=None, pca_mode=True, normalized=True
     srl_data = np.concatenate(srl_data,axis=0)
     # PCA for the v
     if pca_mode:
-        pca_srl_data = PCA(srl_data, dim=ground_turht_states_dim)
+        pca_srl_data = PCA(srl_data, dim=ground_truth_states_dim)
     else:
         pca_srl_data = srl_data
     if normalized: # Normilized into -0.5 to +0.5
@@ -102,14 +94,7 @@ def dataSrlLoad(data_folder, srl_model_path=None, pca_mode=True, normalized=True
 
     training_indices = np.concatenate(minibatchlist)
 
-    val_num = int(len(training_indices) * VALIDATION_SIZE)
-
-    #return the index that we dont need to save anymore
-    index_del = dataSelection(0.01,pca_srl_data)
-
-    index_save = [i for i in range(len(index_del)) if not index_del[i]]
-
-    return
+    return pca_srl_data, training_indices
 
 def plotDistribution(pca_srl_data, val_num):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=[24, 8])
@@ -137,31 +122,75 @@ def _del_val(p_val, train_set, threshold):
     :param threshold:  (float)
     :return:
     """
+    import numpy as np
     for p_train in train_set:
-        if (np.linalg.norm(p_val - p_train) < threshold):
+        if(1.e-10<np.linalg.norm(p_val-p_train) < threshold):
             # we will delete the data point
             return True
-        else:
-            return False
+    return False
 
-def dataSelection(threshold, train_set, val_set=None):
-    """
 
-    :param val_set: the validation set that we want to resimpling
-    :param train_set:
-    :param threshold:
-    :return:
-    """
-    #if we dont precise the validation set, the suppression will be on the whole dataset (training set)
-    if val_set == None:
-        val_set = train_set
-    # multiprocessing
-    pool = Pool()
-    # if index[i] is ture, then we will delete it from the dataset
-    index_to_del = pool.map(partial(_del_val, train_set=train_set, threshold=threshold), val_set)
 
-    return index_to_del
+def index_save(data_set, threshold):
+    pbar = tqdm(total = len(data_set))
+    deleted = np.zeros(len(data_set)).astype(bool)
+    for t, test_point in enumerate(data_set):
+        pbar.update(1)
+        for k, data_point in enumerate(data_set):
+            if(not deleted[k] and 1.e-5<np.linalg.norm(test_point-data_point)<threshold):
+                deleted[t] = True
+    index = [i for i in range(len(deleted)) if not deleted[i]]
+    del_index = [i for i in range(len(deleted)) if deleted[i]]
+    return deleted, index, del_index
 
+
+def dataSelection(data_folder, srl_model_path=None, threshold=0.003):
+    state_dim = getSRLDim(srl_model_path)
+    srl_model = loadSRLModel(srl_model_path, th.cuda.is_available(), state_dim, env_object=None)
+
+    # load images and other data
+    print('Loading data for separation ')
+    training_data, ground_truth, true_states, _ = loadData(data_folder, absolute_path=True)
+    images_path = ground_truth['images_path']
+    ground_truth_states_dim = true_states.shape[1]
+
+    # we change the path to the local path at the toolbox level
+    images_path_copy = ["srl_zoo/data/" + images_path[k] for k in range(images_path.shape[0])]
+    images_path = np.array(images_path_copy)
+    ground_truth_load = np.load(data_folder+ "/ground_truth.npz")
+    preprocessed_load = np.load(data_folder+ "/preprocessed_data.npz")
+
+    pca_srl_data, training_indices = dataSrlLoad(data=(training_data, ground_truth, true_states),
+                srl_model=srl_model,state_dim=state_dim, pca_mode=True, normalized=True)
+
+    # re- sampling data to have uniform distribution
+    print('Resampling data to have a more uniform distribution')
+    delete, left_index, del_index = index_save(data_set=pca_srl_data[:16000], threshold=threshold)
+
+    # ground_truth
+
+    ground_truth_data = {}
+    preprocessed_data = {}
+    if(ground_truth_load['target_positions'].shape[0] == ground_truth_load['ground_truth_states'].shape[0]):
+        #This means that the target is moving
+        for arr in ground_truth_load.files:
+            gt_arr = ground_truth_load[arr]
+            ground_truth_data[arr] = gt_arr[left_index]
+    else:
+        for arr in ground_truth_load.files:
+            if(arr != 'target_positions'):
+                gt_arr = ground_truth_load[arr]
+                ground_truth_data[arr] = gt_arr[left_index]
+    for arr in preprocessed_load.files:
+        pr_arr = preprocessed_load[arr]
+        preprocessed_data[arr] = pr_arr[left_index]
+
+    np.savez(data_folder+ "/preprocessed_data.npz", **preprocessed_data)
+    np.savez(data_folder+ "/ground_truth.npz", **ground_truth_data)
+    tt()
+    for idx, image in enumerate(images_path):
+        if(not idx in left_index):
+            os.remove(image+'.ipg')
 
 def loadKwargs(log_dir):
     with open(os.path.join(log_dir, 'args.json')) as data:
@@ -180,9 +209,7 @@ if __name__ == '__main__':
 
     rl_kwargs, env_kwargs = loadKwargs(args.log_dir)
     srl_model_path = env_kwargs['srl_model_path']
-    tt()
     #srl_model_path = 'srl_zoo/logs/test_dataset/19-06-26_23h44_20_custom_cnn_ST_DIM200_inverse_autoencoder/srl_model.pth'
 
-
-    dataSrlLoad(data_folder=args.data_path, srl_model_path=srl_model_path)
-    print("OK")
+    #pca_srl_data, index = dataSrlLoad(data_folder=args.data_path, srl_model_path=srl_model_path)
+    dataSelection(data_folder=args.data_path, srl_model_path=srl_model_path)
