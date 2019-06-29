@@ -151,14 +151,47 @@ class MobileRobotGymEnv(SRLGymEnv):
         # Return only the [x, y] coordinates
         return self.target_pos[:2]
 
-    @staticmethod
-    def getGroundTruthDim():
-        return 2
+    # @staticmethod
+    def getGroundTruthDim(self):
+        """
+        The new convention for the ground truth (GT): GT should include target position under random target
+        setting. 
+        """
+        ## HACK : Monkey-Patch, shit solution to solve problem.
+        if not self._random_target:
+            return 2
+        else:
+            return 4
 
-    def getGroundTruth(self):
+    def getRobotPos(self):
         # Return only the [x, y] coordinates
         return np.array(self.robot_pos)[:2]
 
+    def getGroundTruth(self):
+        """
+        The new convention for the ground truth (GT): GT should include target position under random target
+        setting. A better solution would be "change all the environment files, especially srl_env.py" !!! 
+        
+        """
+        ## HACK: Monkey-Patch, shit solution to solve problem.
+        
+        robot_pos = self.getRobotPos()
+        if self._random_target:  
+            if self.relative_pos:
+                ## HACK here! Change srl_env.py and all the other envs in the future !!! TODO TODO TODO
+                return robot_pos
+            else:
+                ## check 'envs.observation_space' in rl_baselines/base_classes.py (before self.model.learn) !!!
+                target_pos = self.getTargetPos()
+                return np.concatenate([robot_pos, target_pos], axis=0)
+                
+        else:
+            if self.relative_pos:
+                ## HACK here! Change srl_env.py and all the other envs in the future !!! TODO TODO TODO
+                return robot_pos
+            else:
+                return robot_pos
+        
     def reset(self):
         self.terminated = False
         p.resetSimulation()
@@ -217,7 +250,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         self._observation = self.getObservation()
 
         if self.saver is not None:
-            self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
+            self.saver.reset(self._observation, self.getTargetPos(), self.getRobotPos())
 
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
@@ -275,7 +308,7 @@ class MobileRobotGymEnv(SRLGymEnv):
         reward = self._reward()
         done = self._termination()
         if self.saver is not None:
-            self.saver.step(self._observation, action, reward, done, self.getGroundTruth())
+            self.saver.step(self._observation, action, reward, done, self.getRobotPos())
 
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}

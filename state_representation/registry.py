@@ -45,4 +45,5 @@ registered_srl = {
     "srl_split_ir3": (SRLType.SRL, None),
     "srl_split_ir4": (SRLType.SRL, None),
     "srl_split_fr1": (SRLType.SRL, None),
+    "srl_split_ir_new": (SRLType.SRL, None),
 }
