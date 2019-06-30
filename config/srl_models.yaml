@@ -145,6 +145,8 @@ MobileRobotGymEnv-v0:
   srl_split_ir4: "srl_model.pth"
   srl_split_fr1: "srl_model.pth"
   srl_split_ir_new: "srl_model.pth"
+  srl_split_ifr_new2: "srl_model.pth"
+  srl_split_ifr_new2_200: "srl_model.pth"
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/mobile_robot_2target/
