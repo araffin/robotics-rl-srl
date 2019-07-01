@@ -69,10 +69,10 @@ def loadCsv(log_folder, is_es=False):
     for input_file in monitor_files:
         data = []
         with open(input_file, 'r') as f:
-            f.readline()
-            f.readline()
+            f.readline()  # {"t_start": 1561877956.25271, "env_id": "MobileRobotGymEnv-v0"}\n'
+            f.readline()  # r,l,t : reward, episode length, time (elapsed time)
             for line in f:
-                tmp = line.split(',')
+                tmp = line.split(',')  # '-11,251,6.882543\n': reward, episode_length, elased_time
                 t_time = float(tmp[2])
                 tmp = [t_time, int(tmp[1]), float(tmp[0])]
                 data.append(tmp)
