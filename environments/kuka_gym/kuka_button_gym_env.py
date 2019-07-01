@@ -202,11 +202,15 @@ class KukaButtonGymEnv(SRLGymEnv):
         """
         return 14
 
-    @staticmethod
-    def getGroundTruthDim():
-        return 3
+    # @staticmethod
+    def getGroundTruthDim(self):
+        ## HACK : Monkey-Patch, shit solution to solve problem.
+        if not self._random_target:
+            return 3
+        else:
+            return 6
 
-    def getGroundTruth(self):
+    def getRobotPos(self):
         return np.array(self.getArmPos())
 
     def getArmPos(self):
@@ -215,6 +219,29 @@ class KukaButtonGymEnv(SRLGymEnv):
         """
         return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
 
+    def getGroundTruth(self):
+        """
+        The new convention for the ground truth (GT): GT should include target position under random target
+        setting. A better solution would be "change all the environment files, especially srl_env.py" !!! 
+        
+        """
+        ## HACK: Monkey-Patch, shit solution to solve problem.
+        
+        robot_pos = self.getRobotPos()
+        if self._random_target:  
+            if self.relative_pos:
+                ## HACK here! Change srl_env.py and all the other envs in the future !!! TODO TODO TODO
+                return robot_pos
+            else:
+                ## check 'envs.observation_space' in rl_baselines/base_classes.py (before self.model.learn) !!!
+                target_pos = self.getTargetPos()
+                return np.concatenate([robot_pos, target_pos], axis=0)
+        else:
+            if self.relative_pos:
+                ## HACK here! Change srl_env.py and all the other envs in the future !!! TODO TODO TODO
+                return robot_pos
+            else:
+                return robot_pos
     def reset(self):
         self.terminated = False
         self.n_contacts = 0
@@ -277,7 +304,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         self.button_pos = np.array(p.getLinkState(self.button_uid, BUTTON_LINK_IDX)[0])
         self.button_pos[2] += BUTTON_DISTANCE_HEIGHT  # Set the target position on the top of the button
         if self.saver is not None:
-            self.saver.reset(self._observation, self.getTargetPos(), self.getGroundTruth())
+            self.saver.reset(self._observation, self.getTargetPos(), self.getRobotPos())
 
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation)
@@ -364,7 +391,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         reward = self._reward()
         done = self._termination()
         if self.saver is not None:
-            self.saver.step(self._observation, self.action, reward, done, self.getGroundTruth())
+            self.saver.step(self._observation, self.action, reward, done, self.getRobotPos())
 
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
