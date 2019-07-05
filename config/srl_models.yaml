@@ -227,3 +227,4 @@ OmnirobotEnv-v0:
   AE_forward_reward: "srl_model.pth"
   AE_inverse_forward: "srl_model.pth"
   AE_inverse_reward: "srl_model.pth"
+  srl_split_ifr_new2: "srl_model.pth"
