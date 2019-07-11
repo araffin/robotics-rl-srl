@@ -25,6 +25,9 @@ KukaButtonGymEnv-v0:
   AE_forward_reward: "srl_model.pth"
   AE_inverse_forward: "srl_model.pth"
   AE_inverse_reward: "srl_model.pth"
+  VAE_inverse_forward: "srl_model.pth"
+  srl_split_ifr_new2: "srl_model.pth"
+  
 
 Kuka2ButtonGymEnv-v0:
   # Base path to SRL log folder
@@ -138,6 +141,18 @@ MobileRobotGymEnv-v0:
   AE_inverse_forward: "srl_model.pth"
   AE_inverse_reward: "srl_model.pth"
   AE_inv_rwd_split : "srl_model.pth"
+  srl_split_all: "srl_model.pth"
+  srl_split_ir: "srl_model.pth"
+  srl_split_ir2: "srl_model.pth"
+  srl_split_ir3: "srl_model.pth"
+  srl_split_ir4: "srl_model.pth"
+  srl_split_fr1: "srl_model.pth"
+  srl_split_ir_new: "srl_model.pth"
+  srl_split_ifr_new2: "srl_model.pth"
+  srl_split_ifr_new2_200: "srl_model.pth"
+  srl_split_ifr_new2_dim100: "srl_model.pth"
+  srl_split_ifr_new2_coeff: "srl_model.pth"
+
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/mobile_robot_2target/
@@ -213,3 +228,6 @@ OmnirobotEnv-v0:
   AE_forward_reward: "srl_model.pth"
   AE_inverse_forward: "srl_model.pth"
   AE_inverse_reward: "srl_model.pth"
+  AE_ifr: "srl_model.pth"
+  srl_split_ifr_new2: "srl_model.pth"
+  

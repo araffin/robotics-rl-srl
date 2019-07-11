@@ -38,5 +38,20 @@ registered_srl = {
     "AE_forward_reward": (SRLType.SRL, None),
     "AE_inverse_forward": (SRLType.SRL, None),
     "AE_inverse_reward":  (SRLType.SRL, None),
-    "AE_inv_rwd_split": (SRLType.SRL, None)
+    "AE_inv_rwd_split": (SRLType.SRL, None),
+    "srl_split_all": (SRLType.SRL, None),
+    "srl_split_ir": (SRLType.SRL, None),
+    "srl_split_ir2": (SRLType.SRL, None),
+    "srl_split_ir3": (SRLType.SRL, None),
+    "srl_split_ir4": (SRLType.SRL, None),
+    "srl_split_fr1": (SRLType.SRL, None),
+    "srl_split_ir_new": (SRLType.SRL, None),
+    "srl_split_ifr_new2": (SRLType.SRL, None),
+    "srl_split_ifr_new2_200": (SRLType.SRL, None),
+    "srl_split_ifr_new2_dim100": (SRLType.SRL, None),
+    "srl_split_ifr_new2_coeff": (SRLType.SRL, None),
+    "VAE_inverse_forward": (SRLType.SRL, None),
+    "AE_ifr": (SRLType.SRL, None),
+    
+    
 }

@@ -152,7 +152,8 @@ def GatherExperiments(folders, algo,  window=40, title="", min_num_x=-1,
 
 
 def comparePlots(path,  algo, y_limits, title="Learning Curve",
-                 timesteps=False, truncate_x=-1, no_display=False, normalization=False, figpath=None):
+                 timesteps=False, truncate_x=-1, no_display=False, normalization=False, figpath=None,
+                 exclude_list=None):
     """
     :param path: (str) path to the folder where the plots are stored
     :param plots: ([str]) List of saved plots as npz file
@@ -162,7 +163,8 @@ def comparePlots(path,  algo, y_limits, title="Learning Curve",
     :param truncate_x: (int) Truncate the experiments after n ticks on the x-axis
     :param no_display: (bool) Set to true, the plot won't be displayed (useful when only saving plot)
     """
-
+    if exclude_list is None:
+        exclude_list = []
     folders = []
     other = []
     legends = []
@@ -170,8 +172,8 @@ def comparePlots(path,  algo, y_limits, title="Learning Curve",
         folders_srl = []
         other_srl = []
         tmp_path = "{}/{}/{}/".format(path, folder, algo)
-        # import ipdb; ipdb.set_trace()
-        if os.path.exists(tmp_path):
+        if os.path.exists(tmp_path) and (folder not in exclude_list):  # folder contains algo (e.g. ppo2) subfolder and not in excluded list
+            printRed(folder)
             legends.append(folder)
             for f in os.listdir(tmp_path):
                 paths = "{}/{}/{}/{}/".format(path, folder, algo, f)
@@ -220,6 +222,7 @@ if __name__ == '__main__':
     parser.add_argument('--norm', action='store_true', default=False,
                         help='To normalize the output by the maximum reward')
     parser.add_argument('--figpath', type=str, default=None, help='Save figure to path.')
+    parser.add_argument('--exclude', nargs='+', type=str, default=None, help='SRL models to be excluded.')
     #
     # parser.add_argument('--tasks', type=str, nargs='+', default=["cc"],
     #                     help='The tasks for the robot',
@@ -241,7 +244,8 @@ if __name__ == '__main__':
     y_list = []
 
     comparePlots(args.input_dir, args.algo, title=args.title, y_limits=y_limits, no_display=args.no_display,
-                 timesteps=args.timesteps, truncate_x=args.truncate_x, normalization=args.norm, figpath=args.figpath)
+                 timesteps=args.timesteps, truncate_x=args.truncate_x, normalization=args.norm, figpath=args.figpath,
+                 exclude_list=args.exclude)
 
 
 # python -m replay.plot_pipeline -i logs/OmnirobotEnv-v0 --algo ppo2 --title cc --timesteps
