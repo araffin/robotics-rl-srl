@@ -52,6 +52,8 @@ registered_srl = {
     "srl_split_ifr_new2_coeff": (SRLType.SRL, None),
     "VAE_inverse_forward": (SRLType.SRL, None),
     "AE_ifr": (SRLType.SRL, None),
+    "AE_ifr2_split": (SRLType.SRL, None),
+    "AE_ifr_split": (SRLType.SRL, None),
     
     
 }
