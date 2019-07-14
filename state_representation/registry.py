@@ -46,7 +46,7 @@ registered_srl = {
     "srl_split_ir4": (SRLType.SRL, None),
     "srl_split_fr1": (SRLType.SRL, None),
     "srl_split_ir_new": (SRLType.SRL, None),
-    "srl_split_ifr_new2": (SRLType.SRL, None),
+    "srl_split_ifr_new2": (SRLType.SRL, None), ## sota with spcls loss
     "srl_split_ifr_new2_200": (SRLType.SRL, None),
     "srl_split_ifr_new2_dim100": (SRLType.SRL, None),
     "srl_split_ifr_new2_coeff": (SRLType.SRL, None),
@@ -54,6 +54,7 @@ registered_srl = {
     "AE_ifr": (SRLType.SRL, None),
     "AE_ifr2_split": (SRLType.SRL, None),
     "AE_ifr_split": (SRLType.SRL, None),
+    "AE_ifr2_spcls_split": (SRLType.SRL, None),
     
     
 }
