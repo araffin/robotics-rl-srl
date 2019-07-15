@@ -72,7 +72,7 @@ class OmniRobotEnv(SRLGymEnv):
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
-                 shape_reward=False, simple_continual_target=False, circular_continual_move=False,escape_continual_move=False,
+                 shape_reward=False, simple_continual_target=False, circular_continual_move=False, escape_continual_move=False,
                  square_continual_move=False, eight_continual_move=False, chasing_continual_move=False, short_episodes=False,
                  state_init_override=None, env_rank=0, srl_pipe=None, **_):
 
@@ -142,7 +142,7 @@ class OmniRobotEnv(SRLGymEnv):
                                                    square_continual_move=square_continual_move,
                                                    eight_continual_move=eight_continual_move,
                                                    chasing_continual_move=chasing_continual_move,
-                                                   escape_continual_move = escape_continual_move,
+                                                   escape_continual_move=escape_continual_move,
                                                    output_size=[RENDER_WIDTH, RENDER_HEIGHT],
                                                    random_target=self._random_target,
                                                    state_init_override=state_init_override)
@@ -209,7 +209,6 @@ class OmniRobotEnv(SRLGymEnv):
 
     def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
         """
-
         :param :action: (int)
         :param generated_observation:
         :param action_proba:
@@ -243,8 +242,6 @@ class OmniRobotEnv(SRLGymEnv):
         self.socket.send_json(
             {"command": "action", "action": self.action, "is_discrete": self._is_discrete,
              "step_counter": self._env_step_counter})
-
-
 
         # Receive state data (position, etc), important to update state related values
         self.getEnvState()
@@ -296,17 +293,18 @@ class OmniRobotEnv(SRLGymEnv):
         """
         return self.target_pos
 
-
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         """
+        The convergence is slow for escape task with dimension 2
         :return: (int)
         """
-        if(not self.escape_continual_move):
-            return 2
-        else:
-            #The position of the robot, target
-            return 4
-
+        # if(not self.escape_continual_move):
+        #     return 2
+        # else:
+        #     #The position of the robot, target
+        #     return 4
+        return 2
 
     def getGroundTruth(self):
         """
@@ -314,10 +312,11 @@ class OmniRobotEnv(SRLGymEnv):
         :return: (numpy array)
         """
         #
-        if(not self.escape_continual_move):
-            return np.array(self.getRobotPos())
-        else:
-            return np.append(self.getRobotPos(),self.getTargetPos())
+        # if(not self.escape_continual_move):
+        #     return np.array(self.getRobotPos())
+        # else:
+        #     return np.append(self.getRobotPos(),self.getTargetPos())
+        return np.array(self.getRobotPos())
 
     def getRobotPos(self):
         """
@@ -395,6 +394,7 @@ class OmniRobotEnv(SRLGymEnv):
                 self.visualizeBoundary()
                 self.image_plot = plt.imshow(self.observation_with_boundary, cmap='gray')
                 self.image_plot.axes.grid(False)
+
             else:
                 self.visualizeBoundary()
                 self.image_plot.set_data(self.observation_with_boundary)
