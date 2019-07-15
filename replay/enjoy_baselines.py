@@ -67,6 +67,12 @@ def parseArguments():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
+    parser.add_argument('-chc', '--chasing-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: one robot should keep a certain distance towards the other.')
+    parser.add_argument('-esc', '--escape-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: the trainable agent tries to escape from the "zombie" robot.')
     args, unknown = parser.parse_known_args()
     assert sum([args.simple_continual, args.circular_continual, args.square_continual]) <= 1, \
         "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
@@ -130,12 +136,17 @@ def loadConfigAndSetup(load_args):
         env_kwargs["circular_continual_move"] = env_globals.get("circular_continual_move", False)
         env_kwargs["square_continual_move"] = env_globals.get("square_continual_move", False)
         env_kwargs["eight_continual_move"] = env_globals.get("eight_continual_move", False)
-
+        env_kwargs["chasing_continual_move"] = env_globals.get("chasing_continual_move", False)
+        env_kwargs["escape_continual_move"] = env_globals.get("escape_continual_move", False)
         # If overriding the environment for specific Continual Learning tasks
-        if sum([load_args.simple_continual, load_args.circular_continual, load_args.square_continual]) >= 1:
+        if sum([load_args.simple_continual, load_args.circular_continual,
+                load_args.escape_continual, load_args.chasing_continual,
+                load_args.square_continual]) >= 1:
             env_kwargs["simple_continual_target"] = load_args.simple_continual
             env_kwargs["circular_continual_move"] = load_args.circular_continual
             env_kwargs["square_continual_move"] = load_args.square_continual
+            env_kwargs["chasing_continual_move"] =load_args.chasing_continual
+            env_kwargs["escape_continual_move"] = load_args.escape_continual
             env_kwargs["random_target"] = not (load_args.circular_continual or load_args.square_continual)
 
     srl_model_path = None
@@ -195,7 +206,6 @@ def main():
     tf.reset_default_graph()
     set_global_seeds(load_args.seed)
     # createTensorflowSession()
-
 
     printYellow("Compiling Policy function....")
     printYellow(load_path)

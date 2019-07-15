@@ -72,8 +72,8 @@ class OmniRobotEnv(SRLGymEnv):
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
-                 shape_reward=False, simple_continual_target=False, circular_continual_move=False,
-                 square_continual_move=False, eight_continual_move=False, short_episodes=False,
+                 shape_reward=False, simple_continual_target=False, circular_continual_move=False, escape_continual_move=False,
+                 square_continual_move=False, eight_continual_move=False, chasing_continual_move=False, short_episodes=False,
                  state_init_override=None, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
@@ -89,7 +89,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
         self.use_joints = False
-        self.relative_pos = RELATIVE_POS
+        self.relative_pos = RELATIVE_POS and (not escape_continual_move)
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
@@ -107,6 +107,8 @@ class OmniRobotEnv(SRLGymEnv):
         self.circular_continual_move = circular_continual_move
         self.square_continual_move = square_continual_move
         self.eight_continual_move = eight_continual_move
+        self.chasing_continual_move = chasing_continual_move
+        self.escape_continual_move = escape_continual_move
         self.short_episodes = short_episodes
 
         if self._is_discrete:
@@ -139,6 +141,8 @@ class OmniRobotEnv(SRLGymEnv):
                                                    circular_continual_move=circular_continual_move,
                                                    square_continual_move=square_continual_move,
                                                    eight_continual_move=eight_continual_move,
+                                                   chasing_continual_move=chasing_continual_move,
+                                                   escape_continual_move=escape_continual_move,
                                                    output_size=[RENDER_WIDTH, RENDER_HEIGHT],
                                                    random_target=self._random_target,
                                                    state_init_override=state_init_override)
@@ -184,9 +188,27 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
+    def actionPolicyAwayTarget(self):
+        """
+        :return: (int) action
+        """
+        if abs(self.robot_pos[0] - self.target_pos[0]) > abs(self.robot_pos[1] - self.target_pos[1]):
+
+            if self._is_discrete:
+                return int(Move.BACKWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.FORWARD)
+                # forward                                        # backward
+            else:
+                return -DELTA_POS if self.robot_pos[0] < self.target_pos[0] else +DELTA_POS
+        else:
+            if self._is_discrete:
+                # left                                          # right
+                return int(Move.RIGHT) if self.robot_pos[1] < self.target_pos[1] else int(Move.LEFT)
+            else:
+                return -DELTA_POS if self.robot_pos[1] < self.target_pos[1] else +DELTA_POS
+
+
     def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
         """
-
         :param :action: (int)
         :param generated_observation:
         :param action_proba:
@@ -232,11 +254,12 @@ class OmniRobotEnv(SRLGymEnv):
 
         if self.saver is not None:
             self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else action_to_step,
-                            self.reward, done, self.getGroundTruth(), action_proba=action_proba)
+                            self.reward, done, self.getGroundTruth(), action_proba=action_proba,
+                            target_pos=self.getTargetPos())
         old_observation = self.getObservation()
-
         if self.use_srl:
-            return self.getSRLState(self.observation if generated_observation is None else old_observation), self.reward, done, {}
+            return self.getSRLState(self.observation
+                                    if generated_observation is None else old_observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -250,7 +273,6 @@ class OmniRobotEnv(SRLGymEnv):
         self.reward = state_data["reward"]
         self.target_pos = np.array(state_data["target_pos"])
         self.robot_pos = np.array(state_data["position"])
-
         return state_data
 
     def getObservation(self):
@@ -274,8 +296,14 @@ class OmniRobotEnv(SRLGymEnv):
     @staticmethod
     def getGroundTruthDim():
         """
+        The convergence is slow for escape task with dimension 2
         :return: (int)
         """
+        # if(not self.escape_continual_move):
+        #     return 2
+        # else:
+        #     #The position of the robot, target
+        #     return 4
         return 2
 
     def getGroundTruth(self):
@@ -283,6 +311,11 @@ class OmniRobotEnv(SRLGymEnv):
         Alias for getRobotPos for compatibility between envs
         :return: (numpy array)
         """
+        #
+        # if(not self.escape_continual_move):
+        #     return np.array(self.getRobotPos())
+        # else:
+        #     return np.append(self.getRobotPos(),self.getTargetPos())
         return np.array(self.getRobotPos())
 
     def getRobotPos(self):

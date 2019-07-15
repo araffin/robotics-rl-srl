@@ -45,8 +45,8 @@ def latestPath(path):
 
 def walkerPath():
     """
-    Naive Grid Walking Policy: Walking across the grid from the top to the bottom, going left and right.
-    :return: [int] List of actions taken by a grid walker
+
+    :return:
     """
     eps = 0.01
     N_times = 14
@@ -109,6 +109,8 @@ def env_thread(args, thread_num, partition=True):
         "simple_continual_target": args.simple_continual,
         "circular_continual_move": args.circular_continual,
         "square_continual_move": args.square_continual,
+        "chasing_continual_move":args.chasing_continual,
+        "escape_continual_move": args.escape_continual,
         "short_episodes":  args.short_episodes
     }
 
@@ -122,13 +124,13 @@ def env_thread(args, thread_num, partition=True):
     srl_model = None
     srl_state_dim = 0
     generated_obs = None
-    env_norm = None
 
     if args.run_policy in ["walker", "custom"]:
         if args.latest:
             args.log_dir = latestPath(args.log_custom_policy)
         else:
             args.log_dir = args.log_custom_policy
+        args.log_dir = args.log_custom_policy
         args.render = args.display
         args.plotting, args.action_proba = False, False
 
@@ -142,6 +144,9 @@ def env_thread(args, thread_num, partition=True):
         env_kwargs["circular_continual_move"] = env_kwargs_extra.get("circular_continual_move", False)
         env_kwargs["square_continual_move"] = env_kwargs_extra.get("square_continual_move", False)
         env_kwargs["eight_continual_move"] = env_kwargs_extra.get("eight_continual_move", False)
+        env_kwargs["chasing_continual_move"] = env_kwargs_extra.get("chasing_continual_move",False)
+        env_kwargs["escape_continual_move"] = env_kwargs_extra.get("escape_continual_move", False)
+
 
         eps = 0.2
         env_kwargs["state_init_override"] = np.array([MIN_X + eps, MAX_X - eps]) \
@@ -285,6 +290,7 @@ def env_thread(args, thread_num, partition=True):
             print("{:.2f} FPS".format(frames * args.num_cpu / (time.time() - start_time)))
 
 
+
 def main():
     parser = argparse.ArgumentParser(description='Deteministic dataset generator for SRL training ' +
                                                  '(can be used for environment testing)')
@@ -336,6 +342,12 @@ def main():
     parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
                         help='Green square target for task 3 of continual learning scenario. ' +
                              'The task is: robot should turn in square around the target.')
+    parser.add_argument('-chc', '--chasing-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: one robot should keep a certain distance towars the other.')
+    parser.add_argument('-esc', '--escape-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: the trainable agent tries to escape from the "zombie" robot.')
     parser.add_argument('--short-episodes', action='store_true', default=False,
                         help='Generate short episodes (only 10 contacts with the target allowed).')
     parser.add_argument('--episode', type=int, default=-1,

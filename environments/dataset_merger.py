@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 # List of all possible labels identifying a task,
 #   for experiments in Continual Learning scenari.
-CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
+CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC', 'ESC']
 CL_LABEL_KEY = "continual_learning_label"
 
 

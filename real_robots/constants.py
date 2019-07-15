@@ -120,7 +120,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
         STOP = 4
 
     STEP_DISTANCE = 0.1  # meter, distance for each step
-    
+    STEP_DISTANCE_TARGET = 0.05 # moving distance for each step
     # For continuous action,
     # Define the action_bounds
     ACTION_POSITIVE_LOW = 0.0

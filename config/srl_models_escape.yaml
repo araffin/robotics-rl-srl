@@ -1,0 +1,9 @@
+
+OmnirobotEnv-v0:
+  # Base path to SRL log folder
+  # log_folder: srl_zoo/logs/escape_agent/
+  log_folder: srl_zoo/logs/escape_agent/
+  autoencoder: 19-02-04_23h27_22_custom_cnn_ST_DIM200_autoencoder_reward_inverse_forward/srl_model.pth
+  srl_combination: 19-06-03_18h38_59_custom_cnn_ST_DIM200_autoencoder_inverse/srl_model.pth
+  
+

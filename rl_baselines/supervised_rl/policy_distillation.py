@@ -148,6 +148,7 @@ class PolicyDistillationModel(BaseRLObject):
         print("We assumed SRL training already done")
 
         print('Loading data for distillation ')
+
         training_data, ground_truth, true_states, _ = loadData(args.teacher_data_folder, absolute_path=True)
         rewards, episode_starts = training_data['rewards'], training_data['episode_starts']
 
@@ -174,7 +175,7 @@ class PolicyDistillationModel(BaseRLObject):
         indices = np.array([i for i in range(num_samples) if not episode_starts[i + 1]], dtype='int64')
         np.random.shuffle(indices)
 
-        # split indices into minibatches. minibatchlist is a list of lists; each
+        # split indices into minibatches. minibatchlis  t is a list of lists; each
         # list is the id of the observation preserved through the training
         minibatchlist = [np.array(sorted(indices[start_idx:start_idx + self.batch_size]))
                          for start_idx in range(0, len(indices) - self.batch_size + 1, self.batch_size)]
@@ -309,6 +310,7 @@ class PolicyDistillationModel(BaseRLObject):
 
             train_loss = epoch_loss / float(epoch_batches)
             val_loss /= float(n_val_batches)
+
             pbar.close()
             print("Epoch {:3}/{}, train_loss:{:.6f} val_loss:{:.6f}".format(epoch + 1, N_EPOCHS, train_loss, val_loss))
 

@@ -112,7 +112,7 @@ class EpisodeSaver(object):
             self.ground_truth_states.append(ground_truth)
             self.saveImage(observation)
 
-    def step(self, observation, action, reward, done, ground_truth_state, action_proba=None):
+    def step(self, observation, action, reward, done, ground_truth_state, action_proba=None, target_pos=[]):
         """
         :param observation: (numpy matrix) BGR Image
         :param action: (int)
@@ -134,6 +134,8 @@ class EpisodeSaver(object):
 
         if not done:
             self.episode_starts.append(False)
+            if (len(target_pos) != 0):
+                self.target_positions.append(target_pos)
             self.ground_truth_states.append(ground_truth_state)
             self.saveImage(observation)
         else:   
