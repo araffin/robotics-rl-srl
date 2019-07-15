@@ -5,7 +5,7 @@ from real_robots.constants import *
 
 class OmnirobotManagerBase(object):
     def __init__(self, simple_continual_target=False, circular_continual_move=False, square_continual_move=False,
-                 eight_continual_move=False, chasing_continual_move=False, escape_continual_move= False,
+                 eight_continual_move=False, chasing_continual_move=False, escape_continual_move=False,
                  lambda_c=10.0, second_cam_topic=None, state_init_override=None):
         """
         This class is the basic class for omnirobot server, and omnirobot simulator's server.
@@ -20,7 +20,7 @@ class OmnirobotManagerBase(object):
         self.square_continual_move = square_continual_move
         self.eight_continual_move = eight_continual_move
         self.chasing_continual_move = chasing_continual_move
-        self.escape_continual_move =  escape_continual_move
+        self.escape_continual_move = escape_continual_move
         self.lambda_c = lambda_c
         self.state_init_override = state_init_override
         self.step_counter = 0
@@ -91,8 +91,6 @@ class OmnirobotManagerBase(object):
             has_bumped = True
         return has_bumped
 
-
-
     def targetMoveContinousAction(self, target_yaw):
         """
         Let robot execute continous action, and checking the boundary
@@ -108,11 +106,8 @@ class OmnirobotManagerBase(object):
             has_bumped = True
         return has_bumped
 
-
-    def targetMoveDiscreteAction(self,target_yaw):
-
+    def targetMoveDiscreteAction(self, target_yaw):
         self.robot.targetMoveDiscrete(target_yaw)
-
 
     def targetPolicy(self, directed = False):
         """
@@ -120,32 +115,28 @@ class OmnirobotManagerBase(object):
         :param directed: directed to the robot(agent)
         :return: the angle to go for the target
         """
-        if(directed):
+        if directed:
             dy = self.robot.robot_pos[1] - self.robot.target_pos[1] + np.random.rand() * abs(
                 self.robot.robot_pos[1] - self.robot.target_pos[1])
             dx = self.robot.robot_pos[0] - self.robot.target_pos[0] + np.random.rand() * abs(
                 self.robot.robot_pos[0] - self.robot.target_pos[0])
-            r  = math.sqrt(dy**2+dx**2)
+            r  = math.sqrt(dy**2 + dx**2)
             dy /= r
             dx /= r
-            yaw = math.atan2(dy, dx )
+            yaw = math.atan2(dy, dx)
             #return yaw
-            if(abs(dy)>abs(dx)):
-                if(dy>0):
+            if abs(dy) > abs(dx):
+                if dy > 0:
                     self.robot.targetMove("left")
                 else:
                     self.robot.targetMove("right")
             else:
-                if(dx>0):
+                if dx > 0:
                     self.robot.targetMove("forward")
                 else:
                     self.robot.targetMove("backward")
-
-
-
         period = 70
         yaw = (2*(self.step_counter % period )/period-1)*np.pi
-
         return yaw
 
     def sampleRobotInitalPosition(self):
@@ -180,7 +171,6 @@ class OmnirobotManagerBase(object):
             action = None
             self.episode_idx += 1
             self.step_counter = 0
-
             # empty list of previous states
             self.robot.emptyHistory()
 
@@ -197,7 +187,7 @@ class OmnirobotManagerBase(object):
             exit(0)
         else:
             raise ValueError("Unknown command: {}".format(msg))
-        self.step_counter +=1
+        self.step_counter += 1
 
         has_bumped = False
         # We are always facing North
@@ -217,10 +207,6 @@ class OmnirobotManagerBase(object):
             pass
         else:
             print("Unsupported action: ", action)
-
-
-
-
 
         # Determinate the reward for this step
 
@@ -257,35 +243,28 @@ class OmnirobotManagerBase(object):
         elif self.chasing_continual_move:
             # The action for target agent
             target_yaw = self.targetPolicy()
-
             self.targetMoveContinousAction(target_yaw)
             dis =  np.linalg.norm(np.array(self.robot.robot_pos) - np.array(self.robot.target_pos))
-            if(dis<0.4 and dis > 0.3):
+            if dis < 0.4 and dis > 0.3:
                 self.reward = REWARD_TARGET_REACH
             elif has_bumped:
                 self.reward = REWARD_BUMP_WALL
             else:
                 self.reward = REWARD_NOTHING
-
-
         elif self.escape_continual_move:
-
             dis = np.linalg.norm(np.array(self.robot.robot_pos) - np.array(self.robot.target_pos))
-
-            if has_bumped or dis<0.4:
+            if has_bumped or dis < 0.4:
                 self.reward = REWARD_BUMP_WALL
             # elif(dis<0.2):
             #     self.reward = REWARD_BUMP_WALL
-            elif(dis>=0.4):
+            elif(dis >= 0.4):
                 self.reward =REWARD_TARGET_REACH
             else:
                 self.reward = REWARD_NOTHING
 
             self.targetPolicy(directed=True)
-            #self.targetMoveContinousAction(target_yaw)
-            #self.targetMoveDiscreteAction(target_yaw)
-
-
+            # self.targetMoveContinousAction(target_yaw)
+            # self.targetMoveDiscreteAction(target_yaw)
         else:
             # Consider that we reached the target if we are close enough
             # we detect that computing the difference in area between TARGET_INITIAL_AREA
