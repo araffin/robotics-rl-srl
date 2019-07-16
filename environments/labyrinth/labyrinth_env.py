@@ -11,7 +11,7 @@ MAX_STEPS = 250  # WARNING: should be also change in __init__.py (timestep_limit
 RENDER_HEIGHT = 128
 RENDER_WIDTH = 128
 N_DISCRETE_ACTIONS = 4
-
+MAZE_SIZE = 8
 
 def getGlobals():
     """
@@ -46,10 +46,10 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
                  name="labyrinth", max_distance=1.6, shape_reward=False, record_data=False, srl_model="raw_pixels",
                  random_target=False, state_dim=-1, verbose=False, save_path='srl_zoo/data/', 
                  env_rank=0, srl_pipe=None, img_shape=None,  **_):
-        # super(LabyrinthEnv, self).__init__(srl_model=srl_model,
-        #                                         relative_pos=RELATIVE_POS,
-        #                                         env_rank=env_rank,
-        #                                         srl_pipe=srl_pipe)
+        super(LabyrinthEnv, self).__init__(srl_model=srl_model,
+                                                relative_pos=False,
+                                                env_rank=env_rank,
+                                                srl_pipe=srl_pipe)
         self._env_step_counter = 0
         self._observation = []
         self._renders = renders
@@ -61,7 +61,7 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
             self._height, self._width = self.img_shape[1:]
         # self._shape_reward = shape_reward
         self._random_target = random_target
-        self.terminated = False
+        self.terminated = False ## if already collected all tresors
         self.debug = False
         self.state_dim = state_dim
         self.saver = None
@@ -76,8 +76,7 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
         self.has_bumped = False  # Used for handling collisions
         self.count_collected_tresors = 0
         self.srl_model = srl_model
-        self.maze_size = 8
-        self.relative_pos = False ## TODO remove ugly code in srl_env.py 
+        self.maze_size = MAZE_SIZE
         self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
         if record_data:
             self.saver = EpisodeSaver(name, max_distance, state_dim, globals_=getGlobals(), path=save_path)
@@ -202,7 +201,7 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
             self.map[self.robot_pos[0], self.robot_pos[1]] = 2
             ## update observation
             self._observation = self.getObservation()
-        
+
         if self.saver is not None:
             self.saver.step(self._observation, action, reward, done, self.getRobotPos())
         if self.srl_model != "raw_pixels":
@@ -235,6 +234,12 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
                         pass
                 else:
                     raise NotImplementedError
+        if self._renders:
+            cv2.imshow("Keep pressing (any key) to display or 'q'/'Esc' to quit.", previous_obs)
+            key = cv2.waitKey(0)
+            if key == ord('q') or key == 27: ## 'q' or 'Esc'
+                cv2.destroyAllWindows()
+                raise KeyboardInterrupt
         return previous_obs[..., ::-1]
 
     def _termination(self):
@@ -263,6 +268,9 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
         elif (self.map[previous_pos[0], previous_pos[1]] == 1):
             self.count_collected_tresors += 1
             reward = 10
+        elif self.terminated: 
+            ## TODO, it's weird that the toolbox (RL part) doesn't stop counting reward after termination.
+            reward = 0.1
         else:
             reward = -0.1
         
