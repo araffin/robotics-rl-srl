@@ -84,7 +84,11 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
 
         env.seed(seed)
         seed = seed%2**32
-        env.action_space.seed(seed)  # this is for the sample() function from gym.space
+        try:
+            ## for gym environment
+            env.action_space.seed(seed)  # this is for the sample() function from gym.space
+        except:
+            pass
         obs = env.reset()
         done = False
         t = 0

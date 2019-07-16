@@ -141,7 +141,7 @@ class EpisodeSaver(object):
         """
         # Sanity checks
         assert len(self.actions) == len(self.rewards)
-        assert len(self.actions) == len(self.episode_starts)
+        assert len(self.actions) == len(self.episode_starts), "Find {} != {}".format(len(self.actions), len(self.episode_starts))
         assert len(self.actions) == len(self.images_path)
         assert len(self.actions) == len(self.ground_truth_states)
         assert len(self.target_positions) == self.episode_idx + 1
