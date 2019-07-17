@@ -19,11 +19,10 @@ def getGlobals():
     """
     return globals()
 
-
-class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
+class LabyrinthEnv(SRLGymEnv):
     """
     
-    This Labyrinth environment could can at speed 22,000 FPS on 10 threads CPU (Intel i9-9900K)
+    This Labyrinth environment could can at speed 28,000 FPS on 10 threads CPU (Intel i9-9900K)
     
     
     
@@ -115,8 +114,8 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
         robot_img_ori = cv2.imread("./environments/labyrinth/corsair_128.png")
         map_h, map_w = self.map.shape
         self.square_size = int(self._height/map_h)
-        self.target_img = cv2.resize(target_img_ori, (self.square_size, self.square_size))
-        self.robot_img = cv2.resize(robot_img_ori, (self.square_size, self.square_size))
+        self.target_img = cv2.resize(target_img_ori, (self.square_size, self.square_size))[..., ::-1]
+        self.robot_img = cv2.resize(robot_img_ori, (self.square_size, self.square_size))[..., ::-1]
         
         return valid_robot_pos_list
     def getGroundTruthDim(self):
@@ -146,7 +145,7 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
         self.map[self.robot_pos[0], self.robot_pos[1]] = 2
         
         self._env_step_counter = 0
-        self._observation = self.getObservation()
+        self._observation = self.getObservation(start=True)
         if self.saver is not None:
             self.saver.reset(self._observation, self.getTargetPos(), self.getRobotPos())
         if self.srl_model != "raw_pixels":
@@ -154,11 +153,11 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
 
         return self._observation
 
-    def getObservation(self):
+    def getObservation(self, start=False):
         """
         :return: (numpy array)
         """
-        self._observation = self.render("rgb_array")
+        self._observation = self.render("rgb_array", start=start)
         return self._observation
     def valid_action(self, action):
         """
@@ -209,8 +208,10 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
 
         return self._observation, reward, done, {}
 
-    def render(self, mode='rgb_array', close=False):
-        if self._observation is None or (isinstance(self._observation, list) and len(self._observation) == 0):
+    def render(self, mode='rgb_array', start=False):
+        ## [OPT] this part could be optimized again if needed, but it's not necessary, because 2,8000 FPS 
+        ## has already been ~4 times faster then 7000 FPS of PPO2 (with 10 CPUs). 
+        if self._observation is None or (isinstance(self._observation, list) and len(self._observation) == 0) or start:
             previous_obs = 255*np.ones((self._height, self._width, 3), dtype=np.uint8)
         else:
             previous_obs = self._observation
@@ -240,7 +241,7 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
             if key == ord('q') or key == 27: ## 'q' or 'Esc'
                 cv2.destroyAllWindows()
                 raise KeyboardInterrupt
-        return previous_obs[..., ::-1]
+        return previous_obs#[..., ::-1]
 
     def _termination(self):
         """
@@ -256,12 +257,6 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
         """
         :return: (float)
         """
-        # Distance to target
-        # distance = np.linalg.norm(self.getTargetPos() - self.robot_pos[:2], 2)
-
-        # print(self.robot_pos)
-        # print(self.map[self.robot_pos[0], self.robot_pos[1]])
-        # print(self.map[previous_pos[0], previous_pos[1]])
         # Negative reward when it bumps into a wall
         if self.has_bumped:
             reward = -1
@@ -277,7 +272,7 @@ class LabyrinthEnv(SRLGymEnv): # SRLGymEnv
         return reward
     
     def interactive(self, show_map=False):
-        image = self.getObservation()
+        image = self.getObservation(start=True)
         cv2.imshow("image", image[..., ::-1])
         while True:
             k = cv2.waitKey(0)
