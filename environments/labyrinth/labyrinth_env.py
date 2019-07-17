@@ -22,7 +22,7 @@ def getGlobals():
 class LabyrinthEnv(SRLGymEnv):
     """
     
-    This Labyrinth environment could can at speed 28,000 FPS on 10 threads CPU (Intel i9-9900K)
+    This Labyrinth environment could can at speed 28,000 FPS on 10 CPUs (Intel i9-9900K)
     
     
     
@@ -202,7 +202,14 @@ class LabyrinthEnv(SRLGymEnv):
             self._observation = self.getObservation()
 
         if self.saver is not None:
-            self.saver.step(self._observation, action, reward, done, self.getRobotPos())
+            ## HACK TODO TODO
+            if reward >= 1:
+                discret_reward = 1
+            elif reward <= -1:
+                discret_reward = -1
+            else:
+                discret_reward = 0
+            self.saver.step(self._observation, action, discret_reward, done, self.getRobotPos())
         if self.srl_model != "raw_pixels":
             return self.getSRLState(self._observation), reward, done, {}
 
@@ -236,12 +243,12 @@ class LabyrinthEnv(SRLGymEnv):
                 else:
                     raise NotImplementedError
         if self._renders:
-            cv2.imshow("Keep pressing (any key) to display or 'q'/'Esc' to quit.", previous_obs)
+            cv2.imshow("Keep pressing (any key) to display or 'q'/'Esc' to quit.", previous_obs[..., ::-1])
             key = cv2.waitKey(0)
             if key == ord('q') or key == 27: ## 'q' or 'Esc'
                 cv2.destroyAllWindows()
                 raise KeyboardInterrupt
-        return previous_obs#[..., ::-1]
+        return previous_obs
 
     def _termination(self):
         """
@@ -264,7 +271,7 @@ class LabyrinthEnv(SRLGymEnv):
             self.count_collected_tresors += 1
             reward = 10
         elif self.terminated: 
-            ## TODO, it's weird that the toolbox (RL part) doesn't stop counting reward after termination.
+            ## TODO, it's weird that if the toolbox (RL part) doesn't stop counting reward after termination.
             reward = 0.1
         else:
             reward = -0.1
