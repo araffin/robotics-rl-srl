@@ -67,8 +67,7 @@ class LabyrinthEnv(SRLGymEnv):
         self.max_steps = MAX_STEPS
         self.robot_pos = np.zeros(2, dtype=int)  # index on the self.map array
 
-
-        self.target_pos = []  # np.zeros(2) # list of indexes on the self.map array
+        self.target_pos = []  # list of indexes (target positions) on the self.map array
         self.previous_robot_pos = None
         self.has_bumped = False  # Used for handling collisions
         self.count_collected_tresors = 0
@@ -97,9 +96,20 @@ class LabyrinthEnv(SRLGymEnv):
         self.map[-1, :] = -1
         self.map[:3, 4] = -1
         self.map[-3:, 4] = -1
-        # put tresors
-        self.target_pos.append(np.array([1, -2], dtype=int))
-        self.target_pos.append(np.array([-2, 1], dtype=int))
+        # put tresors (targets)
+        self.target_pos = []
+        if not self._random_target:
+            self.target_pos.append(np.array([1, -2], dtype=int))
+            self.target_pos.append(np.array([-2, 1], dtype=int))
+        else:
+            valid_target_pos_list = []
+            for i in range(self.maze_size):
+                for j in range(self.maze_size):
+                    if self.map[i, j] == 0:
+                        valid_target_pos_list.append(np.array([i, j], dtype=int))
+            for index in np.random.choice(np.arange(len(valid_target_pos_list)), 2): ## random choose two targets
+                self.target_pos.append(valid_target_pos_list[index])
+            
         for key_pos in self.target_pos:
             self.map[key_pos[0], key_pos[1]] = 1
         valid_robot_pos_list = []
@@ -126,9 +136,6 @@ class LabyrinthEnv(SRLGymEnv):
         return self.maze_size**2
 
     def getGroundTruth(self):
-        """
-        """
-        # raise NotImplementedError
         return self.map.ravel()
 
     def reset(self):
@@ -137,7 +144,6 @@ class LabyrinthEnv(SRLGymEnv):
         self.has_bumped = False
         self.previous_robot_pos = None
         self._observation = None
-        self.target_pos = []
         valid_robot_pos_list = self.create_map()
         # put robot
         self.robot_pos = valid_robot_pos_list[np.random.choice(np.arange(len(valid_robot_pos_list)))]
@@ -212,7 +218,7 @@ class LabyrinthEnv(SRLGymEnv):
             self._observation = self.getObservation()
 
         if self.saver is not None:
-            # HACK TODO TODO
+            # HACK TODO TODO: used for the estimation of GTC (ground truth correlation)
             if reward >= 1:
                 discret_reward = 1
             elif reward <= -1:
@@ -303,8 +309,16 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Interactive Labyrinth environment (debug purpose)")
     parser.add_argument('--seed', default=0, type=int, help='random seed for initial robot position')
+    parser.add_argument('--img-shape', type=str, default="(3,224,224)", help="Image shape of environment.")
     parser.add_argument('--show-map', default=False, action='store_true', help='display map in terminal')
     args, unknown = parser.parse_known_args()
+
+    if args.img_shape is None:
+        img_shape = (3, 224, 224)
+    else:
+        img_shape = tuple(map(int, args.img_shape[1:-1].split(",")))
+    _, RENDER_HEIGHT, RENDER_WIDTH = img_shape
+
     np.random.seed(args.seed)
     Env = LabyrinthEnv()
     Env.reset()

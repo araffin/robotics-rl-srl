@@ -10,8 +10,8 @@ from state_representation.episode_saver import EpisodeSaver
 MAX_STEPS = 250  # WARNING: should be also change in __init__.py (timestep_limit)
 # Terminate the episode if the arm is outside the safety sphere during too much time
 REWARD_DIST_THRESHOLD = 0.4  # Min distance to target before finishing an episode
-RENDER_HEIGHT = 224
-RENDER_WIDTH = 224
+RENDER_HEIGHT = 128
+RENDER_WIDTH = 128
 N_DISCRETE_ACTIONS = 4
 
 DELTA_POS = 0.1  # DELTA_POS
@@ -280,11 +280,16 @@ class MobileRobotX(SRLGymEnv):
             mask = (np.mean(obj_img, axis=-1) < 240)
             image[h_st:h_ed, w_st:w_ed, :][mask] = obj_img[mask]
 
-
-        return image
+        if self._renders:
+            cv2.imshow("Keep pressing (any key) to display or 'q'/'Esc' to quit.", image)
+            key = cv2.waitKey(0)
+            if key == ord('q') or key == 27:  # 'q' or 'Esc'
+                cv2.destroyAllWindows()
+                raise KeyboardInterrupt
+        return image[..., ::-1]
     def interactive(self, show_map=False):
         image = self.getObservation()
-        cv2.imshow("image", image)
+        cv2.imshow("image", image[..., ::-1])
         while True:
             k = cv2.waitKey(0)
             if k == 27 or k == ord("q"):  # press 'Esc' or 'q' to quit
@@ -296,7 +301,7 @@ class MobileRobotX(SRLGymEnv):
                 print("Action: {}, Reward: {}, Done: {}".format(action, reward, done))
                 if show_map:
                     print(self.map)
-                cv2.imshow("image", image)
+                cv2.imshow("image", image[..., ::-1])
             elif k == ord("6") or k == 83:
                 # right
                 action = 1
@@ -304,7 +309,7 @@ class MobileRobotX(SRLGymEnv):
                 print("Action: {}, Reward: {}, Done: {}".format(action, reward, done))
                 if show_map:
                     print(self.map)
-                cv2.imshow("image", image)
+                cv2.imshow("image", image[..., ::-1])
             elif k == ord("8") or k == 82:
                 # up
                 action = 2
@@ -312,7 +317,7 @@ class MobileRobotX(SRLGymEnv):
                 print("Action: {}, Reward: {}, Done: {}".format(action, reward, done))
                 if show_map:
                     print(self.map)
-                cv2.imshow("image", image)
+                cv2.imshow("image", image[..., ::-1])
             elif k == ord("4") or k == 81:
                 # left
                 action = 0
@@ -320,7 +325,7 @@ class MobileRobotX(SRLGymEnv):
                 print("Action: {}, Reward: {}, Done: {}".format(action, reward, done))
                 if show_map:
                     print(self.map)
-                cv2.imshow("image", image)
+                cv2.imshow("image", image[..., ::-1])
             else:
                 print("You are pressing the key: {}".format(k))
 
@@ -329,8 +334,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Interactive Labyrinth environment (debug purpose)")
     parser.add_argument('--seed', default=0, type=int, help='random seed for initial robot position')
-    parser.add_argument('--show-map', default=False, action='store_true', help='display map in terminal')
+    parser.add_argument('--img-shape', type=str, default="(3,224,224)", help="Image shape of environment.")
     args, unknown = parser.parse_known_args()
+
+    if args.img_shape is None:
+        img_shape = (3, 224, 224)  # (3,224,224)
+    else:
+        img_shape = tuple(map(int, args.img_shape[1:-1].split(",")))
+    _, RENDER_HEIGHT, RENDER_WIDTH = img_shape
+    
     np.random.seed(args.seed)
     Env = MobileRobotX()
     img = Env.reset()
