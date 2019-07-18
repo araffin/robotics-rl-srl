@@ -9,6 +9,7 @@ dependencies:
   - html5lib=0.9999999=py35_0
   - markdown=2.6.9=py35_0
   - protobuf=3.4.1=py35he6b9134_0
+  - tensorflow-gpu=1.8.0
   - werkzeug=0.14.1=py35_0
   - bzip2=1.0.6=h6d464ef_2
   - ca-certificates=2017.08.26=h1d4fec5_0
