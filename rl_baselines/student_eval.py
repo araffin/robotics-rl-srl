@@ -13,9 +13,8 @@ from rl_baselines.evaluation.cross_eval_utils import loadConfigAndSetup, latestP
 from srl_zoo.utils import printRed, printYellow, printBlue
 from state_representation.registry import registered_srl
 
-CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC']
+CONTINUAL_LEARNING_LABELS = ['CC', 'SC', 'EC', 'SQC', 'ESC']
 CL_LABEL_KEY = "continual_learning_label"
-
 
 def OnPolicyDatasetGenerator(teacher_path, output_name, task_id, episode=-1, env_name='OmnirobotEnv-v0', num_cpu=1,
                              num_eps=200, test_mode=False):
@@ -30,12 +29,13 @@ def OnPolicyDatasetGenerator(teacher_path, output_name, task_id, episode=-1, env
     :param num_eps:
     :return:
     """
+    assert task_id in CONTINUAL_LEARNING_LABELS
     command_line = ['python', '-m', 'environments.dataset_generator', '--run-policy', 'custom']
     cpu_command = ['--num-cpu', str(num_cpu)]
     name_command = ['--name', output_name]
     save_path = ['--save-path', "data/"]
     env_command = ['--env', env_name]
-    task_command = ["-sc" if task_id == "SC" else '-cc']
+    task_command = ['-' + task_id.lower()]
     if task_id == 'SC':
         episode_command = ['--num-episode', str(10 if test_mode else 400)]
     else:
@@ -90,8 +90,6 @@ def allPolicyFiles(log_dir):
     :param log_dir:
     :return:
     """
-    train_args, algo_name, algo_class, srl_model_path, env_kwargs = loadConfigAndSetup(log_dir)
-    files = glob.glob(os.path.join(log_dir + algo_name + '_*_model.pkl'))
     printYellow(log_dir)
     files = glob.glob(log_dir + '/model_*')
 
@@ -147,7 +145,7 @@ def trainStudent(teacher_data_path, task_id, yaml_file='config/srl_models.yaml',
     env_command = ['--env', env_name]
     policy_command = ['--teacher-data-folder', teacher_data_path]
     size_epochs = ['--distillation-training-set-size', str(training_size), '--epochs-distillation', str(epochs)]
-    task_command = ["-sc" if task_id is "SC" else '-cc']
+    task_command = ['-' + task_id.lower()]
     ok = subprocess.call(command_line + srl_command
                          + env_command + policy_command + size_epochs + task_command + ['--srl-config-file', yaml_file])
     assert ok == 0
@@ -164,7 +162,9 @@ def mergeData(teacher_dataset_1, teacher_dataset_2, merge_dataset, force=False):
     merge_command = ['--merge', teacher_dataset_1, teacher_dataset_2, merge_dataset]
     if force:
         merge_command.append('-f')
-    ok = subprocess.call(['python', '-m', 'environments.dataset_merger'] + merge_command)
+    # -rm is to remove the original dataset after training, this would be of the same effect as the old version
+    # which will remove the dataset automatically.
+    ok = subprocess.call(['python', '-m', 'environments.dataset_merger', '-rm'] + merge_command)
     assert ok == 0
 
 
@@ -273,7 +273,7 @@ def main():
                 ['cp', '-r', merge_path, 'srl_zoo/data/', '-f'])
         else:
             # merge the data
-            mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path,force=True)
+            mergeData('data/' + teacher_pro_data, 'data/' + teacher_learn_data, merge_path, force=True)
 
             ok = subprocess.call(
                 ['cp', '-r', 'data/on_policy_merged/', 'srl_zoo/data/', '-f'])

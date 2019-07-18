@@ -134,7 +134,7 @@ class EpisodeSaver(object):
 
         if not done:
             self.episode_starts.append(False)
-            if (len(target_pos) != 0):
+            if len(target_pos) != 0:
                 self.target_positions.append(target_pos)
             self.ground_truth_states.append(ground_truth_state)
             self.saveImage(observation)
@@ -151,7 +151,8 @@ class EpisodeSaver(object):
         assert len(self.actions) == len(self.episode_starts)
         assert len(self.actions) == len(self.images_path)
         assert len(self.actions) == len(self.ground_truth_states)
-        assert len(self.target_positions) == self.episode_idx + 1
+        # change this assertion since the dynamic environment needs to save the target position at each step
+        assert len(self.target_positions) == self.episode_idx + 1 or len(self.target_positions) == len(self.actions)
         assert len(self.actions_proba) == 0 or len(self.actions_proba) == len(self.actions)
 
         data = {

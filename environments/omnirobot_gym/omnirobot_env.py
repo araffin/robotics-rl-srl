@@ -72,8 +72,9 @@ class OmniRobotEnv(SRLGymEnv):
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
-                 shape_reward=False, simple_continual_target=False, circular_continual_move=False, escape_continual_move=False,
-                 square_continual_move=False, eight_continual_move=False, chasing_continual_move=False, short_episodes=False,
+                 shape_reward=False, simple_continual_target=False, circular_continual_move=False,
+                 escape_continual_move=False, square_continual_move=False, eight_continual_move=False,
+                 chasing_continual_move=False, short_episodes=False,
                  state_init_override=None, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
@@ -206,7 +207,6 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return -DELTA_POS if self.robot_pos[1] < self.target_pos[1] else +DELTA_POS
 
-
     def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
         """
         :param :action: (int)
@@ -253,9 +253,17 @@ class OmniRobotEnv(SRLGymEnv):
         self.render()
 
         if self.saver is not None:
-            self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else action_to_step,
-                            self.reward, done, self.getGroundTruth(), action_proba=action_proba,
-                            target_pos=self.getTargetPos())
+            # Dynamic environment
+            if self.chasing_continual_move or self.escape_continual_move:
+                self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else
+                                action_to_step,
+                                self.reward, done, self.getGroundTruth(),
+                                action_proba=action_proba, target_pos=self.getTargetPos())
+            else:
+                self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else
+                                action_to_step,
+                                self.reward, done, self.getGroundTruth(),
+                                action_proba=action_proba)
         old_observation = self.getObservation()
         if self.use_srl:
             return self.getSRLState(self.observation
