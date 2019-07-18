@@ -190,7 +190,7 @@ class LabyrinthEnv(SRLGymEnv):
         self.previous_robot_pos = previous_pos
         valid, next_pos = self.valid_action(action)
         self.has_bumped = not valid
-        
+
         if self.has_bumped:
             reward = -1
         elif (self.map[next_pos[0], next_pos[1]] == 1):
@@ -269,28 +269,28 @@ class LabyrinthEnv(SRLGymEnv):
             elif k == ord("2") or k == 84:
                 # down
                 image, reward, done, _ = self.step(0)
-                print(reward, done)
+                print("Reward: {}, Done: {}".format(reward, done))
                 if show_map:
                     print(self.map)
                 cv2.imshow("image", image[..., ::-1])
             elif k == ord("6") or k == 83:
                 # right
                 image, reward, done, _ = self.step(1)
-                print(reward, done)
+                print("Reward: {}, Done: {}".format(reward, done))
                 if show_map:
                     print(self.map)
                 cv2.imshow("image", image[..., ::-1])
             elif k == ord("8") or k == 82:
                 # up
                 image, reward, done, _ = self.step(2)
-                print(reward, done)
+                print("Reward: {}, Done: {}".format(reward, done))
                 if show_map:
                     print(self.map)
                 cv2.imshow("image", image[..., ::-1])
             elif k == ord("4") or k == 81:
                 # left
                 image, reward, done, _ = self.step(3)
-                print(reward, done)
+                print("Reward: {}, Done: {}".format(reward, done))
                 if show_map:
                     print(self.map)
                 cv2.imshow("image", image[..., ::-1])
