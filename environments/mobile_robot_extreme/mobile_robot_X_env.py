@@ -72,10 +72,10 @@ class MobileRobotX(SRLGymEnv):
         self._observation = []
         self._env_step_counter = 0
         self.has_bumped = False  # Used for handling collisions
-
-        self.robot_img = cv2.imread("./environments/mobile_robot_extreme/crop_racecar_224.png")
-        self.target_img = cv2.imread("./environments/mobile_robot_extreme/crop_button_224.png")
-        self.background_img = cv2.imread("./environments/mobile_robot_extreme/background_224.png")
+        self.imgs_folder = "mobilerobot" ## 'mobilerobot', 'omnirobot'
+        self.robot_img = cv2.imread("./environments/mobile_robot_extreme/images/{}/robot_224.png".format(self.imgs_folder))
+        self.target_img = cv2.imread("./environments/mobile_robot_extreme/images/{}/target_224.png".format(self.imgs_folder))
+        self.background_img = cv2.imread("./environments/mobile_robot_extreme/images/{}/background_224.png".format(self.imgs_folder))
 
         robot_img_shape = self.robot_img.shape
         self.robot_img = cv2.resize(self.robot_img, (int(
