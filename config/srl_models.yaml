@@ -30,6 +30,7 @@ KukaButtonGymEnv-v0:
   AE_ifr2_split: "srl_model.pth"
   AE_ifr_split: "srl_model.pth"
   AE_ifr2_spcls_split: "srl_model.pth"
+  AE_ifr: "srl_model.pth"
 Kuka2ButtonGymEnv-v0:
   # Base path to SRL log folder
   log_folder: srl_zoo/logs/kuka_2_button/
@@ -157,6 +158,7 @@ MobileRobotGymEnv-v0:
   AE_ifr2_split: "srl_model.pth"
   AE_ifr_split: "srl_model.pth"
   AE_ifr2_spcls_split: "srl_model.pth"
+  AE_ifr: "srl_model.pth"
 
 MobileRobot2TargetGymEnv-v0:
   # Base path to SRL log folder
