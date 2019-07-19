@@ -16,6 +16,9 @@ from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLi
 from environments.gym_baxter.baxter_env import BaxterEnv
 from environments.robobo_gym.robobo_env import RoboboEnv
 from environments.omnirobot_gym.omnirobot_env import OmniRobotEnv
+from environments.labyrinth.labyrinth_env import LabyrinthEnv
+from environments.mobile_robot_extreme.mobile_robot_X_env import MobileRobotX
+
 
 def register(_id, **kvargs):
     if _id in registry.env_specs:
@@ -50,11 +53,13 @@ registered_env = {
     "Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),
     "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
     "OmnirobotEnv-v0":                (OmniRobotEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
+    "LabyrinthEnv-v0":                   (LabyrinthEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
+    "MobileRobotX-v0":                   (MobileRobotX, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
 }
 
 # Environments only available when running in a terminal with X (hence only imported when available):
 if isXAvailable():
-    # Catch if X available, but GL context unavailable. 
+    # Catch if X available, but GL context unavailable.
     # This prevents SSH crashing when X is passed without GL context.
     try:
         from environments.car_racing.car_env import CarRacingEnv
