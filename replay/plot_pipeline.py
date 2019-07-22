@@ -32,7 +32,7 @@ def loadEpisodesData(folder):
     return x, y
 
 
-def plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends, no_display, truncate_x=-1, normalization=False, figpath=None):
+def plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends, no_display, truncate_x=-1, normalization=False, figpath=None, exp_name_dict=None):
     assert len(legends) == len(y_list)
     printGreen("{} Experiments".format(len(y_list)))
 
@@ -53,6 +53,15 @@ def plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends, no_dis
         y_limits = [-0.05, 1.05]
         y_list = (y_list-np.min(y_list))/(np.max(y_list)-np.min(y_list))
 
+    colormap = plt.cm.tab20.colors
+    registered_indexes = [0, 4, 6]
+    registered_color = {'ground_truth': colormap[4],        # green
+                        'raw_pixels': colormap[0],          # blue
+                        'AE_ifr2_spcls_split': colormap[6]  # red
+                        'supervised': (0.0,0.0,0.0)         # black
+                        }
+    # import ipdb; ipdb.set_trace()
+    new_colormap = tuple([colormap[k] for k in range(len(colormap)) if k not in registered_indexes])
     fig = plt.figure(title, figsize=(20, 10))
     for i in range(len(y_list)):
         label = legends[i]
@@ -64,8 +73,11 @@ def plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends, no_dis
         # Compute standard error
         s = np.squeeze(np.asarray(np.std(y, axis=0)))
         n = y.shape[0]
-        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=plt.cm.tab20.colors[i], alpha=0.3)
-        plt.plot(x, m, color=plt.cm.tab20.colors[i], label=label, linewidth=2)
+        exp_name = exp_name_dict[i]
+        color = registered_color.get(exp_name, new_colormap[i]) # get color if exp_name is registered, otherwise, new color
+        plt.fill_between(x, m - s / np.sqrt(n), m + s / np.sqrt(n), color=color, alpha=0.3)
+        plt.plot(x, m, color=color, label=label, linewidth=2)
+    
 
     if timesteps:
         formatter = FuncFormatter(millions)
@@ -190,18 +202,21 @@ def comparePlots(path,  algo, y_limits, title="Learning Curve",
 
 
     x_list, y_list = [], []
-    for folders_srl in folders:
+    exp_name_dict = {}
+    for ind, folders_srl in enumerate(folders):
         printGreen("Folder name {}".format(folders_srl))
         x, y = GatherExperiments(folders_srl, algo,  window=40, title=title, min_num_x=-1,
                                  timesteps=timesteps, output_file="")
         print(len(x))
         x_list.append(x)
         y_list.append(y)
+        ## HACK: the line below is ugly and not robust code !! TODO
+        exp_name_dict[ind] = folders_srl[0].split("/")[-4]
     printGreen(np.array(x_list).shape)
     # printGreen('y_list shape {}'.format(np.array(y_list[1]).shape))
 
     plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends,
-                     no_display, truncate_x, normalization, figpath=figpath)
+                     no_display, truncate_x, normalization, figpath=figpath, exp_name_dict=exp_name_dict)
 
 
 if __name__ == '__main__':
