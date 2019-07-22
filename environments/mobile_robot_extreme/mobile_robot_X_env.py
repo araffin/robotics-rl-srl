@@ -19,7 +19,8 @@ RELATIVE_POS = False  # Use relative position for ground truth
 NOISE_STD = 0.0
 
 ROBOT_WIDTH = 0.2
-ROBOT_LENGTH = 0.325 * 2
+# ROBOT_LENGTH = 0.325 * 2
+ROBOT_LENGTH = 0.3 * 2
 
 
 def getGlobals():
@@ -167,7 +168,7 @@ class MobileRobotX(SRLGymEnv):
         x_pos = 0.8 * self._max_x
         y_pos = 0.7 * self._max_y
         if self._random_target:
-            margin = self.collision_margin * self._max_x ## 0.4
+            margin = self.collision_margin * self._max_x + 0.08 ## 0.4 + 0.05
             x_pos = self.np_random.uniform(self._min_x + margin, self._max_x - margin)
             y_pos = self.np_random.uniform(self._min_y + margin, self._max_y - margin)
 
@@ -214,9 +215,10 @@ class MobileRobotX(SRLGymEnv):
         self.robot_pos += real_action
         # Handle collisions
         for i, (limit, robot_dim) in enumerate(zip([self._max_y, self._max_x], [ROBOT_WIDTH, ROBOT_LENGTH])):
-            margin = self.collision_margin * limit + robot_dim / 2
+            margin = self.collision_margin * limit + robot_dim / 2  #
+            margin += 0.02
             # If it has bumped against a wall, stay at the previous position
-            if self.robot_pos[i] < margin or self.robot_pos[i] > limit - margin:
+            if self.robot_pos[i] <= margin or self.robot_pos[i] >= limit - margin:
                 self.has_bumped = True
                 self.robot_pos = previous_pos
                 break
@@ -343,8 +345,8 @@ if __name__ == "__main__":
         img_shape = tuple(map(int, args.img_shape[1:-1].split(",")))
     _, RENDER_HEIGHT, RENDER_WIDTH = img_shape
     
-    np.random.seed(args.seed)
     Env = MobileRobotX()
+    Env.seed(args.seed)
     img = Env.reset()
     Env.interactive()
     # cv2.imshow("test", img)
