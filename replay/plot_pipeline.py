@@ -57,7 +57,7 @@ def plotGatheredData(x_list, y_list, y_limits, timesteps, title, legends, no_dis
     registered_indexes = [0, 4, 6]
     registered_color = {'ground_truth': colormap[4],        # green
                         'raw_pixels': colormap[0],          # blue
-                        'AE_ifr2_spcls_split': colormap[6]  # red
+                        'AE_ifr2_spcls_split': colormap[6],  # red
                         'supervised': (0.0,0.0,0.0)         # black
                         }
     # import ipdb; ipdb.set_trace()

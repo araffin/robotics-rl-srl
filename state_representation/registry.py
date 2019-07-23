@@ -55,6 +55,5 @@ registered_srl = {
     "AE_ifr2_split": (SRLType.SRL, None),
     "AE_ifr_split": (SRLType.SRL, None),
     "AE_ifr2_spcls_split": (SRLType.SRL, None),
-    
-    
+    "debug": (SRLType.SRL, None),
 }

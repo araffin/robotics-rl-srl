@@ -56,8 +56,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None, img_sha
             exp_config = json.load(f, object_pairs_hook=OrderedDict)
 
         state_dim = exp_config.get('state-dim', None)
-        losses = exp_config.get('losses', None)  # None in the case of baseline models (pca, supervised)
-        n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca, supervised)
+        losses = exp_config.get('losses', None)  # None in the case of baseline models (pca)
+        n_actions = exp_config.get('n_actions', None)  # None in the case of baseline models (pca)
         model_type = exp_config.get('model-type', None)
         use_multi_view = exp_config.get('multi-view', False)
         inverse_model_type = exp_config.get('inverse-model-type', 'linear')
@@ -86,9 +86,8 @@ def loadSRLModel(path=None, cuda=False, state_dim=None, env_object=None, img_sha
         "Model type not supported. In order to use loadSRLModel, a path to an SRL model must be given."
     assert not (losses is None and not model_type == 'pca'), \
         "Please make sure you are loading an up to date model with a conform exp_config file."
-    assert not (n_actions is None and not (model_type == 'pca' or 'supervised' in losses)), \
-        "Please make sure you are loading an up to date model with a conform exp_config file."
-
+    assert not (n_actions is None and not (model_type == 'pca')), \
+        "Please make sure you are loading an up to date model with a conform exp_config file."    
     if model is None:
         if use_multi_view:
             new_img_shape = (6,)+img_shape[1:]
@@ -174,9 +173,8 @@ class SRLNeuralNetwork(SRLBaseClass):
                                      preprocessImage(observation[:, :, 3:], convert_to_rgb=False)))
         else:
             observation = preprocessImage(observation, convert_to_rgb=False)
-
-        # Create 4D Tensor
-        observation = observation.reshape(1, *observation.shape)
+        
+        observation = observation[None, ...]
         # Channel first
         observation = np.transpose(observation, (0, 3, 1, 2))
         observation = th.from_numpy(observation).float().to(self.device)
