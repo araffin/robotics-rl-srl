@@ -21,12 +21,14 @@ def getGlobals():
     return globals()
 
 
-class LabyrinthEnv(SRLGymEnv):
+class LabyrinthEnv3(SRLGymEnv):
     """
 
     This Labyrinth environment could can at speed 36,000 FPS on 10 CPUs (Intel i9-9900K)
 
-
+    Labyrinth-v3: 
+                add two Palm trees as obstacle (could be destroyed)
+                add two Oak barrel as obstacle (could be moved and destroyed against wall)
 
     :param name: (str) name of the folder where recorded data will be stored
     :param max_distance: (float) Max distance between end effector and the button (for negative reward)
@@ -47,7 +49,7 @@ class LabyrinthEnv(SRLGymEnv):
                  name="labyrinth", max_distance=1.6, shape_reward=False, record_data=False, srl_model="raw_pixels",
                  random_target=False, state_dim=-1, verbose=False, save_path='srl_zoo/data/',
                  env_rank=0, srl_pipe=None, img_shape=None,  **_):
-        super(LabyrinthEnv, self).__init__(srl_model=srl_model,
+        super(LabyrinthEnv3, self).__init__(srl_model=srl_model,
                                            relative_pos=False,
                                            env_rank=env_rank,
                                            srl_pipe=srl_pipe)
@@ -88,7 +90,8 @@ class LabyrinthEnv(SRLGymEnv):
 
     def create_map(self):
         """
-        -1 is wall, 0 is free space, 1 is key(tresor), 2 is robot, 3 is obstacle (Palm tree)
+        -1 is wall, 0 is free space, 1 is key(tresor), 2 is robot, 3 is obstacle (Palm tree) 
+        4 is oak
         """
         # Create map without robot
         # put walls
@@ -101,20 +104,36 @@ class LabyrinthEnv(SRLGymEnv):
         self.map[-3:, 4] = -1
         # put tresors (targets)
         self.target_pos = []
+        self.obstacle_pos = []
+        self.oak_pos = []
         if not self._random_target:
             self.target_pos.append(np.array([1, -2], dtype=int))
             self.target_pos.append(np.array([-2, 1], dtype=int))
+            self.obstacle_pos.append(np.array([2, 2], dtype=int))
         else:
             valid_target_pos_list = []
             for i in range(self.maze_size):
                 for j in range(self.maze_size):
                     if self.map[i, j] == 0:
                         valid_target_pos_list.append(np.array([i, j], dtype=int))
-            for index in np.random.choice(np.arange(len(valid_target_pos_list)), 2): ## random choose two targets
+            obstacle_ind = np.random.choice(np.arange(len(valid_target_pos_list)), 2, replace=False)
+            for index in sorted(obstacle_ind, reverse=True):
+                self.obstacle_pos.append(valid_target_pos_list.pop(index))
+
+            oak_ind = np.random.choice(np.arange(len(valid_target_pos_list)), 2, replace=False)
+            for index in sorted(oak_ind, reverse=True):
+                self.oak_pos.append(valid_target_pos_list.pop(index))
+
+            for index in np.random.choice(np.arange(len(valid_target_pos_list)), 2, replace=False):  # randomly choose two targets
                 self.target_pos.append(valid_target_pos_list[index])
             
         for key_pos in self.target_pos:
             self.map[key_pos[0], key_pos[1]] = 1
+        for key_pos in self.obstacle_pos:
+            self.map[key_pos[0], key_pos[1]] = 3
+        for key_pos in self.oak_pos:
+            self.map[key_pos[0], key_pos[1]] = 4
+
         valid_robot_pos_list = []
         for i in range(self.maze_size):
             for j in range(self.maze_size):
@@ -124,11 +143,15 @@ class LabyrinthEnv(SRLGymEnv):
         # load images
         target_img_ori = cv2.imread("./environments/labyrinth/tresors_128.png")
         robot_img_ori = cv2.imread("./environments/labyrinth/corsair_128.png")
+        palm_img_ori = cv2.imread("./environments/labyrinth/palm_128.jpg")
+        oak_img_ori = cv2.imread("./environments/labyrinth/oak_128.jpg")
         map_h, map_w = self.map.shape
         self.square_size = int(self._height/map_h)
         self.target_img = cv2.resize(target_img_ori, (self.square_size, self.square_size))[..., ::-1]
         self.robot_img = cv2.resize(robot_img_ori, (self.square_size, self.square_size))[..., ::-1]
-
+        self.palm_img = cv2.resize(palm_img_ori, (self.square_size, self.square_size))[..., ::-1]
+        self.oak_img = cv2.resize(oak_img_ori, (self.square_size, self.square_size))[..., ::-1]
+        
         return valid_robot_pos_list
 
     def getGroundTruthDim(self):
@@ -198,7 +221,7 @@ class LabyrinthEnv(SRLGymEnv):
         self.has_bumped = False
         previous_pos = self.robot_pos.copy()
         self.previous_robot_pos = previous_pos
-        valid, next_pos, _ = self.valid_action(action)
+        valid, next_pos, real_action = self.valid_action(action)
         self.has_bumped = not valid
 
         if self.has_bumped:
@@ -206,6 +229,13 @@ class LabyrinthEnv(SRLGymEnv):
         elif (self.map[next_pos[0], next_pos[1]] == 1):
             self.count_collected_tresors += 1
             reward = 10
+        elif (self.map[next_pos[0], next_pos[1]] == 4):
+            next_next_pos = next_pos + real_action
+            if self.map[next_next_pos[0], next_next_pos[1]] == -1: # it's wall
+                pass # nothing change
+            else:
+                self.map[next_next_pos[0], next_next_pos[1]] = 4
+            reward = -0.1
         else:
             reward = -0.1
         done = (self.count_collected_tresors == len(self.target_pos)) or (self._env_step_counter > self.max_steps)
@@ -253,6 +283,10 @@ class LabyrinthEnv(SRLGymEnv):
                     previous_obs[i*square_size:(i+1)*square_size, j*square_size:(j+1)*square_size, :] = self.target_img
                 elif self.map[i, j] == 2:
                     previous_obs[i*square_size:(i+1)*square_size, j*square_size:(j+1)*square_size, :] = self.robot_img
+                elif self.map[i, j] == 3:
+                    previous_obs[i*square_size:(i+1)*square_size, j*square_size:(j+1)*square_size, :] = self.palm_img
+                elif self.map[i, j] == 4:
+                    previous_obs[i*square_size:(i+1)*square_size, j*square_size:(j+1)*square_size, :] = self.oak_img
                 elif self.map[i, j] == 0:
                     # print(self.previous_robot_pos)
                     if self.previous_robot_pos is not None and i == self.previous_robot_pos[0] and j == self.previous_robot_pos[1]:
@@ -329,6 +363,6 @@ if __name__ == "__main__":
     _, RENDER_HEIGHT, RENDER_WIDTH = img_shape
 
     np.random.seed(args.seed)
-    Env = LabyrinthEnv(random_target=args.random_target)
+    Env = LabyrinthEnv3(random_target=args.random_target)
     Env.reset()
     Env.interactive(show_map=args.show_map)

@@ -17,6 +17,9 @@ from environments.gym_baxter.baxter_env import BaxterEnv
 from environments.robobo_gym.robobo_env import RoboboEnv
 from environments.omnirobot_gym.omnirobot_env import OmniRobotEnv
 from environments.labyrinth.labyrinth_env import LabyrinthEnv
+from environments.labyrinth.labyrinth_env_v1 import LabyrinthEnv1
+from environments.labyrinth.labyrinth_env_v2 import LabyrinthEnv2
+from environments.labyrinth.labyrinth_env_v3 import LabyrinthEnv3
 from environments.mobile_robot_extreme.mobile_robot_X_env import MobileRobotX
 
 
@@ -54,6 +57,9 @@ registered_env = {
     "RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
     "OmnirobotEnv-v0":                (OmniRobotEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "LabyrinthEnv-v0":                   (LabyrinthEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
+    "LabyrinthEnv-v1":                   (LabyrinthEnv1, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
+    "LabyrinthEnv-v2":                   (LabyrinthEnv2, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
+    "LabyrinthEnv-v3":                   (LabyrinthEnv3, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobotX-v0":                   (MobileRobotX, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
 }
 

@@ -276,4 +276,6 @@ def main():
 
 
 if __name__ == '__main__':
+    st = time.time()
     main()
+    print("Elapsed time: {:.2f}".format(time.time()-st))
