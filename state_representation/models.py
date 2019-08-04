@@ -172,7 +172,7 @@ class SRLNeuralNetwork(SRLBaseClass):
             observation = np.dstack((preprocessImage(observation[:, :, :3], convert_to_rgb=False),
                                      preprocessImage(observation[:, :, 3:], convert_to_rgb=False)))
         else:
-            observation = preprocessImage(observation, convert_to_rgb=False)
+            observation = preprocessImage(observation, convert_to_rgb=False) ## TODO TODO
         
         observation = observation[None, ...]
         # Channel first

@@ -79,11 +79,11 @@ class EpisodeSaver(object):
             observation1 = cv2.cvtColor(observation[:, :, :3], cv2.COLOR_BGR2RGB)
             observation2 = cv2.cvtColor(observation[:, :, 3:], cv2.COLOR_BGR2RGB)
 
-            cv2.imwrite("{}_1.jpg".format(image_path), observation1)
-            cv2.imwrite("{}_2.jpg".format(image_path), observation2)
+            cv2.imwrite("{}_1.png".format(image_path), observation1)
+            cv2.imwrite("{}_2.png".format(image_path), observation2)
         else:
             observation = cv2.cvtColor(observation, cv2.COLOR_BGR2RGB)
-            cv2.imwrite("{}.jpg".format(image_path), observation)
+            cv2.imwrite("{}.png".format(image_path), observation)
 
     def reset(self, observation, target_pos, ground_truth):
         """
