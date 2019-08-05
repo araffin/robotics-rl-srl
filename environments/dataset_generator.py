@@ -35,7 +35,7 @@ def convertImagePath(args, path, record_id_start):
     return args.name + "/record_{:03d}".format(new_record_id) + "/" + image_name
 
 
-def env_thread(args, thread_num, partition=True, use_ppo2=False):
+def env_thread(args, thread_num, partition=True, use_ppo2=False, img_shape=None):
     """
     Run a session of an environment
     :param args: (ArgumentParser object)
@@ -61,6 +61,7 @@ def env_thread(args, thread_num, partition=True, use_ppo2=False):
         env_kwargs["name"] = args.name
 
     env_class = registered_env[args.env][0]
+    env_kwargs["img_shape"] = img_shape #(3, 224, 224)
     env = env_class(**env_kwargs)
     using_real_omnibot = args.env == "OmnirobotEnv-v0" and USING_OMNIROBOT
 
@@ -154,6 +155,8 @@ def main():
                         help='number of timesteps to run PPO2 on before generating the dataset')
     parser.add_argument('--toward-target-timesteps-proportion', type=float, default=0.0,
                         help="propotion of timesteps that use simply towards target policy, should be 0.0 to 1.0")
+    parser.add_argument('--img-shape', type=str, default="(3,128,128)",
+                        help='image shape (default "(3,128,128)"')
     args = parser.parse_args()
 
     assert (args.num_cpu > 0), "Error: number of cpu must be positive and non zero"
@@ -170,6 +173,12 @@ def main():
     # this is done so seed 0 and 1 are different and not simply offset of the same datasets.
     args.seed = np.random.RandomState(args.seed).randint(int(1e10))
 
+    if args.img_shape is None:
+        # args.img_shape = None  # (3,224,224)
+        pass
+    else:
+        args.img_shape = tuple(map(int, args.img_shape[1:-1].split(",")))
+
     # File exists, need to deal with it
     if not args.no_record_data and os.path.exists(args.save_path + args.name):
         assert args.force, "Error: save directory '{}' already exists".format(args.save_path + args.name)
@@ -182,13 +191,13 @@ def main():
         os.mkdir(args.save_path + args.name)
 
     if args.num_cpu == 1:
-        env_thread(args, 0, partition=False, use_ppo2=args.run_ppo2)
+        env_thread(args, 0, partition=False, use_ppo2=args.run_ppo2, img_shape=args.img_shape)
     else:
         # try and divide into multiple processes, with an environment each
         try:
             jobs = []
             for i in range(args.num_cpu):
-                process = multiprocessing.Process(target=env_thread, args=(args, i, True, args.run_ppo2))
+                process = multiprocessing.Process(target=env_thread, args=(args, i, True, args.run_ppo2, args.img_shape))
                 jobs.append(process)
 
             for j in jobs:
