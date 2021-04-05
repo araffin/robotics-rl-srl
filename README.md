@@ -1,3 +1,5 @@
+**This repository is no longer maintained. If you are looking for RL implementations, there is [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3), for a training framework, there is the [RL Baselines3 Zoo](https://github.com/DLR-RM/rl-baselines3-zoo).**
+
 # S-RL Toolbox: Reinforcement Learning (RL) and State Representation Learning (SRL) Toolbox for Robotics
 
 This repository was made to evaluate State Representation Learning methods using Reinforcement Learning. It integrates (automatic logging, plotting, saving, loading of trained agent) various RL algorithms (PPO, A2C, ARS, ACKTR, DDPG, DQN, ACER, CMA-ES, SAC, TRPO) along with different SRL methods (see [SRL Repo](https://github.com/araffin/srl-zoo)) in an efficient way (1 Million steps in 1 Hour with 8-core cpu and 1 Titan X GPU).
