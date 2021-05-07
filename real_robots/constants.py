@@ -88,6 +88,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
    
     # Max number of steps per episode
     MAX_STEPS = 250
+    MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES = 75
     # Boundaries
     MIN_X, MAX_X = -0.85, 0.85  # center of robot should be in this interval
     MIN_Y, MAX_Y = -0.85, 0.85
@@ -119,7 +120,7 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
         STOP = 4
 
     STEP_DISTANCE = 0.1  # meter, distance for each step
-    
+    STEP_DISTANCE_TARGET = 0.05 # moving distance for each step
     # For continuous action,
     # Define the action_bounds
     ACTION_POSITIVE_LOW = 0.0
@@ -136,6 +137,10 @@ elif USING_OMNIROBOT or USING_OMNIROBOT_SIMULATOR:
     CAMERA_ROT_EULER_COORD_GROUND = [0, 180, 0]
     ORIGIN_SIZE = [640, 480]  # camera's original resolution
     CROPPED_SIZE = [480, 480]  # cropped to a square, attention, this is not the output image size (RENDER_SIZE)
+
+    # Constants for Continual setup
+    RADIUS = 0.6125  # Radius of square or circle in continual scenarios: square-continual and circle-continual
+
 # Gazebo
 else:
     LEFT_ARM_INIT_POS = [0.6, 0.30, 0.20]

@@ -1,6 +1,6 @@
 import os
 import pickle
-
+import re
 from stable_baselines.common.policies import CnnPolicy, CnnLstmPolicy, CnnLnLstmPolicy, MlpPolicy, MlpLstmPolicy, \
     MlpLnLstmPolicy
 
@@ -124,10 +124,15 @@ class StableBaselinesRLObject(BaseRLObject):
         :param save_path: (str)
         :param _locals: (dict) local variable from callback, if present
         """
+
         assert self.model is not None, "Error: must train or load model before use"
-        model_save_name = self.name + ".pkl"
-        if os.path.basename(save_path) == model_save_name:
-            model_save_name = self.name + "_model.pkl"
+
+        episode = os.path.basename(save_path).split('_')[-2]
+        if bool(re.search('[a-z]', episode)):
+            # That means this is not a episode, it is a algo name
+            model_save_name = self.name + ".pkl"
+        else:
+            model_save_name = self.name + '_' + episode + ".pkl"
 
         self.model.save(os.path.dirname(save_path) + "/" + model_save_name)
         save_param = {
@@ -160,9 +165,12 @@ class StableBaselinesRLObject(BaseRLObject):
         loaded_model = cls()
         loaded_model.__dict__ = {**loaded_model.__dict__, **save_param}
 
-        model_save_name = loaded_model.name + ".pkl"
-        if os.path.basename(load_path) == model_save_name:
-            model_save_name = loaded_model.name + "_model.pkl"
+        episode = os.path.basename(load_path).split('_')[-2]
+        if bool(re.search('[a-z]', episode)):
+            # That means this is not a episode, it is a algo name
+            model_save_name = loaded_model.name + ".pkl"
+        else:
+            model_save_name = loaded_model.name + '_' + episode + ".pkl"
 
         loaded_model.model = loaded_model.model_class.load(os.path.dirname(load_path) + "/" + model_save_name)
         loaded_model.states = loaded_model.model.initial_state
@@ -219,7 +227,11 @@ class StableBaselinesRLObject(BaseRLObject):
         :param env_kwargs: (dict) The extra arguments for the environment
         :param train_kwargs: (dict) The list of all training agruments (used in hyperparameter search)
         """
-        envs = self.makeEnv(args, env_kwargs=env_kwargs)
+        if self.load_rl_model_path is not None:
+            load_path_normalise = os.path.dirname(self.load_rl_model_path)
+            envs = self.makeEnv(args, env_kwargs=env_kwargs,load_path_normalise=load_path_normalise)
+        else:
+            envs = self.makeEnv(args, env_kwargs=env_kwargs)
 
         if train_kwargs is None:
             train_kwargs = {}

@@ -29,7 +29,7 @@ else:
 RENDER_HEIGHT = 224
 RENDER_WIDTH = 224
 RELATIVE_POS = True
-N_CONTACTS_BEFORE_TERMINATION = 3
+N_CONTACTS_BEFORE_TERMINATION = 15 #10
 
 DELTA_POS = 0.1  # DELTA_POS for continuous actions
 N_DISCRETE_ACTIONS = 4
@@ -72,7 +72,10 @@ class OmniRobotEnv(SRLGymEnv):
 
     def __init__(self, renders=False, name="Omnirobot", is_discrete=True, save_path='srl_zoo/data/', state_dim=-1,
                  learn_states=False, srl_model="raw_pixels", record_data=False, action_repeat=1, random_target=True,
-                 shape_reward=False, env_rank=0, srl_pipe=None, **_):
+                 shape_reward=False, simple_continual_target=False, circular_continual_move=False,
+                 escape_continual_move=False, square_continual_move=False, eight_continual_move=False,
+                 chasing_continual_move=False, short_episodes=False,
+                 state_init_override=None, env_rank=0, srl_pipe=None, **_):
 
         super(OmniRobotEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=RELATIVE_POS,
@@ -87,7 +90,7 @@ class OmniRobotEnv(SRLGymEnv):
         self.use_srl = use_srl or use_ground_truth
         self.use_ground_truth = use_ground_truth
         self.use_joints = False
-        self.relative_pos = RELATIVE_POS
+        self.relative_pos = RELATIVE_POS and (not escape_continual_move)
         self._is_discrete = is_discrete
         self.observation = []
         # Start simulation with first observation
@@ -101,6 +104,13 @@ class OmniRobotEnv(SRLGymEnv):
         self.target_pos = None
         self.saver = None
         self._random_target = random_target
+        self.simple_continual_target = simple_continual_target
+        self.circular_continual_move = circular_continual_move
+        self.square_continual_move = square_continual_move
+        self.eight_continual_move = eight_continual_move
+        self.chasing_continual_move = chasing_continual_move
+        self.escape_continual_move = escape_continual_move
+        self.short_episodes = short_episodes
 
         if self._is_discrete:
             self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
@@ -128,8 +138,15 @@ class OmniRobotEnv(SRLGymEnv):
                                       learn_states=learn_states, path=save_path)
 
         if USING_OMNIROBOT_SIMULATOR:
-            self.socket = OmniRobotSimulatorSocket(
-                output_size=[RENDER_WIDTH, RENDER_HEIGHT], random_target=self._random_target)
+            self.socket = OmniRobotSimulatorSocket(simple_continual_target=simple_continual_target,
+                                                   circular_continual_move=circular_continual_move,
+                                                   square_continual_move=square_continual_move,
+                                                   eight_continual_move=eight_continual_move,
+                                                   chasing_continual_move=chasing_continual_move,
+                                                   escape_continual_move=escape_continual_move,
+                                                   output_size=[RENDER_WIDTH, RENDER_HEIGHT],
+                                                   random_target=self._random_target,
+                                                   state_init_override=state_init_override)
         else:
             # Initialize Baxter effector by connecting to the Gym bridge ROS node:
             self.context = zmq.Context()
@@ -172,44 +189,85 @@ class OmniRobotEnv(SRLGymEnv):
             else:
                 return DELTA_POS if self.robot_pos[1] < self.target_pos[1] else -DELTA_POS
 
-    def step(self, action):
+    def actionPolicyAwayTarget(self):
         """
-        :action: (int)
+        :return: (int) action
+        """
+        if abs(self.robot_pos[0] - self.target_pos[0]) > abs(self.robot_pos[1] - self.target_pos[1]):
+
+            if self._is_discrete:
+                return int(Move.BACKWARD) if self.robot_pos[0] < self.target_pos[0] else int(Move.FORWARD)
+                # forward                                        # backward
+            else:
+                return -DELTA_POS if self.robot_pos[0] < self.target_pos[0] else +DELTA_POS
+        else:
+            if self._is_discrete:
+                # left                                          # right
+                return int(Move.RIGHT) if self.robot_pos[1] < self.target_pos[1] else int(Move.LEFT)
+            else:
+                return -DELTA_POS if self.robot_pos[1] < self.target_pos[1] else +DELTA_POS
+
+    def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
+        """
+        :param :action: (int)
+        :param generated_observation:
+        :param action_proba:
+        :param action_grid_walker: # Whether or not we want to override the action with the one from a grid walker
         :return: (tensor (np.ndarray)) observation, int reward, bool done, dict extras)
         """
+        if action_grid_walker is None:
+            action_to_step = action
+            action_from_teacher = None
+        else:
+            action_to_step = action_grid_walker
+            action_from_teacher = action
+            assert self.action_space.contains(action_from_teacher)
+
         if not self._is_discrete:
-            action = np.array(action)
-        assert self.action_space.contains(action)
+            action_to_step = np.array(action_to_step)
+        assert self.action_space.contains(action_to_step)
 
         # Convert int action to action in (x,y,z) space
         # serialize the action
-        if isinstance(action, np.ndarray):
-            self.action = action.tolist()
-        elif hasattr(action, 'dtype'):  # convert numpy type to python type
+        if isinstance(action_to_step, np.ndarray):
+            self.action = action_to_step.tolist()
+        elif hasattr(action_to_step, 'dtype'):  # convert numpy type to python type
             self.action = action.item()
         else:
-            self.action = action
+            self.action = action_to_step
 
         self._env_step_counter += 1
 
         # Send the action to the server
         self.socket.send_json(
-            {"command": "action", "action": self.action, "is_discrete": self._is_discrete})
+            {"command": "action", "action": self.action, "is_discrete": self._is_discrete,
+             "step_counter": self._env_step_counter})
 
         # Receive state data (position, etc), important to update state related values
         self.getEnvState()
 
         #  Receive a camera image from the server
-        self.observation = self.getObservation()
+        self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         done = self._hasEpisodeTerminated()
 
         self.render()
 
         if self.saver is not None:
-            self.saver.step(self.observation, action,
-                            self.reward, done, self.getGroundTruth())
+            # Dynamic environment
+            if self.chasing_continual_move or self.escape_continual_move:
+                self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else
+                                action_to_step,
+                                self.reward, done, self.getGroundTruth(),
+                                action_proba=action_proba, target_pos=self.getTargetPos())
+            else:
+                self.saver.step(self.observation, action_from_teacher if action_grid_walker is not None else
+                                action_to_step,
+                                self.reward, done, self.getGroundTruth(),
+                                action_proba=action_proba)
+        old_observation = self.getObservation()
         if self.use_srl:
-            return self.getSRLState(self.observation), self.reward, done, {}
+            return self.getSRLState(self.observation
+                                    if generated_observation is None else old_observation), self.reward, done, {}
         else:
             return self.observation, self.reward, done, {}
 
@@ -223,7 +281,6 @@ class OmniRobotEnv(SRLGymEnv):
         self.reward = state_data["reward"]
         self.target_pos = np.array(state_data["target_pos"])
         self.robot_pos = np.array(state_data["position"])
-
         return state_data
 
     def getObservation(self):
@@ -247,8 +304,14 @@ class OmniRobotEnv(SRLGymEnv):
     @staticmethod
     def getGroundTruthDim():
         """
+        The convergence is slow for escape task with dimension 2
         :return: (int)
         """
+        # if(not self.escape_continual_move):
+        #     return 2
+        # else:
+        #     #The position of the robot, target
+        #     return 4
         return 2
 
     def getGroundTruth(self):
@@ -256,6 +319,11 @@ class OmniRobotEnv(SRLGymEnv):
         Alias for getRobotPos for compatibility between envs
         :return: (numpy array)
         """
+        #
+        # if(not self.escape_continual_move):
+        #     return np.array(self.getRobotPos())
+        # else:
+        #     return np.append(self.getRobotPos(),self.getTargetPos())
         return np.array(self.getRobotPos())
 
     def getRobotPos(self):
@@ -264,9 +332,11 @@ class OmniRobotEnv(SRLGymEnv):
         """
         return self.robot_pos
 
-    def reset(self):
+    def reset(self, generated_observation=None, state_override=None):
         """
         Reset the environment
+        :param generated_observation:
+        :param state_override:
         :return: (numpy ndarray) first observation of the env
         """
         self.episode_terminated = False
@@ -274,16 +344,19 @@ class OmniRobotEnv(SRLGymEnv):
         self._env_step_counter = 0
         # set n contact count
         self.n_contacts = 0
-        self.socket.send_json({"command": "reset"})
+        self.socket.send_json({"command": "reset", "step_counter": self._env_step_counter})
         # Update state related variables, important step to get both data and
         # metadata that allow reading the observation image
         self.getEnvState()
-        self.observation = self.getObservation()
+        self.robot_pos = np.array([0, 0]) if state_override is None else state_override
+        self.observation = self.getObservation() if generated_observation is None else generated_observation * 255
         if self.saver is not None:
             self.saver.reset(self.observation,
                              self.getTargetPos(), self.getGroundTruth())
+        old_observation = self.getObservation()
+
         if self.use_srl:
-            return self.getSRLState(self.observation)
+            return self.getSRLState(self.observation if generated_observation is None else old_observation)
         else:
             return self.observation
 
@@ -291,13 +364,17 @@ class OmniRobotEnv(SRLGymEnv):
         """
         Returns True if the episode is over and False otherwise
         """
-        if self.episode_terminated or self._env_step_counter > MAX_STEPS:
+        if (self.episode_terminated or self._env_step_counter > MAX_STEPS) or \
+                (self.n_contacts >= N_CONTACTS_BEFORE_TERMINATION and self.short_episodes and
+                 self.simple_continual_target) or \
+                (self._env_step_counter > MAX_STEPS_CIRCULAR_TASK_SHORT_EPISODES and self.short_episodes and
+                 self.circular_continual_move):
             return True
 
         if np.abs(self.reward - REWARD_TARGET_REACH) < 0.000001:  # reach the target
             self.n_contacts += 1
         else:
-            self.n_contacts = 0
+            self.n_contacts += 0
         return False
 
     def closeServerConnection(self):
@@ -325,7 +402,7 @@ class OmniRobotEnv(SRLGymEnv):
                 self.visualizeBoundary()
                 self.image_plot = plt.imshow(self.observation_with_boundary, cmap='gray')
                 self.image_plot.axes.grid(False)
-                
+
             else:
                 self.visualizeBoundary()
                 self.image_plot.set_data(self.observation_with_boundary)
@@ -333,7 +410,7 @@ class OmniRobotEnv(SRLGymEnv):
             # Wait a bit, so that plot is visible
             plt.pause(0.0001)
         return self.observation
-    
+
     def initVisualizeBoundary(self):
         with open(CAMERA_INFO_PATH, 'r') as stream:
             try:
@@ -364,19 +441,81 @@ class OmniRobotEnv(SRLGymEnv):
         # transform the corresponding points into cropped image
         self.boundary_coner_pixel_pos = self.boundary_coner_pixel_pos - (np.array(ORIGIN_SIZE) -
                                                                          np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
-        
+
         # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
         self.boundary_coner_pixel_pos[0, :] *= RENDER_WIDTH/CROPPED_SIZE[0]
         self.boundary_coner_pixel_pos[1, :] *= RENDER_HEIGHT/CROPPED_SIZE[1]
-        
+
         self.boundary_coner_pixel_pos = np.around(self.boundary_coner_pixel_pos).astype(np.int)
+
+        # Create square for vizu of objective in continual square task
+        if self.square_continual_move:
+
+            self.boundary_coner_pixel_pos_continual = np.zeros((2, 4))
+            # assume that image is undistorted
+            self.boundary_coner_pixel_pos_continual[:, 0] = \
+                pos_transformer.phyPosGround2PixelPos([-RADIUS, -RADIUS], return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 1] = \
+                pos_transformer.phyPosGround2PixelPos([RADIUS, -RADIUS],  return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 2] = \
+                pos_transformer.phyPosGround2PixelPos([RADIUS, RADIUS], return_distort_image_pos=False).squeeze()
+            self.boundary_coner_pixel_pos_continual[:, 3] = \
+                pos_transformer.phyPosGround2PixelPos([-RADIUS, RADIUS], return_distort_image_pos=False).squeeze()
+
+            # transform the corresponding points into cropped image
+            self.boundary_coner_pixel_pos_continual = self.boundary_coner_pixel_pos_continual - (
+                        np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)).reshape(2, 1) / 2.0
+
+            # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
+            self.boundary_coner_pixel_pos_continual[0, :] *= RENDER_WIDTH / CROPPED_SIZE[0]
+            self.boundary_coner_pixel_pos_continual[1, :] *= RENDER_HEIGHT / CROPPED_SIZE[1]
+
+            self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
+
+        elif self.circular_continual_move:
+            self.center_coordinates = \
+                pos_transformer.phyPosGround2PixelPos([0, 0], return_distort_image_pos=False).squeeze()
+            self.center_coordinates = self.center_coordinates - (
+                np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)) / 2.0
+            # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
+            self.center_coordinates[0] *= RENDER_WIDTH / CROPPED_SIZE[0]
+            self.center_coordinates[1] *= RENDER_HEIGHT / CROPPED_SIZE[1]
+
+            self.center_coordinates = np.around(self.center_coordinates).astype(np.int)
+
+            # Points to convert radisu in env space
+            self.boundary_coner_pixel_pos_continual = \
+                pos_transformer.phyPosGround2PixelPos([0, RADIUS], return_distort_image_pos=False).squeeze()
+
+            # transform the corresponding points into cropped image
+            self.boundary_coner_pixel_pos_continual = self.boundary_coner_pixel_pos_continual - (
+                        np.array(ORIGIN_SIZE) - np.array(CROPPED_SIZE)) / 2.0
+
+            # transform the corresponding points into resized image (RENDER_WIDHT, RENDER_HEIGHT)
+            self.boundary_coner_pixel_pos_continual[0] *= RENDER_WIDTH / CROPPED_SIZE[0]
+            self.boundary_coner_pixel_pos_continual[1] *= RENDER_HEIGHT / CROPPED_SIZE[1]
+
+            self.boundary_coner_pixel_pos_continual = np.around(self.boundary_coner_pixel_pos_continual).astype(np.int)
 
     def visualizeBoundary(self):
         """
-        visualize the unvisible boundary, should call initVisualizeBoundary firstly
+        visualize the unvisible boundary, should call initVisualizeBoundary first
         """
         self.observation_with_boundary = self.observation.copy()
 
+        # Add boundary continual
+        if self.square_continual_move:
+            for idx in range(4):
+                idx_next = idx + 1
+                cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos_continual[:, idx]),
+                         tuple(self.boundary_coner_pixel_pos_continual[:, idx_next % 4]), (0, 0, 200), 2)
+
+        elif self.circular_continual_move:
+            radius_converted = np.linalg.norm(self.center_coordinates - self.boundary_coner_pixel_pos_continual)
+            cv2.circle(self.observation_with_boundary, tuple(self.center_coordinates), np.float32(radius_converted),
+                       (0, 0, 200), 2)
+
+        # Add boundary of env
         for idx in range(4):
             idx_next = idx + 1
             cv2.line(self.observation_with_boundary, tuple(self.boundary_coner_pixel_pos[:, idx]),

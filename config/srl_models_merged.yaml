@@ -1,0 +1,8 @@
+
+OmnirobotEnv-v0:
+  # Base path to SRL log folder
+  # log_folder: srl_zoo/logs/Omnibot_random_simple/
+  log_folder: srl_zoo/logs/merge_CC_SC/
+  autoencoder: 19-02-04_23h27_22_custom_cnn_ST_DIM200_autoencoder_reward_inverse_forward/srl_model.pth
+  
+

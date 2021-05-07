@@ -27,13 +27,14 @@ class OmniRobotEnvRender():
                  back_ground_path, camera_info_path,
                  robot_marker_path, robot_marker_margin, target_marker_path, target_marker_margin,
                  robot_marker_code, target_marker_code,
-                 robot_marker_length, target_marker_length, output_size, **_):
+                 robot_marker_length, target_marker_length, output_size, history_size=10, **_):
         """
         Class for rendering Omnirobot environment
         :param init_x: (float) initial x position of robot
         :param init_y: (float) initial y position of robot
         :param init_yaw: (float) initial yaw position of robot
-        :param origin_size: (list of int) original camera's size (eg. [640,480]), the camera matrix should be corresponding to this size
+        :param origin_size: (list of int) original camera's size (eg. [640,480]),
+        the camera matrix should be corresponding to this size
         :param cropped_size: (list of int) cropped image's size (eg. [480,480])
         :param back_ground_path: (str) back ground image's path, the image should be undistorted.
         :param camera_info_path: (str) camera info file's path (containing camera matrix)
@@ -41,8 +42,10 @@ class OmniRobotEnvRender():
         :param robot_marker_margin: (list of int) marker's margin (eg. [3,3,3,3])
         :param target_marker_path: (str) target maker's path, the marker should have a margin with several pixels 
         :param target_marker_margin: (list of int) marker's margin (eg. [3,3,3,3])
-        :param robot_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional, the code of robot marker, only used for detecting position directly from the image.
-        :param target_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional, the code of target marker, only used for detecting position directly from the image.
+        :param robot_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional,
+        the code of robot marker, only used for detecting position directly from the image.
+        :param target_marker_code: (currently not supported, should be "None" by default) (numpy ndarray) optional,
+        the code of target marker, only used for detecting position directly from the image.
         :param robot_marker_length: (float) the physical length of the marker (in meter)
         :param target_marker_length: (float) the physical length of the marker (in meter)
         :param output_size: (list of int) the output image's size (eg. [224,224])
@@ -63,6 +66,9 @@ class OmniRobotEnvRender():
         self.robot_pos = np.float32([0, 0])
         self.robot_yaw = 0  # in rad
 
+        self.history_size = history_size
+        self.robot_pos_past_k_steps = []
+
         # Last velocity command, used for simulating the controlling of velocity directly
         self.last_linear_velocity_cmd = np.float32(
             [0, 0])  # in m/s, in robot local frame
@@ -81,7 +87,7 @@ class OmniRobotEnvRender():
         self.target_yaw_cmd = 0.0
 
         # Target's real position on the grid
-        self.target_pos = np.float32([0, 0])
+        self.target_pos = np.float32([0,0])
         self.target_yaw = 0
 
         # status of moving
@@ -90,6 +96,8 @@ class OmniRobotEnvRender():
 
         # Distance for each step
         self.step_distance = STEP_DISTANCE
+        # Distance for the escape task, zombie speed
+        self.step_distance_target =STEP_DISTANCE_TARGET
 
         with open(camera_info_path, 'r') as stream:
             try:
@@ -114,7 +122,7 @@ class OmniRobotEnvRender():
                                        self.cropped_margin[1]+self.cropped_size[1]]).astype(np.int)
 
         back_ground_img = cv2.imread(back_ground_path)
-        if(back_ground_img.shape[0:2] != self.cropped_size):
+        if back_ground_img.shape[0:2] != self.cropped_size:
             print("input back ground image's size: ", back_ground_img.shape)
             print("resize to ", self.cropped_size)
             self.bg_img[self.cropped_range[0]:self.cropped_range[1], self.cropped_range[2]:self.cropped_range[3], :] \
@@ -176,7 +184,6 @@ class OmniRobotEnvRender():
                                                           self.pos_transformer.phyPosGround2PixelPos(
                                                               self.target_pos.reshape(2, 1)),
                                                           self.target_yaw, np.random.randn() * NOISE_VAR_TARGET_SIZE_PROPOTION + 1.0)
-
     def renderRobot(self):
         """
         render the image.
@@ -185,6 +192,18 @@ class OmniRobotEnvRender():
                                                  self.pos_transformer.phyPosGround2PixelPos(
                                                      self.robot_pos.reshape(2, 1)),
                                                  self.robot_yaw, self.robot_marker_size_proprotion)
+
+    def getHistorySize(self):
+        return self.history_size
+
+    def appendToHistory(self, pos):
+        self.robot_pos_past_k_steps.append(pos)
+
+    def popOfHistory(self):
+        self.robot_pos_past_k_steps.pop(0)
+
+    def emptyHistory(self):
+        self.robot_pos_past_k_steps = []
 
     def getCroppedImage(self):
         return self.image[self.cropped_range[0]:self.cropped_range[1], self.cropped_range[2]:self.cropped_range[3], :]
@@ -240,28 +259,28 @@ class OmniRobotEnvRender():
         self.target_pos = self.target_pos_cmd
         self.target_yaw = self.normalizeAngle(self.target_yaw_cmd)
 
-    def forward(self, action=None):
+    def forward(self):
         """
         Move one step forward (Translation)
         """
         self.setRobotCmd(
             self.robot_pos_cmd[0] + self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
 
-    def backward(self, action=None):
+    def backward(self):
         """
         Move one step backward
         """
         self.setRobotCmd(
             self.robot_pos_cmd[0] - self.step_distance, self.robot_pos_cmd[1], self.robot_yaw_cmd)
 
-    def left(self, action=None):
+    def left(self):
         """
         Translate to the left
         """
         self.setRobotCmd(
             self.robot_pos_cmd[0], self.robot_pos_cmd[1] + self.step_distance, self.robot_yaw_cmd)
 
-    def right(self, action=None):
+    def right(self):
         """
         Translate to the right
         """
@@ -274,6 +293,49 @@ class OmniRobotEnvRender():
         """
         self.setRobotCmd(
             self.robot_pos_cmd[0] + action[0], self.robot_pos_cmd[1] + action[1], self.robot_yaw_cmd)
+
+    def targetMoveDiscrete(self, target_yaw):
+        pi = np.pi
+        assert target_yaw > -pi and target_yaw < pi
+        target_yaw += pi
+        if target_yaw >= pi/4 and target_yaw < pi*3/4:#Up
+            self.setTargetCmd(
+                self.target_pos_cmd[0], self.target_pos_cmd[1] - self.step_distance_target, target_yaw)
+        elif target_yaw >= 3/4*pi and  target_yaw < 5/4 *pi:
+            self.setTargetCmd(
+                self.target_pos_cmd[0] + self.step_distance_target, self.target_pos_cmd[1], target_yaw)
+        elif target_yaw >= 5/4 * pi and target_yaw < 7/4 * pi:
+            self.setTargetCmd(
+                self.target_pos_cmd[0], self.target_pos_cmd[1]+self.step_distance_target, target_yaw)
+        else:
+            self.setTargetCmd(
+                self.target_pos_cmd[0] - self.step_distance_target, self.target_pos_cmd[1], target_yaw)
+
+
+    def targetMove(self, action):
+        if action == "forward":
+            self.setTargetCmd(
+                self.target_pos_cmd[0] + self.step_distance_target, self.target_pos_cmd[1], self.target_yaw)
+        elif action == "backward":
+            self.setTargetCmd(
+                self.target_pos_cmd[0] - self.step_distance_target, self.target_pos_cmd[1], self.target_yaw)
+        elif action == "left":
+            self.setTargetCmd(
+                self.target_pos_cmd[0] , self.target_pos_cmd[1] + self.step_distance_target, self.target_yaw)
+        else:
+            self.setTargetCmd(
+                self.target_pos_cmd[0] , self.target_pos_cmd[1] - self.step_distance_target, self.target_yaw)
+
+    def targetMoveContinous(self,  target_yaw):
+        """
+        Perform a continuous displacement of dx, dy
+        """
+        self.target_yaw = target_yaw
+        action = (
+        self.step_distance_target * np.cos(target_yaw), self.step_distance_target * np.sin(target_yaw))
+        self.setTargetCmd(
+            self.target_pos_cmd[0] +action[0] , self.target_pos_cmd[1] + action[1], target_yaw)
+
 
     def moveByVelocityCmd(self, speed_x, speed_y, speed_yaw):
         """
@@ -297,8 +359,7 @@ class OmniRobotEnvRender():
                                                 cos_direction + self.last_linear_velocity_cmd[0] * sin_direction)/RL_CONTROL_FREQ
         ground_yaw_cmd = self.robot_yaw + self.last_rot_velocity_cmd/RL_CONTROL_FREQ
         self.setRobotCmd(ground_pos_cmd_x, ground_pos_cmd_y, ground_yaw_cmd)
-
-        # save the command of this moment
+        # save the command of this moment
         self.last_linear_velocity_cmd[0] = speed_x
         self.last_linear_velocity_cmd[1] = speed_y
         self.last_rot_velocity_cmd = speed_yaw
@@ -312,7 +373,6 @@ class OmniRobotEnvRender():
         :param front_speed: (float) linear speed of front wheel (meter/s)
         :param right_speed: (float) linear speed of right wheel (meter/s)
         """
-
         # calculate the robot position by omnirobot's kinematic equations
         # Assume in 1/RL_CONTROL_FREQ, the heading remains the same (not true,
         # but should be approximately work if RL_CONTROL_FREQ is high enough)
@@ -326,7 +386,7 @@ class OmniRobotEnvRender():
         local_rot_speed = - self.last_wheel_speeds_cmd[1] / (3.0 * OMNIROBOT_L) \
             - self.last_wheel_speeds_cmd[0] / (3.0 * OMNIROBOT_L) \
             - self.last_wheel_speeds_cmd[2] / (3.0 * OMNIROBOT_L)
-            
+
         # translate the last velocity cmd in robot local coordiante to position cmd in gound coordiante
         cos_direction = np.cos(self.robot_yaw)
         sin_direction = np.sin(self.robot_yaw)
@@ -357,18 +417,16 @@ class OmniRobotEnvRender():
 class OmniRobotSimulatorSocket(OmnirobotManagerBase):
     def __init__(self, **args):
         '''
-        Simulate the zmq socket like real omnirobot server 
-        :param **args  arguments 
+        Simulate the zmq socket like real omnirobot server
+        :param **args  arguments
 
         '''
         super(OmniRobotSimulatorSocket, self).__init__()
-        defalt_args = {
+        default_args = {
             "back_ground_path": "real_robots/omnirobot_utils/back_ground.jpg",
             "camera_info_path": CAMERA_INFO_PATH,
             "robot_marker_path": "real_robots/omnirobot_utils/robot_margin3_pixel_only_tag.png",
             "robot_marker_margin": [3, 3, 3, 3],
-            # for black target, use target_margin4_pixel.png",
-            "target_marker_path": "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png",
             "target_marker_margin": [4, 4, 4, 4],
             "robot_marker_code": None,
             "target_marker_code": None,
@@ -379,30 +437,56 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
             "init_y": 0,
             "init_yaw": 0,
             "origin_size": ORIGIN_SIZE,
-            "cropped_size": CROPPED_SIZE
+            "cropped_size": CROPPED_SIZE,
+            "circular_move": False
         }
         # overwrite the args if it exists
-        self.new_args = {**defalt_args, **args}
+        self.new_args = {**default_args, **args}
+
+        if self.new_args["simple_continual_target"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/red_square.png"
+
+        elif self.new_args["circular_continual_move"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/blue_square.png"
+
+        elif self.new_args["square_continual_move"] or self.new_args["eight_continual_move"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/green_square.png"
+        elif self.new_args["chasing_continual_move"] or self.new_args["escape_continual_move"]:
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/yellow_T.png"
+        else:
+            # for black target, use target_margin4_pixel.png",
+            self.new_args["target_marker_path"] = "real_robots/omnirobot_utils/red_target_margin4_pixel_480x480.png"
+
+        super(OmniRobotSimulatorSocket, self).__init__(simple_continual_target=self.new_args["simple_continual_target"],
+                                                       circular_continual_move=self.new_args["circular_continual_move"],
+                                                       square_continual_move=self.new_args["square_continual_move"],
+                                                       eight_continual_move=self.new_args["eight_continual_move"],
+                                                       chasing_continual_move=self.new_args["chasing_continual_move"],
+                                                       escape_continual_move=self.new_args["escape_continual_move"])
 
         assert len(self.new_args['robot_marker_margin']) == 4
         assert len(self.new_args['target_marker_margin']) == 4
         assert len(self.new_args['output_size']) == 2
-
         self.robot = OmniRobotEnvRender(**self.new_args)
         self.episode_idx = 0
         self._random_target = self.new_args["random_target"]
+        if sum((self.new_args["simple_continual_target"]
+                , self.new_args["chasing_continual_move"] , self.new_args["escape_continual_move"]))>0:
+            self._random_target = True
+        self.state_init_override = self.new_args['state_init_override']
         self.resetEpisode()  # for a random target initial position
 
     def resetEpisode(self):
         """
         override the original method
-        Give the correct sequance of commands to the robot 
+        Give the correct sequence of commands to the robot
         to rest environment between the different episodes
         """
         if self.second_cam_topic is not None:
             assert NotImplementedError
         # Env reset
-        random_init_position = self.sampleRobotInitalPosition()
+        random_init_position = self.sampleRobotInitalPosition() if self.state_init_override is None \
+            else self.state_init_override
         self.robot.setRobotCmd(
             random_init_position[0], random_init_position[1], 0)
 
@@ -410,7 +494,7 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
         ) * NOISE_VAR_ROBOT_SIZE_PROPOTION + 1.0
 
         # target reset
-        if self._random_target or self.episode_idx == 0:
+        if self._random_target:
             random_init_x = np.random.random_sample() * (TARGET_MAX_X - TARGET_MIN_X) + \
                 TARGET_MIN_X
             random_init_y = np.random.random_sample() * (TARGET_MAX_Y - TARGET_MIN_Y) + \
@@ -425,8 +509,9 @@ class OmniRobotSimulatorSocket(OmnirobotManagerBase):
     def send_json(self, msg):
         # env send msg to render
         self.processMsg(msg)
-
         self.robot.renderRobot()
+        # As for the escape task, the target is moving, we need to update in every time step
+        self.robot.renderTarget()
 
         self.img = self.robot.getCroppedImage()
         self.img = self.robot.renderEnvLuminosityNoise(self.img, noise_var=NOISE_VAR_ENVIRONMENT, in_RGB=False,

@@ -20,7 +20,8 @@ from rl_baselines import AlgoType, ActionType
 from rl_baselines.registry import registered_rl
 from rl_baselines.utils import computeMeanReward
 from rl_baselines.utils import filterJSONSerializableObjects
-from rl_baselines.visualize import timestepsPlot, episodePlot
+from rl_baselines.visualize import timestepsPlot, episodePlot,episodesEvalPlot
+from rl_baselines.cross_eval import episodeEval
 from srl_zoo.utils import printGreen, printYellow
 from state_representation import SRLType
 from state_representation.registry import registered_srl
@@ -33,15 +34,20 @@ ALGO_NAME = ""
 ENV_NAME = ""
 PLOT_TITLE = ""
 EPISODE_WINDOW = 40  # For plotting moving average
+CROSS_EVAL = False
+EPISODE_WINDOW_DISTILLATION_WIN = 20
+NEW_LR=0.001
+
+
 viz = None
 n_steps = 0
 SAVE_INTERVAL = 0  # initialised during loading of the algorithm
 N_EPISODES_EVAL = 100  # Evaluate the performance on the last 100 episodes
-MIN_EPISODES_BEFORE_SAVE = 100  # Number of episodes to train on before saving best model
+MIN_EPISODES_BEFORE_SAVE = 1000  # Number of episodes to train on before saving best model
 params_saved = False
 best_mean_reward = -10000
 
-win, win_smooth, win_episodes = None, None, None
+win, win_smooth, win_episodes, win_crossEval= None, None, None, None
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # used to remove debug info of tensorflow
 
@@ -98,6 +104,14 @@ def configureEnvAndLogFolder(args, env_kwargs, all_models):
             srl_model_path = models['log_folder'] + path
             env_kwargs["srl_model_path"] = srl_model_path
 
+    # Use of continual learning env
+    env_kwargs["simple_continual_target"] = args.simple_continual
+    env_kwargs["circular_continual_move"] = args.circular_continual
+    env_kwargs["square_continual_move"] = args.square_continual
+    env_kwargs["eight_continual_move"] = args.eight_continual
+    env_kwargs["chasing_continual_move"] = args.chasing_continual
+    env_kwargs["escape_continual_move"] = args.escape_continual
+
     # Add date + current time
     args.log_dir += "{}/{}/".format(ALGO_NAME, datetime.now().strftime("%y-%m-%d_%Hh%M_%S"))
     LOG_DIR = args.log_dir
@@ -114,7 +128,7 @@ def callback(_locals, _globals):
     :param _locals: (dict)
     :param _globals: (dict)
     """
-    global win, win_smooth, win_episodes, n_steps, viz, params_saved, best_mean_reward
+    global win, win_smooth, win_episodes, win_crossEval, n_steps, viz, params_saved, best_mean_reward
     # Create vizdom object only if needed
     if viz is None:
         viz = Visdom(port=VISDOM_PORT)
@@ -158,6 +172,28 @@ def callback(_locals, _globals):
             printGreen("Saving new best model")
             ALGO.save(LOG_DIR + ALGO_NAME + "_model.pkl", _locals)
 
+        if CROSS_EVAL:  # If we want to do the cross evaluation after the training
+            if n_episodes >= 0:
+                # For every checkpoint, we create one directory for saving logs file (policy and run mean std)
+                if EPISODE_WINDOW_DISTILLATION_WIN > 0:
+                    if n_episodes % EPISODE_WINDOW_DISTILLATION_WIN == 0:
+                        ALGO.save(LOG_DIR + ALGO_NAME + '_' + str(n_episodes) + "_model.pkl", _locals)
+                        eps_path = LOG_DIR + "model_" + str(n_episodes)
+                        try:
+                            os.mkdir(LOG_DIR + "model_" + str(n_episodes))
+                        except OSError:
+                            pass
+                            #print("Creation of the directory {} failed".format(eps_path))
+
+                        ALGO.save("{}/{}".format(eps_path, ALGO_NAME + "_model.pkl"), _locals)
+                        try:
+                            if 'env' in _locals:
+                                _locals['env'].save_running_average(eps_path)
+                            else:
+                                _locals['self'].env.save_running_average(eps_path)
+                        except AttributeError:
+                            pass
+
     # Plots in visdom
     if viz and (n_steps + 1) % LOG_INTERVAL == 0:
         win = timestepsPlot(viz, win, LOG_DIR, ENV_NAME, ALGO_NAME, bin_size=1, smooth=0, title=PLOT_TITLE, is_es=is_es)
@@ -179,7 +215,7 @@ def main():
     parser.add_argument('--env', type=str, help='environment ID', default='KukaButtonGymEnv-v0',
                         choices=list(registered_env.keys()))
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
-    parser.add_argument('--episode_window', type=int, default=40,
+    parser.add_argument('--episode-window', type=int, default=40,
                         help='Episode window for moving average plot (default: 40)')
     parser.add_argument('--log-dir', default='/tmp/gym/', type=str,
                         help='directory to save agent logs and model (default: /tmp/gym)')
@@ -207,7 +243,37 @@ def main():
                         help='load the latest learned model (location:srl_zoo/logs/DatasetName/)')
     parser.add_argument('--load-rl-model-path', type=str, default=None,
                         help="load the trained RL model, should be with the same algorithm type")
-    
+    parser.add_argument('-sc', '--simple-continual', action='store_true', default=False,
+                        help='Simple red square target for task 1 of continual learning scenario. ' +
+                             'The task is: robot should reach the target.')
+    parser.add_argument('-cc', '--circular-continual', action='store_true', default=False,
+                        help='Blue square target for task 2 of continual learning scenario. ' +
+                             'The task is: robot should turn in circle around the target.')
+    parser.add_argument('-sqc', '--square-continual', action='store_true', default=False,
+                        help='Green square target for task 3 of continual learning scenario. ' +
+                             'The task is: robot should turn in square around the target.')
+    parser.add_argument('-ec', '--eight-continual', action='store_true', default=False,
+                        help='Green square target for task 4 of continual learning scenario. ' +
+                             'The task is: robot should do the eigth with the target as center of the shape.')
+    parser.add_argument('-chc', '--chasing-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: one robot should keep a certain distance towars the other.')
+    parser.add_argument('-esc', '--escape-continual', action='store_true', default=False,
+                        help='Two chasing robots in the  same domain of environment' +
+                             'The task is: the trainable agent tries to escape from the "zombie" robot.')
+    parser.add_argument('--teacher-data-folder', type=str, default="",
+                        help='Dataset folder of the teacher(s) policy(ies)', required=False)
+    parser.add_argument('--epochs-distillation', type=int, default=30, metavar='N',
+                        help='number of epochs to train for distillation(default: 30)')
+    parser.add_argument('--distillation-training-set-size', type=int, default=-1,
+                        help='Limit size (number of samples) of the training set (default: -1)')
+    parser.add_argument('--perform-cross-evaluation-cc', action='store_true', default=False,
+                        help='A cross evaluation from the latest stored model to all tasks')
+    parser.add_argument('--eval-episode-window', type=int, default=400, metavar='N',
+                        help='Episode window for saving each policy checkpoint for future distillation(default: 100)')
+    parser.add_argument('--new-lr', type=float, default=1.e-4,
+                        help="New learning rate ratio to train a pretrained agent")
+
     # Ignore unknown args for now
     args, unknown = parser.parse_known_args()
     env_kwargs = {}
@@ -236,11 +302,22 @@ def main():
                 break
         assert found, "Error: srl_model {}, is not compatible with the {} environment.".format(args.srl_model, args.env)
 
+    assert not(sum([args.simple_continual, args.circular_continual, args.square_continual, args.eight_continual,
+                    args.chasing_continual, args.escape_continual]) > 1 and args.env == "OmnirobotEnv-v0"), \
+        "For continual SRL and RL, please provide only one scenario at the time and use OmnirobotEnv-v0 environment !"
+
+    assert not(args.algo == "distillation" and (args.teacher_data_folder == '' or args.continuous_actions is True)), \
+        "For performing policy distillation, make sure use specify a valid teacher dataset and discrete actions !"
+
     ENV_NAME = args.env
     ALGO_NAME = args.algo
     VISDOM_PORT = args.port
     EPISODE_WINDOW = args.episode_window
     MIN_EPISODES_BEFORE_SAVE = args.min_episodes_save
+    CROSS_EVAL = args.perform_cross_evaluation_cc
+    EPISODE_WINDOW_DISTILLATION_WIN = args.eval_episode_window
+    NEW_LR =args.new_lr
+    print("EPISODE_WINDOW_DISTILLATION_WIN: ", EPISODE_WINDOW_DISTILLATION_WIN)
 
     if args.no_vis:
         viz = False
@@ -249,7 +326,6 @@ def main():
     algo = algo_class()
     ALGO = algo
     
-
     # if callback frequency needs to be changed
     LOG_INTERVAL = algo.LOG_INTERVAL
     SAVE_INTERVAL = algo.SAVE_INTERVAL
@@ -268,6 +344,11 @@ def main():
     env_kwargs["action_repeat"] = args.action_repeat
     # Random init position for button
     env_kwargs["random_target"] = args.random_target
+
+    # If in simple continual scenario, then the target should be initialized randomly.
+    if args.simple_continual is True:
+        env_kwargs["random_target"] = True
+
     # Allow up action
     # env_kwargs["force_down"] = False
 
@@ -291,7 +372,8 @@ def main():
     globals_env_param = sys.modules[env_class.__module__].getGlobals()
 
     super_class = registered_env[args.env][1]
-    # reccursive search through all the super classes of the asked environment, in order to get all the arguments.
+
+    # recursive search through all the super classes of the asked environment, in order to get all the arguments.
     rec_super_class_lookup = {dict_class: dict_super_class for _, (dict_class, dict_super_class, _, _) in
                               registered_env.items()}
     while super_class != SRLGymEnv:
@@ -322,12 +404,11 @@ def main():
     hyperparams = algo.parserHyperParam(hyperparams)
     
     if args.load_rl_model_path is not None:
-        #use a small learning rate
-        print("use a small learning rate: {:f}".format(1.0e-4))
-        hyperparams["learning_rate"] = lambda f: f * 1.0e-4
+        # use a small learning rate
+        print("use a small learning rate: {:f}".format(NEW_LR))
+        hyperparams["learning_rate"] = lambda f: f * NEW_LR
         
     # Train the agent
-
     if args.load_rl_model_path is not None:
         algo.setLoadPath(args.load_rl_model_path)
     algo.train(args, callback, env_kwargs=env_kwargs, train_kwargs=hyperparams)
